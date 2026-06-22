@@ -75,6 +75,12 @@ native apps stay in preflight/device-smoke validation until a later beta.
   `reports/release/desktop/release-evidence-source.json` to be covered by the
   evidence checksum manifest and to bind the evidence to the GitHub workflow run
   and `Package Formal Desktop Evidence` job that produced it.
+- When Desktop formal evidence is not yet Go, run
+  `npm run release:desktop:evidence-diagnostics -- --repo JoeWorkspace/JoeSSH`
+  and keep `reports/release/desktop/formal-evidence-unblock-report.json` with
+  the release handoff. The report is non-mutating and records missing Desktop
+  artifacts/evidence, signing-secret names, workflow visibility, CI annotations,
+  and the release tag/HEAD relationship.
 - Create the annotated release tag only after source QA is green and release
   artifacts are staged. `reports/release/` is generated release evidence and is
   allowed to be present while the source tree outside that directory remains

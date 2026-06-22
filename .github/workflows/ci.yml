@@ -32,6 +32,7 @@ jobs:
       - run: npm run qa:desktop-release-package
       - run: npm run qa:desktop-release-evidence
       - run: npm run qa:desktop-release-secrets
+      - run: npm run qa:desktop-release-diagnostics
       - run: npm run qa:desktop-release-evidence-download
       - run: npm run qa:desktop-release-evidence-preflight
       - run: npm run qa:sync-release-package

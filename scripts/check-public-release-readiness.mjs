@@ -151,6 +151,8 @@ function checkPackageScripts() {
     "qa:desktop-release-evidence",
     "test:desktop-release-secrets",
     "qa:desktop-release-secrets",
+    "test:desktop-release-diagnostics",
+    "qa:desktop-release-diagnostics",
     "test:desktop-release-evidence-download",
     "qa:desktop-release-evidence-download",
     "test:desktop-release-evidence-preflight",
@@ -182,6 +184,7 @@ function checkPackageScripts() {
     "release:desktop:checksums",
     "release:desktop:secret-template",
     "release:desktop:configure-secrets",
+    "release:desktop:evidence-diagnostics",
     "release:desktop:verify-evidence",
     "release:desktop:evidence-download",
     "release:desktop:evidence-preflight",
@@ -287,6 +290,15 @@ function checkPackageScripts() {
     "Desktop formal evidence secret configuration script sets signing secrets",
     desktopConfigureSecretsScript,
   );
+  const desktopEvidenceDiagnosticsScript =
+    packageJson.scripts?.["release:desktop:evidence-diagnostics"] ?? "";
+  passIf(
+    desktopEvidenceDiagnosticsScript.includes(
+      "diagnose-desktop-release-evidence.mjs",
+    ) && desktopEvidenceDiagnosticsScript.includes("--no-fail"),
+    "Desktop formal evidence diagnostics script writes a non-mutating unblock report",
+    desktopEvidenceDiagnosticsScript,
+  );
 
   const publicReleaseScript = packageJson.scripts?.["qa:release:public"] ?? "";
   const publicReleaseFixtureScript =
@@ -375,6 +387,11 @@ function checkPackageScripts() {
 
   const rootQaScript = packageJson.scripts?.qa ?? "";
   passIf(
+    rootQaScript.includes("qa:desktop-release-diagnostics"),
+    "Root QA runs Desktop formal evidence diagnostics tests",
+    rootQaScript,
+  );
+  passIf(
     rootQaScript.includes("qa:e2e:fresh"),
     "Root QA runs E2E on fresh local ports",
     rootQaScript,
@@ -409,6 +426,7 @@ function checkCiPublicReleaseWiring() {
     "npm run qa:desktop-release-package",
     "npm run qa:desktop-release-evidence",
     "npm run qa:desktop-release-secrets",
+    "npm run qa:desktop-release-diagnostics",
     "npm run qa:desktop-release-evidence-download",
     "npm run qa:desktop-release-evidence-preflight",
     "npm run qa:sync-release-package",
@@ -462,6 +480,8 @@ function checkReleaseToolingFiles() {
     "scripts/package-desktop-release.test.mjs",
     "scripts/configure-desktop-release-secrets.mjs",
     "scripts/configure-desktop-release-secrets.test.mjs",
+    "scripts/diagnose-desktop-release-evidence.mjs",
+    "scripts/diagnose-desktop-release-evidence.test.mjs",
     "scripts/package-sync-release.mjs",
     "scripts/package-sync-release.test.mjs",
     "scripts/verify-sync-release-evidence.mjs",
@@ -618,6 +638,17 @@ function checkReleaseToolingFiles() {
       desktopSecretConfigurator.includes("--body-file") &&
       desktopSecretConfigurator.includes("desktop-release-evidence-preflight.mjs"),
     "Desktop formal evidence secret configurator sets GitHub secrets from env or files without command-line values",
+  );
+  const desktopEvidenceDiagnostics =
+    readTextIfExists("scripts/diagnose-desktop-release-evidence.mjs") ?? "";
+  passIf(
+    desktopEvidenceDiagnostics.includes("formal-evidence-unblock-report.json") &&
+      desktopEvidenceDiagnostics.includes("release-evidence-source.json") &&
+      desktopEvidenceDiagnostics.includes("desktop-signing-secrets") &&
+      desktopEvidenceDiagnostics.includes("github-ci") &&
+      desktopEvidenceDiagnostics.includes("check-runs/${checkRunId}/annotations") &&
+      desktopEvidenceDiagnostics.includes("verify-desktop-release-evidence.mjs"),
+    "Desktop formal evidence diagnostics report binds local evidence, signing secrets, workflow runs, and CI annotations",
   );
 
   const releaseDraft =
@@ -1407,6 +1438,7 @@ function checkReleaseDocs() {
         "release-evidence.json",
         "release-evidence-source.json",
         "release-evidence-SHA256SUMS.txt",
+        "formal-evidence-unblock-report.json",
         "release-provenance.json",
         "release-provenance-SHA256SUMS.txt",
         "artifact sha256",
@@ -1439,6 +1471,7 @@ function checkReleaseDocs() {
         "npm run qa:release:public",
         "npm run qa:release:public:fixture",
         "release-evidence-source.json",
+        "formal-evidence-unblock-report.json",
         "node scripts/check-public-release-readiness.mjs",
         expectedReleaseTag,
       ],
@@ -1466,6 +1499,7 @@ function checkReleaseDocs() {
         "release-evidence.json",
         "release-evidence-source.json",
         "release-evidence-SHA256SUMS.txt",
+        "formal-evidence-unblock-report.json",
         "artifact sha256",
         "manifest hash",
         "staged",

@@ -100,6 +100,8 @@ Keep these outputs with the release handoff notes:
 - `reports/release/desktop/release-evidence.json`.
 - `reports/release/desktop/release-evidence-source.json`.
 - `reports/release/desktop/release-evidence-SHA256SUMS.txt`.
+- `reports/release/desktop/formal-evidence-unblock-report.json` while the
+  candidate is No-Go on Desktop formal evidence.
 - `reports/release/SBOM-SHA256SUMS.txt`.
 - `reports/release/release-provenance.json`.
 - `reports/release/release-provenance-SHA256SUMS.txt`.

@@ -114,6 +114,21 @@ without reading secret values, verifies `.github/workflows/desktop-release-artif
 and only dispatches the workflow when all required signing and notarization
 secret names exist.
 
+When the release is still No-Go, generate a repeatable unblock report instead
+of hand-assembling status notes:
+
+```bash
+npm run release:desktop:evidence-diagnostics -- --repo JoeWorkspace/JoeSSH
+```
+
+The diagnostics command writes
+`reports/release/desktop/formal-evidence-unblock-report.json` without mutating
+GitHub. It records the release tag/HEAD relationship, staged Desktop artifacts,
+Windows Authenticode status when available, formal evidence/source-sidecar
+coverage, missing signing secrets, Desktop workflow visibility, latest workflow
+runs, and CI failure annotations such as account billing/spending-limit
+messages.
+
 After the formal workflow succeeds, import the `desktop-release-evidence`
 artifact from that run into the release workspace:
 
