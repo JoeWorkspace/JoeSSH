@@ -17,7 +17,11 @@ native apps stay in preflight/device-smoke validation until a later beta.
 - Update `CHANGELOG.md` with the `0.1.0-beta.5` section.
 - Update `docs/release-notes/0.1.0-beta.5.md`; the GitHub Release draft uses
   this versioned notes file, not the release checklist.
-- Run `npm run qa:release:public` on a clean release machine.
+- Run `npm run qa:release:public` on a clean release machine. On Windows
+  release machines that use the local OpenSSH dogfood fixture, run
+  `npm run qa:release:public:fixture`; it starts the fixture, writes Desktop
+  real SSH smoke evidence, then runs the full public gate with the same real SSH
+  environment.
   The root QA portion uses `npm run qa:e2e:fresh` so release-machine E2E
   starts local web, desktop, mobile companion, and mock services on freshly
   allocated ports instead of reusing stale servers.

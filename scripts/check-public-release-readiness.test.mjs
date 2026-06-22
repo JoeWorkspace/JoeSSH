@@ -12,6 +12,7 @@ const CHECKER_PATH = fileURLToPath(
 const releaseScriptNames = [
   "qa",
   "qa:release:public",
+  "qa:release:public:fixture",
   "qa:release:public:local",
   "qa:prod-audit",
   "qa:lighthouse",
@@ -34,6 +35,7 @@ const releaseScriptNames = [
   "qa:desktop:real-ssh-smoke:fixture",
   "qa:desktop:real-ssh-smoke:required",
   "test:desktop-real-ssh-smoke-env",
+  "test:desktop-real-ssh-smoke-fixture",
   "test:desktop-release-package",
   "qa:desktop-release-package",
   "test:desktop-release-evidence",
@@ -95,6 +97,9 @@ function fixtureScriptValue(name, overrides = {}) {
   if (name === "qa:release:public" || name === "qa:release:public:local") {
     return "npm run qa:mobile-public-env && npm run qa:desktop:real-ssh-smoke:required && npm run qa:rust-advisory && npm run qa:lighthouse && npm run qa:web-admin-sync-topology-release-smoke && npm run qa:sync:release-backup-restore-smoke && npm run qa:sync:backup-restore-smoke && node scripts/verify-sync-release-evidence.mjs";
   }
+  if (name === "qa:release:public:fixture") {
+    return "node scripts/run-real-ssh-smoke-fixture.mjs -- npm run qa:release:public";
+  }
   if (name === "qa:mobile-public-env") {
     return "npm run test:mobile-public-env && node scripts/check-mobile-public-env.mjs";
   }
@@ -106,6 +111,9 @@ function fixtureScriptValue(name, overrides = {}) {
   }
   if (name === "qa:desktop:real-ssh-smoke:fixture") {
     return "node scripts/run-real-ssh-smoke-fixture.mjs";
+  }
+  if (name === "test:desktop-real-ssh-smoke-fixture") {
+    return "node --test scripts/run-real-ssh-smoke-fixture.test.mjs";
   }
   if (name === "release:desktop:checksums") {
     return "npm run release:desktop:package";
@@ -201,6 +209,7 @@ function createFixture(t, overrides = {}) {
     "scripts/require-real-ssh-smoke-env.test.mjs": "",
     "scripts/run-real-ssh-smoke-fixture.mjs":
       'reports", "smoke", "desktop", "real-ssh-smoke.json JOESSH_REAL_SSH_PRIVATE_KEY_PATH qa:desktop:real-ssh-smoke:required local forwarding start/traffic/shutdown\n',
+    "scripts/run-real-ssh-smoke-fixture.test.mjs": "",
     "scripts/package-desktop-release.mjs":
       "artifactSha256 sha256: artifactSha256\n",
     "scripts/package-desktop-release.test.mjs": "",
@@ -301,9 +310,9 @@ function createFixture(t, overrides = {}) {
     "apps/desktop/src/usePtySession.test.ts":
       "moves to closed when the pty emits exit\nresult.current.exitCode\nforwards write and resize to the open pty\nsurfaces native PTY command blocks and clears them after a safe write\n",
     "docs/release-checklist.md":
-      "Public Beta docs/repository-release-handoff.md SBOM SHA256 SBOM-SHA256SUMS.txt release-evidence.json release-evidence-SHA256SUMS.txt release-provenance.json release-provenance-SHA256SUMS.txt artifact sha256 manifest hash staged cargo-audit qa:rust-advisory qa:lighthouse release:publish-preflight backup-restore-smoke.json qa:sync:backup-restore-smoke unknown-host fingerprint changed-host-key blocking per-host known host removal runtime telemetry rollback\n",
+      "Public Beta docs/repository-release-handoff.md SBOM SHA256 SBOM-SHA256SUMS.txt release-evidence.json release-evidence-SHA256SUMS.txt release-provenance.json release-provenance-SHA256SUMS.txt artifact sha256 manifest hash staged cargo-audit qa:rust-advisory qa:release:public:fixture qa:lighthouse release:publish-preflight backup-restore-smoke.json qa:sync:backup-restore-smoke unknown-host fingerprint changed-host-key blocking per-host known host removal runtime telemetry rollback\n",
     "docs/repository-release-handoff.md":
-      `healthy Git checkout do not publish from the damaged workspace git status --short git fsck --strict git diff --binary release-provenance.json npm run qa:release:public node scripts/check-public-release-readiness.mjs v${version}\n`,
+      `healthy Git checkout do not publish from the damaged workspace git status --short git fsck --strict git diff --binary release-provenance.json npm run qa:release:public npm run qa:release:public:fixture node scripts/check-public-release-readiness.mjs v${version}\n`,
     [`docs/release-notes/${version}.md`]:
       `JoeSSH ${version} Desktop Web Admin Sync Service SHA256 release:publish-preflight\n`,
     "docs/desktop-release-metadata.json": JSON.stringify({
@@ -976,6 +985,52 @@ test("rejects public release scripts without required real Desktop SSH smoke fix
   assert.match(
     result.stdout,
     /FAIL Local public release QA requires real Desktop SSH smoke fixture/,
+  );
+});
+
+test("rejects fixture-backed public release gate wrappers that do not run the full public gate", (t) => {
+  const scripts = Object.fromEntries(
+    releaseScriptNames.map((name) => [name, fixtureScriptValue(name)]),
+  );
+  scripts["qa:release:public:fixture"] =
+    "node scripts/run-real-ssh-smoke-fixture.mjs -- npm run qa:desktop:real-ssh-smoke:required";
+
+  const result = runChecker(
+    createFixture(t, {
+      "package.json": JSON.stringify({
+        version: "0.1.0-beta.1",
+        scripts,
+      }),
+    }),
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stdout,
+    /FAIL Fixture-backed Public release QA runs the full public gate under local OpenSSH dogfood/,
+  );
+});
+
+test("rejects fixture-backed public release gate wrappers that use the local public gate", (t) => {
+  const scripts = Object.fromEntries(
+    releaseScriptNames.map((name) => [name, fixtureScriptValue(name)]),
+  );
+  scripts["qa:release:public:fixture"] =
+    "node scripts/run-real-ssh-smoke-fixture.mjs -- npm run qa:release:public:local";
+
+  const result = runChecker(
+    createFixture(t, {
+      "package.json": JSON.stringify({
+        version: "0.1.0-beta.1",
+        scripts,
+      }),
+    }),
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stdout,
+    /FAIL Fixture-backed Public release QA runs the full public gate under local OpenSSH dogfood/,
   );
 });
 

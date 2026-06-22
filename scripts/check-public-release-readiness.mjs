@@ -121,6 +121,7 @@ function checkPackageScripts() {
   const packageJson = readJson("package.json");
   for (const scriptName of [
     "qa:release:public",
+    "qa:release:public:fixture",
     "qa:release:public:local",
     "qa:prod-audit",
     "qa:lighthouse",
@@ -143,6 +144,7 @@ function checkPackageScripts() {
     "qa:desktop:real-ssh-smoke:fixture",
     "qa:desktop:real-ssh-smoke:required",
     "test:desktop-real-ssh-smoke-env",
+    "test:desktop-real-ssh-smoke-fixture",
     "test:desktop-release-package",
     "qa:desktop-release-package",
     "test:desktop-release-evidence",
@@ -287,6 +289,16 @@ function checkPackageScripts() {
   );
 
   const publicReleaseScript = packageJson.scripts?.["qa:release:public"] ?? "";
+  const publicReleaseFixtureScript =
+    packageJson.scripts?.["qa:release:public:fixture"] ?? "";
+  passIf(
+    /\brun-real-ssh-smoke-fixture\.mjs\b/.test(publicReleaseFixtureScript) &&
+      /(?:^|\s)--\s+npm\s+run\s+qa:release:public(?:\s|$)/.test(
+        publicReleaseFixtureScript,
+      ),
+    "Fixture-backed Public release QA runs the full public gate under local OpenSSH dogfood",
+    publicReleaseFixtureScript,
+  );
   passIf(
     publicReleaseScript.includes("qa:desktop:real-ssh-smoke:required"),
     "Public release QA requires real Desktop SSH smoke fixture",
@@ -463,6 +475,7 @@ function checkReleaseToolingFiles() {
     "scripts/require-real-ssh-smoke-env.mjs",
     "scripts/require-real-ssh-smoke-env.test.mjs",
     "scripts/run-real-ssh-smoke-fixture.mjs",
+    "scripts/run-real-ssh-smoke-fixture.test.mjs",
     "scripts/package-web-release.mjs",
     "scripts/package-web-release.test.mjs",
     "scripts/verify-web-release-package.mjs",
@@ -1381,6 +1394,7 @@ function checkReleaseDocs() {
         "staged",
         "cargo-audit",
         "qa:rust-advisory",
+        "qa:release:public:fixture",
         "qa:lighthouse",
         "release:publish-preflight",
         "backup-restore-smoke.json",
@@ -1403,6 +1417,7 @@ function checkReleaseDocs() {
         "git diff --binary",
         "release-provenance.json",
         "npm run qa:release:public",
+        "npm run qa:release:public:fixture",
         "node scripts/check-public-release-readiness.mjs",
         expectedReleaseTag,
       ],
