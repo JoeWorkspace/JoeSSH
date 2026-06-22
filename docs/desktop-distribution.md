@@ -38,6 +38,29 @@ readiness also checks
 `apps/desktop/src-tauri/permissions/*.toml` so missing, wildcard, remote-source,
 or stale IPC command permissions block the release.
 
+## Desktop Artifact Workflow
+
+Run the manual **Desktop Release Artifacts** GitHub Actions workflow to build
+platform bundles on Windows, macOS, and Linux release runners. The default mode
+uploads staging bundles only; staging bundles are not public release evidence and
+must not be uploaded to a GitHub Release.
+
+When `formal_evidence` is enabled, the workflow fails closed unless platform
+verification succeeds first:
+
+- Windows runs `signtool verify /pa /v` against the built installer and stores
+  that output as the Windows signature evidence.
+- macOS runs `codesign --verify --deep --strict` and `spctl --assess` against
+  the built download and stores those outputs as signing and notarization
+  evidence.
+- The aggregation job downloads all three platform bundles, passes the captured
+  verification output into `scripts/package-desktop-release.mjs`, requires
+  `windows,macos,linux`, and then runs `release:desktop:verify-evidence`.
+
+If any platform build, signature check, notarization assessment, checksum, or
+evidence binding fails, the workflow does not produce
+`desktop-release-evidence`.
+
 ## Signing And Platform Rules
 
 - Windows: public installers must be code signed before upload.

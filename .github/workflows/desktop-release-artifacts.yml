@@ -1,0 +1,201 @@
+name: Desktop Release Artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      formal_evidence:
+        description: "Package formal Desktop release evidence after platform signing/notarization verification succeeds."
+        required: true
+        default: false
+        type: boolean
+      retention_days:
+        description: "Artifact retention in days."
+        required: true
+        default: "14"
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build-desktop:
+    name: Build Desktop ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows
+            os: windows-latest
+            bundles: nsis
+          - platform: macos
+            os: macos-latest
+            bundles: dmg
+          - platform: linux
+            os: ubuntu-latest
+            bundles: appimage deb
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            .
+            apps/desktop/src-tauri
+
+      - name: Install Tauri Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            curl \
+            file \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev \
+            libxdo-dev \
+            patchelf \
+            wget
+
+      - run: npm ci
+
+      - name: Build Desktop bundle
+        env:
+          ATLASTERM_DESKTOP_RELEASE_BUNDLES: ${{ matrix.bundles }}
+        run: npm run release:desktop:build
+
+      - name: Verify Windows signature
+        if: runner.os == 'Windows' && inputs.formal_evidence
+        shell: pwsh
+        run: |
+          $artifact = Get-ChildItem -Path apps/desktop/src-tauri/target/release/bundle -Recurse -File -Include *.exe,*.msi,*.msix |
+            Sort-Object FullName |
+            Select-Object -First 1
+          if (-not $artifact) {
+            throw "No Windows Desktop artifact found for signature verification."
+          }
+          $signtool = Get-Command signtool.exe -ErrorAction SilentlyContinue
+          if (-not $signtool) {
+            throw "signtool.exe is required for formal Windows Desktop evidence."
+          }
+          & $signtool.Source verify /pa /v $artifact.FullName *>&1 |
+            Tee-Object -FilePath windows-signature-verification.txt
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+
+      - name: Verify macOS signature and notarization
+        if: runner.os == 'macOS' && inputs.formal_evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          artifact="$(
+            find apps/desktop/src-tauri/target/release/bundle \
+              -type f \( -name '*.dmg' -o -name '*.pkg' -o -name '*.app.tar.gz' \) |
+              sort |
+              head -n 1
+          )"
+          if [[ -z "${artifact}" ]]; then
+            echo "No macOS Desktop artifact found for signature verification." >&2
+            exit 1
+          fi
+          codesign --verify --deep --strict --verbose=2 "${artifact}" 2>&1 |
+            tee macos-signature-verification.txt
+          spctl --assess --type open --context context:primary-signature -v "${artifact}" 2>&1 |
+            tee macos-notarization-verification.txt
+
+      - name: Upload Desktop bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-bundle-${{ matrix.platform }}
+          path: |
+            apps/desktop/src-tauri/target/release/bundle/**/*.AppImage
+            apps/desktop/src-tauri/target/release/bundle/**/*.app.tar.gz
+            apps/desktop/src-tauri/target/release/bundle/**/*.deb
+            apps/desktop/src-tauri/target/release/bundle/**/*.dmg
+            apps/desktop/src-tauri/target/release/bundle/**/*.exe
+            apps/desktop/src-tauri/target/release/bundle/**/*.msi
+            apps/desktop/src-tauri/target/release/bundle/**/*.msix
+            apps/desktop/src-tauri/target/release/bundle/**/*.pkg
+            macos-notarization-verification.txt
+            macos-signature-verification.txt
+            windows-signature-verification.txt
+          if-no-files-found: error
+          retention-days: ${{ fromJSON(inputs.retention_days) }}
+
+  package-formal-evidence:
+    name: Package Formal Desktop Evidence
+    runs-on: ubuntu-latest
+    needs: [build-desktop]
+    if: inputs.formal_evidence
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: desktop-bundles
+          pattern: desktop-bundle-*
+
+      - name: Export signing evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          windows_signature="$(find desktop-bundles -name windows-signature-verification.txt -type f | sort | head -n 1)"
+          macos_signature="$(find desktop-bundles -name macos-signature-verification.txt -type f | sort | head -n 1)"
+          macos_notarization="$(find desktop-bundles -name macos-notarization-verification.txt -type f | sort | head -n 1)"
+
+          for evidence_file in "${windows_signature}" "${macos_signature}" "${macos_notarization}"; do
+            if [[ -z "${evidence_file}" || ! -s "${evidence_file}" ]]; then
+              echo "Missing formal Desktop signing/notarization evidence." >&2
+              exit 1
+            fi
+          done
+
+          {
+            echo "ATLASTERM_DESKTOP_WINDOWS_SIGNATURE_VERIFICATION<<EOF"
+            cat "${windows_signature}"
+            echo "EOF"
+            echo "ATLASTERM_DESKTOP_MACOS_SIGNATURE_VERIFICATION<<EOF"
+            cat "${macos_signature}"
+            echo "EOF"
+            echo "ATLASTERM_DESKTOP_MACOS_NOTARIZATION_VERIFICATION<<EOF"
+            cat "${macos_notarization}"
+            echo "EOF"
+          } >> "${GITHUB_ENV}"
+
+      - name: Package Desktop release evidence
+        run: |
+          node scripts/package-desktop-release.mjs \
+            --bundle-dir desktop-bundles \
+            --require-platforms windows,macos,linux
+          npm run release:desktop:verify-evidence
+
+      - name: Upload formal Desktop release evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-release-evidence
+          path: reports/release/desktop/
+          if-no-files-found: error
+          retention-days: ${{ fromJSON(inputs.retention_days) }}
