@@ -153,6 +153,8 @@ function checkPackageScripts() {
     "qa:desktop-release-secrets",
     "test:desktop-release-diagnostics",
     "qa:desktop-release-diagnostics",
+    "test:desktop-release-parity",
+    "qa:desktop-release-parity",
     "test:desktop-release-evidence-download",
     "qa:desktop-release-evidence-download",
     "test:desktop-release-evidence-preflight",
@@ -392,6 +394,11 @@ function checkPackageScripts() {
     rootQaScript,
   );
   passIf(
+    rootQaScript.includes("qa:desktop-release-parity"),
+    "Root QA runs Desktop formal evidence parity checks",
+    rootQaScript,
+  );
+  passIf(
     rootQaScript.includes("qa:e2e:fresh"),
     "Root QA runs E2E on fresh local ports",
     rootQaScript,
@@ -427,6 +434,7 @@ function checkCiPublicReleaseWiring() {
     "npm run qa:desktop-release-evidence",
     "npm run qa:desktop-release-secrets",
     "npm run qa:desktop-release-diagnostics",
+    "npm run qa:desktop-release-parity",
     "npm run qa:desktop-release-evidence-download",
     "npm run qa:desktop-release-evidence-preflight",
     "npm run qa:sync-release-package",
@@ -482,6 +490,8 @@ function checkReleaseToolingFiles() {
     "scripts/configure-desktop-release-secrets.test.mjs",
     "scripts/diagnose-desktop-release-evidence.mjs",
     "scripts/diagnose-desktop-release-evidence.test.mjs",
+    "scripts/check-desktop-release-evidence-parity.mjs",
+    "scripts/check-desktop-release-evidence-parity.test.mjs",
     "scripts/package-sync-release.mjs",
     "scripts/package-sync-release.test.mjs",
     "scripts/verify-sync-release-evidence.mjs",
@@ -633,6 +643,7 @@ function checkReleaseToolingFiles() {
     desktopSecretConfigurator.includes("ATLASTERM_WINDOWS_CERTIFICATE_FILE") &&
       desktopSecretConfigurator.includes("ATLASTERM_APPLE_CERTIFICATE_FILE") &&
       desktopSecretConfigurator.includes("--write-template") &&
+      desktopSecretConfigurator.includes("reports/handoff/desktop") &&
       desktopSecretConfigurator.includes("secret-input-template.env") &&
       desktopSecretConfigurator.includes('"secret", "set"') &&
       desktopSecretConfigurator.includes("--body-file") &&
@@ -643,12 +654,28 @@ function checkReleaseToolingFiles() {
     readTextIfExists("scripts/diagnose-desktop-release-evidence.mjs") ?? "";
   passIf(
     desktopEvidenceDiagnostics.includes("formal-evidence-unblock-report.json") &&
+      desktopEvidenceDiagnostics.includes("reports/handoff/desktop") &&
       desktopEvidenceDiagnostics.includes("release-evidence-source.json") &&
+      desktopEvidenceDiagnostics.includes("release-remote-ref") &&
       desktopEvidenceDiagnostics.includes("desktop-signing-secrets") &&
+      desktopEvidenceDiagnostics.includes("release-desktop-stale-artifacts") &&
       desktopEvidenceDiagnostics.includes("github-ci") &&
       desktopEvidenceDiagnostics.includes("check-runs/${checkRunId}/annotations") &&
       desktopEvidenceDiagnostics.includes("verify-desktop-release-evidence.mjs"),
     "Desktop formal evidence diagnostics report binds local evidence, signing secrets, workflow runs, and CI annotations",
+  );
+  const desktopEvidenceParity =
+    readTextIfExists("scripts/check-desktop-release-evidence-parity.mjs") ?? "";
+  passIf(
+    desktopEvidenceParity.includes("desktop-release-artifacts.yml") &&
+      desktopEvidenceParity.includes("Desktop Release Artifacts") &&
+      desktopEvidenceParity.includes("Package Formal Desktop Evidence") &&
+      desktopEvidenceParity.includes("desktop-release-evidence") &&
+      desktopEvidenceParity.includes("ATLASTERM_WINDOWS_CERTIFICATE") &&
+      desktopEvidenceParity.includes("ATLASTERM_APPLE_CERTIFICATE") &&
+      desktopEvidenceParity.includes("reports/handoff/desktop/formal-evidence-unblock-report.json") &&
+      desktopEvidenceParity.includes("reports/release/desktop/release-evidence-source.json"),
+    "Desktop formal evidence parity checker prevents workflow, script, and docs contract drift",
   );
 
   const releaseDraft =
@@ -668,6 +695,7 @@ function checkReleaseToolingFiles() {
     rcAudit.includes("public-beta-rc-audit.json") &&
       rcAudit.includes("desktop-signing-secrets") &&
       rcAudit.includes("desktop-dogfood") &&
+      rcAudit.includes("release-desktop-stale-artifacts") &&
       rcAudit.includes("publish-preflight") &&
       rcAudit.includes("github-ci") &&
       rcAudit.includes("check-runs/${checkRunId}/annotations"),
@@ -1438,7 +1466,7 @@ function checkReleaseDocs() {
         "release-evidence.json",
         "release-evidence-source.json",
         "release-evidence-SHA256SUMS.txt",
-        "formal-evidence-unblock-report.json",
+        "reports/handoff/desktop/formal-evidence-unblock-report.json",
         "release-provenance.json",
         "release-provenance-SHA256SUMS.txt",
         "artifact sha256",
@@ -1471,7 +1499,7 @@ function checkReleaseDocs() {
         "npm run qa:release:public",
         "npm run qa:release:public:fixture",
         "release-evidence-source.json",
-        "formal-evidence-unblock-report.json",
+        "reports/handoff/desktop/formal-evidence-unblock-report.json",
         "node scripts/check-public-release-readiness.mjs",
         expectedReleaseTag,
       ],
@@ -1499,7 +1527,7 @@ function checkReleaseDocs() {
         "release-evidence.json",
         "release-evidence-source.json",
         "release-evidence-SHA256SUMS.txt",
-        "formal-evidence-unblock-report.json",
+        "reports/handoff/desktop/formal-evidence-unblock-report.json",
         "artifact sha256",
         "manifest hash",
         "staged",

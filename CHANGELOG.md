@@ -27,6 +27,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pull request checklist wording now references the test gate without a fixed
   test count.
 
+## [0.1.0-beta.6] - 2026-06-23
+
+### Added
+- Desktop formal evidence diagnostics for the Public Beta release handoff,
+  including tag/HEAD state, remote ref publication, staged artifact coverage,
+  signing secret names, workflow visibility, CI runs, and check-run annotations.
+- Desktop formal evidence preflight now validates that the requested release
+  ref resolves to the current healthy checkout `HEAD` and is published to the
+  canonical remote before it can dispatch the formal evidence workflow.
+
+### Changed
+- Public Beta release docs now treat Desktop diagnostics and signing-secret
+  templates as handoff-only local artifacts, separate from the final
+  `reports/release/` upload tree.
+- The current Public Beta candidate version is `0.1.0-beta.6`, preserving
+  `0.1.0-beta.5` as the last pushed candidate while local release evidence is
+  refreshed.
+
 ## [0.1.0-beta.5] - 2026-06-22
 
 ### Added

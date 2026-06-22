@@ -94,7 +94,7 @@ dependencies = [
 
 [[package]]
 name = "atlasterm-core"
-version = "0.1.0-beta.5"
+version = "0.1.0-beta.6"
 dependencies = [
  "async-trait",
  "russh",
@@ -108,7 +108,7 @@ dependencies = [
 
 [[package]]
 name = "atlasterm-sync"
-version = "0.1.0-beta.5"
+version = "0.1.0-beta.6"
 dependencies = [
  "anyhow",
  "axum",
@@ -428,9 +428,9 @@ checksum = "d0a5c400df2834b80a4c3327b3aad3a4c4cd4de0629063962b03235697506a28"
 
 [[package]]
 name = "crypto-bigint"
-version = "0.7.3"
+version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42a0d26b245348befa0c121944541476763dcc46ede886c88f9d12e1697d27c3"
+checksum = "1a52aa3fcda4e6302a9f48734f234d35d4721b96f8fe07d073f07ce9df4f0271"
 dependencies = [
  "cpubits",
  "ctutils",

@@ -44,6 +44,18 @@ const requiredSecretGroups = [
 
 console.log(`Checking Desktop formal evidence prerequisites for ${repo} at ${releaseRef}.`);
 
+const releaseGitState = assertReleaseRefReadyForWorkflow();
+console.log(
+  `Verified release ref ${releaseRef} resolves to current HEAD ${shortSha(
+    releaseGitState.head,
+  )} and origin ${shortSha(releaseGitState.remoteCommit)}.`,
+);
+if (releaseGitState.upstream) {
+  console.log(
+    `Current branch upstream ${releaseGitState.upstream.name}: ahead ${releaseGitState.upstream.ahead}, behind ${releaseGitState.upstream.behind}.`,
+  );
+}
+
 runGh(["--version"], "GitHub CLI is required to check Desktop release evidence prerequisites.");
 runGh(["auth", "status"], "GitHub CLI must be authenticated to check Desktop release evidence prerequisites.");
 
@@ -121,6 +133,108 @@ function listGitHubActionsSecrets() {
   );
 }
 
+function assertReleaseRefReadyForWorkflow() {
+  const head = runGit(
+    ["rev-parse", "HEAD"],
+    "Unable to resolve current Git HEAD before Desktop formal evidence preflight.",
+  ).stdout.trim();
+  const refCommit = runGit(
+    ["rev-parse", "--verify", `${releaseRef}^{}`],
+    `Release ref ${releaseRef} must resolve locally before Desktop formal evidence can be dispatched.`,
+  ).stdout.trim();
+  if (refCommit !== head) {
+    fail(
+      `Release ref ${releaseRef} points at ${refCommit}, but current HEAD is ${head}. Create a new candidate tag for the current checkout before dispatching Desktop formal evidence.`,
+    );
+  }
+
+  const remoteCommit = resolveRemoteRefCommit(releaseRef);
+  if (remoteCommit !== head) {
+    fail(
+      `Release ref ${releaseRef} resolves to ${remoteCommit} on origin, but current HEAD is ${head}. Push the candidate commit and release ref before dispatching Desktop formal evidence.`,
+    );
+  }
+
+  return {
+    head,
+    refCommit,
+    remoteCommit,
+    upstream: inspectUpstreamDivergence(),
+  };
+}
+
+function resolveRemoteRefCommit(value) {
+  const candidates = remoteRefCandidates(value);
+  const diagnostics = [];
+  for (const candidate of candidates) {
+    const result = runGitAllowFailure(["ls-remote", "--exit-code", "origin", candidate]);
+    if (result.status === 0) {
+      const commit = parseLsRemoteCommit(result.stdout);
+      if (commit) {
+        return commit;
+      }
+    }
+    const diagnostic = `${result.stdout ?? ""}\n${result.stderr ?? ""}`.trim();
+    diagnostics.push(diagnostic ? `${candidate}: ${diagnostic}` : candidate);
+  }
+
+  fail(
+    `Release ref ${value} must be published to origin before Desktop formal evidence can be dispatched.\nChecked:\n- ${candidates.join(
+      "\n- ",
+    )}${diagnostics.length > 0 ? `\nDiagnostics:\n- ${diagnostics.join("\n- ")}` : ""}`,
+  );
+}
+
+function remoteRefCandidates(value) {
+  const candidates = [];
+  if (value.startsWith("v")) {
+    candidates.push(`refs/tags/${value}^{}`, `refs/tags/${value}`);
+  }
+  if (value !== "HEAD") {
+    candidates.push(`refs/heads/${value}`);
+  }
+  candidates.push(value);
+  return [...new Set(candidates)];
+}
+
+function parseLsRemoteCommit(stdout) {
+  const line = stdout
+    .split(/\r?\n/)
+    .map((entry) => entry.trim())
+    .find(Boolean);
+  return line?.split(/\s+/)[0] ?? null;
+}
+
+function inspectUpstreamDivergence() {
+  const upstreamResult = runGitAllowFailure([
+    "rev-parse",
+    "--abbrev-ref",
+    "--symbolic-full-name",
+    "@{u}",
+  ]);
+  if (upstreamResult.status !== 0) {
+    return null;
+  }
+
+  const upstream = upstreamResult.stdout.trim();
+  const divergenceResult = runGitAllowFailure([
+    "rev-list",
+    "--left-right",
+    "--count",
+    `${upstream}...HEAD`,
+  ]);
+  if (divergenceResult.status !== 0) {
+    return { ahead: "unknown", behind: "unknown", name: upstream };
+  }
+
+  const [behind, ahead] = divergenceResult.stdout.trim().split(/\s+/);
+  return {
+    ahead: ahead ?? "unknown",
+    behind: behind ?? "unknown",
+    name: upstream,
+  };
+}
+
 function resolveRepoFromOrigin() {
   const origin = runGit(["remote", "get-url", "origin"], "Unable to read Git origin URL.").stdout.trim();
   const match = origin.match(/github\.com[:/](?<owner>[^/\s]+)\/(?<repo>[^/\s]+?)(?:\.git)?$/i);
@@ -143,6 +257,14 @@ function runGh(args, message) {
 
 function runGit(args, message) {
   return runCommand(gitCommand, [...gitCommandPrefixArgs, ...args], message);
+}
+
+function runGitAllowFailure(args) {
+  return spawnSync(gitCommand, [...gitCommandPrefixArgs, ...args], {
+    cwd: root,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
 }
 
 function runCommand(command, args, message) {
@@ -270,6 +392,10 @@ function parseCommandPrefixArgs(envName) {
 
 function shellQuote(value) {
   return /^[A-Za-z0-9_./:@=-]+$/.test(value) ? value : JSON.stringify(value);
+}
+
+function shortSha(value) {
+  return value.slice(0, 12);
 }
 
 function fail(message) {

@@ -61,8 +61,19 @@ function createFakeCommands(root, logPath, options = {}) {
   const binDir = join(root, "fake-bin");
   mkdirSync(binDir, { recursive: true });
   const state = {
+    head: "abc123",
     preflightFails: false,
+    remoteRefs: {
+      "refs/tags/v0.1.0-beta.1": "abc123",
+      "refs/tags/v0.1.0-beta.1^{}": "abc123",
+    },
+    refCommits: {
+      "v0.1.0-beta.1": "abc123",
+    },
     secretSetFails: false,
+    upstream: "origin/main",
+    upstreamAhead: "0",
+    upstreamBehind: "0",
     ...options,
   };
 
@@ -121,9 +132,44 @@ if (args[0] === "secret" && args[1] === "set" && args[3] === "--repo" && args[4]
     fakeGitPath,
     `
 const args = process.argv.slice(2);
-if (args.join("\\0") === "remote\\0get-url\\0origin") {
+const state = ${JSON.stringify(state)};
+const key = args.join("\\0");
+if (key === "remote\\0get-url\\0origin") {
   console.log("https://github.com/${REPO}.git");
   process.exit(0);
+}
+if (key === "rev-parse\\0HEAD") {
+  console.log(state.head);
+  process.exit(0);
+}
+if (args[0] === "rev-parse" && args[1] === "--verify") {
+  const ref = args[2].replace(/\\^\\{\\}$/, "");
+  if (state.refCommits[ref]) {
+    console.log(state.refCommits[ref]);
+    process.exit(0);
+  }
+  console.error("unknown ref " + ref);
+  process.exit(1);
+}
+if (key === "rev-parse\\0--abbrev-ref\\0--symbolic-full-name\\0@{u}") {
+  if (!state.upstream) {
+    process.exit(1);
+  }
+  console.log(state.upstream);
+  process.exit(0);
+}
+if (args[0] === "rev-list" && args[1] === "--left-right" && args[2] === "--count") {
+  console.log(state.upstreamBehind + "\\t" + state.upstreamAhead);
+  process.exit(0);
+}
+if (args[0] === "ls-remote" && args[1] === "--exit-code" && args[2] === "origin") {
+  const ref = args[3];
+  if (state.remoteRefs[ref]) {
+    console.log(state.remoteRefs[ref] + "\\t" + ref);
+    process.exit(0);
+  }
+  console.error("not found " + ref);
+  process.exit(2);
 }
 console.error("unexpected git args: " + args.join(" "));
 process.exit(2);
@@ -200,7 +246,7 @@ test("supports dry run without setting GitHub secrets", (t) => {
 
 test("writes a redacted Desktop signing secret input template", (t) => {
   const { env, logPath, root } = createFixture(t);
-  const templatePath = "reports/release/desktop/secret-input-template.env";
+  const templatePath = "reports/handoff/desktop/secret-input-template.env";
   const result = runConfigurator(root, ["--write-template", templatePath], env);
 
   assert.equal(result.status, 0, result.stdout + result.stderr);
@@ -220,7 +266,7 @@ test("uses the default Desktop signing secret template path", (t) => {
   const result = runConfigurator(root, ["--write-template"], env);
 
   assert.equal(result.status, 0, result.stdout + result.stderr);
-  const template = readFileSync(join(root, "reports", "release", "desktop", "secret-input-template.env"), "utf8");
+  const template = readFileSync(join(root, "reports", "handoff", "desktop", "secret-input-template.env"), "utf8");
   assert.match(template, /ATLASTERM_WINDOWS_TIMESTAMP_URL=/);
   assert.match(template, /ATLASTERM_APPLE_TEAM_ID=/);
 });

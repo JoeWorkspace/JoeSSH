@@ -292,7 +292,7 @@ describe("web entry telemetry policy", () => {
 
     expect(content).toContain("VITE_ATLASTERM_TELEMETRY_OPT_IN");
     expect(content).toContain("createNoopErrorMonitor");
-    expect(content).toContain("0.1.0-beta.5");
+    expect(content).toContain("0.1.0-beta.6");
     expect(content).not.toContain("version: '0.1.0'");
     expect(content).not.toContain('version: "0.1.0"');
   });

@@ -20,7 +20,12 @@ function createFixture(t, options = {}) {
   appendManifest(root, "reports/release/SBOM-SHA256SUMS.txt", "reports/release/npm-desktop-sbom.cdx.json", "desktop-sbom");
   appendManifest(root, "reports/release/SBOM-SHA256SUMS.txt", "reports/release/cargo-metadata.json", "cargo");
   appendManifest(root, "reports/release/SBOM-SHA256SUMS.txt", "reports/release/tauri-cargo-metadata.json", "tauri");
-  writeArtifactWithManifest(root, "reports/release/desktop/JoeSSH.exe", "desktop", "reports/release/desktop/SHA256SUMS.txt");
+  writeArtifactWithManifest(
+    root,
+    "reports/release/desktop/JoeSSH_0.1.0-beta.1_x64-setup.exe",
+    "desktop",
+    "reports/release/desktop/SHA256SUMS.txt",
+  );
   writeArtifactWithManifest(root, "reports/release/desktop/release-evidence.json", "{}", "reports/release/desktop/release-evidence-SHA256SUMS.txt");
   writeDogfood(root, { passed: true });
 
@@ -109,6 +114,20 @@ test("rejects checksum manifest entries outside the release root", (t) => {
   const blocker = report.blockers.find((entry) => entry.id === "release-web");
   assert(blocker);
   assert.match(blocker.detail, /escapes the release root/);
+});
+
+test("flags staged Desktop artifacts that do not match the package version", (t) => {
+  const { fakePath, root, statePath } = createFixture(t);
+  writeFile(root, "reports/release/desktop/JoeSSH_0.1.0-beta.0_x64-setup.exe", "old desktop");
+
+  const result = runAudit(root, fakePath, statePath);
+
+  assert.equal(result.status, 0);
+  const report = JSON.parse(readFileSync(join(root, "reports/release/public-beta-rc-audit.json"), "utf8"));
+  const blocker = report.blockers.find((entry) => entry.id === "release-desktop-stale-artifacts");
+  assert(blocker);
+  assert.match(blocker.detail, /0\.1\.0-beta\.1/);
+  assert.match(blocker.detail, /0\.1\.0-beta\.0/);
 });
 
 function writeDogfood(root, { passed }) {

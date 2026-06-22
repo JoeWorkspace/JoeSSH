@@ -87,6 +87,10 @@ function buildReport() {
     releaseRef,
     head: git.head,
     releaseTagCommit: git.releaseTagCommit,
+    git: {
+      remoteReleaseRef: git.remoteReleaseRef,
+      upstream: git.upstream,
+    },
     decision: blockers.length === 0 ? "go" : "no-go",
     blockers,
     requiredGitHubSecrets: requiredSecretGroups.flatMap((group) => group.names),
@@ -136,7 +140,111 @@ function inspectGit() {
     });
   }
 
-  return { blockers, head, releaseTagCommit };
+  const remoteReleaseRef = inspectRemoteReleaseRef(head);
+  blockers.push(...remoteReleaseRef.blockers);
+
+  return {
+    blockers,
+    head,
+    releaseTagCommit,
+    remoteReleaseRef: remoteReleaseRef.summary,
+    upstream: inspectUpstreamDivergence(),
+  };
+}
+
+function inspectRemoteReleaseRef(head) {
+  const candidates = remoteRefCandidates(releaseRef);
+  const diagnostics = [];
+  for (const candidate of candidates) {
+    const result = runGit(["ls-remote", "--exit-code", "origin", candidate]);
+    if (result.status === 0) {
+      const commit = parseLsRemoteCommit(result.stdout);
+      if (!commit) {
+        diagnostics.push(`${candidate}: empty ls-remote output`);
+        continue;
+      }
+      if (head && commit !== head) {
+        return {
+          blockers: [
+            {
+              id: "release-remote-ref",
+              label: "Published release ref",
+              detail: `Release ref ${releaseRef} resolves to ${commit} on origin, but HEAD is ${head}. Push the candidate commit and release ref before formal Desktop evidence can run in GitHub Actions.`,
+            },
+          ],
+          summary: { candidates, commit, status: "mismatch" },
+        };
+      }
+      return {
+        blockers: [],
+        summary: { candidates, commit, status: "published" },
+      };
+    }
+    const diagnostic = `${result.stdout ?? ""}\n${result.stderr ?? ""}`.trim();
+    diagnostics.push(diagnostic ? `${candidate}: ${diagnostic}` : candidate);
+  }
+
+  return {
+    blockers: [
+      {
+        id: "release-remote-ref",
+        label: "Published release ref",
+        detail: `Release ref ${releaseRef} was not found on origin. Push the candidate commit and release ref before formal Desktop evidence can run in GitHub Actions.`,
+      },
+    ],
+    summary: { candidates, diagnostics, status: "missing" },
+  };
+}
+
+function remoteRefCandidates(value) {
+  const candidates = [];
+  if (value.startsWith("v")) {
+    candidates.push(`refs/tags/${value}^{}`, `refs/tags/${value}`);
+  }
+  if (value !== "HEAD") {
+    candidates.push(`refs/heads/${value}`);
+  }
+  candidates.push(value);
+  return [...new Set(candidates)];
+}
+
+function parseLsRemoteCommit(stdout) {
+  const line = stdout
+    .split(/\r?\n/)
+    .map((entry) => entry.trim())
+    .find(Boolean);
+  return line?.split(/\s+/)[0] ?? null;
+}
+
+function inspectUpstreamDivergence() {
+  const upstreamResult = runGit([
+    "rev-parse",
+    "--abbrev-ref",
+    "--symbolic-full-name",
+    "@{u}",
+  ]);
+  if (upstreamResult.status !== 0) {
+    return { status: "unavailable" };
+  }
+
+  const upstream = upstreamResult.stdout.trim();
+  const divergenceResult = runGit([
+    "rev-list",
+    "--left-right",
+    "--count",
+    `${upstream}...HEAD`,
+  ]);
+  if (divergenceResult.status !== 0) {
+    return { name: upstream, status: "unknown" };
+  }
+
+  const [behind, ahead] = divergenceResult.stdout.trim().split(/\s+/);
+  return {
+    ahead: ahead ?? "unknown",
+    behind: behind ?? "unknown",
+    name: upstream,
+    status: "ok",
+  };
 }
 
 function inspectDesktopReleaseFiles() {
@@ -162,6 +270,9 @@ function inspectDesktopReleaseFiles() {
     }))
     .sort((left, right) => left.path.localeCompare(right.path));
   const stagedPlatforms = [...new Set(artifacts.map((artifact) => artifact.platform))].sort();
+  const staleArtifacts = artifacts.filter(
+    (artifact) => !artifactFileName(artifact.path).includes(packageJson.version),
+  );
 
   const manifestEntries = readChecksumManifestIfPresent(manifestPath);
   const evidenceChecksumEntries = readChecksumManifestIfPresent(evidenceChecksumPath);
@@ -196,6 +307,15 @@ function inspectDesktopReleaseFiles() {
       id: "release-desktop-platforms",
       label: "Desktop platform coverage",
       detail: `reports/release/desktop is missing required platform artifact(s): ${missingPlatforms.join(", ")}.`,
+    });
+  }
+  if (staleArtifacts.length > 0) {
+    blockers.push({
+      id: "release-desktop-stale-artifacts",
+      label: "Desktop stale release artifacts",
+      detail: `reports/release/desktop contains artifact(s) that do not include ${packageJson.version}: ${staleArtifacts
+        .map((artifact) => artifact.path)
+        .join(", ")}.`,
     });
   }
 
@@ -243,6 +363,7 @@ function inspectDesktopReleaseFiles() {
     localEvidence: {
       desktopReleaseDir: toReleasePath(desktopReleaseDir),
       artifacts,
+      staleArtifacts,
       manifests: {
         checksum: manifestSummary(manifestPath, manifestEntries),
         evidenceChecksum: manifestSummary(
@@ -537,6 +658,11 @@ function buildUnblockSteps(blockers) {
       `Create a new candidate tag for the current HEAD, or explicitly move ${releaseRef} only after a release decision.`,
     );
   }
+  if (ids.has("release-remote-ref")) {
+    steps.push(
+      `Push the candidate commit and ${releaseRef} release ref to origin before running GitHub Actions formal Desktop evidence.`,
+    );
+  }
   if (ids.has("github-ci")) {
     steps.push(
       "Resolve GitHub Actions billing/spending-limit or runner availability, then rerun CI for the candidate HEAD.",
@@ -544,7 +670,7 @@ function buildUnblockSteps(blockers) {
   }
   if (ids.has("desktop-signing-secrets")) {
     steps.push(
-      "Fill reports/release/desktop/secret-input-template.env locally and run npm run release:desktop:configure-secrets -- --repo <owner/name>.",
+      "Fill reports/handoff/desktop/secret-input-template.env locally and run npm run release:desktop:configure-secrets -- --repo <owner/name>.",
     );
   }
   if (
@@ -670,6 +796,10 @@ function classifyArtifact(path) {
   return null;
 }
 
+function artifactFileName(path) {
+  return path.split(/[\\/]/).pop() ?? path;
+}
+
 function resolveRepoFromOrigin() {
   const origin = runGit(["remote", "get-url", "origin"]);
   if (origin.status !== 0) {
@@ -785,7 +915,7 @@ function parseArgs(args) {
 
   return {
     noFail,
-    outputPath: resolve(root, outputPath ?? "reports/release/desktop/formal-evidence-unblock-report.json"),
+    outputPath: resolve(root, outputPath ?? "reports/handoff/desktop/formal-evidence-unblock-report.json"),
     ref,
     repo,
     root,

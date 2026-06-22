@@ -106,13 +106,15 @@ secret names and that the workflow is available:
 
 ```bash
 npm run release:desktop:evidence-preflight -- --repo JoeWorkspace/JoeSSH
-npm run release:desktop:evidence-workflow -- --repo JoeWorkspace/JoeSSH --ref v0.1.0-beta.5
+npm run release:desktop:evidence-workflow -- --repo JoeWorkspace/JoeSSH --ref v0.1.0-beta.6
 ```
 
 The preflight checks GitHub CLI authentication, lists repository secret names
 without reading secret values, verifies `.github/workflows/desktop-release-artifacts.yml`,
-and only dispatches the workflow when all required signing and notarization
-secret names exist.
+requires the requested release ref to resolve to the current healthy checkout
+`HEAD`, requires that ref to be published to the canonical remote, and only
+dispatches the workflow when all required signing and notarization secret names
+exist.
 
 When the release is still No-Go, generate a repeatable unblock report instead
 of hand-assembling status notes:
@@ -122,12 +124,13 @@ npm run release:desktop:evidence-diagnostics -- --repo JoeWorkspace/JoeSSH
 ```
 
 The diagnostics command writes
-`reports/release/desktop/formal-evidence-unblock-report.json` without mutating
-GitHub. It records the release tag/HEAD relationship, staged Desktop artifacts,
-Windows Authenticode status when available, formal evidence/source-sidecar
-coverage, missing signing secrets, Desktop workflow visibility, latest workflow
-runs, and CI failure annotations such as account billing/spending-limit
-messages.
+`reports/handoff/desktop/formal-evidence-unblock-report.json` without mutating
+GitHub. It records the release tag/HEAD relationship, remote ref publication,
+upstream divergence, staged Desktop artifacts, Windows Authenticode status when
+available, formal evidence/source-sidecar coverage, missing signing secrets,
+Desktop workflow visibility, latest workflow runs, and CI failure annotations
+such as account billing/spending-limit messages. The report is handoff-only and
+must not be copied into the final `reports/release/` upload tree.
 
 After the formal workflow succeeds, import the `desktop-release-evidence`
 artifact from that run into the release workspace:
@@ -231,7 +234,7 @@ error output.
 After installers and checksums are present, run:
 
 ```bash
-git tag -a v0.1.0-beta.5 -m "JoeSSH 0.1.0-beta.5"
+git tag -a v0.1.0-beta.6 -m "JoeSSH 0.1.0-beta.6"
 npm run release:provenance
 npm run release:provenance:verify
 npm run release:publish-preflight
@@ -243,7 +246,7 @@ signing/notarization evidence, SBOM coverage, release provenance, a healthy Git
 checkout, a clean working tree outside `reports/release/`, a release tag that
 points at `HEAD`, GitHub CLI availability/authentication, no existing GitHub
 Release for the same tag, and the GitHub Release draft dry-run. The draft
-command then requires `docs/release-notes/0.1.0-beta.5.md`, staged release artifacts under
+command then requires `docs/release-notes/0.1.0-beta.6.md`, staged release artifacts under
 `reports/release/`, fresh checksums, and complete desktop release evidence whose
 artifact sha256 values match the checksum manifest and actual files, with
 `release-evidence-SHA256SUMS.txt` binding the evidence JSON itself. Raw Tauri bundle outputs are inputs to

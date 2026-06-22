@@ -155,8 +155,15 @@ function createFakeCommands(root, options = {}) {
       },
     ],
     ghAuthFails: false,
+    remoteRefs: {
+      "refs/tags/v0.1.0-beta.1": HEAD_SHA,
+      "refs/tags/v0.1.0-beta.1^{}": HEAD_SHA,
+    },
     secrets: REQUIRED_SECRETS,
     tagCommit: HEAD_SHA,
+    upstream: "origin/main",
+    upstreamAhead: "0",
+    upstreamBehind: "0",
     workflowMissing: false,
     ...options,
   };
@@ -181,6 +188,26 @@ if (key === "rev-parse\\0--verify\\0v0.1.0-beta.1^{}") {
   process.exit(0);
 }
 if (key === "fsck\\0--strict") {
+  process.exit(0);
+}
+if (args[0] === "ls-remote" && args[1] === "--exit-code" && args[2] === "origin") {
+  const ref = args[3];
+  if (state.remoteRefs[ref]) {
+    console.log(state.remoteRefs[ref] + "\\t" + ref);
+    process.exit(0);
+  }
+  console.error("not found " + ref);
+  process.exit(2);
+}
+if (key === "rev-parse\\0--abbrev-ref\\0--symbolic-full-name\\0@{u}") {
+  if (!state.upstream) {
+    process.exit(1);
+  }
+  console.log(state.upstream);
+  process.exit(0);
+}
+if (args[0] === "rev-list" && args[1] === "--left-right" && args[2] === "--count") {
+  console.log(state.upstreamBehind + "\\t" + state.upstreamAhead);
   process.exit(0);
 }
 console.error("unexpected git args: " + args.join(" "));
@@ -281,7 +308,7 @@ function runDiagnostics(root, args = [], env = {}) {
 function readReport(root) {
   return JSON.parse(
     readFileSync(
-      join(root, "reports", "release", "desktop", "formal-evidence-unblock-report.json"),
+      join(root, "reports", "handoff", "desktop", "formal-evidence-unblock-report.json"),
       "utf8",
     ),
   );
@@ -346,7 +373,35 @@ test("writes a no-go unblock report with missing evidence, secrets, and CI annot
   assert.ok(report.blockers.some((blocker) => blocker.id === "release-desktop"));
   assert.ok(report.blockers.some((blocker) => blocker.id === "desktop-signing-secrets"));
   assert.ok(report.blockers.some((blocker) => blocker.id === "github-ci"));
+  assert.equal(report.git.remoteReleaseRef.status, "published");
+  assert.equal(report.git.upstream.name, "origin/main");
   assert.match(JSON.stringify(report), /recent account payments have failed/);
+});
+
+test("reports unpublished release refs separately from local tag state", (t) => {
+  const { env, root } = createFixture(t, { remoteRefs: {} });
+
+  const result = runDiagnostics(root, ["--no-fail"], env);
+
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  const report = readReport(root);
+  assert.equal(report.git.remoteReleaseRef.status, "missing");
+  assert.ok(report.blockers.some((blocker) => blocker.id === "release-remote-ref"));
+});
+
+test("flags staged Desktop artifacts that do not match the package version", (t) => {
+  const { env, root } = createFixture(t, { completeDesktopEvidence: true });
+  writeFile(root, "reports/release/desktop/JoeSSH_0.1.0-beta.0_x64-setup.exe", "old installer");
+
+  const result = runDiagnostics(root, ["--no-fail"], env);
+
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  const report = readReport(root);
+  const blocker = report.blockers.find((entry) => entry.id === "release-desktop-stale-artifacts");
+  assert.ok(blocker);
+  assert.match(blocker.detail, /0\.1\.0-beta\.1/);
+  assert.match(blocker.detail, /0\.1\.0-beta\.0/);
+  assert.equal(report.localEvidence.staleArtifacts.length, 1);
 });
 
 test("passes when Desktop formal evidence, secrets, workflow, and CI are complete", (t) => {
@@ -360,7 +415,8 @@ test("passes when Desktop formal evidence, secrets, workflow, and CI are complet
   assert.equal(report.decision, "go");
   assert.deepEqual(report.blockers, []);
   assert.equal(report.localEvidence.artifacts.length, 3);
+  assert.equal(report.git.remoteReleaseRef.status, "published");
   assert.equal(report.github.secrets.availableCount, REQUIRED_SECRETS.length);
   assert.equal(report.github.ci.status, "success");
-  assert.equal(existsSync(join(root, "reports", "release", "desktop", "formal-evidence-unblock-report.json")), true);
+  assert.equal(existsSync(join(root, "reports", "handoff", "desktop", "formal-evidence-unblock-report.json")), true);
 });

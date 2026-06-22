@@ -44,6 +44,8 @@ const releaseScriptNames = [
   "qa:desktop-release-secrets",
   "test:desktop-release-diagnostics",
   "qa:desktop-release-diagnostics",
+  "test:desktop-release-parity",
+  "qa:desktop-release-parity",
   "test:desktop-release-evidence-download",
   "qa:desktop-release-evidence-download",
   "test:desktop-release-evidence-preflight",
@@ -107,7 +109,7 @@ function fixtureScriptValue(name, overrides = {}) {
     return "npm run test:mobile-public-env && node scripts/check-mobile-public-env.mjs";
   }
   if (name === "qa") {
-    return "npm run lint && npm run qa:desktop-release-diagnostics && npm run qa:lighthouse-audit && npm run qa:e2e:fresh";
+    return "npm run lint && npm run qa:desktop-release-diagnostics && npm run qa:desktop-release-parity && npm run qa:lighthouse-audit && npm run qa:e2e:fresh";
   }
   if (name === "qa:desktop:real-ssh-smoke:required") {
     return "node scripts/require-real-ssh-smoke-env.mjs && npm run qa:desktop:real-ssh-smoke";
@@ -132,6 +134,12 @@ function fixtureScriptValue(name, overrides = {}) {
   }
   if (name === "release:desktop:evidence-diagnostics") {
     return "node scripts/diagnose-desktop-release-evidence.mjs --no-fail";
+  }
+  if (name === "test:desktop-release-parity") {
+    return "node --test scripts/check-desktop-release-evidence-parity.test.mjs";
+  }
+  if (name === "qa:desktop-release-parity") {
+    return "npm run test:desktop-release-parity && node scripts/check-desktop-release-evidence-parity.mjs";
   }
   if (name === "release:desktop:evidence-preflight") {
     return "node scripts/desktop-release-evidence-preflight.mjs";
@@ -220,11 +228,14 @@ function createFixture(t, overrides = {}) {
       "artifactSha256 sha256: artifactSha256\n",
     "scripts/package-desktop-release.test.mjs": "",
     "scripts/configure-desktop-release-secrets.mjs":
-      'ATLASTERM_WINDOWS_CERTIFICATE_FILE ATLASTERM_APPLE_CERTIFICATE_FILE --write-template secret-input-template.env "secret", "set" --body-file desktop-release-evidence-preflight.mjs\n',
+      'ATLASTERM_WINDOWS_CERTIFICATE_FILE ATLASTERM_APPLE_CERTIFICATE_FILE --write-template reports/handoff/desktop secret-input-template.env "secret", "set" --body-file desktop-release-evidence-preflight.mjs\n',
     "scripts/configure-desktop-release-secrets.test.mjs": "",
     "scripts/diagnose-desktop-release-evidence.mjs":
-      "formal-evidence-unblock-report.json release-evidence-source.json desktop-signing-secrets github-ci check-runs/${checkRunId}/annotations verify-desktop-release-evidence.mjs\n",
+      "reports/handoff/desktop formal-evidence-unblock-report.json release-evidence-source.json release-remote-ref desktop-signing-secrets release-desktop-stale-artifacts github-ci check-runs/${checkRunId}/annotations verify-desktop-release-evidence.mjs\n",
     "scripts/diagnose-desktop-release-evidence.test.mjs": "",
+    "scripts/check-desktop-release-evidence-parity.mjs":
+      "desktop-release-artifacts.yml Desktop Release Artifacts Package Formal Desktop Evidence desktop-release-evidence ATLASTERM_WINDOWS_CERTIFICATE ATLASTERM_APPLE_CERTIFICATE reports/handoff/desktop/formal-evidence-unblock-report.json reports/release/desktop/release-evidence-source.json\n",
+    "scripts/check-desktop-release-evidence-parity.test.mjs": "",
     "scripts/package-sync-release.mjs":
       "removeStaleSyncReleaseBinaries isSyncReleaseBinaryName SHA256SUMS.txt\n",
     "scripts/package-sync-release.test.mjs": "",
@@ -258,7 +269,7 @@ function createFixture(t, overrides = {}) {
       "source.repository git fsck --strict release notes hash mismatch artifact hash mismatch requiredChecksumManifests release-evidence-source.json verify-desktop-release-evidence.mjs --require-source unexpected Public Beta checksum manifest is staged\n",
     "scripts/verify-release-provenance.test.mjs": "",
     "scripts/audit-public-beta-rc.mjs":
-      'public-beta-rc-audit.json desktop-signing-secrets desktop-dogfood publish-preflight github-ci check-runs/${checkRunId}/annotations\n',
+      'public-beta-rc-audit.json desktop-signing-secrets desktop-dogfood release-desktop-stale-artifacts publish-preflight github-ci check-runs/${checkRunId}/annotations\n',
     "scripts/audit-public-beta-rc.test.mjs": "",
     "scripts/release-publish-preflight.mjs":
       'Verify release Git checkout rev-parse --porcelain=v1 :(exclude)reports/release must point at HEAD for publish preflight verify-web-release-package.mjs verify-sync-release-evidence.mjs verify-desktop-release-evidence.mjs --require-source verify-artifact-checksums.mjs --all-release verify-release-provenance.mjs Verify GitHub CLI publish readiness ATLASTERM_RELEASE_GH_COMMAND auth", "status release", "view", releaseTag already exists; refusing to publish a duplicate release\n',
@@ -319,9 +330,9 @@ function createFixture(t, overrides = {}) {
     "apps/desktop/src/usePtySession.test.ts":
       "moves to closed when the pty emits exit\nresult.current.exitCode\nforwards write and resize to the open pty\nsurfaces native PTY command blocks and clears them after a safe write\n",
     "docs/release-checklist.md":
-      "Public Beta docs/repository-release-handoff.md SBOM SHA256 SBOM-SHA256SUMS.txt release-evidence.json release-evidence-source.json release-evidence-SHA256SUMS.txt formal-evidence-unblock-report.json release-provenance.json release-provenance-SHA256SUMS.txt artifact sha256 manifest hash staged cargo-audit qa:rust-advisory qa:release:public:fixture qa:lighthouse release:publish-preflight backup-restore-smoke.json qa:sync:backup-restore-smoke unknown-host fingerprint changed-host-key blocking per-host known host removal runtime telemetry rollback\n",
+      "Public Beta docs/repository-release-handoff.md SBOM SHA256 SBOM-SHA256SUMS.txt release-evidence.json release-evidence-source.json release-evidence-SHA256SUMS.txt reports/handoff/desktop/formal-evidence-unblock-report.json release-provenance.json release-provenance-SHA256SUMS.txt artifact sha256 manifest hash staged cargo-audit qa:rust-advisory qa:release:public:fixture qa:lighthouse release:publish-preflight backup-restore-smoke.json qa:sync:backup-restore-smoke unknown-host fingerprint changed-host-key blocking per-host known host removal runtime telemetry rollback\n",
     "docs/repository-release-handoff.md":
-      `healthy Git checkout do not publish from the damaged workspace git status --short git fsck --strict git diff --binary release-provenance.json npm run qa:release:public npm run qa:release:public:fixture release-evidence-source.json formal-evidence-unblock-report.json node scripts/check-public-release-readiness.mjs v${version}\n`,
+      `healthy Git checkout do not publish from the damaged workspace git status --short git fsck --strict git diff --binary release-provenance.json npm run qa:release:public npm run qa:release:public:fixture release-evidence-source.json reports/handoff/desktop/formal-evidence-unblock-report.json node scripts/check-public-release-readiness.mjs v${version}\n`,
     [`docs/release-notes/${version}.md`]:
       `JoeSSH ${version} Desktop Web Admin Sync Service SHA256 release:publish-preflight\n`,
     "docs/desktop-release-metadata.json": JSON.stringify({
@@ -339,7 +350,7 @@ function createFixture(t, overrides = {}) {
       linuxPackageTypes: ["AppImage", "deb", "rpm"],
     }),
     "docs/desktop-distribution.md":
-      "Windows sign notarization Linux release-evidence.json release-evidence-source.json release-evidence-SHA256SUMS.txt formal-evidence-unblock-report.json artifact sha256 manifest hash staged desktop-release-metadata.json capabilities permissions pre-auth host-key probe known-host list/remove/clear unknown hosts require a visible fingerprint confirmation changed host keys are blocked first/last seen metadata 1 MiB 25 MiB bounded SFTP transfer\n",
+      "Windows sign notarization Linux release-evidence.json release-evidence-source.json release-evidence-SHA256SUMS.txt reports/handoff/desktop/formal-evidence-unblock-report.json artifact sha256 manifest hash staged desktop-release-metadata.json capabilities permissions pre-auth host-key probe known-host list/remove/clear unknown hosts require a visible fingerprint confirmation changed host keys are blocked first/last seen metadata 1 MiB 25 MiB bounded SFTP transfer\n",
     "docs/web-admin-deployment.md":
       "The public root path defaults to live Web Admin. _headers CSP VITE_ATLASTERM_ADMIN_SNAPSHOT_URL joessh-web-admin verify-web-release-package.mjs .well-known/security.txt node-admin-snapshot-proxy.mjs ATLASTERM_WEB_ADMIN_PROXY_ALLOW_PUBLIC_BIND ATLASTERM_WEB_ADMIN_PROXY_OPERATOR_TOKEN ATLASTERM_ADMIN_SNAPSHOT_PROXY_MAX_BYTES upstream_snapshot_too_large 1 MiB qa:web-admin-proxy-smoke qa:lighthouse qa:web-admin-sync-topology-smoke qa:web-admin-sync-topology-release-smoke ?adminSnapshot=fixture\n",
     "docs/self-hosting-sync.md":
@@ -413,6 +424,7 @@ function ciFixture() {
     "npm run qa:desktop-release-evidence",
     "npm run qa:desktop-release-secrets",
     "npm run qa:desktop-release-diagnostics",
+    "npm run qa:desktop-release-parity",
     "npm run qa:desktop-release-evidence-download",
     "npm run qa:desktop-release-evidence-preflight",
     "npm run qa:sync-release-package",

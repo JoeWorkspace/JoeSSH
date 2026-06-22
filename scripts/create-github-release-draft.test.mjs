@@ -595,6 +595,17 @@ test("dry run rejects release upload files without checksum coverage", (t) => {
   assert.match(result.stderr, /reports\/release\/sync\/uncovered-smoke\.json/);
 });
 
+test("dry run rejects local-only handoff files in the release upload tree", (t) => {
+  const root = createReleaseFixture(t);
+  writeFile(root, "reports/release/desktop/formal-evidence-unblock-report.json", '{"decision":"no-go"}\n');
+
+  const result = runDraft(root);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Local-only handoff file\(s\) must not be uploaded/);
+  assert.match(result.stderr, /reports\/release\/desktop\/formal-evidence-unblock-report\.json/);
+});
+
 test("dry run uploads only staged reports release artifacts", (t) => {
   const root = createReleaseFixture(t);
   writeFile(

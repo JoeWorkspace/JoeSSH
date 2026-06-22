@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 
 const scriptRoot = resolve(import.meta.dirname, "..");
-const defaultTemplatePath = "reports/release/desktop/secret-input-template.env";
+const defaultTemplatePath = "reports/handoff/desktop/secret-input-template.env";
 const {
   dryRun,
   repo: explicitRepo,

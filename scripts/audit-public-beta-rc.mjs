@@ -1,5 +1,12 @@
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { basename, dirname, isAbsolute, relative, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
@@ -37,6 +44,7 @@ const report = {
 
 auditGit();
 auditReleaseManifests();
+auditDesktopArtifactVersions();
 auditDesktopDogfood();
 auditPublishPreflight();
 auditDesktopSigningSecrets();
@@ -122,6 +130,35 @@ function auditReleaseManifests() {
     const result = verifyChecksumManifest(relativePath);
     addCheck(id, label, result.ok ? "pass" : "fail", result.detail, blocking && !result.ok);
   }
+}
+
+function auditDesktopArtifactVersions() {
+  const artifacts = collectFiles(resolve(root, "reports", "release", "desktop"))
+    .filter((path) => classifyDesktopArtifact(path) !== null)
+    .map((path) => toReleasePath(path))
+    .sort();
+  if (artifacts.length === 0) {
+    addCheck(
+      "release-desktop-stale-artifacts",
+      "Desktop staged artifact versions",
+      "pass",
+      "No staged Desktop artifacts found; checksum manifest gates cover required artifacts.",
+    );
+    return;
+  }
+
+  const staleArtifacts = artifacts.filter(
+    (path) => !artifactFileName(path).includes(packageJson.version),
+  );
+  addCheck(
+    "release-desktop-stale-artifacts",
+    "Desktop staged artifact versions",
+    staleArtifacts.length === 0 ? "pass" : "fail",
+    staleArtifacts.length === 0
+      ? `All ${artifacts.length} staged Desktop artifact(s) include ${packageJson.version}.`
+      : `Desktop artifact(s) do not include ${packageJson.version}: ${staleArtifacts.join(", ")}.`,
+    staleArtifacts.length > 0,
+  );
 }
 
 function auditDesktopDogfood() {
@@ -295,6 +332,45 @@ function verifyChecksumManifest(relativePath) {
   }
 
   return { ok: true, detail: `verified ${lines.length} checksum${lines.length === 1 ? "" : "s"}` };
+}
+
+function collectFiles(path) {
+  if (!existsSync(path)) {
+    return [];
+  }
+  const stat = statSync(path);
+  if (stat.isFile()) {
+    return [path];
+  }
+  if (!stat.isDirectory()) {
+    return [];
+  }
+
+  return readdirSync(path, { withFileTypes: true }).flatMap((entry) => {
+    const child = resolve(path, entry.name);
+    if (entry.isDirectory()) {
+      return collectFiles(child);
+    }
+    return entry.isFile() ? [child] : [];
+  });
+}
+
+function classifyDesktopArtifact(path) {
+  const lower = path.toLowerCase();
+  if (/\.(exe|msi|msix)$/.test(lower)) {
+    return { platform: "windows" };
+  }
+  if (lower.endsWith(".dmg") || lower.endsWith(".pkg") || lower.endsWith(".app.tar.gz")) {
+    return { platform: "macos" };
+  }
+  if (lower.endsWith(".appimage") || lower.endsWith(".deb") || lower.endsWith(".rpm")) {
+    return { platform: "linux" };
+  }
+  return null;
+}
+
+function artifactFileName(path) {
+  return path.split(/[\\/]/).pop() ?? path;
 }
 
 function resolveManifestEntryPath(entryPath) {

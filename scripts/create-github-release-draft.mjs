@@ -23,6 +23,10 @@ const requiredChecksumManifests = [
 ];
 const artifacts = collectReleaseArtifacts();
 const checksumManifests = [...new Set([...requiredChecksumManifests, ...collectChecksumManifests()])];
+const localOnlyReleaseFiles = [
+  "reports/release/desktop/formal-evidence-unblock-report.json",
+  "reports/release/desktop/secret-input-template.env",
+];
 
 if (!dryRun) {
   assertReleaseMachineReady();
@@ -32,6 +36,16 @@ validateReleaseNotes();
 
 if (artifacts.length === 0) {
   console.error("No release artifacts found. Build desktop/web/sync artifacts and checksums before drafting a release.");
+  process.exit(1);
+}
+
+const localOnlyArtifacts = artifacts.filter((artifact) => localOnlyReleaseFiles.includes(artifact));
+if (localOnlyArtifacts.length > 0) {
+  console.error(
+    `Local-only handoff file(s) must not be uploaded from reports/release:\n- ${localOnlyArtifacts.join(
+      "\n- ",
+    )}\nMove diagnostics and signing-secret templates under reports/handoff before drafting a release.`,
+  );
   process.exit(1);
 }
 

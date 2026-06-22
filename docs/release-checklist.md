@@ -1,6 +1,6 @@
 # JoeSSH Public Beta Release Checklist
 
-This checklist defines the public beta bar for `0.1.0-beta.5`. The first public
+This checklist defines the public beta bar for `0.1.0-beta.6`. The first public
 release includes Desktop, Web Admin, and the self-hosted Sync Service. Mobile
 native apps stay in preflight/device-smoke validation until a later beta.
 
@@ -14,8 +14,8 @@ native apps stay in preflight/device-smoke validation until a later beta.
   checkout before running any release, tag, checksum, or GitHub draft step.
 - Confirm the release version is aligned across root package metadata, Desktop,
   Web Admin, Mobile metadata, Tauri, and Sync Service Cargo metadata.
-- Update `CHANGELOG.md` with the `0.1.0-beta.5` section.
-- Update `docs/release-notes/0.1.0-beta.5.md`; the GitHub Release draft uses
+- Update `CHANGELOG.md` with the `0.1.0-beta.6` section.
+- Update `docs/release-notes/0.1.0-beta.6.md`; the GitHub Release draft uses
   this versioned notes file, not the release checklist.
 - Run `npm run qa:release:public` on a clean release machine. On Windows
   release machines that use the local OpenSSH dogfood fixture, run
@@ -37,7 +37,7 @@ native apps stay in preflight/device-smoke validation until a later beta.
 - Build release artifacts and generate per-artifact `SHA256` checksum files
   before uploading.
 - Run `npm run release:web` and confirm the GitHub Release includes
-  `reports/release/web/joessh-web-admin-0.1.0-beta.5.zip`, not only a checksum
+  `reports/release/web/joessh-web-admin-0.1.0-beta.6.zip`, not only a checksum
   manifest for unpackaged `dist` files. The Web package self-test must keep
   `--output` and `--checksum` writes inside the repository root.
 - Run `node scripts/verify-web-release-package.mjs` or rely on
@@ -77,10 +77,17 @@ native apps stay in preflight/device-smoke validation until a later beta.
   and `Package Formal Desktop Evidence` job that produced it.
 - When Desktop formal evidence is not yet Go, run
   `npm run release:desktop:evidence-diagnostics -- --repo JoeWorkspace/JoeSSH`
-  and keep `reports/release/desktop/formal-evidence-unblock-report.json` with
+  and keep `reports/handoff/desktop/formal-evidence-unblock-report.json` with
   the release handoff. The report is non-mutating and records missing Desktop
   artifacts/evidence, signing-secret names, workflow visibility, CI annotations,
-  and the release tag/HEAD relationship.
+  remote ref publication, upstream divergence, and the release tag/HEAD
+  relationship. It is handoff-only local evidence, not a release upload
+  artifact.
+- After the Desktop Release Artifacts workflow succeeds, import the
+  `desktop-release-evidence` artifact with
+  `npm run release:desktop:evidence-download -- --repo JoeWorkspace/JoeSSH --run-id <run-id>`
+  so the formal evidence source sidecar records the exact workflow run and
+  `Package Formal Desktop Evidence` job.
 - Create the annotated release tag only after source QA is green and release
   artifacts are staged. `reports/release/` is generated release evidence and is
   allowed to be present while the source tree outside that directory remains
@@ -226,7 +233,7 @@ native apps stay in preflight/device-smoke validation until a later beta.
 - Create the GitHub Release as a draft first with `npm run release:desktop:draft`.
   The draft script requires Desktop, Web Admin, and Sync `SHA256SUMS.txt`
   manifests, a clean Git working tree outside `reports/release/`, a
-  `v0.1.0-beta.5` tag pointing at `HEAD`, authenticated GitHub CLI state, no
+  `v0.1.0-beta.6` tag pointing at `HEAD`, authenticated GitHub CLI state, no
   existing GitHub Release with that tag, the versioned release notes file, and verifies all
   staged `reports/release/**/SHA256SUMS.txt` files before invoking
   `gh release create`.
