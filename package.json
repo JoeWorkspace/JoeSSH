@@ -172,7 +172,7 @@
     "eslint-plugin-react-refresh": "^0.4.26",
     "happy-dom": "^20.10.6",
     "husky": "^9.1.7",
-    "lighthouse": "^13.3.0",
+    "lighthouse": "^13.4.0",
     "lint-staged": "^15.5.2",
     "prettier": "^3.8.4",
     "puppeteer": "^25.1.0",
