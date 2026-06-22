@@ -61,6 +61,12 @@ If any platform build, signature check, notarization assessment, checksum, or
 evidence binding fails, the workflow does not produce
 `desktop-release-evidence`.
 
+When the macOS DMG bundler fails, the workflow uploads a
+`desktop-macos-dmg-diagnostics` artifact with disk-image state, mounted volumes,
+the bundle directory listing, and the generated `bundle_dmg.sh` content. Use
+that artifact to distinguish a transient GitHub runner disk-image failure from a
+bundle configuration regression before retrying formal evidence.
+
 Formal Desktop evidence requires these GitHub Actions secrets:
 
 - Windows: `ATLASTERM_WINDOWS_CERTIFICATE`,
@@ -119,7 +125,9 @@ The download step refuses ambiguous run selection, requires the run to match the
 current release tag commit, requires the `Package Formal Desktop Evidence` job
 to have passed, refuses expired artifacts, writes only under
 `reports/release/desktop/`, and immediately runs
-`release:desktop:verify-evidence`.
+`release:desktop:verify-evidence`. When a workflow run fails before evidence can
+be imported, it includes failed job names and GitHub check-run annotations, such
+as account billing/spending-limit failures, in the error output.
 
 ## Signing And Platform Rules
 

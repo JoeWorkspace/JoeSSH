@@ -156,13 +156,15 @@ function createFixture(t, overrides = {}) {
       app: { windows: [{ label: "main" }] },
     }),
     ".github/workflows/ci.yml": ciFixture(),
+    ".github/workflows/desktop-release-artifacts.yml":
+      "Collect macOS DMG diagnostics desktop-macos-dmg-diagnostics bundle_dmg.sh hdiutil info\n",
     ".github/workflows/dependabot-auto-merge.yml":
       "dependency-type\ndirect:development\n",
     "scripts/verify-desktop-release-evidence.mjs":
       "sha256File(fullPath) hash mismatch artifact.sha256 sha256 must match release-evidence-SHA256SUMS.txt missing desktop evidence checksum manifest desktop evidence checksum manifest hash mismatch must mention the artifact path, artifact file name, or artifact sha256\n",
     "scripts/verify-desktop-release-evidence.test.mjs": "",
     "scripts/download-desktop-release-evidence.mjs":
-      "Package Formal Desktop Evidence --run-id is required verify-desktop-release-evidence.mjs artifact.expired reports/release/desktop/\n",
+      "Package Formal Desktop Evidence --run-id is required verify-desktop-release-evidence.mjs artifact.expired reports/release/desktop/ check-runs/${checkRunId}/annotations\n",
     "scripts/download-desktop-release-evidence.test.mjs": "",
     "scripts/desktop-release-evidence-preflight.mjs":
       "repos/${repo}/actions/secrets ATLASTERM_WINDOWS_CERTIFICATE ATLASTERM_APPLE_CERTIFICATE formal_evidence=true workflowRunArgs\n",
@@ -1089,6 +1091,27 @@ test("rejects Desktop release evidence tooling without artifact hash binding", (
   assert.match(
     result.stdout,
     /FAIL Desktop release evidence verifier binds signing proof text to artifact identity/,
+  );
+});
+
+test("rejects Desktop release workflow without macOS DMG failure diagnostics", (t) => {
+  const result = runChecker(
+    createFixture(t, {
+      ".github/workflows/desktop-release-artifacts.yml":
+        "Build Desktop bundle\n",
+      "scripts/download-desktop-release-evidence.mjs":
+        "Package Formal Desktop Evidence --run-id is required verify-desktop-release-evidence.mjs artifact.expired reports/release/desktop/\n",
+    }),
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stdout,
+    /FAIL Desktop formal evidence downloader imports only verified workflow evidence/,
+  );
+  assert.match(
+    result.stdout,
+    /FAIL Desktop release workflow preserves macOS DMG failure diagnostics/,
   );
 });
 

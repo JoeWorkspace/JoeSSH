@@ -32,7 +32,10 @@ function createFakeCommands(root, options = {}) {
     artifactExpired: false,
     artifactMissing: false,
     duplicateBasename: false,
+    failedJobAnnotationMessage: null,
+    failedJobId: 987654321,
     formalEvidenceConclusion: "success",
+    formalEvidenceJobId: 123456780,
     formalEvidenceStatus: "completed",
     headSha: HEAD_SHA,
     runConclusion: "success",
@@ -112,17 +115,40 @@ if (key === "auth\\0status") {
   process.exit(0);
 }
 if (key === "run\\0view\\0" + runId + "\\0--repo\\0" + repo + "\\0--json\\0status,conclusion,headSha,jobs,url") {
+  const jobs = state.runConclusion === "success"
+    ? [{
+      conclusion: state.formalEvidenceConclusion,
+      databaseId: state.formalEvidenceJobId,
+      name: "Package Formal Desktop Evidence",
+      status: state.formalEvidenceStatus,
+    }]
+    : [{
+      conclusion: "failure",
+      databaseId: state.failedJobId,
+      name: "Build Desktop linux",
+      status: "completed",
+    }];
   console.log(JSON.stringify({
     conclusion: state.runConclusion,
     headSha: state.headSha,
-    jobs: [{
-      conclusion: state.formalEvidenceConclusion,
-      name: "Package Formal Desktop Evidence",
-      status: state.formalEvidenceStatus,
-    }],
+    jobs,
     status: state.runStatus,
     url: "https://github.example/actions/runs/" + runId,
   }));
+  process.exit(0);
+}
+if (key === "api\\0repos/" + repo + "/check-runs/" + state.failedJobId + "/annotations") {
+  console.log(JSON.stringify(state.failedJobAnnotationMessage ? [{
+    path: ".github",
+    message: state.failedJobAnnotationMessage,
+  }] : []));
+  process.exit(0);
+}
+if (key === "api\\0repos/" + repo + "/check-runs/" + state.formalEvidenceJobId + "/annotations") {
+  console.log(JSON.stringify(state.failedJobAnnotationMessage ? [{
+    path: ".github/workflows/desktop-release-artifacts.yml",
+    message: state.failedJobAnnotationMessage,
+  }] : []));
   process.exit(0);
 }
 if (key === "api\\0repos/" + repo + "/actions/runs/" + runId + "/artifacts") {
@@ -215,6 +241,33 @@ test("rejects workflow runs whose formal evidence job did not pass", (t) => {
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /Package Formal Desktop Evidence job must complete successfully/);
+});
+
+test("reports GitHub Actions failure annotations for failed workflow runs", (t) => {
+  const { env, root } = createFixture(t, {
+    failedJobAnnotationMessage:
+      "The job was not started because recent account payments have failed or your spending limit needs to be increased.",
+    runConclusion: "failure",
+  });
+  const result = runDownloader(root, [], env);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Desktop release evidence run 123456789 must be completed successfully/);
+  assert.match(result.stderr, /Build Desktop linux: completed\/failure/);
+  assert.match(result.stderr, /recent account payments have failed/);
+});
+
+test("reports GitHub Actions failure annotations for failed formal evidence jobs", (t) => {
+  const { env, root } = createFixture(t, {
+    failedJobAnnotationMessage: "Package Formal Desktop Evidence could not download signed platform artifacts.",
+    formalEvidenceConclusion: "failure",
+  });
+  const result = runDownloader(root, [], env);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Package Formal Desktop Evidence job must complete successfully/);
+  assert.match(result.stderr, /Package Formal Desktop Evidence: completed\/failure/);
+  assert.match(result.stderr, /could not download signed platform artifacts/);
 });
 
 test("rejects workflow runs from a different commit than the release tag", (t) => {

@@ -179,6 +179,52 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.ATLASTERM_APPLE_TEAM_ID }}
         run: npm run release:desktop:build
 
+      - name: Collect macOS DMG diagnostics
+        if: failure() && runner.os == 'macOS'
+        shell: bash
+        run: |
+          set +e
+          diagnostics_dir="desktop-macos-dmg-diagnostics"
+          bundle_dir="apps/desktop/src-tauri/target/release/bundle"
+          mkdir -p "${diagnostics_dir}"
+
+          {
+            echo "## macOS"
+            sw_vers
+            echo
+            echo "## Disk images"
+            hdiutil info
+            echo
+            echo "## Mounted volumes"
+            mount
+            echo
+            echo "## Bundle directory"
+            find "${bundle_dir}" -maxdepth 5 -print
+          } > "${diagnostics_dir}/diagnostics.txt" 2>&1
+
+          while IFS= read -r script; do
+            safe_name="$(echo "${script}" | tr '/ ' '__')"
+            cp "${script}" "${diagnostics_dir}/${safe_name}"
+            {
+              echo "## ${script}"
+              sed -n '1,240p' "${script}"
+            } >> "${diagnostics_dir}/bundle_dmg_scripts.txt"
+          done < <(find "${bundle_dir}" -name 'bundle_dmg.sh' -type f 2>/dev/null)
+
+          cat "${diagnostics_dir}/diagnostics.txt"
+          if [[ -f "${diagnostics_dir}/bundle_dmg_scripts.txt" ]]; then
+            cat "${diagnostics_dir}/bundle_dmg_scripts.txt"
+          fi
+
+      - name: Upload macOS DMG diagnostics
+        if: failure() && runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-macos-dmg-diagnostics
+          path: desktop-macos-dmg-diagnostics/
+          if-no-files-found: warn
+          retention-days: ${{ fromJSON(inputs.retention_days) }}
+
       - name: Verify Windows signature
         if: runner.os == 'Windows' && inputs.formal_evidence
         shell: pwsh

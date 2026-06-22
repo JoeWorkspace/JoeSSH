@@ -58,7 +58,10 @@ function verifyRun() {
   const run = parseJson(result.stdout, `GitHub Actions run ${runId}`);
 
   if (run.status !== "completed" || run.conclusion !== "success") {
-    fail(`Desktop release evidence run ${runId} must be completed successfully; got ${run.status}/${run.conclusion}.`);
+    const diagnostics = collectRunFailureDiagnostics(run);
+    fail(
+      `Desktop release evidence run ${runId} must be completed successfully; got ${run.status}/${run.conclusion}.${diagnostics}`,
+    );
   }
   if (run.headSha !== expectedHeadSha) {
     fail(
@@ -73,10 +76,58 @@ function verifyRun() {
     fail(`Desktop release evidence run ${runId} is missing the Package Formal Desktop Evidence job.`);
   }
   if (formalEvidenceJob.status !== "completed" || formalEvidenceJob.conclusion !== "success") {
+    const diagnostics = collectJobFailureDiagnostics(formalEvidenceJob);
     fail(
-      `Package Formal Desktop Evidence job must complete successfully before import; got ${formalEvidenceJob.status}/${formalEvidenceJob.conclusion}.`,
+      `Package Formal Desktop Evidence job must complete successfully before import; got ${formalEvidenceJob.status}/${formalEvidenceJob.conclusion}.${diagnostics}`,
     );
   }
+}
+
+function collectRunFailureDiagnostics(run) {
+  const jobs = Array.isArray(run.jobs) ? run.jobs : [];
+  const failedJobs = jobs.filter((job) => job?.conclusion && job.conclusion !== "success" && job.conclusion !== "skipped");
+  const diagnostics = failedJobs.flatMap((job) => collectJobFailureDiagnostics(job, { asList: true }));
+  return formatDiagnostics(diagnostics);
+}
+
+function collectJobFailureDiagnostics(job, { asList = false } = {}) {
+  const jobName = typeof job?.name === "string" && job.name ? job.name : "unknown job";
+  const status = `${job?.status ?? "unknown"}/${job?.conclusion ?? "unknown"}`;
+  const lines = [`${jobName}: ${status}`];
+  if (job?.databaseId) {
+    const annotations = collectCheckRunAnnotations(job.databaseId);
+    for (const annotation of annotations) {
+      lines.push(`${jobName}: ${annotation}`);
+    }
+  }
+  return asList ? lines : formatDiagnostics(lines);
+}
+
+function collectCheckRunAnnotations(checkRunId) {
+  const result = runGhOptional(["api", `repos/${repo}/check-runs/${checkRunId}/annotations`]);
+  if (!result || result.status !== 0) {
+    return [];
+  }
+  const annotations = parseJsonOrNull(result.stdout);
+  if (!Array.isArray(annotations)) {
+    return [];
+  }
+
+  return annotations
+    .map((annotation) => {
+      const message = typeof annotation?.message === "string" ? annotation.message.trim() : "";
+      const path = typeof annotation?.path === "string" ? annotation.path.trim() : "";
+      return [path, message].filter(Boolean).join(": ");
+    })
+    .filter(Boolean);
+}
+
+function formatDiagnostics(lines) {
+  const uniqueLines = [...new Set(lines.filter(Boolean))];
+  if (uniqueLines.length === 0) {
+    return "";
+  }
+  return `\nFailure diagnostics:\n- ${uniqueLines.join("\n- ")}`;
 }
 
 function verifyArtifact() {
@@ -232,8 +283,24 @@ function parseJson(raw, label) {
   }
 }
 
+function parseJsonOrNull(raw) {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
 function runGh(args, message) {
   return runCommand(ghCommand, [...ghCommandPrefixArgs, ...args], message);
+}
+
+function runGhOptional(args) {
+  return spawnSync(ghCommand, [...ghCommandPrefixArgs, ...args], {
+    cwd: root,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
 }
 
 function runGit(args, message) {

@@ -503,8 +503,18 @@ function checkReleaseToolingFiles() {
       desktopEvidenceDownloader.includes("--run-id is required") &&
       desktopEvidenceDownloader.includes("verify-desktop-release-evidence.mjs") &&
       desktopEvidenceDownloader.includes("artifact.expired") &&
-      desktopEvidenceDownloader.includes("reports/release/desktop/"),
+      desktopEvidenceDownloader.includes("reports/release/desktop/") &&
+      desktopEvidenceDownloader.includes("check-runs/${checkRunId}/annotations"),
     "Desktop formal evidence downloader imports only verified workflow evidence",
+  );
+  const desktopReleaseWorkflow =
+    readTextIfExists(".github/workflows/desktop-release-artifacts.yml") ?? "";
+  passIf(
+    desktopReleaseWorkflow.includes("Collect macOS DMG diagnostics") &&
+      desktopReleaseWorkflow.includes("desktop-macos-dmg-diagnostics") &&
+      desktopReleaseWorkflow.includes("bundle_dmg.sh") &&
+      desktopReleaseWorkflow.includes("hdiutil info"),
+    "Desktop release workflow preserves macOS DMG failure diagnostics",
   );
 
   const desktopSecretConfigurator =
