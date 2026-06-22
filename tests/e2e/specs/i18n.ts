@@ -73,21 +73,33 @@ export async function expectContainsText(locator: Locator, ...values: string[]) 
 export async function expectNoDocumentOverflow(page: Page) {
   await expect
     .poll(
-      async () =>
-        page.evaluate(() => {
-          const root = document.documentElement;
-          const body = document.body;
-          const clientWidth = root.clientWidth;
-          const rootScrollWidth = root.scrollWidth;
-          const bodyScrollWidth = body?.scrollWidth ?? 0;
-          const scrollWidth = Math.max(rootScrollWidth, bodyScrollWidth);
-          const overflow = scrollWidth - clientWidth;
+      async () => {
+        try {
+          return await page.evaluate(() => {
+            const root = document.documentElement;
+            const body = document.body;
+            const clientWidth = root.clientWidth;
+            const rootScrollWidth = root.scrollWidth;
+            const bodyScrollWidth = body?.scrollWidth ?? 0;
+            const scrollWidth = Math.max(rootScrollWidth, bodyScrollWidth);
+            const overflow = scrollWidth - clientWidth;
 
-          return overflow <= 1
-            ? 'ok'
-            : `overflow=${overflow}; scrollWidth=${scrollWidth}; clientWidth=${clientWidth}; rootScrollWidth=${rootScrollWidth}; bodyScrollWidth=${bodyScrollWidth}`;
-        }),
+            return overflow <= 1
+              ? 'ok'
+              : `overflow=${overflow}; scrollWidth=${scrollWidth}; clientWidth=${clientWidth}; rootScrollWidth=${rootScrollWidth}; bodyScrollWidth=${bodyScrollWidth}`;
+          });
+        } catch (error) {
+          if (isTransientEvaluationError(error)) {
+            return 'navigation in progress';
+          }
+          throw error;
+        }
+      },
       { timeout: 10_000 },
     )
     .toBe('ok');
+}
+
+function isTransientEvaluationError(error: unknown) {
+  return error instanceof Error && /Execution context was destroyed|Cannot find context with specified id/.test(error.message);
 }

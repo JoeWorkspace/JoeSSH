@@ -1,5 +1,11 @@
 import { createServer } from "node:http";
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, extname, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import lighthouse from "lighthouse";
@@ -45,6 +51,70 @@ if (isMainModule()) {
 async function runAudit({ distDir, outputPath, thresholds }) {
   assertDist(distDir);
 
+  const maxAttempts = parsePositiveInteger(
+    process.env.ATLASTERM_LIGHTHOUSE_ATTEMPTS ?? "3",
+    "ATLASTERM_LIGHTHOUSE_ATTEMPTS",
+  );
+  let lastLhr;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const lhr = await runLighthouseAttempt(distDir);
+    lastLhr = lhr;
+    const runWarningFailures = collectRunWarningFailures(lhr);
+    if (runWarningFailures.length > 0 && attempt < maxAttempts) {
+      console.log(
+        `Lighthouse emitted ${runWarningFailures.length} run warning(s) on attempt ${attempt}/${maxAttempts}; retrying before failing closed.`,
+      );
+      continue;
+    }
+    break;
+  }
+
+  if (!lastLhr?.categories) {
+    throw new Error("Lighthouse did not return category results.");
+  }
+
+  mkdirSync(dirname(outputPath), { recursive: true });
+  writeFileSync(outputPath, JSON.stringify(lastLhr, null, 2));
+
+  const failures = collectRunWarningFailures(lastLhr);
+  console.log("\n=== Lighthouse Audit Results ===\n");
+  if (failures.length > 0) {
+    console.log(`  FAIL Lighthouse run warnings: ${failures.length}`);
+    for (const failure of failures) {
+      console.log(`    - ${failure.replace(/^Lighthouse run warning: /, "")}`);
+    }
+  }
+  for (const category of categories) {
+    const resultCategory = lastLhr.categories[category];
+    if (!resultCategory || typeof resultCategory.score !== "number") {
+      failures.push(`${category} score is missing`);
+      console.log(`  FAIL ${category}: missing score`);
+      continue;
+    }
+
+    const score = Math.round(resultCategory.score * 100);
+    const minimum = Math.round(thresholds[category] * 100);
+    const passed = resultCategory.score >= thresholds[category];
+    console.log(
+      `  ${passed ? "PASS" : "FAIL"} ${resultCategory.title}: ${score}/100 (min ${minimum})`,
+    );
+    if (!passed) {
+      failures.push(
+        `${resultCategory.title} scored ${score}/100 below minimum ${minimum}/100`,
+      );
+    }
+  }
+
+  console.log(`\nFull report saved to ${displayPath(outputPath)}`);
+
+  if (failures.length > 0) {
+    throw new Error(
+      `Lighthouse thresholds failed:\n- ${failures.join("\n- ")}`,
+    );
+  }
+}
+
+async function runLighthouseAttempt(distDir) {
   let browser;
   let server;
   try {
@@ -58,7 +128,9 @@ async function runAudit({ distDir, outputPath, thresholds }) {
     const { port } = server.address();
     const url = `http://127.0.0.1:${port}/?adminSnapshot=fixture`;
 
-    console.log(`Running Lighthouse against ${url} (${displayPath(distDir)})...`);
+    console.log(
+      `Running Lighthouse against ${url} (${displayPath(distDir)})...`,
+    );
 
     const result = await lighthouse(url, {
       logLevel: "error",
@@ -67,43 +139,7 @@ async function runAudit({ distDir, outputPath, thresholds }) {
       port: Number(browserPort),
     });
 
-    if (!result?.lhr?.categories) {
-      throw new Error("Lighthouse did not return category results.");
-    }
-
-    mkdirSync(dirname(outputPath), { recursive: true });
-    writeFileSync(outputPath, JSON.stringify(result.lhr, null, 2));
-
-    const failures = collectRunWarningFailures(result.lhr);
-    console.log("\n=== Lighthouse Audit Results ===\n");
-    if (failures.length > 0) {
-      console.log(`  FAIL Lighthouse run warnings: ${failures.length}`);
-      for (const failure of failures) {
-        console.log(`    - ${failure.replace(/^Lighthouse run warning: /, "")}`);
-      }
-    }
-    for (const category of categories) {
-      const resultCategory = result.lhr.categories[category];
-      if (!resultCategory || typeof resultCategory.score !== "number") {
-        failures.push(`${category} score is missing`);
-        console.log(`  FAIL ${category}: missing score`);
-        continue;
-      }
-
-      const score = Math.round(resultCategory.score * 100);
-      const minimum = Math.round(thresholds[category] * 100);
-      const passed = resultCategory.score >= thresholds[category];
-      console.log(`  ${passed ? "PASS" : "FAIL"} ${resultCategory.title}: ${score}/100 (min ${minimum})`);
-      if (!passed) {
-        failures.push(`${resultCategory.title} scored ${score}/100 below minimum ${minimum}/100`);
-      }
-    }
-
-    console.log(`\nFull report saved to ${displayPath(outputPath)}`);
-
-    if (failures.length > 0) {
-      throw new Error(`Lighthouse thresholds failed:\n- ${failures.join("\n- ")}`);
-    }
+    return result?.lhr;
   } finally {
     await closeServer(server);
     await browser?.close();
@@ -153,7 +189,10 @@ function parseArgs(args) {
     }
 
     if (Object.hasOwn(thresholdFlags, arg)) {
-      thresholds[thresholdFlags[arg]] = parseThreshold(requireValue(args, index, arg), arg);
+      thresholds[thresholdFlags[arg]] = parseThreshold(
+        requireValue(args, index, arg),
+        arg,
+      );
       index += 1;
       continue;
     }
@@ -162,7 +201,9 @@ function parseArgs(args) {
   }
 
   if (!Object.hasOwn(targetDefaults, target)) {
-    throw new Error(`Unknown Lighthouse target '${target}'. Expected one of: ${Object.keys(targetDefaults).join(", ")}.`);
+    throw new Error(
+      `Unknown Lighthouse target '${target}'. Expected one of: ${Object.keys(targetDefaults).join(", ")}.`,
+    );
   }
 
   return {
@@ -188,13 +229,23 @@ function parseThreshold(value, arg) {
   return numeric;
 }
 
+function parsePositiveInteger(value, name) {
+  const numeric = Number(value);
+  if (!Number.isInteger(numeric) || numeric < 1) {
+    throw new Error(`${name} must be a positive integer.`);
+  }
+  return numeric;
+}
+
 function assertDist(distDir) {
   const indexPath = resolve(distDir, "index.html");
   if (!existsSync(indexPath)) {
     throw new Error(`Expected built app index at ${displayPath(indexPath)}.`);
   }
   if (!statSync(indexPath).isFile()) {
-    throw new Error(`Built app index is not a file: ${displayPath(indexPath)}.`);
+    throw new Error(
+      `Built app index is not a file: ${displayPath(indexPath)}.`,
+    );
   }
 }
 
@@ -220,7 +271,9 @@ async function startStaticServer(distDir) {
     }
 
     response.writeHead(200, {
-      "Cache-Control": filePath.endsWith("index.html") ? "no-store" : "public, max-age=60",
+      "Cache-Control": filePath.endsWith("index.html")
+        ? "no-store"
+        : "public, max-age=60",
       "Content-Type": contentTypeFor(filePath),
       "X-Content-Type-Options": "nosniff",
       ...deploymentHeaders,
@@ -290,7 +343,8 @@ function resolveStaticPath(distDir, requestUrl) {
     return null;
   }
 
-  const relativePath = decodedPath === "/" ? "index.html" : decodedPath.replace(/^\/+/, "");
+  const relativePath =
+    decodedPath === "/" ? "index.html" : decodedPath.replace(/^\/+/, "");
   const resolved = resolve(distDir, relativePath);
   if (resolved !== distDir && !resolved.startsWith(`${distDir}${sep}`)) {
     return null;
@@ -327,7 +381,9 @@ async function closeServer(server) {
 }
 
 function isMainModule() {
-  return process.argv[1] ? import.meta.url === pathToFileURL(process.argv[1]).href : false;
+  return process.argv[1]
+    ? import.meta.url === pathToFileURL(process.argv[1]).href
+    : false;
 }
 
 function displayPath(path) {
