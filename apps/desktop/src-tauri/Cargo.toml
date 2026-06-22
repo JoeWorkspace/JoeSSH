@@ -4,7 +4,7 @@
 
 [package]
 name = "atlasterm-desktop-shell"
-version = "0.1.0-beta.6"
+version = "0.1.0-beta.7"
 edition = "2021"
 license = "MIT"
 

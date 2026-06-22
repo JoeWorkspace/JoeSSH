@@ -23,6 +23,8 @@ const {
   root,
   windowsSignatureVerification,
 } = parseArgs(process.argv.slice(2));
+const packageJson = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
+const releaseVersion = packageJson.version;
 
 if (!isInsideRoot(outputDir) || !isInsideRoot(checksumPath) || !isInsideRoot(evidencePath)) {
   fail("Desktop release output paths must stay inside the release root.");
@@ -35,6 +37,19 @@ const sourceArtifacts = collectFiles(bundleDir)
 if (sourceArtifacts.length === 0) {
   fail(`No Desktop bundle artifacts found in ${displayPath(bundleDir)}. Run npm run release:desktop:build first.`);
 }
+
+const staleSourceArtifacts = sourceArtifacts.filter(
+  (artifact) => !basename(artifact.path).includes(releaseVersion),
+);
+if (staleSourceArtifacts.length > 0) {
+  fail(
+    `Desktop bundle source contains artifact(s) that do not include ${releaseVersion}: ${staleSourceArtifacts
+      .map((artifact) => displayPath(artifact.path))
+      .join(", ")}`,
+  );
+}
+
+validateSignatureEvidence(sourceArtifacts);
 
 mkdirSync(outputDir, { recursive: true });
 removeStaleDesktopArtifacts(outputDir);
@@ -181,6 +196,20 @@ function validateRequiredPlatforms(artifacts) {
   const missingPlatforms = requiredPlatforms.filter((platform) => !platforms.has(platform));
   if (missingPlatforms.length > 0) {
     fail(`Desktop release artifacts are missing required platform(s): ${missingPlatforms.join(", ")}`);
+  }
+}
+
+function validateSignatureEvidence(artifacts) {
+  const platforms = new Set(artifacts.map((artifact) => artifact.classification.platform));
+  if (platforms.has("windows") && !windowsSignatureVerification) {
+    fail(
+      "Windows Desktop artifacts require --windows-signature-verification or ATLASTERM_DESKTOP_WINDOWS_SIGNATURE_VERIFICATION.",
+    );
+  }
+  if (platforms.has("macos") && (!macosSignatureVerification || !macosNotarizationVerification)) {
+    fail(
+      "macOS Desktop artifacts require --macos-signature-verification and --macos-notarization-verification.",
+    );
   }
 }
 

@@ -15,6 +15,7 @@ function createFixture(t) {
   t.after(() => {
     rmSync(root, { recursive: true, force: true });
   });
+  writeFile(root, "package.json", JSON.stringify({ version: "0.1.0-beta.1" }));
   return root;
 }
 
@@ -117,6 +118,21 @@ test("rejects Windows artifacts without signature verification evidence", (t) =>
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /Windows Desktop artifacts require --windows-signature-verification/);
+  assert.equal(existsSync(join(root, "reports", "release", "desktop", "JoeSSH_0.1.0-beta.1_x64-setup.exe")), false);
+});
+
+test("rejects stale source artifacts before staging Desktop release files", (t) => {
+  const root = createFixture(t);
+  writeFile(root, "apps/desktop/src-tauri/target/release/bundle/nsis/JoeSSH_0.1.0-beta.1_x64-setup.exe", "windows");
+  writeFile(root, "apps/desktop/src-tauri/target/release/bundle/nsis/JoeSSH_0.1.0-beta.0_x64-setup.exe", "old windows");
+
+  const result = runPackager(root);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Desktop bundle source contains artifact\(s\) that do not include 0\.1\.0-beta\.1/);
+  assert.match(result.stderr, /0\.1\.0-beta\.0/);
+  assert.equal(existsSync(join(root, "reports", "release", "desktop", "JoeSSH_0.1.0-beta.1_x64-setup.exe")), false);
+  assert.equal(existsSync(join(root, "reports", "release", "desktop", "JoeSSH_0.1.0-beta.0_x64-setup.exe")), false);
 });
 
 test("packages Linux-only artifacts for platform-specific release runners", (t) => {

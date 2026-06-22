@@ -211,7 +211,7 @@ Week 1:
 
 - Restore or clone into a healthy Git checkout.
 - Run `node scripts/check-public-release-readiness.mjs` without local bypass.
-- Freeze `0.1.0-beta.6` scope to Desktop, Web Admin, and self-hosted Sync.
+- Freeze `0.1.0-beta.7` scope to Desktop, Web Admin, and self-hosted Sync.
 - Create a top-10 dogfood task script for SSH, PTY, SFTP, forwarding, Web Admin, and Sync.
 
 Week 2:

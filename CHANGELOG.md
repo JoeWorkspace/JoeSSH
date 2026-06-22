@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pull request checklist wording now references the test gate without a fixed
   test count.
 
-## [0.1.0-beta.6] - 2026-06-23
+## [0.1.0-beta.7] - 2026-06-23
 
 ### Added
 - Desktop formal evidence diagnostics for the Public Beta release handoff,
@@ -41,7 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Public Beta release docs now treat Desktop diagnostics and signing-secret
   templates as handoff-only local artifacts, separate from the final
   `reports/release/` upload tree.
-- The current Public Beta candidate version is `0.1.0-beta.6`, preserving
+- The current Public Beta candidate version is `0.1.0-beta.7`, preserving
   `0.1.0-beta.5` as the last pushed candidate while local release evidence is
   refreshed.
 

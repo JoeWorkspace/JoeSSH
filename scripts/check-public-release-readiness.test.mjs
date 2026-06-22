@@ -225,7 +225,7 @@ function createFixture(t, overrides = {}) {
       'reports", "smoke", "desktop", "real-ssh-smoke.json JOESSH_REAL_SSH_PRIVATE_KEY_PATH qa:desktop:real-ssh-smoke:required local forwarding start/traffic/shutdown\n',
     "scripts/run-real-ssh-smoke-fixture.test.mjs": "",
     "scripts/package-desktop-release.mjs":
-      "artifactSha256 sha256: artifactSha256\n",
+      "artifactSha256 sha256: artifactSha256 Desktop bundle source contains artifact(s) that do not include releaseVersion basename(artifact.path) validateSignatureEvidence(sourceArtifacts) Windows Desktop artifacts require --windows-signature-verification mkdirSync(outputDir\n",
     "scripts/package-desktop-release.test.mjs": "",
     "scripts/configure-desktop-release-secrets.mjs":
       'ATLASTERM_WINDOWS_CERTIFICATE_FILE ATLASTERM_APPLE_CERTIFICATE_FILE --write-template reports/handoff/desktop secret-input-template.env "secret", "set" --body-file desktop-release-evidence-preflight.mjs\n',
@@ -1230,6 +1230,14 @@ test("rejects Desktop release evidence tooling without artifact hash binding", (
   assert.match(
     result.stdout,
     /FAIL Desktop release packager records artifact SHA256 in release evidence/,
+  );
+  assert.match(
+    result.stdout,
+    /FAIL Desktop release packager rejects stale source bundle artifacts before staging/,
+  );
+  assert.match(
+    result.stdout,
+    /FAIL Desktop release packager validates signing evidence before staging artifacts/,
   );
   assert.match(
     result.stdout,

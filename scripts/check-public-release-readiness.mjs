@@ -544,6 +544,19 @@ function checkReleaseToolingFiles() {
       desktopPackager.includes("sha256: artifactSha256"),
     "Desktop release packager records artifact SHA256 in release evidence",
   );
+  passIf(
+    desktopPackager.includes("Desktop bundle source contains artifact(s) that do not include") &&
+      desktopPackager.includes("releaseVersion") &&
+      desktopPackager.includes("basename(artifact.path)"),
+    "Desktop release packager rejects stale source bundle artifacts before staging",
+  );
+  passIf(
+    desktopPackager.includes("validateSignatureEvidence(sourceArtifacts)") &&
+      desktopPackager.includes("Windows Desktop artifacts require --windows-signature-verification") &&
+      desktopPackager.indexOf("validateSignatureEvidence(sourceArtifacts)") <
+        desktopPackager.indexOf("mkdirSync(outputDir"),
+    "Desktop release packager validates signing evidence before staging artifacts",
+  );
 
   const desktopEvidenceVerifier =
     readTextIfExists("scripts/verify-desktop-release-evidence.mjs") ?? "";

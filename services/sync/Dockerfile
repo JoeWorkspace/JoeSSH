@@ -1,5 +1,5 @@
 # Build from the repository root:
-#   docker build -f services/sync/Dockerfile -t joessh-sync:0.1.0-beta.6 .
+#   docker build -f services/sync/Dockerfile -t joessh-sync:0.1.0-beta.7 .
 
 FROM rust:1-bookworm AS build
 WORKDIR /src
