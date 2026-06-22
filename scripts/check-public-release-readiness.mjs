@@ -137,6 +137,8 @@ function checkPackageScripts() {
     "qa:desktop-release-package",
     "test:desktop-release-evidence",
     "qa:desktop-release-evidence",
+    "test:desktop-release-evidence-preflight",
+    "qa:desktop-release-evidence-preflight",
     "test:web-release",
     "qa:web-release",
     "test:release-sbom",
@@ -161,6 +163,8 @@ function checkPackageScripts() {
     "release:desktop:package",
     "release:desktop:checksums",
     "release:desktop:verify-evidence",
+    "release:desktop:evidence-preflight",
+    "release:desktop:evidence-workflow",
     "release:desktop:draft",
     "release:publish-preflight",
     "release:provenance",
@@ -222,6 +226,25 @@ function checkPackageScripts() {
     releaseProvenanceVerifyScript.includes("verify-release-provenance.mjs"),
     "Release provenance verify script verifies release provenance",
     releaseProvenanceVerifyScript,
+  );
+
+  const desktopEvidencePreflightScript =
+    packageJson.scripts?.["release:desktop:evidence-preflight"] ?? "";
+  passIf(
+    desktopEvidencePreflightScript.includes(
+      "desktop-release-evidence-preflight.mjs",
+    ),
+    "Desktop formal evidence preflight script checks release prerequisites",
+    desktopEvidencePreflightScript,
+  );
+  const desktopEvidenceWorkflowScript =
+    packageJson.scripts?.["release:desktop:evidence-workflow"] ?? "";
+  passIf(
+    desktopEvidenceWorkflowScript.includes(
+      "desktop-release-evidence-preflight.mjs",
+    ) && desktopEvidenceWorkflowScript.includes("--dispatch"),
+    "Desktop formal evidence workflow script dispatches through the preflight guard",
+    desktopEvidenceWorkflowScript,
   );
 
   const publicReleaseScript = packageJson.scripts?.["qa:release:public"] ?? "";
@@ -308,6 +331,7 @@ function checkCiPublicReleaseWiring() {
     "npm run qa:artifact-checksums",
     "npm run qa:desktop-release-package",
     "npm run qa:desktop-release-evidence",
+    "npm run qa:desktop-release-evidence-preflight",
     "npm run qa:sync-release-package",
     "npm run qa:sync-release-evidence",
     "npm run qa:web-release",
@@ -363,6 +387,8 @@ function checkReleaseToolingFiles() {
     "scripts/verify-sync-release-evidence.test.mjs",
     "scripts/verify-desktop-release-evidence.mjs",
     "scripts/verify-desktop-release-evidence.test.mjs",
+    "scripts/desktop-release-evidence-preflight.mjs",
+    "scripts/desktop-release-evidence-preflight.test.mjs",
     "scripts/package-web-release.mjs",
     "scripts/package-web-release.test.mjs",
     "scripts/verify-web-release-package.mjs",
@@ -427,6 +453,17 @@ function checkReleaseToolingFiles() {
       "must mention the artifact path, artifact file name, or artifact sha256",
     ),
     "Desktop release evidence verifier binds signing proof text to artifact identity",
+  );
+
+  const desktopEvidencePreflight =
+    readTextIfExists("scripts/desktop-release-evidence-preflight.mjs") ?? "";
+  passIf(
+    desktopEvidencePreflight.includes("repos/${repo}/actions/secrets") &&
+      desktopEvidencePreflight.includes("ATLASTERM_WINDOWS_CERTIFICATE") &&
+      desktopEvidencePreflight.includes("ATLASTERM_APPLE_CERTIFICATE") &&
+      desktopEvidencePreflight.includes("formal_evidence=true") &&
+      desktopEvidencePreflight.includes("workflowRunArgs"),
+    "Desktop formal evidence preflight verifies required GitHub secret names before dispatch",
   );
 
   const releaseDraft =
