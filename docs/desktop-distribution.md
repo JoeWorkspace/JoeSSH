@@ -89,6 +89,19 @@ without reading secret values, verifies `.github/workflows/desktop-release-artif
 and only dispatches the workflow when all required signing and notarization
 secret names exist.
 
+After the formal workflow succeeds, import the `desktop-release-evidence`
+artifact from that run into the release workspace:
+
+```bash
+npm run release:desktop:evidence-download -- --repo JoeWorkspace/JoeSSH --run-id <run-id>
+```
+
+The download step refuses ambiguous run selection, requires the run to match the
+current release tag commit, requires the `Package Formal Desktop Evidence` job
+to have passed, refuses expired artifacts, writes only under
+`reports/release/desktop/`, and immediately runs
+`release:desktop:verify-evidence`.
+
 ## Signing And Platform Rules
 
 - Windows: public installers must be code signed before upload.

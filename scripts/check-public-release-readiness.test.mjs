@@ -35,6 +35,8 @@ const releaseScriptNames = [
   "qa:desktop-release-package",
   "test:desktop-release-evidence",
   "qa:desktop-release-evidence",
+  "test:desktop-release-evidence-download",
+  "qa:desktop-release-evidence-download",
   "test:desktop-release-evidence-preflight",
   "qa:desktop-release-evidence-preflight",
   "test:web-release",
@@ -61,6 +63,7 @@ const releaseScriptNames = [
   "release:desktop:package",
   "release:desktop:checksums",
   "release:desktop:verify-evidence",
+  "release:desktop:evidence-download",
   "release:desktop:evidence-preflight",
   "release:desktop:evidence-workflow",
   "release:desktop:draft",
@@ -95,6 +98,9 @@ function fixtureScriptValue(name, overrides = {}) {
   }
   if (name === "release:desktop:evidence-preflight") {
     return "node scripts/desktop-release-evidence-preflight.mjs";
+  }
+  if (name === "release:desktop:evidence-download") {
+    return "node scripts/download-desktop-release-evidence.mjs";
   }
   if (name === "release:desktop:evidence-workflow") {
     return "node scripts/desktop-release-evidence-preflight.mjs --dispatch";
@@ -149,6 +155,9 @@ function createFixture(t, overrides = {}) {
     "scripts/verify-desktop-release-evidence.mjs":
       "sha256File(fullPath) hash mismatch artifact.sha256 sha256 must match release-evidence-SHA256SUMS.txt missing desktop evidence checksum manifest desktop evidence checksum manifest hash mismatch must mention the artifact path, artifact file name, or artifact sha256\n",
     "scripts/verify-desktop-release-evidence.test.mjs": "",
+    "scripts/download-desktop-release-evidence.mjs":
+      "Package Formal Desktop Evidence --run-id is required verify-desktop-release-evidence.mjs artifact.expired reports/release/desktop/\n",
+    "scripts/download-desktop-release-evidence.test.mjs": "",
     "scripts/desktop-release-evidence-preflight.mjs":
       "repos/${repo}/actions/secrets ATLASTERM_WINDOWS_CERTIFICATE ATLASTERM_APPLE_CERTIFICATE formal_evidence=true workflowRunArgs\n",
     "scripts/desktop-release-evidence-preflight.test.mjs": "",
@@ -338,6 +347,7 @@ function ciFixture() {
     "npm run qa:artifact-checksums",
     "npm run qa:desktop-release-package",
     "npm run qa:desktop-release-evidence",
+    "npm run qa:desktop-release-evidence-download",
     "npm run qa:desktop-release-evidence-preflight",
     "npm run qa:sync-release-package",
     "npm run qa:sync-release-evidence",

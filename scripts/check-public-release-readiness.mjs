@@ -137,6 +137,8 @@ function checkPackageScripts() {
     "qa:desktop-release-package",
     "test:desktop-release-evidence",
     "qa:desktop-release-evidence",
+    "test:desktop-release-evidence-download",
+    "qa:desktop-release-evidence-download",
     "test:desktop-release-evidence-preflight",
     "qa:desktop-release-evidence-preflight",
     "test:web-release",
@@ -163,6 +165,7 @@ function checkPackageScripts() {
     "release:desktop:package",
     "release:desktop:checksums",
     "release:desktop:verify-evidence",
+    "release:desktop:evidence-download",
     "release:desktop:evidence-preflight",
     "release:desktop:evidence-workflow",
     "release:desktop:draft",
@@ -245,6 +248,15 @@ function checkPackageScripts() {
     ) && desktopEvidenceWorkflowScript.includes("--dispatch"),
     "Desktop formal evidence workflow script dispatches through the preflight guard",
     desktopEvidenceWorkflowScript,
+  );
+  const desktopEvidenceDownloadScript =
+    packageJson.scripts?.["release:desktop:evidence-download"] ?? "";
+  passIf(
+    desktopEvidenceDownloadScript.includes(
+      "download-desktop-release-evidence.mjs",
+    ),
+    "Desktop formal evidence download script imports workflow evidence",
+    desktopEvidenceDownloadScript,
   );
 
   const publicReleaseScript = packageJson.scripts?.["qa:release:public"] ?? "";
@@ -331,6 +343,7 @@ function checkCiPublicReleaseWiring() {
     "npm run qa:artifact-checksums",
     "npm run qa:desktop-release-package",
     "npm run qa:desktop-release-evidence",
+    "npm run qa:desktop-release-evidence-download",
     "npm run qa:desktop-release-evidence-preflight",
     "npm run qa:sync-release-package",
     "npm run qa:sync-release-evidence",
@@ -387,6 +400,8 @@ function checkReleaseToolingFiles() {
     "scripts/verify-sync-release-evidence.test.mjs",
     "scripts/verify-desktop-release-evidence.mjs",
     "scripts/verify-desktop-release-evidence.test.mjs",
+    "scripts/download-desktop-release-evidence.mjs",
+    "scripts/download-desktop-release-evidence.test.mjs",
     "scripts/desktop-release-evidence-preflight.mjs",
     "scripts/desktop-release-evidence-preflight.test.mjs",
     "scripts/package-web-release.mjs",
@@ -464,6 +479,17 @@ function checkReleaseToolingFiles() {
       desktopEvidencePreflight.includes("formal_evidence=true") &&
       desktopEvidencePreflight.includes("workflowRunArgs"),
     "Desktop formal evidence preflight verifies required GitHub secret names before dispatch",
+  );
+
+  const desktopEvidenceDownloader =
+    readTextIfExists("scripts/download-desktop-release-evidence.mjs") ?? "";
+  passIf(
+    desktopEvidenceDownloader.includes("Package Formal Desktop Evidence") &&
+      desktopEvidenceDownloader.includes("--run-id is required") &&
+      desktopEvidenceDownloader.includes("verify-desktop-release-evidence.mjs") &&
+      desktopEvidenceDownloader.includes("artifact.expired") &&
+      desktopEvidenceDownloader.includes("reports/release/desktop/"),
+    "Desktop formal evidence downloader imports only verified workflow evidence",
   );
 
   const releaseDraft =
