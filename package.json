@@ -83,6 +83,7 @@
     "qa:sync-release-evidence": "npm run test:sync-release-evidence",
     "qa:sync-release-package": "npm run test:sync-release-package",
     "qa:web-admin-bundle-token-scan": "npm run test:web-admin-bundle-token-scan && npm run build:web && node scripts/check-web-admin-bundle-token-scan.mjs apps/web/dist",
+    "qa:desktop:real-ssh-smoke": "cargo test -p atlasterm-core --test real_ssh_smoke -- --nocapture",
     "qa:web-release": "npm run test:web-release && npm run test:web-release-verify",
     "qa:web-admin-sync-topology-smoke": "node scripts/smoke-web-admin-sync-release-topology.mjs",
     "qa:web-admin-sync-topology-release-smoke": "node scripts/smoke-web-admin-sync-release-topology.mjs --packaged-release",
@@ -163,6 +164,7 @@
     "husky": "^9.1.7",
     "lighthouse": "^13.3.0",
     "lint-staged": "^15.5.2",
+    "prettier": "^3.8.4",
     "puppeteer": "^25.1.0",
     "size-limit": "^12.1.0",
     "typescript-eslint": "^8.60.0"

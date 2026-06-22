@@ -190,6 +190,69 @@ jobs:
       - run: cargo test --workspace
       - run: cargo audit --deny warnings
 
+  desktop-real-ssh-smoke:
+    name: Desktop Real SSH Smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install OpenSSH server
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openssh-server
+      - name: Start loopback OpenSSH fixture
+        run: |
+          set -euo pipefail
+          sudo useradd --create-home --shell /bin/bash joessh-smoke
+          echo "joessh-smoke:${JOESSH_REAL_SSH_PASSWORD}" | sudo chpasswd
+          sudo mkdir -p /run/sshd
+          sudo /usr/sbin/sshd \
+            -D \
+            -e \
+            -p "${JOESSH_REAL_SSH_PORT}" \
+            -o ListenAddress=127.0.0.1 \
+            -o PasswordAuthentication=yes \
+            -o PubkeyAuthentication=no \
+            -o KbdInteractiveAuthentication=no \
+            -o PermitRootLogin=no \
+            -o AllowUsers=joessh-smoke \
+            -o StrictModes=no \
+            >"${RUNNER_TEMP}/joessh-sshd.log" 2>&1 &
+          echo $! >"${RUNNER_TEMP}/joessh-sshd.pid"
+          for attempt in {1..30}; do
+            if timeout 1 bash -c "cat < /dev/null > /dev/tcp/127.0.0.1/${JOESSH_REAL_SSH_PORT}"; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat "${RUNNER_TEMP}/joessh-sshd.log"
+          exit 1
+        env:
+          JOESSH_REAL_SSH_PORT: "2222"
+          JOESSH_REAL_SSH_PASSWORD: ${{ secrets.JOESSH_REAL_SSH_PASSWORD || 'joessh-ci-smoke-password' }}
+      - run: npm ci
+      - name: Run real SSH Desktop dogfood smoke
+        run: npm run qa:desktop:real-ssh-smoke
+        env:
+          JOESSH_REAL_SSH_SMOKE: "1"
+          JOESSH_REAL_SSH_HOST: 127.0.0.1
+          JOESSH_REAL_SSH_PORT: "2222"
+          JOESSH_REAL_SSH_USERNAME: joessh-smoke
+          JOESSH_REAL_SSH_PASSWORD: ${{ secrets.JOESSH_REAL_SSH_PASSWORD || 'joessh-ci-smoke-password' }}
+          JOESSH_REAL_SSH_REMOTE_DIR: /home/joessh-smoke
+      - name: Upload sshd log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-real-ssh-smoke-sshd-log
+          path: ${{ runner.temp }}/joessh-sshd.log
+          retention-days: 7
+
   tauri-shell:
     name: Tauri Shell
     runs-on: ubuntu-latest
@@ -222,6 +285,7 @@ jobs:
         visual-qa,
         security-audit,
         rust,
+        desktop-real-ssh-smoke,
         tauri-shell,
         lighthouse,
       ]

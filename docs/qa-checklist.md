@@ -95,6 +95,11 @@
 - Connection Move to group actions persist validated per-connection group overrides and survive reload without mutating the base connection catalog.
 - Connection drag ordering persists validated per-connection order and survives reload without dropping newly added default connections.
 - Terminal command history supports repeated ArrowUp/ArrowDown traversal through prior accepted commands.
+- Desktop real SSH dogfood runs in CI with `npm run qa:desktop:real-ssh-smoke`
+  against a loopback OpenSSH fixture with `JOESSH_REAL_SSH_SMOKE=1`, covering
+  host-key probe and pinned trust, password authentication, exec, PTY output,
+  SFTP list/download/upload/overwrite, local `direct-tcpip` forwarding, and
+  forward shutdown through the same Rust core used by the Tauri shell.
 
 ## Web Admin
 
@@ -241,7 +246,7 @@
 - Local release candidates pass `npm run qa:release`, which includes root QA, `npm run qa:i18n-release`, and the native mobile smoke preflight.
 - Public Beta release candidates pass `npm run qa:release:public`, which adds Rust workspace gates, Tauri shell build check, high-severity audit, documented accepted moderate risk validation, Web Admin Lighthouse (`npm run qa:lighthouse`) with run warnings treated as release failures, Web Admin bundle token scanning, self-hosted Sync smoke, visual QA, and release metadata checks.
 - Public Beta release candidates include the real Web Admin + Sync browser smoke with `npm run qa:e2e:web-real-sync:fresh` before visual QA.
-- CI must keep the public release gate wired: artifact checksum tests, desktop release packaging tests, desktop release evidence tests, Sync release package hygiene tests, Web Admin release package tests, Web Admin bundle token scan tests, SBOM verifier tests, release provenance tests, Lighthouse audit fail-closed tests, release draft dry-run fixture tests, publish preflight fixture tests, fresh visual QA, production audit with the dependency risk register, Tauri shell build, mobile native preflight, self-hosted Sync smoke, and `check-public-release-readiness` all run from GitHub Actions.
+- CI must keep the public release gate wired: artifact checksum tests, desktop release packaging tests, desktop release evidence tests, Desktop real SSH smoke with `JOESSH_REAL_SSH_SMOKE=1`, Sync release package hygiene tests, Web Admin release package tests, Web Admin bundle token scan tests, SBOM verifier tests, release provenance tests, Lighthouse audit fail-closed tests, release draft dry-run fixture tests, publish preflight fixture tests, fresh visual QA, production audit with the dependency risk register, Tauri shell build, mobile native preflight, self-hosted Sync smoke, and `check-public-release-readiness` all run from GitHub Actions.
 - Release machines must run `npm run release:publish-preflight` after Desktop,
   Web Admin, Sync, and SBOM artifacts are generated; this command verifies the
   healthy Git checkout, clean working tree outside `reports/release/`, release
@@ -313,4 +318,3 @@
 - `npm run qa:i18n-release` passes before release candidates; incomplete locale packs are allowed only in developer builds.
 - API docs match shipped request and response payloads; `npm run qa:sync-api-docs` passes.
 - No production build ships with visible untranslated core navigation, command, team, billing, vault, SFTP, sync, or audit strings.
-

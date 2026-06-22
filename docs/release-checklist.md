@@ -128,6 +128,11 @@ native apps stay in preflight/device-smoke validation until a later beta.
   confirmation before authentication, changed-host-key blocking, per-host known
   host removal, exec, PTY, SFTP list/read/write, port forwarding, and
   disconnect.
+- Confirm the automated Desktop real SSH dogfood job passes in CI:
+  `npm run qa:desktop:real-ssh-smoke` must run with
+  `JOESSH_REAL_SSH_SMOKE=1` against a loopback OpenSSH fixture and cover
+  host-key probe, pinned trust, password authentication, exec, PTY, SFTP
+  list/download/upload/overwrite, local forwarding, and forward shutdown.
 
 ## Web And Sync Checks
 
@@ -196,11 +201,11 @@ native apps stay in preflight/device-smoke validation until a later beta.
   existing GitHub Release with that tag, the versioned release notes file, and verifies all
   staged `reports/release/**/SHA256SUMS.txt` files before invoking
   `gh release create`.
-- `npm run release:publish-preflight` must pass before `npm run
-  release:desktop:draft`; it wraps the real checksum verifier, Desktop release
-  evidence verifier, SBOM verifier, and draft dry-run so missing artifacts or
-  stale artifact sha256 bindings or signing evidence do not masquerade as
-  release readiness.
+- `npm run release:publish-preflight` must pass before
+  `npm run release:desktop:draft`; it wraps the real checksum verifier, Desktop
+  release evidence verifier, SBOM verifier, and draft dry-run so missing
+  artifacts or stale artifact sha256 bindings or signing evidence do not
+  masquerade as release readiness.
 - The draft script also supports `--dry-run` for release-machine preflight and
   CI fixture tests; dry-run still verifies required manifests and hashes without
   requiring GitHub CLI access.
