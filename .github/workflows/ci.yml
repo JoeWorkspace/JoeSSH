@@ -68,7 +68,7 @@ jobs:
       - run: npx vitest run --coverage
       - name: Upload coverage
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-report
           path: coverage/
@@ -104,7 +104,7 @@ jobs:
       - run: npm run qa:i18n-release
       - run: npm run qa:sync-api-docs
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: build-dist
           path: |
@@ -133,7 +133,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run qa:e2e:fresh
       - run: npm run qa:e2e:web-real-sync:fresh
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-report
@@ -158,7 +158,7 @@ jobs:
           key: playwright-visual-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - run: npx playwright install --with-deps chromium
       - run: npm run qa:e2e:visual:fresh
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: visual-qa-report
@@ -250,7 +250,7 @@ jobs:
           JOESSH_REAL_SSH_REMOTE_DIR: /home/joessh-smoke
       - name: Upload sshd log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-real-ssh-smoke-sshd-log
           path: ${{ runner.temp }}/joessh-sshd.log
@@ -330,7 +330,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run qa:lighthouse
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: lighthouse-report
