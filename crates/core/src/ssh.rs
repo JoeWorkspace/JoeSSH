@@ -424,8 +424,15 @@ impl SftpClient {
 
     /// Upload bytes to a remote path (creating/truncating it).
     pub async fn upload(&self, remote_path: &str, data: &[u8]) -> Result<(), SshError> {
-        self.session
-            .write(remote_path, data)
+        let mut file = self
+            .session
+            .create(remote_path)
+            .await
+            .map_err(|e| SshError::Session(e.to_string()))?;
+        file.write_all(data)
+            .await
+            .map_err(|e| SshError::Session(e.to_string()))?;
+        file.shutdown()
             .await
             .map_err(|e| SshError::Session(e.to_string()))
     }
