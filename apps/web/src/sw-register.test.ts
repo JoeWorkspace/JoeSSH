@@ -41,6 +41,7 @@ function createServiceWorkerHarness() {
     dispatchEvent,
     location: {
       reload,
+      search: '',
     },
   };
   const targetNavigator = {
@@ -74,6 +75,16 @@ describe('registerWebOfflineSupport', () => {
     registerWebOfflineSupport({ addEventListener } as unknown as Window, {} as Navigator);
 
     expect(addEventListener).not.toHaveBeenCalled();
+  });
+
+  it('skips registration during Lighthouse release audits', () => {
+    const harness = createServiceWorkerHarness();
+    harness.targetWindow.location.search = '?adminSnapshot=fixture&qa=lighthouse';
+
+    registerWebOfflineSupport(harness.targetWindow as unknown as Window, harness.targetNavigator as unknown as Navigator);
+
+    expect(harness.targetWindow.addEventListener).not.toHaveBeenCalled();
+    expect(harness.serviceWorker.register).not.toHaveBeenCalled();
   });
 
   it('registers on window load and swallows scheduled update failures', async () => {

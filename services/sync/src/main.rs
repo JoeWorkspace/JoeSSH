@@ -655,6 +655,10 @@ fn process_is_running(pid: u32) -> bool {
 
 #[cfg(not(windows))]
 fn process_is_running(pid: u32) -> bool {
+    if pid > i32::MAX as u32 {
+        return false;
+    }
+
     let Ok(status) = Command::new("kill").args(["-0", &pid.to_string()]).status() else {
         return true;
     };

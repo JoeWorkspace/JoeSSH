@@ -1,4 +1,8 @@
 export function registerWebOfflineSupport(targetWindow: Window = window, targetNavigator: Navigator = navigator) {
+  if (isLighthouseQa(targetWindow)) {
+    return;
+  }
+
   if (!('serviceWorker' in targetNavigator)) {
     return;
   }
@@ -34,6 +38,10 @@ export function registerWebOfflineSupport(targetWindow: Window = window, targetN
       targetWindow.location.reload();
     }
   });
+}
+
+function isLighthouseQa(targetWindow: Window) {
+  return new URLSearchParams(targetWindow.location?.search ?? '').get('qa') === 'lighthouse';
 }
 
 function ignoreServiceWorkerRegistrationFailure() {

@@ -14,6 +14,7 @@ import puppeteer from "puppeteer";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "..");
 const categories = ["performance", "accessibility", "best-practices", "seo"];
+const defaultMaxWaitForLoadMs = 45_000;
 const defaultThresholds = {
   accessibility: 0.9,
   "best-practices": 0.9,
@@ -55,9 +56,14 @@ async function runAudit({ distDir, outputPath, thresholds }) {
     process.env.ATLASTERM_LIGHTHOUSE_ATTEMPTS ?? "3",
     "ATLASTERM_LIGHTHOUSE_ATTEMPTS",
   );
+  const maxWaitForLoad = parsePositiveInteger(
+    process.env.ATLASTERM_LIGHTHOUSE_MAX_WAIT_MS ??
+      String(defaultMaxWaitForLoadMs),
+    "ATLASTERM_LIGHTHOUSE_MAX_WAIT_MS",
+  );
   let lastLhr;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    const lhr = await runLighthouseAttempt(distDir);
+    const lhr = await runLighthouseAttempt(distDir, { maxWaitForLoad });
     lastLhr = lhr;
     const runWarningFailures = collectRunWarningFailures(lhr);
     if (runWarningFailures.length > 0 && attempt < maxAttempts) {
@@ -114,7 +120,7 @@ async function runAudit({ distDir, outputPath, thresholds }) {
   }
 }
 
-async function runLighthouseAttempt(distDir) {
+async function runLighthouseAttempt(distDir, { maxWaitForLoad }) {
   let browser;
   let server;
   try {
@@ -126,16 +132,17 @@ async function runLighthouseAttempt(distDir) {
 
     server = await startStaticServer(distDir);
     const { port } = server.address();
-    const url = `http://127.0.0.1:${port}/?adminSnapshot=fixture`;
+    const url = `http://127.0.0.1:${port}/?adminSnapshot=fixture&qa=lighthouse`;
 
     console.log(
-      `Running Lighthouse against ${url} (${displayPath(distDir)})...`,
+      `Running Lighthouse against ${url} (${displayPath(distDir)}, max wait ${maxWaitForLoad}ms)...`,
     );
 
     const result = await lighthouse(url, {
       logLevel: "error",
       onlyCategories: categories,
       output: "json",
+      maxWaitForLoad,
       port: Number(browserPort),
     });
 
@@ -256,6 +263,7 @@ async function startStaticServer(distDir) {
     if (pathname === "/api/admin/snapshot") {
       response.writeHead(200, {
         "Cache-Control": "no-store",
+        Connection: "close",
         "Content-Type": "application/json; charset=utf-8",
         "X-Content-Type-Options": "nosniff",
       });
@@ -265,7 +273,10 @@ async function startStaticServer(distDir) {
 
     const filePath = resolveStaticPath(distDir, request.url ?? "/");
     if (!filePath || !existsSync(filePath) || !statSync(filePath).isFile()) {
-      response.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+      response.writeHead(404, {
+        Connection: "close",
+        "Content-Type": "text/plain; charset=utf-8",
+      });
       response.end("not found");
       return;
     }
@@ -274,6 +285,7 @@ async function startStaticServer(distDir) {
       "Cache-Control": filePath.endsWith("index.html")
         ? "no-store"
         : "public, max-age=60",
+      Connection: "close",
       "Content-Type": contentTypeFor(filePath),
       "X-Content-Type-Options": "nosniff",
       ...deploymentHeaders,
@@ -377,7 +389,19 @@ async function closeServer(server) {
   if (!server?.listening) {
     return;
   }
-  await new Promise((resolveClose) => server.close(resolveClose));
+  await new Promise((resolveClose) => {
+    const forceCloseTimer = setTimeout(() => {
+      server.closeAllConnections?.();
+      resolveClose();
+    }, 1_000);
+    forceCloseTimer.unref?.();
+
+    server.close(() => {
+      clearTimeout(forceCloseTimer);
+      resolveClose();
+    });
+    server.closeIdleConnections?.();
+  });
 }
 
 function isMainModule() {
