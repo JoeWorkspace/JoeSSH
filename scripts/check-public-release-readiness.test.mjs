@@ -148,28 +148,32 @@ function createFixture(t, overrides = {}) {
     rmSync(root, { recursive: true, force: true });
   });
 
+  const version = overrides.__version ?? "0.1.0-beta.1";
+  const fileOverrides = { ...overrides };
+  delete fileOverrides.__version;
+
   const files = {
     "package.json": JSON.stringify({
-      version: "0.1.0-beta.1",
+      version,
       scripts: Object.fromEntries(
         releaseScriptNames.map((name) => [name, fixtureScriptValue(name)]),
       ),
     }),
-    "apps/desktop/package.json": JSON.stringify({ version: "0.1.0-beta.1" }),
-    "apps/web/package.json": JSON.stringify({ version: "0.1.0-beta.1" }),
-    "apps/mobile/package.json": JSON.stringify({ version: "0.1.0-beta.1" }),
+    "apps/desktop/package.json": JSON.stringify({ version }),
+    "apps/web/package.json": JSON.stringify({ version }),
+    "apps/mobile/package.json": JSON.stringify({ version }),
     "apps/mobile/app.json": JSON.stringify({
-      expo: { version: "0.1.0-beta.1" },
+      expo: { version },
     }),
-    "Cargo.toml": 'version = "0.1.0-beta.1"\n',
+    "Cargo.toml": `version = "${version}"\n`,
     "crates/core/Cargo.toml":
       'russh = { version = "0.61", default-features = false, features = ["ring", "flate2"] }\n',
     "services/sync/Cargo.toml":
-      'version = "0.1.0-beta.1"\ndescription = "JoeSSH sync service API"\n',
-    "apps/desktop/src-tauri/Cargo.toml": 'version = "0.1.0-beta.1"\n',
+      `version = "${version}"\ndescription = "JoeSSH sync service API"\n`,
+    "apps/desktop/src-tauri/Cargo.toml": `version = "${version}"\n`,
     "apps/desktop/src-tauri/tauri.conf.json": JSON.stringify({
       productName: "JoeSSH",
-      version: "0.1.0-beta.1",
+      version,
       identifier: "dev.atlasterm.joessh",
       bundle: { active: true, targets: "all", icon: ["icons/icon.png"] },
       app: { windows: [{ label: "main" }] },
@@ -295,9 +299,9 @@ function createFixture(t, overrides = {}) {
     "docs/release-checklist.md":
       "Public Beta docs/repository-release-handoff.md SBOM SHA256 SBOM-SHA256SUMS.txt release-evidence.json release-evidence-SHA256SUMS.txt release-provenance.json release-provenance-SHA256SUMS.txt artifact sha256 manifest hash staged cargo-audit qa:rust-advisory qa:lighthouse release:publish-preflight backup-restore-smoke.json qa:sync:backup-restore-smoke unknown-host fingerprint changed-host-key blocking per-host known host removal runtime telemetry rollback\n",
     "docs/repository-release-handoff.md":
-      "healthy Git checkout do not publish from the damaged workspace git status --short git fsck --strict git diff --binary release-provenance.json npm run qa:release:public node scripts/check-public-release-readiness.mjs v0.1.0-beta.1\n",
-    "docs/release-notes/0.1.0-beta.1.md":
-      "JoeSSH 0.1.0-beta.1 Desktop Web Admin Sync Service SHA256 release:publish-preflight\n",
+      `healthy Git checkout do not publish from the damaged workspace git status --short git fsck --strict git diff --binary release-provenance.json npm run qa:release:public node scripts/check-public-release-readiness.mjs v${version}\n`,
+    [`docs/release-notes/${version}.md`]:
+      `JoeSSH ${version} Desktop Web Admin Sync Service SHA256 release:publish-preflight\n`,
     "docs/desktop-release-metadata.json": JSON.stringify({
       productName: "JoeSSH",
       identifier: "dev.atlasterm.joessh",
@@ -326,7 +330,7 @@ function createFixture(t, overrides = {}) {
     "services/sync/Dockerfile":
       'ENV ATLASTERM_SYNC_STORAGE_PATH=/var/lib/joessh-sync/ledger.json\nVOLUME ["/var/lib/joessh-sync"]\nHEALTHCHECK CMD curl -fsS "http://127.0.0.1:${ATLASTERM_SYNC_HEALTHCHECK_PORT:-4100}/healthz" || exit 1\n',
     "services/sync/joessh-sync.service.example": "",
-    "CHANGELOG.md": "[0.1.0-beta.1]\n",
+    "CHANGELOG.md": `[${version}]\n`,
     "README.md": "# JoeSSH\nWeb Admin console\nnpm run qa:prod-audit\n",
     ".env.example":
       "# JoeSSH Environment Variables\npublic mobile beta builds\nATLASTERM_SYNC_METRICS_TOKEN\nATLASTERM_SYNC_STORAGE_PATH\nATLASTERM_SYNC_ALLOW_EPHEMERAL_STORAGE\n",
@@ -354,7 +358,7 @@ function createFixture(t, overrides = {}) {
       "const commonMessages = { 'web.snapshot.status': 'Snapshot status', 'web.snapshot.health.ready': 'Healthy', 'web.snapshot.health.error': 'Unhealthy' };\nreturn localMessages[locale][key] ?? commonMessages[key];\n",
     "apps/web/src/localization.test.ts":
       "web.snapshot.lastRefreshed\nweb.snapshot.health.ready\n",
-    ...overrides,
+    ...fileOverrides,
   };
 
   for (const [path, content] of Object.entries(files)) {
@@ -509,6 +513,20 @@ test("accepts release readiness when runtime telemetry control evidence is prese
 
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.match(result.stdout, /Public Beta release readiness checks passed/);
+});
+
+test("accepts the next Public Beta candidate version without rewriting old tags", (t) => {
+  const result = runChecker(createFixture(t, { __version: "0.1.0-beta.2" }));
+
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.match(
+    result.stdout,
+    /PASS Root package version 0\.1\.0-beta\.2 is a Public Beta release candidate/,
+  );
+  assert.match(
+    result.stdout,
+    /PASS Repository release handoff playbook mentions 'v0\.1\.0-beta\.2'/,
+  );
 });
 
 test("rejects missing error-monitor runtime telemetry disable implementation evidence", (t) => {

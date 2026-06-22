@@ -5,7 +5,9 @@ import { resolve } from "node:path";
 const root = resolve(
   readCliValue("--root") ?? resolve(import.meta.dirname, ".."),
 );
-const expectedVersion = "0.1.0-beta.1";
+const rootPackageJson = readJson("package.json");
+const expectedVersion = rootPackageJson.version;
+const expectedReleaseTag = `v${expectedVersion}`;
 const allowUnhealthyGit = process.argv.includes("--allow-unhealthy-git");
 const checks = [];
 
@@ -79,6 +81,11 @@ function warnIfGitIsUnhealthy() {
 }
 
 function checkVersions() {
+  passIf(
+    /^0\.1\.0-beta\.\d+$/.test(expectedVersion),
+    `Root package version ${expectedVersion} is a Public Beta release candidate`,
+  );
+
   const jsonFiles = [
     ["Root package", "package.json"],
     ["Desktop package", "apps/desktop/package.json"],
@@ -1394,14 +1401,14 @@ function checkReleaseDocs() {
         "release-provenance.json",
         "npm run qa:release:public",
         "node scripts/check-public-release-readiness.mjs",
-        "v0.1.0-beta.1",
+        expectedReleaseTag,
       ],
     ],
     [
       "Public Beta release notes",
-      "docs/release-notes/0.1.0-beta.1.md",
+      `docs/release-notes/${expectedVersion}.md`,
       [
-        "0.1.0-beta.1",
+        expectedVersion,
         "Desktop",
         "Web Admin",
         "Sync Service",
@@ -1993,7 +2000,7 @@ function hasRuntimeTelemetryDisableTest(text) {
 function checkChangelog() {
   const changelog = readText("CHANGELOG.md");
   passIf(
-    changelog.includes("[0.1.0-beta.1]"),
+    changelog.includes(`[${expectedVersion}]`),
     "CHANGELOG has Public Beta section",
   );
   passIf(
