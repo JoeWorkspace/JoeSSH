@@ -70,7 +70,11 @@ native apps stay in preflight/device-smoke validation until a later beta.
   evidence artifact sha256 to match the manifest hash in
   `reports/release/desktop/SHA256SUMS.txt`; it also requires
   `reports/release/desktop/release-evidence-SHA256SUMS.txt` to cover the
-  evidence JSON itself.
+  evidence JSON itself. `npm run release:publish-preflight` and the GitHub
+  Release draft path run the same verifier with formal source mode, requiring
+  `reports/release/desktop/release-evidence-source.json` to be covered by the
+  evidence checksum manifest and to bind the evidence to the GitHub workflow run
+  and `Package Formal Desktop Evidence` job that produced it.
 - Create the annotated release tag only after source QA is green and release
   artifacts are staged. `reports/release/` is generated release evidence and is
   allowed to be present while the source tree outside that directory remains
@@ -82,8 +86,10 @@ native apps stay in preflight/device-smoke validation until a later beta.
   commit, `git fsck --strict` result, release notes hash, lockfile hashes,
   toolchain versions, and the fixed Public Beta checksum manifest set: SBOM,
   Desktop artifacts, Desktop evidence, Sync binary, Sync backup/restore
-  evidence, and Web Admin package. Do not generate provenance from a damaged
-  `.git` planning workspace.
+  evidence, and Web Admin package. The Desktop evidence manifest must include
+  `reports/release/desktop/release-evidence-source.json` before provenance is
+  generated. Do not generate provenance from a damaged `.git` planning
+  workspace.
 - Run `npm run release:provenance:verify` before drafting so stale provenance,
   changed lockfiles, changed release notes, stale manifests, changed artifacts,
   or tag drift fail before upload.
@@ -127,7 +133,8 @@ native apps stay in preflight/device-smoke validation until a later beta.
   signing or notarization text must mention the artifact path, file name, or
   artifact sha256.
 - `reports/release/desktop/release-evidence-SHA256SUMS.txt` must cover the
-  release evidence file itself.
+  release evidence file itself and
+  `reports/release/desktop/release-evidence-source.json`.
 - Install on a clean machine and verify Connect, unknown-host fingerprint
   confirmation before authentication, changed-host-key blocking, per-host known
   host removal, exec, PTY, SFTP list/read/write, port forwarding, and

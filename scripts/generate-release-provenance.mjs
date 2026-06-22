@@ -82,7 +82,7 @@ const provenance = {
     "verify-artifact-checksums.mjs --all-release",
     "verify-web-release-package.mjs",
     "verify-sync-release-evidence.mjs",
-    "verify-desktop-release-evidence.mjs",
+    "verify-desktop-release-evidence.mjs --require-source",
     "verify-release-sbom.mjs",
     "verify-release-provenance.mjs",
   ],
@@ -225,7 +225,7 @@ function collectChecksumManifestEvidence() {
     );
   }
 
-  return requiredChecksumManifests.map((manifestPath) => {
+  const manifests = requiredChecksumManifests.map((manifestPath) => {
     const fullPath = resolve(root, manifestPath);
     return {
       path: manifestPath,
@@ -233,6 +233,18 @@ function collectChecksumManifestEvidence() {
       entries: parseChecksumManifest(fullPath),
     };
   });
+  const desktopEvidenceManifest = manifests.find(
+    (manifest) => manifest.path === "reports/release/desktop/release-evidence-SHA256SUMS.txt",
+  );
+  const hasDesktopEvidenceSource = desktopEvidenceManifest?.entries.some(
+    (entry) => entry.path === "reports/release/desktop/release-evidence-source.json",
+  );
+  if (!hasDesktopEvidenceSource) {
+    fail(
+      "Desktop formal evidence source sidecar must be covered by reports/release/desktop/release-evidence-SHA256SUMS.txt before generating release provenance.",
+    );
+  }
+  return manifests;
 }
 
 function collectReleaseChecksumManifests() {

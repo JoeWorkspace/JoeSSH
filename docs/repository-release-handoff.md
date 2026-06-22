@@ -98,6 +98,7 @@ Keep these outputs with the release handoff notes:
   not-found check from `npm run release:publish-preflight`.
 - `reports/release/**/SHA256SUMS.txt`.
 - `reports/release/desktop/release-evidence.json`.
+- `reports/release/desktop/release-evidence-source.json`.
 - `reports/release/desktop/release-evidence-SHA256SUMS.txt`.
 - `reports/release/SBOM-SHA256SUMS.txt`.
 - `reports/release/release-provenance.json`.

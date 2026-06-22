@@ -114,7 +114,7 @@ if (key === "auth\\0status") {
   console.log("Logged in");
   process.exit(0);
 }
-if (key === "run\\0view\\0" + runId + "\\0--repo\\0" + repo + "\\0--json\\0status,conclusion,headSha,jobs,url") {
+if (key === "run\\0view\\0" + runId + "\\0--repo\\0" + repo + "\\0--json\\0status,conclusion,headSha,jobs,url,databaseId,workflowDatabaseId,workflowName") {
   const jobs = state.runConclusion === "success"
     ? [{
       conclusion: state.formalEvidenceConclusion,
@@ -130,10 +130,13 @@ if (key === "run\\0view\\0" + runId + "\\0--repo\\0" + repo + "\\0--json\\0statu
     }];
   console.log(JSON.stringify({
     conclusion: state.runConclusion,
+    databaseId: Number(runId),
     headSha: state.headSha,
     jobs,
     status: state.runStatus,
     url: "https://github.example/actions/runs/" + runId,
+    workflowDatabaseId: 24680,
+    workflowName: "Desktop Release Artifacts",
   }));
   process.exit(0);
 }
@@ -232,6 +235,16 @@ test("downloads, imports, and verifies Desktop formal release evidence", (t) => 
   assert.equal(
     sha256File(join(root, "reports", "release", "desktop", "JoeSSH_0.1.0-beta.1_x64-setup.exe")),
     createHash("sha256").update("desktop installer").digest("hex"),
+  );
+  const source = JSON.parse(readFileSync(join(root, "reports", "release", "desktop", "release-evidence-source.json"), "utf8"));
+  assert.equal(source.repository, REPO);
+  assert.equal(source.releaseRef, "v0.1.0-beta.1");
+  assert.equal(source.workflowRun.id, RUN_ID);
+  assert.equal(source.workflowRun.workflowDatabaseId, 24680);
+  assert.equal(source.formalEvidenceJob.name, "Package Formal Desktop Evidence");
+  assert.match(
+    readFileSync(join(root, "reports", "release", "desktop", "release-evidence-SHA256SUMS.txt"), "utf8"),
+    /reports\/release\/desktop\/release-evidence-source\.json/,
   );
 });
 

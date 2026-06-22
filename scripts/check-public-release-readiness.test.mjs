@@ -196,10 +196,10 @@ function createFixture(t, overrides = {}) {
     ".github/workflows/dependabot-auto-merge.yml":
       "dependency-type\ndirect:development\n",
     "scripts/verify-desktop-release-evidence.mjs":
-      "sha256File(fullPath) hash mismatch artifact.sha256 sha256 must match release-evidence-SHA256SUMS.txt missing desktop evidence checksum manifest desktop evidence checksum manifest hash mismatch must mention the artifact path, artifact file name, or artifact sha256\n",
+      "sha256File(fullPath) hash mismatch artifact.sha256 sha256 must match release-evidence-SHA256SUMS.txt missing desktop evidence checksum manifest desktop evidence checksum manifest hash mismatch release-evidence-source.json --require-source workflowRun.headSha must match releaseTagCommit Package Formal Desktop Evidence must mention the artifact path, artifact file name, or artifact sha256\n",
     "scripts/verify-desktop-release-evidence.test.mjs": "",
     "scripts/download-desktop-release-evidence.mjs":
-      "Package Formal Desktop Evidence --run-id is required verify-desktop-release-evidence.mjs artifact.expired reports/release/desktop/ check-runs/${checkRunId}/annotations\n",
+      "Package Formal Desktop Evidence --run-id is required verify-desktop-release-evidence.mjs --require-source release-evidence-source.json workflowDatabaseId artifact.expired reports/release/desktop/ check-runs/${checkRunId}/annotations\n",
     "scripts/download-desktop-release-evidence.test.mjs": "",
     "scripts/desktop-release-evidence-preflight.mjs":
       "repos/${repo}/actions/secrets ATLASTERM_WINDOWS_CERTIFICATE ATLASTERM_APPLE_CERTIFICATE formal_evidence=true workflowRunArgs\n",
@@ -244,15 +244,15 @@ function createFixture(t, overrides = {}) {
     "scripts/verify-release-sbom.mjs": "",
     "scripts/verify-release-sbom.test.mjs": "",
     "scripts/generate-release-provenance.mjs":
-      'gitFsckStrict ["remote", "get-url", "origin"] release-provenance-SHA256SUMS.txt checksumManifests requiredChecksumManifests reports/release/desktop/release-evidence-SHA256SUMS.txt reports/release/sync/backup-restore-smoke-SHA256SUMS.txt\n',
+      'gitFsckStrict ["remote", "get-url", "origin"] release-provenance-SHA256SUMS.txt checksumManifests requiredChecksumManifests reports/release/desktop/release-evidence-SHA256SUMS.txt release-evidence-source.json verify-desktop-release-evidence.mjs --require-source reports/release/sync/backup-restore-smoke-SHA256SUMS.txt\n',
     "scripts/verify-release-provenance.mjs":
-      "source.repository git fsck --strict release notes hash mismatch artifact hash mismatch requiredChecksumManifests unexpected Public Beta checksum manifest is staged\n",
+      "source.repository git fsck --strict release notes hash mismatch artifact hash mismatch requiredChecksumManifests release-evidence-source.json verify-desktop-release-evidence.mjs --require-source unexpected Public Beta checksum manifest is staged\n",
     "scripts/verify-release-provenance.test.mjs": "",
     "scripts/audit-public-beta-rc.mjs":
       'public-beta-rc-audit.json desktop-signing-secrets desktop-dogfood publish-preflight github-ci check-runs/${checkRunId}/annotations\n',
     "scripts/audit-public-beta-rc.test.mjs": "",
     "scripts/release-publish-preflight.mjs":
-      'Verify release Git checkout rev-parse --porcelain=v1 :(exclude)reports/release must point at HEAD for publish preflight verify-web-release-package.mjs verify-sync-release-evidence.mjs verify-artifact-checksums.mjs --all-release verify-release-provenance.mjs Verify GitHub CLI publish readiness ATLASTERM_RELEASE_GH_COMMAND auth", "status release", "view", releaseTag already exists; refusing to publish a duplicate release\n',
+      'Verify release Git checkout rev-parse --porcelain=v1 :(exclude)reports/release must point at HEAD for publish preflight verify-web-release-package.mjs verify-sync-release-evidence.mjs verify-desktop-release-evidence.mjs --require-source verify-artifact-checksums.mjs --all-release verify-release-provenance.mjs Verify GitHub CLI publish readiness ATLASTERM_RELEASE_GH_COMMAND auth", "status release", "view", releaseTag already exists; refusing to publish a duplicate release\n',
     "scripts/release-publish-preflight.test.mjs": "",
     "scripts/create-github-release-draft.mjs":
       'collectFiles(resolve(root, "reports", "release"))\nprovenanceVerificationArgs\nif (dryRun)\nprovenanceVerificationArgs.push("--skip-current-git-check")\n',
@@ -310,9 +310,9 @@ function createFixture(t, overrides = {}) {
     "apps/desktop/src/usePtySession.test.ts":
       "moves to closed when the pty emits exit\nresult.current.exitCode\nforwards write and resize to the open pty\nsurfaces native PTY command blocks and clears them after a safe write\n",
     "docs/release-checklist.md":
-      "Public Beta docs/repository-release-handoff.md SBOM SHA256 SBOM-SHA256SUMS.txt release-evidence.json release-evidence-SHA256SUMS.txt release-provenance.json release-provenance-SHA256SUMS.txt artifact sha256 manifest hash staged cargo-audit qa:rust-advisory qa:release:public:fixture qa:lighthouse release:publish-preflight backup-restore-smoke.json qa:sync:backup-restore-smoke unknown-host fingerprint changed-host-key blocking per-host known host removal runtime telemetry rollback\n",
+      "Public Beta docs/repository-release-handoff.md SBOM SHA256 SBOM-SHA256SUMS.txt release-evidence.json release-evidence-source.json release-evidence-SHA256SUMS.txt release-provenance.json release-provenance-SHA256SUMS.txt artifact sha256 manifest hash staged cargo-audit qa:rust-advisory qa:release:public:fixture qa:lighthouse release:publish-preflight backup-restore-smoke.json qa:sync:backup-restore-smoke unknown-host fingerprint changed-host-key blocking per-host known host removal runtime telemetry rollback\n",
     "docs/repository-release-handoff.md":
-      `healthy Git checkout do not publish from the damaged workspace git status --short git fsck --strict git diff --binary release-provenance.json npm run qa:release:public npm run qa:release:public:fixture node scripts/check-public-release-readiness.mjs v${version}\n`,
+      `healthy Git checkout do not publish from the damaged workspace git status --short git fsck --strict git diff --binary release-provenance.json npm run qa:release:public npm run qa:release:public:fixture release-evidence-source.json node scripts/check-public-release-readiness.mjs v${version}\n`,
     [`docs/release-notes/${version}.md`]:
       `JoeSSH ${version} Desktop Web Admin Sync Service SHA256 release:publish-preflight\n`,
     "docs/desktop-release-metadata.json": JSON.stringify({
@@ -330,7 +330,7 @@ function createFixture(t, overrides = {}) {
       linuxPackageTypes: ["AppImage", "deb", "rpm"],
     }),
     "docs/desktop-distribution.md":
-      "Windows sign notarization Linux release-evidence.json release-evidence-SHA256SUMS.txt artifact sha256 manifest hash staged desktop-release-metadata.json capabilities permissions pre-auth host-key probe known-host list/remove/clear unknown hosts require a visible fingerprint confirmation changed host keys are blocked first/last seen metadata 1 MiB 25 MiB bounded SFTP transfer\n",
+      "Windows sign notarization Linux release-evidence.json release-evidence-source.json release-evidence-SHA256SUMS.txt artifact sha256 manifest hash staged desktop-release-metadata.json capabilities permissions pre-auth host-key probe known-host list/remove/clear unknown hosts require a visible fingerprint confirmation changed host keys are blocked first/last seen metadata 1 MiB 25 MiB bounded SFTP transfer\n",
     "docs/web-admin-deployment.md":
       "The public root path defaults to live Web Admin. _headers CSP VITE_ATLASTERM_ADMIN_SNAPSHOT_URL joessh-web-admin verify-web-release-package.mjs .well-known/security.txt node-admin-snapshot-proxy.mjs ATLASTERM_WEB_ADMIN_PROXY_ALLOW_PUBLIC_BIND ATLASTERM_WEB_ADMIN_PROXY_OPERATOR_TOKEN ATLASTERM_ADMIN_SNAPSHOT_PROXY_MAX_BYTES upstream_snapshot_too_large 1 MiB qa:web-admin-proxy-smoke qa:lighthouse qa:web-admin-sync-topology-smoke qa:web-admin-sync-topology-release-smoke ?adminSnapshot=fixture\n",
     "docs/self-hosting-sync.md":
@@ -1220,6 +1220,10 @@ test("rejects Desktop release evidence tooling without artifact hash binding", (
   assert.match(
     result.stdout,
     /FAIL Desktop release evidence verifier binds release evidence JSON to its checksum manifest/,
+  );
+  assert.match(
+    result.stdout,
+    /FAIL Desktop release evidence verifier can require formal workflow source provenance/,
   );
   assert.match(
     result.stdout,

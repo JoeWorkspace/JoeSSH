@@ -3,11 +3,17 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { basename, isAbsolute, relative, resolve } from "node:path";
 
 const defaultRoot = resolve(import.meta.dirname, "..");
-const { evidenceChecksumPath, evidencePath, manifestPath, root } = parseArgs(process.argv.slice(2));
+const { evidenceChecksumPath, evidencePath, manifestPath, requireSource, root, sourcePath } = parseArgs(
+  process.argv.slice(2),
+);
 const errors = [];
 
 const manifestEntries = readChecksumManifest(resolve(root, manifestPath));
-verifyEvidenceChecksum(resolve(root, evidencePath), resolve(root, evidenceChecksumPath));
+const evidenceChecksumEntries = readEvidenceChecksumManifest(resolve(root, evidenceChecksumPath));
+verifyEvidenceChecksum(resolve(root, evidencePath), evidenceChecksumEntries);
+if (requireSource) {
+  verifyEvidenceSource(resolve(root, sourcePath), evidenceChecksumEntries);
+}
 const evidence = readEvidence(resolve(root, evidencePath));
 validateEvidence(evidence, manifestEntries);
 
@@ -86,18 +92,22 @@ function readEvidence(path) {
   }
 }
 
-function verifyEvidenceChecksum(evidenceFullPath, checksumFullPath) {
+function readEvidenceChecksumManifest(checksumFullPath) {
   if (!existsSync(checksumFullPath)) {
     errors.push(`missing desktop evidence checksum manifest ${displayPath(checksumFullPath)}`);
-    return;
+    return new Map();
   }
   if (!statSync(checksumFullPath).isFile()) {
     errors.push(`desktop evidence checksum manifest is not a file ${displayPath(checksumFullPath)}`);
-    return;
+    return new Map();
   }
 
+  return readChecksumManifestArtifactHashes(checksumFullPath);
+}
+
+function verifyEvidenceChecksum(evidenceFullPath, evidenceChecksumEntries) {
   const evidenceReleasePath = displayPath(evidenceFullPath);
-  const expectedHash = readChecksumManifestArtifactHashes(checksumFullPath).get(evidenceReleasePath);
+  const expectedHash = evidenceChecksumEntries.get(evidenceReleasePath);
   if (!expectedHash) {
     errors.push(`desktop evidence checksum manifest does not list ${evidenceReleasePath}`);
     return;
@@ -111,6 +121,130 @@ function verifyEvidenceChecksum(evidenceFullPath, checksumFullPath) {
   if (actualHash !== expectedHash) {
     errors.push(`desktop evidence checksum manifest hash mismatch for ${evidenceReleasePath}`);
   }
+}
+
+function verifyEvidenceSource(sourceFullPath, evidenceChecksumEntries) {
+  const sourceReleasePath = displayPath(sourceFullPath);
+  if (!existsSync(sourceFullPath)) {
+    errors.push(`missing desktop evidence source sidecar ${sourceReleasePath}`);
+    return;
+  }
+  if (!statSync(sourceFullPath).isFile()) {
+    errors.push(`desktop evidence source sidecar is not a file ${sourceReleasePath}`);
+    return;
+  }
+
+  const expectedHash = evidenceChecksumEntries.get(sourceReleasePath);
+  if (!expectedHash) {
+    errors.push(`desktop evidence checksum manifest does not list ${sourceReleasePath}`);
+  } else {
+    const actualHash = sha256File(sourceFullPath);
+    if (actualHash !== expectedHash) {
+      errors.push(`desktop evidence checksum manifest hash mismatch for ${sourceReleasePath}`);
+    }
+  }
+
+  let source = null;
+  try {
+    source = JSON.parse(readFileSync(sourceFullPath, "utf8"));
+  } catch (error) {
+    errors.push(`desktop evidence source sidecar is not valid JSON: ${error instanceof Error ? error.message : String(error)}`);
+    return;
+  }
+  validateEvidenceSource(source);
+}
+
+function validateEvidenceSource(source) {
+  if (source === null || typeof source !== "object" || Array.isArray(source)) {
+    errors.push("desktop evidence source sidecar must be a JSON object");
+    return;
+  }
+
+  if (source.sourceVersion !== 1) {
+    errors.push("desktop evidence source sidecar sourceVersion must be 1");
+  }
+  if (source.artifactName !== "desktop-release-evidence") {
+    errors.push("desktop evidence source sidecar artifactName must be desktop-release-evidence");
+  }
+  if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(source.repository ?? "")) {
+    errors.push("desktop evidence source sidecar repository must use owner/name format");
+  }
+
+  const expectedReleaseRef = readExpectedReleaseRef();
+  if (source.releaseRef !== expectedReleaseRef) {
+    errors.push(`desktop evidence source sidecar releaseRef must be ${expectedReleaseRef}`);
+  }
+  if (typeof source.releaseTagCommit !== "string" || source.releaseTagCommit.trim() === "") {
+    errors.push("desktop evidence source sidecar releaseTagCommit must be a non-empty string");
+  }
+  if (
+    typeof source.importedAt !== "string" ||
+    source.importedAt.trim() === "" ||
+    Number.isNaN(Date.parse(source.importedAt))
+  ) {
+    errors.push("desktop evidence source sidecar importedAt must be a valid ISO date string");
+  }
+
+  validateWorkflowRunSource(source.workflowRun, source.releaseTagCommit);
+  validateFormalEvidenceJobSource(source.formalEvidenceJob);
+}
+
+function validateWorkflowRunSource(workflowRun, releaseTagCommit) {
+  if (workflowRun === null || typeof workflowRun !== "object" || Array.isArray(workflowRun)) {
+    errors.push("desktop evidence source sidecar workflowRun must be an object");
+    return;
+  }
+
+  if (!/^[1-9][0-9]*$/.test(String(workflowRun.id ?? ""))) {
+    errors.push("desktop evidence source sidecar workflowRun.id must be a positive integer");
+  }
+  if (!/^[1-9][0-9]*$/.test(String(workflowRun.workflowDatabaseId ?? ""))) {
+    errors.push("desktop evidence source sidecar workflowRun.workflowDatabaseId must be a positive integer");
+  }
+  if (typeof workflowRun.workflowName !== "string" || workflowRun.workflowName.trim() === "") {
+    errors.push("desktop evidence source sidecar workflowRun.workflowName must be a non-empty string");
+  }
+  if (workflowRun.status !== "completed" || workflowRun.conclusion !== "success") {
+    errors.push("desktop evidence source sidecar workflowRun must be completed/success");
+  }
+  if (typeof workflowRun.url !== "string" || !/^https?:\/\//.test(workflowRun.url)) {
+    errors.push("desktop evidence source sidecar workflowRun.url must be an http(s) URL");
+  }
+  if (typeof workflowRun.headSha !== "string" || workflowRun.headSha.trim() === "") {
+    errors.push("desktop evidence source sidecar workflowRun.headSha must be a non-empty string");
+  } else if (releaseTagCommit && workflowRun.headSha !== releaseTagCommit) {
+    errors.push("desktop evidence source sidecar workflowRun.headSha must match releaseTagCommit");
+  }
+}
+
+function validateFormalEvidenceJobSource(formalEvidenceJob) {
+  if (formalEvidenceJob === null || typeof formalEvidenceJob !== "object" || Array.isArray(formalEvidenceJob)) {
+    errors.push("desktop evidence source sidecar formalEvidenceJob must be an object");
+    return;
+  }
+
+  if (formalEvidenceJob.name !== "Package Formal Desktop Evidence") {
+    errors.push("desktop evidence source sidecar formalEvidenceJob.name must be Package Formal Desktop Evidence");
+  }
+  if (!/^[1-9][0-9]*$/.test(String(formalEvidenceJob.databaseId ?? ""))) {
+    errors.push("desktop evidence source sidecar formalEvidenceJob.databaseId must be a positive integer");
+  }
+  if (formalEvidenceJob.status !== "completed" || formalEvidenceJob.conclusion !== "success") {
+    errors.push("desktop evidence source sidecar formalEvidenceJob must be completed/success");
+  }
+}
+
+function readExpectedReleaseRef() {
+  try {
+    const packageJson = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
+    if (typeof packageJson.version === "string" && packageJson.version.trim() !== "") {
+      return `v${packageJson.version}`;
+    }
+  } catch {
+    // Fall through to the explicit failure sentinel below.
+  }
+  errors.push("package.json version is required to verify desktop evidence source sidecar");
+  return "";
 }
 
 function readChecksumManifestArtifactHashes(path) {
@@ -295,6 +429,8 @@ function parseArgs(args) {
   let manifestPath = "reports/release/desktop/SHA256SUMS.txt";
   let evidencePath = "reports/release/desktop/release-evidence.json";
   let evidenceChecksumPath = "reports/release/desktop/release-evidence-SHA256SUMS.txt";
+  let requireSource = false;
+  let sourcePath = "reports/release/desktop/release-evidence-source.json";
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
@@ -338,11 +474,28 @@ function parseArgs(args) {
       index += 1;
       continue;
     }
+    if (arg === "--require-source") {
+      requireSource = true;
+      continue;
+    }
+    if (arg === "--source") {
+      const value = args[index + 1];
+      if (!value) {
+        fail("--source requires a path.");
+      }
+      sourcePath = value;
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--source=")) {
+      sourcePath = arg.slice("--source=".length);
+      continue;
+    }
 
     fail(`Unknown argument: ${arg}`);
   }
 
-  return { evidenceChecksumPath, evidencePath, manifestPath, root };
+  return { evidenceChecksumPath, evidencePath, manifestPath, requireSource, root, sourcePath };
 }
 
 function displayPath(path) {

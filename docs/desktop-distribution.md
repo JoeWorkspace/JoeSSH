@@ -125,9 +125,14 @@ The download step refuses ambiguous run selection, requires the run to match the
 current release tag commit, requires the `Package Formal Desktop Evidence` job
 to have passed, refuses expired artifacts, writes only under
 `reports/release/desktop/`, and immediately runs
-`release:desktop:verify-evidence`. When a workflow run fails before evidence can
-be imported, it includes failed job names and GitHub check-run annotations, such
-as account billing/spending-limit failures, in the error output.
+`release:desktop:verify-evidence` in formal source mode. It also writes
+`reports/release/desktop/release-evidence-source.json`, recording the repository,
+release ref, workflow run id, workflow id, run head SHA, and formal evidence job
+status, then covers that sidecar in
+`reports/release/desktop/release-evidence-SHA256SUMS.txt`. When a workflow run
+fails before evidence can be imported, it includes failed job names and GitHub
+check-run annotations, such as account billing/spending-limit failures, in the
+error output.
 
 ## Signing And Platform Rules
 
@@ -144,7 +149,12 @@ as account billing/spending-limit failures, in the error output.
   must match both the manifest hash in `SHA256SUMS.txt` and the actual file
   hash recomputed from disk by `release:desktop:verify-evidence`.
 - `reports/release/desktop/release-evidence-SHA256SUMS.txt` must cover
-  `reports/release/desktop/release-evidence.json` before upload.
+  `reports/release/desktop/release-evidence.json` and
+  `reports/release/desktop/release-evidence-source.json` before upload.
+- `reports/release/desktop/release-evidence-source.json` must come from
+  `npm run release:desktop:evidence-download`; publish preflight and release
+  draft verification require it to bind formal evidence to the GitHub workflow
+  run that produced it.
 - Windows evidence must record `signed: true` and a non-empty
   `signatureVerification` result that mentions the artifact path, file name, or
   artifact sha256.

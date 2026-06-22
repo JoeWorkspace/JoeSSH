@@ -54,7 +54,7 @@ if (!webManifestArtifacts.includes(expectedWebArtifact)) {
 
 const desktopEvidenceVerification = spawnSync(
   process.execPath,
-  [resolve(scriptRoot, "scripts", "verify-desktop-release-evidence.mjs"), "--root", root],
+  [resolve(scriptRoot, "scripts", "verify-desktop-release-evidence.mjs"), "--root", root, "--require-source"],
   {
     cwd: scriptRoot,
     encoding: "utf8",

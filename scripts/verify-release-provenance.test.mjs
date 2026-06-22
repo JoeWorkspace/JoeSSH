@@ -46,6 +46,8 @@ function createFixture(t) {
     })),
   });
   writeFile(root, "reports/release/desktop/release-evidence.json", desktopEvidence);
+  const desktopEvidenceSource = desktopEvidenceSourceFixture();
+  writeFile(root, "reports/release/desktop/release-evidence-source.json", desktopEvidenceSource);
   const syncEvidence = JSON.stringify({
     binary: "reports/release/sync/joessh-sync-0.1.0-beta.1-linux-x64",
     binaryManifest: "reports/release/sync/SHA256SUMS.txt",
@@ -55,6 +57,7 @@ function createFixture(t) {
   writeManifest(root, "reports/release/desktop/SHA256SUMS.txt", desktopArtifacts);
   writeManifest(root, "reports/release/desktop/release-evidence-SHA256SUMS.txt", [
     [desktopEvidence, "reports/release/desktop/release-evidence.json"],
+    [desktopEvidenceSource, "reports/release/desktop/release-evidence-source.json"],
   ]);
   writeManifest(root, "reports/release/web/SHA256SUMS.txt", [
     ["web bundle", "reports/release/web/joessh-web-admin-0.1.0-beta.1.zip"],
@@ -67,6 +70,36 @@ function createFixture(t) {
   ]);
 
   return root;
+}
+
+function desktopEvidenceSourceFixture() {
+  return JSON.stringify(
+    {
+      artifactName: "desktop-release-evidence",
+      formalEvidenceJob: {
+        conclusion: "success",
+        databaseId: 123456780,
+        name: "Package Formal Desktop Evidence",
+        status: "completed",
+      },
+      importedAt: "2026-06-21T00:00:00.000Z",
+      releaseRef: "v0.1.0-beta.1",
+      releaseTagCommit: "abc123",
+      repository: "JoeWorkspace/JoeSSH",
+      sourceVersion: 1,
+      workflowRun: {
+        conclusion: "success",
+        headSha: "abc123",
+        id: "123456789",
+        status: "completed",
+        url: "https://github.example/actions/runs/123456789",
+        workflowDatabaseId: 987654321,
+        workflowName: "Desktop Release Artifacts",
+      },
+    },
+    null,
+    2,
+  );
 }
 
 function writeReleaseSbomFixture(root) {
@@ -252,6 +285,20 @@ test("generates and verifies release provenance for staged release artifacts", (
   const verified = runVerifier(root, env);
   assert.equal(verified.status, 0, verified.stdout + verified.stderr);
   assert.match(verified.stdout, /Release provenance verified for v0\.1\.0-beta\.1/);
+});
+
+test("rejects release provenance generation without Desktop evidence source coverage", (t) => {
+  const root = createFixture(t);
+  const env = createFakeCommands(root);
+  rmSync(join(root, "reports", "release", "desktop", "release-evidence-source.json"));
+  writeManifest(root, "reports/release/desktop/release-evidence-SHA256SUMS.txt", [
+    [readFile(root, "reports/release/desktop/release-evidence.json"), "reports/release/desktop/release-evidence.json"],
+  ]);
+
+  const generated = runGenerator(root, env);
+
+  assert.equal(generated.status, 1);
+  assert.match(generated.stderr, /Desktop formal evidence source sidecar must be covered/);
 });
 
 test("rejects stale artifact hashes after provenance generation", (t) => {

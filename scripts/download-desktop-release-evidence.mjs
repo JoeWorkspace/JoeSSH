@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import {
   copyFileSync,
@@ -7,6 +8,7 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
+  writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, relative, resolve } from "node:path";
@@ -28,12 +30,13 @@ const releaseRef = ref ?? `v${packageJson.version}`;
 const expectedHeadSha = runGit(["rev-parse", `${releaseRef}^{}`], `Unable to resolve ${releaseRef}.`).stdout.trim();
 const repo = explicitRepo ?? resolveRepoFromOrigin();
 const desktopReleaseDir = resolve(root, "reports", "release", "desktop");
+const evidenceSourcePath = "reports/release/desktop/release-evidence-source.json";
 
 console.log(`Downloading Desktop formal release evidence from run ${runId} for ${repo} at ${releaseRef}.`);
 
 runGh(["--version"], "GitHub CLI is required to download Desktop release evidence.");
 runGh(["auth", "status"], "GitHub CLI must be authenticated to download Desktop release evidence.");
-verifyRun();
+const workflowRun = verifyRun();
 verifyArtifact();
 
 const downloadRoot = mkdtempSync(resolve(tmpdir(), "joessh-desktop-evidence-"));
@@ -42,7 +45,7 @@ try {
     ["run", "download", runId, "--repo", repo, "--name", artifactName, "--dir", downloadRoot],
     `Failed to download Desktop release evidence artifact ${artifactName} from run ${runId}.`,
   );
-  importEvidence(downloadRoot);
+  importEvidence(downloadRoot, workflowRun);
   verifyImportedEvidence();
 } finally {
   rmSync(downloadRoot, { recursive: true, force: true });
@@ -52,7 +55,15 @@ console.log(`Imported and verified Desktop release evidence from run ${runId}.`)
 
 function verifyRun() {
   const result = runGh(
-    ["run", "view", runId, "--repo", repo, "--json", "status,conclusion,headSha,jobs,url"],
+    [
+      "run",
+      "view",
+      runId,
+      "--repo",
+      repo,
+      "--json",
+      "status,conclusion,headSha,jobs,url,databaseId,workflowDatabaseId,workflowName",
+    ],
     `Unable to inspect GitHub Actions run ${runId}.`,
   );
   const run = parseJson(result.stdout, `GitHub Actions run ${runId}`);
@@ -81,6 +92,10 @@ function verifyRun() {
       `Package Formal Desktop Evidence job must complete successfully before import; got ${formalEvidenceJob.status}/${formalEvidenceJob.conclusion}.${diagnostics}`,
     );
   }
+  return {
+    ...run,
+    formalEvidenceJob,
+  };
 }
 
 function collectRunFailureDiagnostics(run) {
@@ -148,7 +163,7 @@ function verifyArtifact() {
   }
 }
 
-function importEvidence(downloadRoot) {
+function importEvidence(downloadRoot, workflowRun) {
   const filesByName = indexDownloadedFiles(downloadRoot);
   const manifestSource = requireDownloadedFile(filesByName, "SHA256SUMS.txt");
   const evidenceSource = requireDownloadedFile(filesByName, "release-evidence.json");
@@ -166,14 +181,21 @@ function importEvidence(downloadRoot) {
     const artifactSource = requireDownloadedFile(filesByName, basename(artifactPath));
     copyToReleasePath(artifactSource, artifactPath);
   }
+
+  writeEvidenceSource(workflowRun);
+  appendEvidenceSourceChecksum();
 }
 
 function verifyImportedEvidence() {
-  const result = spawnSync(process.execPath, [resolve(scriptRoot, "scripts", "verify-desktop-release-evidence.mjs"), "--root", root], {
-    cwd: root,
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-  });
+  const result = spawnSync(
+    process.execPath,
+    [resolve(scriptRoot, "scripts", "verify-desktop-release-evidence.mjs"), "--root", root, "--require-source"],
+    {
+      cwd: root,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
   if (result.stdout) {
     process.stdout.write(result.stdout);
   }
@@ -264,6 +286,49 @@ function copyToReleasePath(source, releasePath) {
 
   mkdirSync(dirname(destination), { recursive: true });
   copyFileSync(source, destination);
+}
+
+function writeEvidenceSource(workflowRun) {
+  const source = {
+    artifactName,
+    formalEvidenceJob: {
+      conclusion: workflowRun.formalEvidenceJob.conclusion,
+      databaseId: workflowRun.formalEvidenceJob.databaseId,
+      name: workflowRun.formalEvidenceJob.name,
+      status: workflowRun.formalEvidenceJob.status,
+    },
+    importedAt: new Date().toISOString(),
+    releaseRef,
+    releaseTagCommit: expectedHeadSha,
+    repository: repo,
+    sourceVersion: 1,
+    workflowRun: {
+      conclusion: workflowRun.conclusion,
+      headSha: workflowRun.headSha,
+      id: String(workflowRun.databaseId ?? runId),
+      status: workflowRun.status,
+      url: workflowRun.url,
+      workflowDatabaseId: workflowRun.workflowDatabaseId,
+      workflowName: workflowRun.workflowName,
+    },
+  };
+  const destination = resolve(root, evidenceSourcePath);
+  if (!isInsideRoot(destination) || !isInsideDirectory(destination, desktopReleaseDir)) {
+    fail(`Refusing to write Desktop evidence source outside reports/release/desktop: ${evidenceSourcePath}.`);
+  }
+  writeFileSync(destination, `${JSON.stringify(source, null, 2)}\n`);
+}
+
+function appendEvidenceSourceChecksum() {
+  const checksumPath = resolve(root, "reports/release/desktop/release-evidence-SHA256SUMS.txt");
+  const sourceFullPath = resolve(root, evidenceSourcePath);
+  const sourceLine = `${sha256File(sourceFullPath)}  ${evidenceSourcePath}`;
+  const lines = readFileSync(checksumPath, "utf8")
+    .split(/\r?\n/)
+    .filter((line) => line.trim() !== "")
+    .filter((line) => !line.endsWith(`  ${evidenceSourcePath}`));
+  lines.push(sourceLine);
+  writeFileSync(checksumPath, `${lines.join("\n")}\n`);
 }
 
 function resolveRepoFromOrigin() {
@@ -424,6 +489,10 @@ function parseCommandPrefixArgs(envName) {
   }
 
   fail(`${envName} must be a JSON string array when set.`);
+}
+
+function sha256File(path) {
+  return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
 
 function normalizeReleasePath(path) {

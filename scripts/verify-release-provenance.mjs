@@ -250,7 +250,7 @@ function validateVerifiers() {
     "verify-artifact-checksums.mjs --all-release",
     "verify-web-release-package.mjs",
     "verify-sync-release-evidence.mjs",
-    "verify-desktop-release-evidence.mjs",
+    "verify-desktop-release-evidence.mjs --require-source",
     "verify-release-sbom.mjs",
     "verify-release-provenance.mjs",
   ];
@@ -410,6 +410,20 @@ function validateChecksumManifests() {
         `release provenance references stale checksum manifest ${path}`,
       );
     }
+  }
+
+  const desktopEvidenceManifest = manifestEntries.get(
+    "reports/release/desktop/release-evidence-SHA256SUMS.txt",
+  );
+  const hasDesktopEvidenceSource = desktopEvidenceManifest?.entries?.some(
+    (entry) =>
+      isRecord(entry) &&
+      entry.path === "reports/release/desktop/release-evidence-source.json",
+  );
+  if (!hasDesktopEvidenceSource) {
+    errors.push(
+      "release provenance must include reports/release/desktop/release-evidence-source.json in the Desktop evidence checksum manifest",
+    );
   }
 
   for (const manifest of manifestEntries.values()) {

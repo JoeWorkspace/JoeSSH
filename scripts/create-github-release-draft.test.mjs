@@ -98,12 +98,45 @@ function createReleaseFixture(t) {
     2,
   );
   writeFile(root, "reports/release/desktop/release-evidence.json", desktopEvidence);
+  const desktopEvidenceSource = desktopEvidenceSourceFixture();
+  writeFile(root, "reports/release/desktop/release-evidence-source.json", desktopEvidenceSource);
   writeManifest(root, "reports/release/desktop/release-evidence-SHA256SUMS.txt", [
     [desktopEvidence, "reports/release/desktop/release-evidence.json"],
+    [desktopEvidenceSource, "reports/release/desktop/release-evidence-source.json"],
   ]);
   writeReleaseProvenanceFixture(root);
 
   return root;
+}
+
+function desktopEvidenceSourceFixture() {
+  return JSON.stringify(
+    {
+      artifactName: "desktop-release-evidence",
+      formalEvidenceJob: {
+        conclusion: "success",
+        databaseId: 123456780,
+        name: "Package Formal Desktop Evidence",
+        status: "completed",
+      },
+      importedAt: "2026-06-21T00:00:00.000Z",
+      releaseRef: "v0.1.0-beta.1",
+      releaseTagCommit: "abc123",
+      repository: "JoeWorkspace/JoeSSH",
+      sourceVersion: 1,
+      workflowRun: {
+        conclusion: "success",
+        headSha: "abc123",
+        id: "123456789",
+        status: "completed",
+        url: "https://github.example/actions/runs/123456789",
+        workflowDatabaseId: 987654321,
+        workflowName: "Desktop Release Artifacts",
+      },
+    },
+    null,
+    2,
+  );
 }
 
 function writeReleaseSbomFixture(root) {
@@ -216,7 +249,7 @@ function writeReleaseProvenanceFixture(root) {
         "verify-artifact-checksums.mjs --all-release",
         "verify-web-release-package.mjs",
         "verify-sync-release-evidence.mjs",
-        "verify-desktop-release-evidence.mjs",
+        "verify-desktop-release-evidence.mjs --require-source",
         "verify-release-sbom.mjs",
         "verify-release-provenance.mjs",
       ],
@@ -586,4 +619,17 @@ test("dry run rejects missing desktop release evidence before drafting", (t) => 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /Missing desktop release evidence/);
   assert.match(result.stderr, /reports\/release\/desktop\/release-evidence\.json/);
+});
+
+test("dry run rejects desktop release evidence without workflow source provenance", (t) => {
+  const root = createReleaseFixture(t);
+  rmSync(join(root, "reports", "release", "desktop", "release-evidence-source.json"));
+  writeManifest(root, "reports/release/desktop/release-evidence-SHA256SUMS.txt", [
+    [readFile(root, "reports/release/desktop/release-evidence.json"), "reports/release/desktop/release-evidence.json"],
+  ]);
+
+  const result = runDraft(root);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /missing desktop evidence source sidecar/);
 });

@@ -538,6 +538,13 @@ function checkReleaseToolingFiles() {
     "Desktop release evidence verifier binds release evidence JSON to its checksum manifest",
   );
   passIf(
+    desktopEvidenceVerifier.includes("release-evidence-source.json") &&
+      desktopEvidenceVerifier.includes("--require-source") &&
+      desktopEvidenceVerifier.includes("workflowRun.headSha must match releaseTagCommit") &&
+      desktopEvidenceVerifier.includes("Package Formal Desktop Evidence"),
+    "Desktop release evidence verifier can require formal workflow source provenance",
+  );
+  passIf(
     desktopEvidenceVerifier.includes(
       "must mention the artifact path, artifact file name, or artifact sha256",
     ),
@@ -561,6 +568,9 @@ function checkReleaseToolingFiles() {
     desktopEvidenceDownloader.includes("Package Formal Desktop Evidence") &&
       desktopEvidenceDownloader.includes("--run-id is required") &&
       desktopEvidenceDownloader.includes("verify-desktop-release-evidence.mjs") &&
+      desktopEvidenceDownloader.includes("--require-source") &&
+      desktopEvidenceDownloader.includes("release-evidence-source.json") &&
+      desktopEvidenceDownloader.includes("workflowDatabaseId") &&
       desktopEvidenceDownloader.includes("artifact.expired") &&
       desktopEvidenceDownloader.includes("reports/release/desktop/") &&
       desktopEvidenceDownloader.includes("check-runs/${checkRunId}/annotations"),
@@ -663,6 +673,11 @@ function checkReleaseToolingFiles() {
     "Publish preflight verifies release provenance",
   );
   passIf(
+    releasePublishPreflight.includes("verify-desktop-release-evidence.mjs") &&
+      releasePublishPreflight.includes("--require-source"),
+    "Publish preflight requires formal Desktop workflow source provenance",
+  );
+  passIf(
     releasePublishPreflight.includes("Verify GitHub CLI publish readiness") &&
       releasePublishPreflight.includes("ATLASTERM_RELEASE_GH_COMMAND") &&
       releasePublishPreflight.includes('auth", "status') &&
@@ -686,6 +701,8 @@ function checkReleaseToolingFiles() {
       releaseProvenanceGenerator.includes(
         "reports/release/desktop/release-evidence-SHA256SUMS.txt",
       ) &&
+      releaseProvenanceGenerator.includes("release-evidence-source.json") &&
+      releaseProvenanceGenerator.includes("verify-desktop-release-evidence.mjs --require-source") &&
       releaseProvenanceGenerator.includes(
         "reports/release/sync/backup-restore-smoke-SHA256SUMS.txt",
       ),
@@ -700,6 +717,8 @@ function checkReleaseToolingFiles() {
       releaseProvenanceVerifier.includes("release notes hash mismatch") &&
       releaseProvenanceVerifier.includes("artifact hash mismatch") &&
       releaseProvenanceVerifier.includes("requiredChecksumManifests") &&
+      releaseProvenanceVerifier.includes("release-evidence-source.json") &&
+      releaseProvenanceVerifier.includes("verify-desktop-release-evidence.mjs --require-source") &&
       releaseProvenanceVerifier.includes(
         "unexpected Public Beta checksum manifest is staged",
       ),
@@ -1386,6 +1405,7 @@ function checkReleaseDocs() {
         "SHA256",
         "SBOM-SHA256SUMS.txt",
         "release-evidence.json",
+        "release-evidence-source.json",
         "release-evidence-SHA256SUMS.txt",
         "release-provenance.json",
         "release-provenance-SHA256SUMS.txt",
@@ -1418,6 +1438,7 @@ function checkReleaseDocs() {
         "release-provenance.json",
         "npm run qa:release:public",
         "npm run qa:release:public:fixture",
+        "release-evidence-source.json",
         "node scripts/check-public-release-readiness.mjs",
         expectedReleaseTag,
       ],
@@ -1443,6 +1464,7 @@ function checkReleaseDocs() {
         "notarization",
         "Linux",
         "release-evidence.json",
+        "release-evidence-source.json",
         "release-evidence-SHA256SUMS.txt",
         "artifact sha256",
         "manifest hash",

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -20,6 +20,7 @@ function createFixture(t) {
     rmSync(root, { recursive: true, force: true });
   });
 
+  writeFile(root, "package.json", JSON.stringify({ version: "0.1.0-beta.1" }));
   for (const [path, content] of FIXTURE_ARTIFACTS) {
     writeFile(root, path, content);
   }
@@ -80,12 +81,50 @@ function writeEvidence(root, artifacts) {
   );
 }
 
+function writeEvidenceSource(root, overrides = {}) {
+  const source = JSON.stringify(
+    {
+      artifactName: "desktop-release-evidence",
+      formalEvidenceJob: {
+        conclusion: "success",
+        databaseId: 123456780,
+        name: "Package Formal Desktop Evidence",
+        status: "completed",
+      },
+      importedAt: "2026-06-21T00:00:00.000Z",
+      releaseRef: "v0.1.0-beta.1",
+      releaseTagCommit: "abc123",
+      repository: "JoeWorkspace/JoeSSH",
+      sourceVersion: 1,
+      workflowRun: {
+        conclusion: "success",
+        headSha: "abc123",
+        id: "123456789",
+        status: "completed",
+        url: "https://github.example/actions/runs/123456789",
+        workflowDatabaseId: 987654321,
+        workflowName: "Desktop Release Artifacts",
+      },
+      ...overrides,
+    },
+    null,
+    2,
+  );
+  writeFile(root, "reports/release/desktop/release-evidence-source.json", source);
+  const existingManifest = readFileSync(join(root, "reports", "release", "desktop", "release-evidence-SHA256SUMS.txt"), "utf8");
+  writeFile(
+    root,
+    "reports/release/desktop/release-evidence-SHA256SUMS.txt",
+    `${existingManifest.trimEnd()}\n${sha256(source)}  reports/release/desktop/release-evidence-source.json\n`,
+  );
+}
+
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
 }
 
-function runChecker(root) {
-  return spawnSync(process.execPath, [CHECKER_PATH, "--root", root], {
+function runChecker(root, args = []) {
+  return spawnSync(process.execPath, [CHECKER_PATH, "--root", root, ...args], {
     encoding: "utf8",
   });
 }
@@ -95,6 +134,33 @@ test("accepts complete desktop release evidence", (t) => {
 
   assert.equal(result.status, 0);
   assert.match(result.stdout, /Desktop release evidence verified for 3 artifact/);
+});
+
+test("accepts formal desktop evidence with a workflow source sidecar", (t) => {
+  const root = createFixture(t);
+  writeEvidenceSource(root);
+
+  const result = runChecker(root, ["--require-source"]);
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /Desktop release evidence verified for 3 artifact/);
+});
+
+test("rejects formal desktop evidence without a workflow source sidecar", (t) => {
+  const result = runChecker(createFixture(t), ["--require-source"]);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /missing desktop evidence source sidecar/);
+});
+
+test("rejects formal desktop evidence source sidecars from a different release ref", (t) => {
+  const root = createFixture(t);
+  writeEvidenceSource(root, { releaseRef: "v0.1.0-beta.2" });
+
+  const result = runChecker(root, ["--require-source"]);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /releaseRef must be v0\.1\.0-beta\.1/);
 });
 
 test("rejects unsigned Windows artifacts", (t) => {
