@@ -105,7 +105,7 @@
     "qa:sync:release-smoke": "node scripts/smoke-self-hosted-sync.mjs --packaged-release",
     "qa:sync:self-hosted-smoke": "node scripts/smoke-self-hosted-sync.mjs",
     "qa:tauri": "cd apps/desktop/src-tauri && cargo build --release",
-    "release:desktop:build": "npm run tauri:build -w @atlasterm/desktop",
+    "release:desktop:build": "node scripts/build-desktop-release.mjs",
     "release:desktop:package": "node scripts/package-desktop-release.mjs --require-platforms windows,macos,linux",
     "release:desktop:checksums": "npm run release:desktop:package",
     "release:desktop:verify-evidence": "node scripts/verify-desktop-release-evidence.mjs",
