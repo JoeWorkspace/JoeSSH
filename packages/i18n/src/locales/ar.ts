@@ -227,6 +227,7 @@ export const ar = {
   "desktop.connectionSwitched": "تم التبديل إلى {name}",
   "desktop.connectionMoved": "تم نقل {connection} إلى {group}",
   "desktop.connectionsImported": "تم استيراد {count} اتصال",
+  "desktop.connectionsImportFailed": "Could not import connections. Choose a valid JoeSSH connections JSON file.",
   "desktop.connectionConnectToast": "اتصال: {name}",
   "desktop.connectionCreated": "تم إنشاء الاتصال {name}",
   "desktop.connectionTestResult": "اختبار الاتصال: {result}",

@@ -6,6 +6,16 @@ import { isSafeSftpEntryName, joinSftpRemoteEntryPath, joinSftpRemotePath, norma
 
 const entry = (name: string, is_dir = false) => ({ name, is_dir, size: is_dir ? null : 10 });
 
+function deferred<T>() {
+  let resolve: (value: T) => void = () => {};
+  let reject: (reason: unknown) => void = () => {};
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, reject, resolve };
+}
+
 describe("useSftpDirectory", () => {
   it("stays idle and inactive when no list function is provided", () => {
     const { result } = renderHook(() => useSftpDirectory(undefined));
@@ -67,6 +77,34 @@ describe("useSftpDirectory", () => {
     act(() => result.current.open("/srv/logs"));
     await waitFor(() => expect(result.current.path).toBe("/srv/logs"));
     expect(list).toHaveBeenLastCalledWith("/srv/logs");
+  });
+
+  it("keeps slow stale directory listings from overwriting the current path", async () => {
+    const first = deferred<ReturnType<typeof entry>[]>();
+    const second = deferred<ReturnType<typeof entry>[]>();
+    const list = vi
+      .fn()
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise);
+    const { result } = renderHook(() => useSftpDirectory(list, "/srv"));
+
+    await waitFor(() => expect(list).toHaveBeenCalledWith("/srv"));
+    act(() => result.current.open("/srv/logs"));
+    await waitFor(() => expect(list).toHaveBeenCalledWith("/srv/logs"));
+
+    await act(async () => {
+      second.resolve([entry("current.log")]);
+      await second.promise;
+    });
+    await waitFor(() => expect(result.current.status).toEqual({ phase: "ready", entries: [entry("current.log")] }));
+
+    await act(async () => {
+      first.resolve([entry("stale.log")]);
+      await first.promise;
+    });
+
+    expect(result.current.path).toBe("/srv/logs");
+    expect(result.current.status).toEqual({ phase: "ready", entries: [entry("current.log")] });
   });
 
   it("normalizes opened paths before reloading", async () => {

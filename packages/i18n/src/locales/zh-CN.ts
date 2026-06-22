@@ -84,6 +84,7 @@ export const zhCN = {
   "desktop.connectionSwitched": "已切换到{name}",
   "desktop.connectionMoved": "已将{connection}移动到{group}",
   "desktop.connectionsImported": "已导入{count}个连接",
+  "desktop.connectionsImportFailed": "Could not import connections. Choose a valid JoeSSH connections JSON file.",
   "desktop.connectionConnectToast": "连接：{name}",
   "desktop.connectionCreated": "连接{name}已创建",
   "desktop.connectionTestResult": "连接测试：{result}",

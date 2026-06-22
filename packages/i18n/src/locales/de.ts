@@ -227,6 +227,7 @@ export const de = {
   "desktop.connectionSwitched": "Zu {name} gewechselt",
   "desktop.connectionMoved": "{connection} nach {group} verschoben",
   "desktop.connectionsImported": "{count} Verbindungen importiert",
+  "desktop.connectionsImportFailed": "Could not import connections. Choose a valid JoeSSH connections JSON file.",
   "desktop.connectionConnectToast": "Verbinden: {name}",
   "desktop.connectionCreated": "Verbindung {name} erstellt",
   "desktop.connectionTestResult": "Verbindungstest: {result}",

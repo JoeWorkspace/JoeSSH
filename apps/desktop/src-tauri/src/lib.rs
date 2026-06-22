@@ -12,11 +12,11 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use atlasterm_core::security::{detect_dangerous_command, DangerousCommandAction};
 use atlasterm_core::{
     probe_host_key, probe_tcp, validate_local_bind_addr, HostKeyPolicy, ProbeOutcome, PtyOutput,
     PtyWriter, SftpEntry, SshAuth, SshClient, SshConfig, TcpForwardHandle,
 };
-use atlasterm_core::security::{detect_dangerous_command, DangerousCommandAction};
 use serde::{Deserialize, Serialize};
 use tauri::{Emitter, Manager};
 use tokio::sync::Mutex;
@@ -25,11 +25,11 @@ use uuid::Uuid;
 const KNOWN_HOSTS_FILE: &str = "known-hosts.json";
 const KNOWN_HOSTS_FILE_VERSION: u8 = 1;
 const HOST_KEY_VERIFICATION_FAILED: &str = "host key verification failed";
-const HOST_KEY_CONFIRMATION_REQUIRED: &str =
-    "host key confirmation required before authentication";
+const HOST_KEY_CONFIRMATION_REQUIRED: &str = "host key confirmation required before authentication";
 const HOST_KEY_STORAGE_UNAVAILABLE: &str = "known-host storage unavailable";
 const SFTP_MAX_TRANSFER_BYTES: usize = 25 * 1024 * 1024;
 const SFTP_TRANSFER_LIMIT_EXCEEDED: &str = "sftp transfer exceeds the desktop safety limit";
+const SFTP_REMOTE_PATH_UNSAFE: &str = "sftp remote path is unsafe";
 const SSH_EXEC_COMMAND_BLOCKED: &str = "ssh exec command blocked by desktop safety policy";
 const PTY_COMMAND_BLOCKED: &str = "pty input blocked by desktop safety policy";
 const PTY_COMMAND_BUFFER_MAX_BYTES: usize = 16 * 1024;
@@ -306,6 +306,7 @@ async fn sftp_list(
     session_id: String,
     path: String,
 ) -> Result<Vec<SftpEntry>, String> {
+    let path = normalize_sftp_remote_path(&path)?;
     let client = session(&state, &session_id).await?;
     let sftp = client.open_sftp().await.map_err(sanitize_ssh_error)?;
     sftp.list_dir(&path).await.map_err(sanitize_ssh_error)
@@ -318,6 +319,7 @@ async fn sftp_read(
     session_id: String,
     path: String,
 ) -> Result<Vec<u8>, String> {
+    let path = normalize_sftp_remote_path(&path)?;
     let client = session(&state, &session_id).await?;
     let sftp = client.open_sftp().await.map_err(sanitize_ssh_error)?;
     let data = sftp
@@ -336,6 +338,7 @@ async fn sftp_write(
     data: Vec<u8>,
 ) -> Result<(), String> {
     ensure_sftp_transfer_size(data.len())?;
+    let path = normalize_sftp_remote_path(&path)?;
     let client = session(&state, &session_id).await?;
     let sftp = client.open_sftp().await.map_err(sanitize_ssh_error)?;
     sftp.upload(&path, &data).await.map_err(sanitize_ssh_error)
@@ -472,7 +475,11 @@ async fn pty_open(
         }
         return Err("session not found".to_string());
     }
-    state.pty_input_buffers.lock().await.insert(pty_id, Vec::new());
+    state
+        .pty_input_buffers
+        .lock()
+        .await
+        .insert(pty_id, Vec::new());
 
     let output_event = format!("pty://output/{pty_id}");
     let exit_event = format!("pty://exit/{pty_id}");
@@ -807,8 +814,8 @@ fn persist_known_host_if_first_use(
 }
 
 fn parse_known_hosts_file(text: &str) -> Result<HashMap<String, KnownHostRecord>, String> {
-    let value =
-        serde_json::from_str::<serde_json::Value>(text).map_err(|_| HOST_KEY_STORAGE_UNAVAILABLE.to_string())?;
+    let value = serde_json::from_str::<serde_json::Value>(text)
+        .map_err(|_| HOST_KEY_STORAGE_UNAVAILABLE.to_string())?;
 
     if value.get("hosts").is_some() {
         let file = serde_json::from_value::<KnownHostsFile>(value)
@@ -906,6 +913,53 @@ fn ensure_sftp_transfer_size(size_bytes: usize) -> Result<(), String> {
     Ok(())
 }
 
+fn normalize_sftp_remote_path(path: &str) -> Result<String, String> {
+    let trimmed = path.trim();
+    if trimmed.is_empty() || trimmed.chars().any(is_unsafe_sftp_path_char) {
+        return Err(SFTP_REMOTE_PATH_UNSAFE.to_string());
+    }
+
+    let absolute = trimmed.starts_with('/');
+    let mut parts = Vec::new();
+    for segment in trimmed.split('/') {
+        if segment.is_empty() || segment == "." {
+            continue;
+        }
+        if segment == ".." {
+            return Err(SFTP_REMOTE_PATH_UNSAFE.to_string());
+        }
+        parts.push(segment);
+    }
+
+    if absolute {
+        Ok(if parts.is_empty() {
+            "/".to_string()
+        } else {
+            format!("/{}", parts.join("/"))
+        })
+    } else if parts.is_empty() {
+        Ok(".".to_string())
+    } else {
+        Ok(parts.join("/"))
+    }
+}
+
+fn is_unsafe_sftp_path_char(ch: char) -> bool {
+    let code = ch as u32;
+    ch == '\\'
+        || matches!(
+            code,
+            0x00..=0x1f
+                | 0x7f..=0x9f
+                | 0x00ad
+                | 0x061c
+                | 0x200b..=0x200f
+                | 0x202a..=0x202e
+                | 0x2060..=0x206f
+                | 0xfeff
+        )
+}
+
 fn ensure_forward_bind_addr(bind_addr: &str) -> Result<(), String> {
     validate_local_bind_addr(bind_addr).map_err(|_| FORWARD_BIND_ADDR_UNSAFE.to_string())
 }
@@ -917,10 +971,9 @@ fn ensure_safe_ssh_exec_command(command: &str) -> Result<(), String> {
 
     match detected.action {
         DangerousCommandAction::Warn => Ok(()),
-        DangerousCommandAction::Block => Err(format!(
-            "{SSH_EXEC_COMMAND_BLOCKED}: {}",
-            detected.pattern
-        )),
+        DangerousCommandAction::Block => {
+            Err(format!("{SSH_EXEC_COMMAND_BLOCKED}: {}", detected.pattern))
+        }
     }
 }
 
@@ -1045,7 +1098,10 @@ mod tests {
 
     #[test]
     fn host_key_probe_status_classifies_unknown_match_and_changed() {
-        assert_eq!(host_key_probe_status(None, "SHA256:new"), HostKeyProbeStatus::Unknown);
+        assert_eq!(
+            host_key_probe_status(None, "SHA256:new"),
+            HostKeyProbeStatus::Unknown
+        );
         assert_eq!(
             host_key_probe_status(Some("SHA256:pinned"), "SHA256:pinned"),
             HostKeyProbeStatus::Match
@@ -1073,6 +1129,40 @@ mod tests {
             }),
             SFTP_TRANSFER_LIMIT_EXCEEDED
         );
+    }
+
+    #[test]
+    fn sftp_remote_path_guard_normalizes_posix_paths() {
+        assert_eq!(normalize_sftp_remote_path("/").unwrap(), "/");
+        assert_eq!(
+            normalize_sftp_remote_path("////srv//logs/./").unwrap(),
+            "/srv/logs"
+        );
+        assert_eq!(normalize_sftp_remote_path(".").unwrap(), ".");
+        assert_eq!(
+            normalize_sftp_remote_path("logs/audit.log").unwrap(),
+            "logs/audit.log"
+        );
+    }
+
+    #[test]
+    fn sftp_remote_path_guard_rejects_unsafe_paths() {
+        for path in [
+            "",
+            "   ",
+            "../etc/passwd",
+            "/srv/../etc/passwd",
+            "/srv\\logs",
+            "/srv/bad\u{0000}name",
+            "/srv/bad\u{0008}name",
+            "/srv/\u{202e}hidden",
+            "/srv/\u{200f}hidden",
+        ] {
+            assert_eq!(
+                normalize_sftp_remote_path(path).unwrap_err(),
+                SFTP_REMOTE_PATH_UNSAFE
+            );
+        }
     }
 
     #[test]
@@ -1156,7 +1246,12 @@ mod tests {
         let mut known_hosts = HashMap::new();
         known_hosts.insert(
             "example.com:22".to_string(),
-            known_host_record("example.com:22", "SHA256:abc", 1_700_000_000_000, KnownHostSource::Confirmed),
+            known_host_record(
+                "example.com:22",
+                "SHA256:abc",
+                1_700_000_000_000,
+                KnownHostSource::Confirmed,
+            ),
         );
 
         write_known_hosts_file(&path, &known_hosts).unwrap();

@@ -366,8 +366,8 @@ export type SftpDirectoryView = {
 
 export type SftpTransferView = {
   status: { phase: "idle" } | { phase: "transferring" } | { phase: "error"; message: string };
-  onUpload: (file: File) => void;
-  onDownload: (name: string, size: number | null) => void;
+  onUpload: (file: File, directoryPath?: string) => void;
+  onDownload: (name: string, size: number | null, directoryPath?: string) => void;
 };
 
 function SftpStateNotice({
@@ -403,7 +403,7 @@ export const SftpPanel = memo(function SftpPanel({ sftpItems, formatters, t, dir
   const liveEntries = live?.status.phase === "ready" ? live.status.entries : undefined;
   const canTransfer = Boolean(transfer);
   const uploadInputRef = useRef<HTMLInputElement>(null);
-  const [pendingUploadFile, setPendingUploadFile] = useState<File | null>(null);
+  const [pendingUpload, setPendingUpload] = useState<{ file: File; directoryPath: string } | null>(null);
   const [selectedDownloadName, setSelectedDownloadName] = useState<string | null>(null);
   const selectedEntry = liveEntries?.find((entry) => isSafeSftpEntryName(entry.name) && !entry.is_dir && entry.name === selectedDownloadName);
   const canDownloadSelected = Boolean(transfer && selectedEntry);
@@ -411,17 +411,22 @@ export const SftpPanel = memo(function SftpPanel({ sftpItems, formatters, t, dir
 
   useEffect(() => {
     if (!canTransfer) {
-      setPendingUploadFile(null);
+      setPendingUpload(null);
     }
   }, [canTransfer]);
+
+  useEffect(() => {
+    setPendingUpload(null);
+    setSelectedDownloadName(null);
+  }, [live?.path, liveEntries]);
 
   function queueOrUploadFile(file: File) {
     const collision = liveEntries?.some((entry) => entry.name === file.name);
     if (collision) {
-      setPendingUploadFile(file);
+      setPendingUpload({ file, directoryPath: live?.path ?? "." });
       return;
     }
-    transfer?.onUpload(file);
+    transfer?.onUpload(file, live?.path);
   }
 
   function handleUploadFileChange(event: FormEvent<HTMLInputElement>) {
@@ -432,9 +437,12 @@ export const SftpPanel = memo(function SftpPanel({ sftpItems, formatters, t, dir
   }
 
   function confirmPendingUpload() {
-    if (!pendingUploadFile) return;
-    transfer?.onUpload(pendingUploadFile);
-    setPendingUploadFile(null);
+    if (!pendingUpload || pendingUpload.directoryPath !== live?.path) {
+      setPendingUpload(null);
+      return;
+    }
+    transfer?.onUpload(pendingUpload.file, pendingUpload.directoryPath);
+    setPendingUpload(null);
   }
 
   return (
@@ -455,7 +463,7 @@ export const SftpPanel = memo(function SftpPanel({ sftpItems, formatters, t, dir
             size="sm"
             variant="ghost"
             disabled={!canDownloadSelected}
-            onClick={selectedEntry && transfer ? () => transfer.onDownload(selectedEntry.name, selectedEntry.size) : undefined}
+            onClick={selectedEntry && transfer ? () => transfer.onDownload(selectedEntry.name, selectedEntry.size, live?.path) : undefined}
             title={!canTransfer ? t("desktop.noSessionActionDetail") : undefined}
           >
             <DownloadCloud size={13} aria-hidden="true" /> {t("desktop.download")}
@@ -483,12 +491,12 @@ export const SftpPanel = memo(function SftpPanel({ sftpItems, formatters, t, dir
         {transfer && transfer.status.phase === "error" ? (
           <SftpStateNotice detail={transfer.status.message} icon="error" role="alert" title={t("desktop.sftpTransferError")} tone="error" />
         ) : null}
-        {pendingUploadFile ? (
+        {pendingUpload ? (
           <div className="sftp-overwrite-confirm" role="group" aria-label={t("desktop.sftpOverwriteTitle")}>
             <strong>{t("desktop.sftpOverwriteTitle")}</strong>
-            <small>{t("desktop.sftpOverwriteDetail", { name: pendingUploadFile.name })}</small>
+            <small>{t("desktop.sftpOverwriteDetail", { name: pendingUpload.file.name })}</small>
             <span className="sftp-overwrite-confirm-actions">
-              <Button size="sm" variant="ghost" disabled={transferBusy} onClick={() => setPendingUploadFile(null)}>
+              <Button size="sm" variant="ghost" disabled={transferBusy} onClick={() => setPendingUpload(null)}>
                 <X size={13} aria-hidden="true" /> {t("desktop.sftpOverwriteCancel")}
               </Button>
               <Button size="sm" variant="ghost" disabled={transferBusy} onClick={confirmPendingUpload}>
@@ -881,6 +889,7 @@ export const ForwardingPanel = memo(function ForwardingPanel({ t, rules = FORWAR
 export type SettingsConnectionsIO = {
   exportConnections: readonly { name: string; host: string; group: string; tags: readonly string[] }[];
   onImport: (parsed: unknown) => void;
+  onImportError?: () => void;
 };
 
 export type SettingsKnownHosts = {
@@ -928,7 +937,7 @@ export const SettingsPanel = memo(function SettingsPanel({ t, connectionsIO, kno
         const parsed = JSON.parse(String(reader.result));
         connectionsIO?.onImport(parsed);
       } catch {
-        // invalid file
+        connectionsIO?.onImportError?.();
       }
     };
     reader.readAsText(file);

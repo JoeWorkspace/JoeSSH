@@ -18,6 +18,8 @@ const releaseScriptNames = [
   "qa:lighthouse",
   "test:lighthouse-audit",
   "qa:lighthouse-audit",
+  "test:public-beta-dogfood",
+  "qa:public-beta-dogfood",
   "qa:rust-advisory",
   "qa:web-admin-proxy-smoke",
   "qa:web-admin-sync-topology-smoke",
@@ -50,6 +52,8 @@ const releaseScriptNames = [
   "qa:desktop-release-evidence-download",
   "test:desktop-release-evidence-preflight",
   "qa:desktop-release-evidence-preflight",
+  "test:desktop-unsigned-staging-report",
+  "qa:desktop-unsigned-staging-report",
   "test:web-release",
   "qa:web-release",
   "test:release-sbom",
@@ -83,6 +87,8 @@ const releaseScriptNames = [
   "release:desktop:evidence-preflight",
   "release:desktop:evidence-workflow",
   "release:desktop:draft",
+  "release:desktop:unsigned-staging-report",
+  "release:dogfood-template",
   "release:publish-preflight",
   "release:provenance",
   "release:provenance:verify",
@@ -107,6 +113,18 @@ function fixtureScriptValue(name, overrides = {}) {
   }
   if (name === "qa:mobile-public-env") {
     return "npm run test:mobile-public-env && node scripts/check-mobile-public-env.mjs";
+  }
+  if (name === "test:public-beta-dogfood") {
+    return "node --test scripts/verify-public-beta-dogfood-evidence.test.mjs";
+  }
+  if (name === "qa:public-beta-dogfood") {
+    return "node scripts/verify-public-beta-dogfood-evidence.mjs";
+  }
+  if (name === "test:desktop-unsigned-staging-report") {
+    return "node --test scripts/report-desktop-unsigned-staging.test.mjs";
+  }
+  if (name === "qa:desktop-unsigned-staging-report") {
+    return "npm run test:desktop-unsigned-staging-report";
   }
   if (name === "qa") {
     return "npm run lint && npm run qa:desktop-release-diagnostics && npm run qa:desktop-release-parity && npm run qa:lighthouse-audit && npm run qa:e2e:fresh";
@@ -149,6 +167,12 @@ function fixtureScriptValue(name, overrides = {}) {
   }
   if (name === "release:desktop:evidence-workflow") {
     return "node scripts/desktop-release-evidence-preflight.mjs --dispatch";
+  }
+  if (name === "release:desktop:unsigned-staging-report") {
+    return "node scripts/report-desktop-unsigned-staging.mjs";
+  }
+  if (name === "release:dogfood-template") {
+    return "node scripts/verify-public-beta-dogfood-evidence.mjs --write-template reports/dogfood/public-beta/template.json";
   }
   if (name === "release:verify-checksums") {
     return "node scripts/verify-artifact-checksums.mjs --all-release";
@@ -224,6 +248,12 @@ function createFixture(t, overrides = {}) {
     "scripts/run-real-ssh-smoke-fixture.mjs":
       'reports", "smoke", "desktop", "real-ssh-smoke.json JOESSH_REAL_SSH_PRIVATE_KEY_PATH qa:desktop:real-ssh-smoke:required local forwarding start/traffic/shutdown\n',
     "scripts/run-real-ssh-smoke-fixture.test.mjs": "",
+    "scripts/verify-public-beta-dogfood-evidence.mjs":
+      "desktop-install-launch desktop-connection-host-key desktop-pty-session desktop-command-safety desktop-sftp-transfer desktop-forwarding web-admin-live-sync sync-device-flow sync-backup-restore-rollback release-evidence-review open P0 open P1\n",
+    "scripts/verify-public-beta-dogfood-evidence.test.mjs": "",
+    "scripts/report-desktop-unsigned-staging.mjs":
+      "publicReleaseEvidence: false reports/release authenticode sha256File(path) versionMatchesPackage\n",
+    "scripts/report-desktop-unsigned-staging.test.mjs": "",
     "scripts/package-desktop-release.mjs":
       "artifactSha256 sha256: artifactSha256 Desktop bundle source contains artifact(s) that do not include releaseVersion basename(artifact.path) validateSignatureEvidence(sourceArtifacts) Windows Desktop artifacts require --windows-signature-verification mkdirSync(outputDir\n",
     "scripts/package-desktop-release.test.mjs": "",
@@ -290,7 +320,7 @@ function createFixture(t, overrides = {}) {
       "tauri::Builder::default().invoke_handler(tauri::generate_handler![open_session]);",
       "// ssh_host_key_probe enum HostKeyProbeStatus struct KnownHostRecord struct KnownHostsFile",
       "// known_hosts_list known_hosts_remove KnownHostSource::Legacy KnownHostSource::Tofu KnownHostSource::Confirmed",
-      "// SFTP_MAX_TRANSFER_BYTES SFTP_TRANSFER_LIMIT_EXCEEDED download_limited(&path, SFTP_MAX_TRANSFER_BYTES) sanitize_sftp_transfer_error ensure_sftp_transfer_size(data.len()) sftp_transfer_errors_use_sftp_limit_copy sftp_transfer_size_guard_rejects_oversized_payloads",
+      "// SFTP_MAX_TRANSFER_BYTES SFTP_TRANSFER_LIMIT_EXCEEDED SFTP_REMOTE_PATH_UNSAFE normalize_sftp_remote_path(&path)? download_limited(&path, SFTP_MAX_TRANSFER_BYTES) sanitize_sftp_transfer_error ensure_sftp_transfer_size(data.len()) sftp_remote_path_guard_rejects_unsafe_paths sftp_transfer_errors_use_sftp_limit_copy sftp_transfer_size_guard_rejects_oversized_payloads",
       "// OutputLimitExceeded command output exceeded desktop safety limit",
       "// SSH_EXEC_COMMAND_BLOCKED ensure_safe_ssh_exec_command(&command) detect_dangerous_command(command) DangerousCommandAction::Block ssh_exec_native_safety_blocks_destructive_commands",
       "// PTY_COMMAND_BLOCKED pty_input_buffers ensure_safe_pty_write(&state, id, &data) apply_pty_input_safety pty_input_safety_blocks_destructive_line_across_chunks",
@@ -308,19 +338,19 @@ function createFixture(t, overrides = {}) {
     "apps/desktop/src/sftpRemotePath.ts":
       "normalizeSftpRemotePath\njoinSftpRemotePath\nisSafeSftpEntryName\njoinSftpRemoteEntryPath\nUNSAFE_ENTRY_NAME_PATTERN\nparentSftpRemotePath\n",
     "apps/desktop/src/useSftpDirectory.test.ts":
-      "joinSftpRemotePath builds stable file payload paths\nvalidates SFTP listing entry names before using them as path segments\njoinSftpRemoteEntryPath refuses names that escape the current directory\nnormalizes opened paths before reloading\nfile name #1.txt\n",
+      "joinSftpRemotePath builds stable file payload paths\nvalidates SFTP listing entry names before using them as path segments\njoinSftpRemoteEntryPath refuses names that escape the current directory\nnormalizes opened paths before reloading\nkeeps slow stale directory listings from overwriting the current path\nfile name #1.txt\n",
     "apps/desktop/src/useSftpTransfer.ts":
       "SFTP_TRANSFER_MAX_BYTES\nknownSizeBytes\nrejectTooLarge\ndata.length > maxBytes\n",
     "apps/desktop/src/useSftpTransfer.test.ts":
       "rejects downloads with known sizes over the transfer limit before reading\nrejects downloaded payloads over the transfer limit\nrejects upload payloads over the transfer limit before writing\n",
     "apps/desktop/src/useForwardRules.ts":
-      "pending?: boolean\ninFlightRules\ninFlightRules.current.has(id)\ninFlightRules.current.add(id)\ninFlightRules.current.delete(id)\n",
+      "pending?: boolean\ninFlightRules\nruntimeRef\nbackendSeq\ninFlightRules.current.has(id)\ninFlightRules.current.add(id)\ninFlightRules.current.delete(id)\nvoid stop(forwardId).catch(() => {})\n",
     "apps/desktop/src/useForwardRules.test.ts":
-      "ignores duplicate start calls while a forward is pending\nignores duplicate stop calls while a forward stop is pending\ntoHaveBeenCalledTimes(1)\n",
+      "ignores duplicate start calls while a forward is pending\nignores duplicate stop calls while a forward stop is pending\nstops active native forwards and clears runtime state when the backend session changes\nignores stale start results after the backend session changes\ntoHaveBeenCalledTimes(1)\n",
     "apps/desktop/src/panels.tsx":
-      "knownHosts.entries knownHosts.onRemove desktop.knownHostFirstSeen desktop.knownHostLastSeen desktop.removeKnownHost desktop.confirmKnownHostRemove desktop.confirmKnownHostsClear pendingKnownHostAction\npendingUploadFile desktop.sftpOverwriteTitle desktop.sftpOverwriteDetail desktop.sftpOverwriteConfirm desktop.sftpOverwriteCancel transfer?.onUpload(pendingUploadFile)\nconst isPending = Boolean(rt?.pending)\ndisabled={!forwards || isPending}\n",
+      "knownHosts.entries knownHosts.onRemove desktop.knownHostFirstSeen desktop.knownHostLastSeen desktop.removeKnownHost desktop.confirmKnownHostRemove desktop.confirmKnownHostsClear pendingKnownHostAction\npendingUpload directoryPath desktop.sftpOverwriteTitle desktop.sftpOverwriteDetail desktop.sftpOverwriteConfirm desktop.sftpOverwriteCancel transfer?.onUpload(pendingUpload.file, pendingUpload.directoryPath)\nconst isPending = Boolean(rt?.pending)\ndisabled={!forwards || isPending}\n",
     "apps/desktop/src/panels.test.tsx":
-      "lists known-host pins with audit metadata and confirms before removing one pin\nshows the stored known-host count and confirms before clearing them\nSHA256:abc\nRemove host key\nrequires confirmation before overwriting an existing SFTP file\nReplace existing file?\nA file named app.log already exists in this folder.\nOverwrite\ndisables forwarding controls while a start or stop action is pending\npending: true\n",
+      "lists known-host pins with audit metadata and confirms before removing one pin\nshows the stored known-host count and confirms before clearing them\nSHA256:abc\nRemove host key\nrequires confirmation before overwriting an existing SFTP file\nReplace existing file?\nA file named app.log already exists in this folder.\nOverwrite\nclears pending SFTP overwrite confirmation when the directory changes\ndisables forwarding controls while a start or stop action is pending\npending: true\n",
     "apps/desktop/src/usePtySession.ts":
       "export type PtyStatus\nexitCode\nsetExitCode(code)\nblockedReason\nptyCommandBlockedReason\nresize: (ptyId: string, cols: number, rows: number) => Promise<void>\n",
     "apps/desktop/src/XtermTerminal.tsx":
@@ -331,6 +361,8 @@ function createFixture(t, overrides = {}) {
       "moves to closed when the pty emits exit\nresult.current.exitCode\nforwards write and resize to the open pty\nsurfaces native PTY command blocks and clears them after a safe write\n",
     "docs/release-checklist.md":
       "Public Beta docs/repository-release-handoff.md SBOM SHA256 SBOM-SHA256SUMS.txt release-evidence.json release-evidence-source.json release-evidence-SHA256SUMS.txt reports/handoff/desktop/formal-evidence-unblock-report.json release-provenance.json release-provenance-SHA256SUMS.txt artifact sha256 manifest hash staged cargo-audit qa:rust-advisory qa:release:public:fixture qa:lighthouse release:publish-preflight backup-restore-smoke.json qa:sync:backup-restore-smoke unknown-host fingerprint changed-host-key blocking per-host known host removal runtime telemetry rollback\n",
+    "docs/public-beta-dogfood-script.md":
+      "Top 10 Tasks desktop-install-launch desktop-connection-host-key desktop-pty-session desktop-command-safety desktop-sftp-transfer desktop-forwarding web-admin-live-sync sync-device-flow sync-backup-restore-rollback release-evidence-review unsigned internal staging signed Desktop formal release evidence release:desktop:unsigned-staging-report reports/handoff/desktop/unsigned-staging-report.json qa:public-beta-dogfood reports/dogfood/public-beta/latest.json\n",
     "docs/repository-release-handoff.md":
       `healthy Git checkout do not publish from the damaged workspace git status --short git fsck --strict git diff --binary release-provenance.json npm run qa:release:public npm run qa:release:public:fixture release-evidence-source.json reports/handoff/desktop/formal-evidence-unblock-report.json node scripts/check-public-release-readiness.mjs v${version}\n`,
     [`docs/release-notes/${version}.md`]:
@@ -378,7 +410,7 @@ function createFixture(t, overrides = {}) {
     "packages/error-monitor/src/index.ts": errorMonitorRuntimeFixture(),
     "packages/error-monitor/src/index.test.ts":
       runtimeDisableTestFixture("error monitor"),
-    "apps/desktop/src/main.tsx": `${appShellFixture("desktop")}\nSFTP_TRANSFER_MAX_BYTES\ndesktop.sftpTransferTooLarge\nknownSizeBytes: size\nfile.size > SFTP_TRANSFER_MAX_BYTES\njoinSftpRemoteEntryPath(sftpDirectory.path, name)\njoinSftpRemoteEntryPath(sftpDirectory.path, file.name)\n`,
+    "apps/desktop/src/main.tsx": `${appShellFixture("desktop")}\nSFTP_TRANSFER_MAX_BYTES\ndesktop.sftpTransferTooLarge\nknownSizeBytes: size\nfile.size > SFTP_TRANSFER_MAX_BYTES\njoinSftpRemoteEntryPath(directoryPath, name)\njoinSftpRemoteEntryPath(directoryPath, file.name)\n`,
     "apps/desktop/src/main.test.tsx":
       runtimeDisableTestFixture("desktop shell"),
     "apps/web/src/main.tsx": appShellFixture("web"),
@@ -1611,6 +1643,10 @@ test("rejects missing Desktop SFTP overwrite and path safety surface", (t) => {
   assert.match(
     result.stdout,
     /FAIL Desktop SFTP transfer resource limit backend includes 'SFTP_MAX_TRANSFER_BYTES'/,
+  );
+  assert.match(
+    result.stdout,
+    /FAIL Desktop SFTP transfer resource limit backend includes 'SFTP_REMOTE_PATH_UNSAFE'/,
   );
 });
 

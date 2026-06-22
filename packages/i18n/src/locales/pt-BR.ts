@@ -227,6 +227,7 @@ export const ptBR = {
   "desktop.connectionSwitched": "Alternado para {name}",
   "desktop.connectionMoved": "{connection} movida para {group}",
   "desktop.connectionsImported": "{count} conexões importadas",
+  "desktop.connectionsImportFailed": "Could not import connections. Choose a valid JoeSSH connections JSON file.",
   "desktop.connectionConnectToast": "Conectar: {name}",
   "desktop.connectionCreated": "Conexão {name} criada",
   "desktop.connectionTestResult": "Teste de conexão: {result}",

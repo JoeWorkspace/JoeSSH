@@ -227,6 +227,7 @@ export const ja = {
   "desktop.connectionSwitched": "{name} に切り替えました",
   "desktop.connectionMoved": "{connection} を {group} に移動しました",
   "desktop.connectionsImported": "{count} 件の接続をインポートしました",
+  "desktop.connectionsImportFailed": "Could not import connections. Choose a valid JoeSSH connections JSON file.",
   "desktop.connectionConnectToast": "接続: {name}",
   "desktop.connectionCreated": "接続 {name} を作成しました",
   "desktop.connectionTestResult": "接続テスト: {result}",

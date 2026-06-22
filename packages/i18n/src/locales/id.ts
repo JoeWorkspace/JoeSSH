@@ -227,6 +227,7 @@ export const id = {
   "desktop.connectionSwitched": "Beralih ke {name}",
   "desktop.connectionMoved": "{connection} dipindahkan ke {group}",
   "desktop.connectionsImported": "{count} koneksi diimpor",
+  "desktop.connectionsImportFailed": "Could not import connections. Choose a valid JoeSSH connections JSON file.",
   "desktop.connectionConnectToast": "Hubungkan: {name}",
   "desktop.connectionCreated": "Koneksi {name} dibuat",
   "desktop.connectionTestResult": "Tes koneksi: {result}",

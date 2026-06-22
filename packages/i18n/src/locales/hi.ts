@@ -227,6 +227,7 @@ export const hi = {
   "desktop.connectionSwitched": "{name} पर स्विच किया गया",
   "desktop.connectionMoved": "{connection} को {group} में ले जाया गया",
   "desktop.connectionsImported": "{count} कनेक्शन आयात किए गए",
+  "desktop.connectionsImportFailed": "Could not import connections. Choose a valid JoeSSH connections JSON file.",
   "desktop.connectionConnectToast": "कनेक्ट करें: {name}",
   "desktop.connectionCreated": "कनेक्शन {name} बनाया गया",
   "desktop.connectionTestResult": "कनेक्शन परीक्षण: {result}",

@@ -227,6 +227,7 @@ export const ko = {
   "desktop.connectionSwitched": "{name}(으)로 전환됨",
   "desktop.connectionMoved": "{connection}을(를) {group}(으)로 이동함",
   "desktop.connectionsImported": "연결 {count}개 가져옴",
+  "desktop.connectionsImportFailed": "Could not import connections. Choose a valid JoeSSH connections JSON file.",
   "desktop.connectionConnectToast": "연결: {name}",
   "desktop.connectionCreated": "연결 {name} 생성됨",
   "desktop.connectionTestResult": "연결 테스트: {result}",

@@ -130,7 +130,7 @@ describe("useForwardRules", () => {
     expect(result.current.runtime.r1).toEqual({ active: true, forwardId: "fwd-x", boundAddr: "127.0.0.1:1", error: "network down" });
   });
 
-  it("clears runtime state when the backend session changes", async () => {
+  it("stops active native forwards and clears runtime state when the backend session changes", async () => {
     const start = vi.fn().mockResolvedValue({ forward_id: "fwd-1", bound_addr: "127.0.0.1:5" });
     const stop = vi.fn().mockResolvedValue(undefined);
     const nextStart = vi.fn().mockResolvedValue({ forward_id: "fwd-2", bound_addr: "127.0.0.1:6" });
@@ -145,6 +145,41 @@ describe("useForwardRules", () => {
 
     rerender({ startFn: nextStart, stopFn: nextStop });
 
+    await waitFor(() => expect(stop).toHaveBeenCalledWith("fwd-1"));
     await waitFor(() => expect(result.current.runtime).toEqual({}));
+  });
+
+  it("ignores stale start results after the backend session changes", async () => {
+    let resolveStart: (value: { forward_id: string; bound_addr: string }) => void = () => {};
+    const start = vi.fn().mockImplementation(
+      () => new Promise<{ forward_id: string; bound_addr: string }>((resolve) => {
+        resolveStart = resolve;
+      }),
+    );
+    const stop = vi.fn().mockResolvedValue(undefined);
+    const nextStart = vi.fn().mockResolvedValue({ forward_id: "fwd-2", bound_addr: "127.0.0.1:6" });
+    const nextStop = vi.fn().mockResolvedValue(undefined);
+    const { result, rerender } = renderHook(
+      ({ startFn, stopFn }) => useForwardRules(startFn, stopFn),
+      { initialProps: { startFn: start, stopFn: stop } },
+    );
+
+    let pendingStart: Promise<void> = Promise.resolve();
+    await act(async () => {
+      pendingStart = result.current.startRule("r1", "127.0.0.1:0", "db", 5432);
+      await Promise.resolve();
+    });
+    expect(result.current.runtime.r1).toEqual({ active: false, pending: true, error: undefined });
+
+    rerender({ startFn: nextStart, stopFn: nextStop });
+    await waitFor(() => expect(result.current.runtime).toEqual({}));
+
+    await act(async () => {
+      resolveStart({ forward_id: "stale-fwd", bound_addr: "127.0.0.1:7" });
+      await pendingStart;
+    });
+
+    expect(result.current.runtime).toEqual({});
+    expect(stop).not.toHaveBeenCalled();
   });
 });

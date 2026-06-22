@@ -119,8 +119,22 @@ describe('main entry point', () => {
     const content = fs.readFileSync(mainPath, 'utf-8');
 
     expect(content).toContain('joinSftpRemoteEntryPath');
-    expect(content).toContain('joinSftpRemoteEntryPath(sftpDirectory.path, name)');
-    expect(content).toContain('joinSftpRemoteEntryPath(sftpDirectory.path, file.name)');
+    expect(content).toContain('handleSftpDownload(name: string, size: number | null, directoryPath = sftpDirectory.path)');
+    expect(content).toContain('handleSftpUploadFile(file: File, directoryPath = sftpDirectory.path)');
+    expect(content).toContain('joinSftpRemoteEntryPath(directoryPath, name)');
+    expect(content).toContain('joinSftpRemoteEntryPath(directoryPath, file.name)');
     expect(content).not.toContain('joinSftpRemotePath(sftpDirectory.path');
+  });
+
+  it('surfaces invalid connection imports instead of reporting zero imported connections', async () => {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const mainPath = path.resolve(__dirname, './main.tsx');
+    const content = fs.readFileSync(mainPath, 'utf-8');
+
+    expect(content).toContain('connectionsImportFailedToast');
+    expect(content).toContain('if (!list)');
+    expect(content).toContain('if (added === 0)');
+    expect(content).toContain('onImportError: () => addToast(connectionsImportFailedToast(t), "error")');
   });
 });

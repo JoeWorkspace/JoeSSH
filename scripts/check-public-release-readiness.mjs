@@ -127,6 +127,8 @@ function checkPackageScripts() {
     "qa:lighthouse",
     "test:lighthouse-audit",
     "qa:lighthouse-audit",
+    "test:public-beta-dogfood",
+    "qa:public-beta-dogfood",
     "qa:rust-advisory",
     "qa:web-admin-proxy-smoke",
     "qa:web-admin-sync-topology-smoke",
@@ -159,6 +161,8 @@ function checkPackageScripts() {
     "qa:desktop-release-evidence-download",
     "test:desktop-release-evidence-preflight",
     "qa:desktop-release-evidence-preflight",
+    "test:desktop-unsigned-staging-report",
+    "qa:desktop-unsigned-staging-report",
     "test:web-release",
     "qa:web-release",
     "test:release-sbom",
@@ -192,6 +196,8 @@ function checkPackageScripts() {
     "release:desktop:evidence-preflight",
     "release:desktop:evidence-workflow",
     "release:desktop:draft",
+    "release:desktop:unsigned-staging-report",
+    "release:dogfood-template",
     "release:publish-preflight",
     "release:provenance",
     "release:provenance:verify",
@@ -500,12 +506,16 @@ function checkReleaseToolingFiles() {
     "scripts/verify-desktop-release-evidence.test.mjs",
     "scripts/download-desktop-release-evidence.mjs",
     "scripts/download-desktop-release-evidence.test.mjs",
+    "scripts/report-desktop-unsigned-staging.mjs",
+    "scripts/report-desktop-unsigned-staging.test.mjs",
     "scripts/desktop-release-evidence-preflight.mjs",
     "scripts/desktop-release-evidence-preflight.test.mjs",
     "scripts/require-real-ssh-smoke-env.mjs",
     "scripts/require-real-ssh-smoke-env.test.mjs",
     "scripts/run-real-ssh-smoke-fixture.mjs",
     "scripts/run-real-ssh-smoke-fixture.test.mjs",
+    "scripts/verify-public-beta-dogfood-evidence.mjs",
+    "scripts/verify-public-beta-dogfood-evidence.test.mjs",
     "scripts/package-web-release.mjs",
     "scripts/package-web-release.test.mjs",
     "scripts/verify-web-release-package.mjs",
@@ -539,6 +549,25 @@ function checkReleaseToolingFiles() {
 
   const desktopPackager =
     readTextIfExists("scripts/package-desktop-release.mjs") ?? "";
+  const dogfoodVerifier =
+    readTextIfExists("scripts/verify-public-beta-dogfood-evidence.mjs") ?? "";
+  const unsignedStagingReporter =
+    readTextIfExists("scripts/report-desktop-unsigned-staging.mjs") ?? "";
+  passIf(
+    dogfoodVerifier.includes("desktop-install-launch") &&
+      dogfoodVerifier.includes("sync-backup-restore-rollback") &&
+      dogfoodVerifier.includes("open P0") &&
+      dogfoodVerifier.includes("open P1"),
+    "Public Beta dogfood verifier covers top operator tasks and P0/P1 blockers",
+  );
+  passIf(
+    unsignedStagingReporter.includes("publicReleaseEvidence: false") &&
+      unsignedStagingReporter.includes("reports/release") &&
+      unsignedStagingReporter.includes("authenticode") &&
+      unsignedStagingReporter.includes("sha256File(path)") &&
+      unsignedStagingReporter.includes("versionMatchesPackage"),
+    "Desktop unsigned staging reporter records handoff evidence without weakening release artifacts",
+  );
   passIf(
     desktopPackager.includes("artifactSha256") &&
       desktopPackager.includes("sha256: artifactSha256"),
@@ -1303,12 +1332,13 @@ function checkDesktopSftpSafetySurface() {
       "Desktop SFTP overwrite confirmation UX",
       "apps/desktop/src/panels.tsx",
       [
-        "pendingUploadFile",
+        "pendingUpload",
+        "directoryPath",
         "desktop.sftpOverwriteTitle",
         "desktop.sftpOverwriteDetail",
         "desktop.sftpOverwriteConfirm",
         "desktop.sftpOverwriteCancel",
-        "transfer?.onUpload(pendingUploadFile)",
+        "transfer?.onUpload(pendingUpload.file, pendingUpload.directoryPath)",
       ],
     ],
     [
@@ -1319,6 +1349,7 @@ function checkDesktopSftpSafetySurface() {
         "Replace existing file?",
         "A file named app.log already exists in this folder.",
         "Overwrite",
+        "clears pending SFTP overwrite confirmation when the directory changes",
       ],
     ],
     [
@@ -1341,6 +1372,7 @@ function checkDesktopSftpSafetySurface() {
         "validates SFTP listing entry names before using them as path segments",
         "joinSftpRemoteEntryPath refuses names that escape the current directory",
         "normalizes opened paths before reloading",
+        "keeps slow stale directory listings from overwriting the current path",
         "file name #1.txt",
       ],
     ],
@@ -1371,8 +1403,8 @@ function checkDesktopSftpSafetySurface() {
         "desktop.sftpTransferTooLarge",
         "knownSizeBytes: size",
         "file.size > SFTP_TRANSFER_MAX_BYTES",
-        "joinSftpRemoteEntryPath(sftpDirectory.path, name)",
-        "joinSftpRemoteEntryPath(sftpDirectory.path, file.name)",
+        "joinSftpRemoteEntryPath(directoryPath, name)",
+        "joinSftpRemoteEntryPath(directoryPath, file.name)",
       ],
     ],
     [
@@ -1381,9 +1413,12 @@ function checkDesktopSftpSafetySurface() {
       [
         "SFTP_MAX_TRANSFER_BYTES",
         "SFTP_TRANSFER_LIMIT_EXCEEDED",
+        "SFTP_REMOTE_PATH_UNSAFE",
+        "normalize_sftp_remote_path(&path)?",
         "download_limited(&path, SFTP_MAX_TRANSFER_BYTES)",
         "sanitize_sftp_transfer_error",
         "ensure_sftp_transfer_size(data.len())",
+        "sftp_remote_path_guard_rejects_unsafe_paths",
         "sftp_transfer_errors_use_sftp_limit_copy",
         "sftp_transfer_size_guard_rejects_oversized_payloads",
       ],
@@ -1421,9 +1456,12 @@ function checkDesktopForwardingRuntimeSurface() {
       [
         "pending?: boolean",
         "inFlightRules",
+        "runtimeRef",
+        "backendSeq",
         "inFlightRules.current.has(id)",
         "inFlightRules.current.add(id)",
         "inFlightRules.current.delete(id)",
+        "void stop(forwardId).catch(() => {})",
       ],
     ],
     [
@@ -1432,6 +1470,8 @@ function checkDesktopForwardingRuntimeSurface() {
       [
         "ignores duplicate start calls while a forward is pending",
         "ignores duplicate stop calls while a forward stop is pending",
+        "stops active native forwards and clears runtime state when the backend session changes",
+        "ignores stale start results after the backend session changes",
         "toHaveBeenCalledTimes(1)",
       ],
     ],
@@ -1467,6 +1507,29 @@ function checkDesktopForwardingRuntimeSurface() {
 
 function checkReleaseDocs() {
   const requiredDocs = [
+    [
+      "Public Beta dogfood script",
+      "docs/public-beta-dogfood-script.md",
+      [
+        "Top 10 Tasks",
+        "desktop-install-launch",
+        "desktop-connection-host-key",
+        "desktop-pty-session",
+        "desktop-command-safety",
+        "desktop-sftp-transfer",
+        "desktop-forwarding",
+        "web-admin-live-sync",
+        "sync-device-flow",
+        "sync-backup-restore-rollback",
+        "release-evidence-review",
+        "unsigned internal staging",
+        "signed Desktop formal release evidence",
+        "release:desktop:unsigned-staging-report",
+        "reports/handoff/desktop/unsigned-staging-report.json",
+        "qa:public-beta-dogfood",
+        "reports/dogfood/public-beta/latest.json",
+      ],
+    ],
     [
       "Release checklist",
       "docs/release-checklist.md",

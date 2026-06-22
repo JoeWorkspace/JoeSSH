@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { SftpEntry } from "./ipc";
 import { joinSftpRemoteEntryPath, normalizeSftpRemotePath, parentSftpRemotePath } from "./sftpRemotePath";
 
@@ -28,16 +28,21 @@ export type SftpDirectoryStatus =
 export function useSftpDirectory(list: SftpListFn | undefined, initialPath = ".") {
   const [path, setPath] = useState(() => normalizeSftpRemotePath(initialPath));
   const [status, setStatus] = useState<SftpDirectoryStatus>({ phase: "idle" });
+  const loadSeq = useRef(0);
 
   const load = useCallback(
     async (target: string) => {
       if (!list) return;
+      const requestSeq = loadSeq.current + 1;
+      loadSeq.current = requestSeq;
       const remotePath = normalizeSftpRemotePath(target);
       setStatus({ phase: "loading" });
       try {
         const entries = await list(remotePath);
+        if (loadSeq.current !== requestSeq) return;
         setStatus({ phase: "ready", entries });
       } catch (error) {
+        if (loadSeq.current !== requestSeq) return;
         setStatus({ phase: "error", message: error instanceof Error ? error.message : String(error) });
       }
     },

@@ -227,6 +227,7 @@ export const th = {
   "desktop.connectionSwitched": "สลับไปยัง {name} แล้ว",
   "desktop.connectionMoved": "ย้าย {connection} ไปยัง {group} แล้ว",
   "desktop.connectionsImported": "นำเข้าการเชื่อมต่อ {count} รายการแล้ว",
+  "desktop.connectionsImportFailed": "Could not import connections. Choose a valid JoeSSH connections JSON file.",
   "desktop.connectionConnectToast": "เชื่อมต่อ: {name}",
   "desktop.connectionCreated": "สร้างการเชื่อมต่อ {name} แล้ว",
   "desktop.connectionTestResult": "ทดสอบการเชื่อมต่อ: {result}",

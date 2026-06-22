@@ -227,6 +227,7 @@ export const ru = {
   "desktop.connectionSwitched": "Переключено на {name}",
   "desktop.connectionMoved": "{connection} перемещено в {group}",
   "desktop.connectionsImported": "Импортировано подключений: {count}",
+  "desktop.connectionsImportFailed": "Could not import connections. Choose a valid JoeSSH connections JSON file.",
   "desktop.connectionConnectToast": "Подключить: {name}",
   "desktop.connectionCreated": "Подключение {name} создано",
   "desktop.connectionTestResult": "Проверка подключения: {result}",

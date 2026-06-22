@@ -227,6 +227,7 @@ export const vi = {
   "desktop.connectionSwitched": "Đã chuyển sang {name}",
   "desktop.connectionMoved": "Đã chuyển {connection} vào {group}",
   "desktop.connectionsImported": "Đã nhập {count} kết nối",
+  "desktop.connectionsImportFailed": "Could not import connections. Choose a valid JoeSSH connections JSON file.",
   "desktop.connectionConnectToast": "Kết nối: {name}",
   "desktop.connectionCreated": "Đã tạo kết nối {name}",
   "desktop.connectionTestResult": "Kiểm tra kết nối: {result}",

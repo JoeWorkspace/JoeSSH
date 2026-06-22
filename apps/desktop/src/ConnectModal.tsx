@@ -1,4 +1,4 @@
-import { memo, useState, type FormEvent } from "react";
+import { memo, useRef, useState, type FormEvent } from "react";
 import { Plug, X } from "lucide-react";
 import { Button, IconButton } from "@atlasterm/ui";
 import type { Translator } from "@atlasterm/i18n";
@@ -48,11 +48,14 @@ export const ConnectModal = memo(function ConnectModal({
   const [pendingHostKey, setPendingHostKey] = useState<PendingHostKeyConfirmation | null>(null);
   const [hostKeyError, setHostKeyError] = useState<string | null>(null);
   const [probingHostKey, setProbingHostKey] = useState(false);
+  const hostKeyProbeSeq = useRef(0);
   const connecting = status.phase === "connecting" || probingHostKey;
 
   function updateField<K extends keyof ConnectFormFields>(key: K, value: ConnectFormFields[K]) {
+    hostKeyProbeSeq.current += 1;
     setPendingHostKey(null);
     setHostKeyError(null);
+    setProbingHostKey(false);
     setField(key, value);
   }
 
@@ -71,10 +74,13 @@ export const ConnectModal = memo(function ConnectModal({
         : undefined;
 
     if (onHostKeyProbe && !input.pinnedFingerprint && !confirmedFingerprint) {
+      const probeSeq = hostKeyProbeSeq.current + 1;
+      hostKeyProbeSeq.current = probeSeq;
       setHostKeyError(null);
       setProbingHostKey(true);
       try {
         const probe = await onHostKeyProbe(input.host, input.port);
+        if (hostKeyProbeSeq.current !== probeSeq) return;
         if (probe.status === "changed") {
           setHostKeyError(t("desktop.hostKeyChangedDetail", {
             host: input.host,
@@ -90,10 +96,13 @@ export const ConnectModal = memo(function ConnectModal({
           return;
         }
       } catch (error) {
+        if (hostKeyProbeSeq.current !== probeSeq) return;
         setHostKeyError(error instanceof Error ? error.message : String(error));
         return;
       } finally {
-        setProbingHostKey(false);
+        if (hostKeyProbeSeq.current === probeSeq) {
+          setProbingHostKey(false);
+        }
       }
     }
 

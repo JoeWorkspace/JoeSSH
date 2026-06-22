@@ -12,6 +12,10 @@ export function connectionsImportedToast(t: Translator, count: number): string {
   return t("desktop.connectionsImported", { count });
 }
 
+export function connectionsImportFailedToast(t: Translator): string {
+  return t("desktop.connectionsImportFailed");
+}
+
 export function connectionConnectToast(t: Translator, name: string): string {
   return t("desktop.connectionConnectToast", { name });
 }

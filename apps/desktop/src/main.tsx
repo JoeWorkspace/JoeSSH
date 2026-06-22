@@ -95,6 +95,7 @@ import {
   connectionDeletedToast,
   connectionDuplicatedToast,
   connectionEditedToast,
+  connectionsImportFailedToast,
   connectionMovedToast,
   connectionSwitchedToast,
   connectionTestResultToast,
@@ -461,8 +462,8 @@ function App({ t, locale, onLanguageChoiceChange, languageChoice, telemetry }: {
     };
   }, [activeConnection.name, connectVersion]);
 
-  async function handleSftpDownload(name: string, size: number | null) {
-    const remotePath = joinSftpRemoteEntryPath(sftpDirectory.path, name);
+  async function handleSftpDownload(name: string, size: number | null, directoryPath = sftpDirectory.path) {
+    const remotePath = joinSftpRemoteEntryPath(directoryPath, name);
     if (!remotePath) {
       addToast(t("desktop.sftpTransferError"), "error");
       return;
@@ -478,12 +479,12 @@ function App({ t, locale, onLanguageChoiceChange, languageChoice, telemetry }: {
     URL.revokeObjectURL(url);
   }
 
-  async function handleSftpUploadFile(file: File) {
+  async function handleSftpUploadFile(file: File, directoryPath = sftpDirectory.path) {
     if (file.size > SFTP_TRANSFER_MAX_BYTES) {
       sftpTransfer.rejectTooLarge();
       return;
     }
-    const remotePath = joinSftpRemoteEntryPath(sftpDirectory.path, file.name);
+    const remotePath = joinSftpRemoteEntryPath(directoryPath, file.name);
     if (!remotePath) {
       addToast(t("desktop.sftpTransferError"), "error");
       return;
@@ -501,7 +502,11 @@ function App({ t, locale, onLanguageChoiceChange, languageChoice, telemetry }: {
       ? (parsed as { connections: unknown[] }).connections
       : Array.isArray(parsed)
         ? parsed
-        : [];
+        : null;
+    if (!list) {
+      addToast(connectionsImportFailedToast(t), "error");
+      return;
+    }
     let added = 0;
     for (const item of list) {
       if (
@@ -517,6 +522,10 @@ function App({ t, locale, onLanguageChoiceChange, languageChoice, telemetry }: {
       ) {
         added += 1;
       }
+    }
+    if (added === 0) {
+      addToast(connectionsImportFailedToast(t), "error");
+      return;
     }
     addToast(connectionsImportedToast(t, added), added > 0 ? "success" : "warning");
   }
@@ -1149,10 +1158,10 @@ function App({ t, locale, onLanguageChoiceChange, languageChoice, telemetry }: {
         </div>
         <Suspense fallback={<PanelLoadingState t={t} />}>
           {rightPanel === "inspector" ? <LazyInspectorPanel activeConnection={activeConnection} connectionStats={inspectorConnectionStats} formatters={formatters} hasActiveSession={hasActiveDesktopSession} sessionContext={inspectorSessionContext} t={t} /> : null}
-          {rightPanel === "sftp" ? <LazySftpPanel sftpItems={sftpItems} formatters={formatters} t={t} directory={{ active: sftpDirectory.active, path: sftpDirectory.path, status: sftpDirectory.status, onRefresh: sftpDirectory.refresh, onOpenDir: sftpDirectory.openChild, onGoUp: sftpDirectory.goUp, canGoUp: sftpDirectory.canGoUp }} transfer={sftpTransfer.active ? { status: sftpTransfer.status, onUpload: (file) => void handleSftpUploadFile(file), onDownload: (name, size) => void handleSftpDownload(name, size) } : undefined} /> : null}
+          {rightPanel === "sftp" ? <LazySftpPanel sftpItems={sftpItems} formatters={formatters} t={t} directory={{ active: sftpDirectory.active, path: sftpDirectory.path, status: sftpDirectory.status, onRefresh: sftpDirectory.refresh, onOpenDir: sftpDirectory.openChild, onGoUp: sftpDirectory.goUp, canGoUp: sftpDirectory.canGoUp }} transfer={sftpTransfer.active ? { status: sftpTransfer.status, onUpload: (file, directoryPath) => void handleSftpUploadFile(file, directoryPath), onDownload: (name, size, directoryPath) => void handleSftpDownload(name, size, directoryPath) } : undefined} /> : null}
           {rightPanel === "team" ? <LazyTeamAccessPanel formatters={formatters} t={t} /> : null}
           {rightPanel === "forwarding" ? <LazyForwardingPanel t={t} forwards={forwardRules.active ? { runtime: forwardRules.runtime, onStart: (id, bindAddr, targetHost, targetPort) => void forwardRules.startRule(id, bindAddr, targetHost, targetPort), onStop: (id) => void forwardRules.stopRule(id) } : undefined} /> : null}
-          {rightPanel === "settings" ? <LazySettingsPanel t={t} connectionsIO={{ exportConnections: customConnections.connections, onImport: handleImportConnections }} knownHosts={{ count: knownHostsStoredCount, entries: knownHostEntries, onClear: handleClearKnownHosts, onRemove: handleRemoveKnownHost }} telemetry={telemetry} /> : null}
+          {rightPanel === "settings" ? <LazySettingsPanel t={t} connectionsIO={{ exportConnections: customConnections.connections, onImport: handleImportConnections, onImportError: () => addToast(connectionsImportFailedToast(t), "error") }} knownHosts={{ count: knownHostsStoredCount, entries: knownHostEntries, onClear: handleClearKnownHosts, onRemove: handleRemoveKnownHost }} telemetry={telemetry} /> : null}
         </Suspense>
       </aside>
 

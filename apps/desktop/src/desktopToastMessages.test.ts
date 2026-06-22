@@ -11,6 +11,7 @@ import {
   connectionMovedToast,
   connectionSwitchedToast,
   connectionTestResultToast,
+  connectionsImportFailedToast,
   connectionsImportedToast,
   duplicateConnectionName,
   groupCreatedToast,
@@ -33,6 +34,7 @@ describe("desktop toast messages", () => {
     expect(connectionSwitchedToast(t, "prod-edge-01")).toBe('desktop.connectionSwitched:{"name":"prod-edge-01"}');
     expect(connectionMovedToast(t, "prod-edge-01", "Staging")).toBe('desktop.connectionMoved:{"connection":"prod-edge-01","group":"Staging"}');
     expect(connectionsImportedToast(t, 3)).toBe('desktop.connectionsImported:{"count":3}');
+    expect(connectionsImportFailedToast(t)).toBe("desktop.connectionsImportFailed");
     expect(connectionConnectToast(t, "prod-edge-01")).toBe('desktop.connectionConnectToast:{"name":"prod-edge-01"}');
     expect(connectionCreatedToast(t, "jumpbox")).toBe('desktop.connectionCreated:{"name":"jumpbox"}');
     expect(connectionTestResultToast(t, "28 ms")).toBe('desktop.connectionTestResult:{"result":"28 ms"}');
@@ -41,6 +43,7 @@ describe("desktop toast messages", () => {
       "desktop.connectionSwitched",
       "desktop.connectionMoved",
       "desktop.connectionsImported",
+      "desktop.connectionsImportFailed",
       "desktop.connectionConnectToast",
       "desktop.connectionCreated",
       "desktop.connectionTestResult",

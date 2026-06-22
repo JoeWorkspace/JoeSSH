@@ -227,6 +227,7 @@ export const zhTWComplete = {
   "desktop.connectionSwitched": "已切換到{name}",
   "desktop.connectionMoved": "已將{connection}移動到{group}",
   "desktop.connectionsImported": "已匯入{count}個連線",
+  "desktop.connectionsImportFailed": "Could not import connections. Choose a valid JoeSSH connections JSON file.",
   "desktop.connectionConnectToast": "連線：{name}",
   "desktop.connectionCreated": "連線{name}已建立",
   "desktop.connectionTestResult": "連線測試：{result}",

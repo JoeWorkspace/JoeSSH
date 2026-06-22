@@ -24,6 +24,16 @@ function setup(
 
 const q = (container: HTMLElement, selector: string) => container.querySelector(selector) as HTMLInputElement;
 
+function deferred<T>() {
+  let resolve: (value: T) => void = () => {};
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
+type HostKeyProbeResultForTest = Awaited<ReturnType<NonNullable<ComponentProps<typeof ConnectModal>["onHostKeyProbe"]>>>;
+
 describe("ConnectModal", () => {
   it("renders a labelled dialog with a disabled connect button until valid", () => {
     setup(vi.fn());
@@ -125,6 +135,32 @@ describe("ConnectModal", () => {
     fireEvent.click(screen.getByRole("button", { name: "desktop.connectAction" }));
 
     await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("desktop.hostKeyChangedDetail"));
+    expect(onConnect).not.toHaveBeenCalled();
+  });
+
+  it("ignores stale host-key probe results after the host changes", async () => {
+    const staleProbe = deferred<HostKeyProbeResultForTest>();
+    const onConnect = vi.fn().mockResolvedValue("sess-host-key");
+    const onHostKeyProbe = vi.fn().mockReturnValue(staleProbe.promise);
+    const { container } = setup(onConnect, { onHostKeyProbe });
+
+    fireEvent.change(q(container, 'input[type="text"]'), { target: { value: "old.example.com" } });
+    fireEvent.change(container.querySelectorAll('input[type="text"]')[1] as HTMLInputElement, {
+      target: { value: "lin" },
+    });
+    fireEvent.change(q(container, 'input[type="password"]'), { target: { value: "secret" } });
+    fireEvent.click(screen.getByRole("button", { name: "desktop.connectAction" }));
+    await waitFor(() => expect(onHostKeyProbe).toHaveBeenCalledWith("old.example.com", 22));
+
+    fireEvent.change(q(container, 'input[type="text"]'), { target: { value: "new.example.com" } });
+    staleProbe.resolve({
+      status: "changed",
+      presented_fingerprint: "SHA256:stale-presented",
+      stored_fingerprint: "SHA256:stale-stored",
+    });
+
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+    expect(screen.queryByText("desktop.hostKeyConfirmTitle")).toBeNull();
     expect(onConnect).not.toHaveBeenCalled();
   });
 

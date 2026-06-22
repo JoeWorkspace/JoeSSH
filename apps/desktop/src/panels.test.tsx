@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { createLocaleFormatters, type TranslationKey } from '@atlasterm/i18n';
-import { act, fireEvent, render, within } from '@testing-library/react';
+import { act, fireEvent, render, waitFor, within } from '@testing-library/react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import type { ComponentProps } from 'react';
@@ -402,7 +402,7 @@ describe('extracted desktop panels', () => {
     (container.querySelector('.sftp-toolbar button') as HTMLButtonElement).click();
     const uploadFile = new File(['fresh'], 'fresh.log', { type: 'text/plain' });
     fireEvent.change(container.querySelector('.sftp-toolbar input[type="file"]') as HTMLInputElement, { target: { files: [uploadFile] } });
-    expect(onUpload).toHaveBeenCalledWith(uploadFile);
+    expect(onUpload).toHaveBeenCalledWith(uploadFile, '/srv');
     const toolbarButtons = container.querySelectorAll('.sftp-toolbar button');
     const downloadButton = toolbarButtons[1] as HTMLButtonElement;
     expect(downloadButton.disabled).toBe(true);
@@ -415,7 +415,7 @@ describe('extracted desktop panels', () => {
     expect((entries[0] as HTMLButtonElement).getAttribute('aria-pressed')).toBe('true');
     expect(downloadButton.disabled).toBe(false);
     downloadButton.click();
-    expect(onDownload).toHaveBeenCalledWith('app.log', 12);
+    expect(onDownload).toHaveBeenCalledWith('app.log', 12, '/srv');
     (entries[1] as HTMLButtonElement).click(); // directory -> navigate, not download
     expect(onOpenDir).toHaveBeenCalledWith('sub');
     expect(onDownload).toHaveBeenCalledTimes(1);
@@ -497,8 +497,39 @@ describe('extracted desktop panels', () => {
     fireEvent.change(input, { target: { files: [confirmedAttempt] } });
     fireEvent.click(within(container.querySelector('.sftp-overwrite-confirm') as HTMLElement).getByRole('button', { name: 'Overwrite' }));
 
-    expect(onUpload).toHaveBeenCalledWith(confirmedAttempt);
+    expect(onUpload).toHaveBeenCalledWith(confirmedAttempt, '/srv');
     expect(container.querySelector('.sftp-overwrite-confirm')).toBeNull();
+  });
+
+  it('clears pending SFTP overwrite confirmation when the directory changes', () => {
+    const onUpload = vi.fn();
+    const onDownload = vi.fn();
+    const { container, rerender } = render(
+      <SftpPanel
+        formatters={formatters}
+        sftpItems={sftpItems}
+        t={t}
+        directory={{ active: true, path: '/srv', status: { phase: 'ready', entries: [{ name: 'app.log', is_dir: false, size: 12 }] } }}
+        transfer={{ status: { phase: 'idle' }, onUpload, onDownload }}
+      />,
+    );
+
+    const input = container.querySelector('.sftp-toolbar input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [new File(['replace'], 'app.log', { type: 'text/plain' })] } });
+    expect(container.querySelector('.sftp-overwrite-confirm')).not.toBeNull();
+
+    rerender(
+      <SftpPanel
+        formatters={formatters}
+        sftpItems={sftpItems}
+        t={t}
+        directory={{ active: true, path: '/srv/archive', status: { phase: 'ready', entries: [{ name: 'app.log', is_dir: false, size: 12 }] } }}
+        transfer={{ status: { phase: 'idle' }, onUpload, onDownload }}
+      />,
+    );
+
+    expect(container.querySelector('.sftp-overwrite-confirm')).toBeNull();
+    expect(onUpload).not.toHaveBeenCalled();
   });
 
   it('renders team access summary and review controls', () => {
@@ -818,6 +849,21 @@ describe('extracted desktop panels', () => {
       URL.revokeObjectURL = origRevoke;
       clickSpy.mockRestore();
     }
+  });
+
+  it('surfaces invalid connection import files through the parent error callback', async () => {
+    const onImport = vi.fn();
+    const onImportError = vi.fn();
+    const badFile = new File(['not-json'], 'bad.json', { type: 'application/json' });
+    const { container } = render(<SettingsPanel t={t} connectionsIO={{ exportConnections: [], onImport, onImportError }} />);
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+
+    fireEvent.change(input, { target: { files: [badFile] } });
+
+    await waitFor(() => {
+      expect(onImportError).toHaveBeenCalled();
+    });
+    expect(onImport).not.toHaveBeenCalled();
   });
 
   it('shows the stored known-host count and confirms before clearing them', async () => {
