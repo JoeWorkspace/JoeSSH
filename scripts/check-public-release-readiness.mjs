@@ -178,6 +178,7 @@ function checkPackageScripts() {
     "release:desktop:build",
     "release:desktop:package",
     "release:desktop:checksums",
+    "release:desktop:secret-template",
     "release:desktop:configure-secrets",
     "release:desktop:verify-evidence",
     "release:desktop:evidence-download",
@@ -588,6 +589,8 @@ function checkReleaseToolingFiles() {
   passIf(
     desktopSecretConfigurator.includes("ATLASTERM_WINDOWS_CERTIFICATE_FILE") &&
       desktopSecretConfigurator.includes("ATLASTERM_APPLE_CERTIFICATE_FILE") &&
+      desktopSecretConfigurator.includes("--write-template") &&
+      desktopSecretConfigurator.includes("secret-input-template.env") &&
       desktopSecretConfigurator.includes('"secret", "set"') &&
       desktopSecretConfigurator.includes("--body-file") &&
       desktopSecretConfigurator.includes("desktop-release-evidence-preflight.mjs"),

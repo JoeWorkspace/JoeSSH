@@ -1,13 +1,15 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
-import { basename, resolve } from "node:path";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { basename, dirname, resolve } from "node:path";
 
 const scriptRoot = resolve(import.meta.dirname, "..");
+const defaultTemplatePath = "reports/release/desktop/secret-input-template.env";
 const {
   dryRun,
   repo: explicitRepo,
   root,
   skipVerify,
+  templatePath,
   verifyOnly,
 } = parseArgs(process.argv.slice(2));
 const ghCommand = process.env.ATLASTERM_RELEASE_GH_COMMAND ?? "gh";
@@ -79,6 +81,11 @@ const secretDefinitions = [
 ];
 
 console.log(`Configuring Desktop release GitHub Actions secrets for ${repo}.`);
+
+if (templatePath) {
+  writeSecretInputTemplate(templatePath);
+  process.exit(0);
+}
 
 runGh(["--version"], "GitHub CLI is required to configure Desktop release secrets.");
 runGh(["auth", "status"], "GitHub CLI must be authenticated to configure Desktop release secrets.");
@@ -217,6 +224,37 @@ function setGitHubSecret(secret) {
   }
 }
 
+function writeSecretInputTemplate(path) {
+  const outputPath = resolve(root, path);
+  const lines = [
+    "# JoeSSH Desktop formal release signing secret inputs.",
+    "# Fill exactly one input source for each required GitHub Actions secret:",
+    "# - either the direct secret variable, or",
+    "# - the matching *_FILE variable pointing at a local file.",
+    "# Leave unused alternatives commented out so the configurator can reject ambiguity.",
+    "",
+  ];
+
+  for (const definition of secretDefinitions) {
+    lines.push(`# ${definition.description}`);
+    if (definition.kind === "binary-certificate") {
+      lines.push(`${definition.fileEnv}=`);
+      lines.push(`# ${definition.name}=`);
+    } else {
+      lines.push(`# ${definition.fileEnv}=`);
+      lines.push(`${definition.name}=`);
+    }
+    lines.push("");
+  }
+
+  lines.push("# Example:");
+  lines.push("# npm run release:desktop:configure-secrets -- --repo JoeWorkspace/JoeSSH");
+
+  mkdirSync(dirname(outputPath), { recursive: true });
+  writeFileSync(outputPath, `${lines.join("\n")}\n`);
+  console.log(`Wrote Desktop release secret input template to ${outputPath}.`);
+}
+
 function verifySecretNames() {
   const result = spawnSync(
     process.execPath,
@@ -274,6 +312,7 @@ function parseArgs(args) {
   let repo = null;
   let root = scriptRoot;
   let skipVerify = false;
+  let templatePath = null;
   let verifyOnly = false;
 
   for (let index = 0; index < args.length; index += 1) {
@@ -304,6 +343,20 @@ function parseArgs(args) {
       skipVerify = true;
       continue;
     }
+    if (arg === "--write-template") {
+      const value = args[index + 1];
+      if (value && !value.startsWith("--")) {
+        templatePath = value;
+        index += 1;
+      } else {
+        templatePath = defaultTemplatePath;
+      }
+      continue;
+    }
+    if (arg.startsWith("--write-template=")) {
+      templatePath = arg.slice("--write-template=".length);
+      continue;
+    }
     if (arg === "--verify-only") {
       verifyOnly = true;
       continue;
@@ -315,8 +368,11 @@ function parseArgs(args) {
   if (dryRun && verifyOnly) {
     fail("--dry-run and --verify-only cannot be used together.");
   }
+  if (templatePath && (dryRun || skipVerify || verifyOnly)) {
+    fail("--write-template cannot be combined with --dry-run, --skip-verify, or --verify-only.");
+  }
 
-  return { dryRun, repo, root, skipVerify, verifyOnly };
+  return { dryRun, repo, root, skipVerify, templatePath, verifyOnly };
 }
 
 function readValue(args, index, arg) {

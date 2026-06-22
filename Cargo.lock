@@ -94,7 +94,7 @@ dependencies = [
 
 [[package]]
 name = "atlasterm-core"
-version = "0.1.0-beta.2"
+version = "0.1.0-beta.3"
 dependencies = [
  "async-trait",
  "russh",
@@ -108,7 +108,7 @@ dependencies = [
 
 [[package]]
 name = "atlasterm-sync"
-version = "0.1.0-beta.2"
+version = "0.1.0-beta.3"
 dependencies = [
  "anyhow",
  "axum",

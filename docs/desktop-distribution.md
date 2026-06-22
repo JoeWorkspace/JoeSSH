@@ -106,7 +106,7 @@ secret names and that the workflow is available:
 
 ```bash
 npm run release:desktop:evidence-preflight -- --repo JoeWorkspace/JoeSSH
-npm run release:desktop:evidence-workflow -- --repo JoeWorkspace/JoeSSH --ref v0.1.0-beta.2
+npm run release:desktop:evidence-workflow -- --repo JoeWorkspace/JoeSSH --ref v0.1.0-beta.3
 ```
 
 The preflight checks GitHub CLI authentication, lists repository secret names
@@ -206,7 +206,7 @@ as account billing/spending-limit failures, in the error output.
 After installers and checksums are present, run:
 
 ```bash
-git tag -a v0.1.0-beta.2 -m "JoeSSH 0.1.0-beta.2"
+git tag -a v0.1.0-beta.3 -m "JoeSSH 0.1.0-beta.3"
 npm run release:provenance
 npm run release:provenance:verify
 npm run release:publish-preflight
@@ -218,7 +218,7 @@ signing/notarization evidence, SBOM coverage, release provenance, a healthy Git
 checkout, a clean working tree outside `reports/release/`, a release tag that
 points at `HEAD`, GitHub CLI availability/authentication, no existing GitHub
 Release for the same tag, and the GitHub Release draft dry-run. The draft
-command then requires `docs/release-notes/0.1.0-beta.2.md`, staged release artifacts under
+command then requires `docs/release-notes/0.1.0-beta.3.md`, staged release artifacts under
 `reports/release/`, fresh checksums, and complete desktop release evidence whose
 artifact sha256 values match the checksum manifest and actual files, with
 `release-evidence-SHA256SUMS.txt` binding the evidence JSON itself. Raw Tauri bundle outputs are inputs to

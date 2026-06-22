@@ -20,7 +20,7 @@ provides HTTP-only protections that HTML meta tags cannot enforce, including
 clickjacking protection.
 `release:web` writes Web Admin checksums to
 `reports/release/web/SHA256SUMS.txt` and packages the deployable static bundle
-as `reports/release/web/joessh-web-admin-0.1.0-beta.2.zip`. The zip contains
+as `reports/release/web/joessh-web-admin-0.1.0-beta.3.zip`. The zip contains
 the deployable `dist` contents at the archive root, including `_headers` and
 `.well-known/security.txt`. `verify-web-release-package.mjs` checks the staged
 zip itself before upload: the checksum manifest must bind to the zip, required

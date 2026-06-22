@@ -1,6 +1,6 @@
 {
   "name": "atlasterm",
-  "version": "0.1.0-beta.2",
+  "version": "0.1.0-beta.3",
   "private": true,
   "description": "JoeSSH monorepo for a local-first SSH, terminal, SFTP, forwarding, sync, and team workspace product.",
   "license": "MIT",
@@ -120,6 +120,7 @@
     "release:desktop:build": "node scripts/build-desktop-release.mjs",
     "release:desktop:package": "node scripts/package-desktop-release.mjs --require-platforms windows,macos,linux",
     "release:desktop:checksums": "npm run release:desktop:package",
+    "release:desktop:secret-template": "node scripts/configure-desktop-release-secrets.mjs --write-template",
     "release:desktop:configure-secrets": "node scripts/configure-desktop-release-secrets.mjs",
     "release:desktop:verify-evidence": "node scripts/verify-desktop-release-evidence.mjs",
     "release:desktop:evidence-download": "node scripts/download-desktop-release-evidence.mjs",

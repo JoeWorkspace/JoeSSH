@@ -198,6 +198,33 @@ test("supports dry run without setting GitHub secrets", (t) => {
   assert.equal(readFileMaybe(logPath), "");
 });
 
+test("writes a redacted Desktop signing secret input template", (t) => {
+  const { env, logPath, root } = createFixture(t);
+  const templatePath = "reports/release/desktop/secret-input-template.env";
+  const result = runConfigurator(root, ["--write-template", templatePath], env);
+
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /Wrote Desktop release secret input template/);
+  assert.equal(readFileMaybe(logPath), "");
+
+  const template = readFileSync(join(root, ...templatePath.split("/")), "utf8");
+  assert.match(template, /ATLASTERM_WINDOWS_CERTIFICATE_FILE=/);
+  assert.match(template, /# ATLASTERM_WINDOWS_CERTIFICATE=/);
+  assert.match(template, /ATLASTERM_APPLE_PASSWORD=/);
+  assert.match(template, /ATLASTERM_KEYCHAIN_PASSWORD=/);
+  assert.doesNotMatch(template, /windows-cert-password|apple-app-password|windows certificate|apple certificate/);
+});
+
+test("uses the default Desktop signing secret template path", (t) => {
+  const { env, root } = createFixture(t);
+  const result = runConfigurator(root, ["--write-template"], env);
+
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  const template = readFileSync(join(root, "reports", "release", "desktop", "secret-input-template.env"), "utf8");
+  assert.match(template, /ATLASTERM_WINDOWS_TIMESTAMP_URL=/);
+  assert.match(template, /ATLASTERM_APPLE_TEAM_ID=/);
+});
+
 test("verify-only reuses the formal evidence preflight", (t) => {
   const { env, logPath, root } = createFixture(t);
   const result = runConfigurator(root, ["--verify-only"], env);

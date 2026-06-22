@@ -69,6 +69,7 @@ const releaseScriptNames = [
   "release:desktop:build",
   "release:desktop:package",
   "release:desktop:checksums",
+  "release:desktop:secret-template",
   "release:desktop:configure-secrets",
   "release:desktop:verify-evidence",
   "release:desktop:evidence-download",
@@ -108,6 +109,9 @@ function fixtureScriptValue(name, overrides = {}) {
   }
   if (name === "release:desktop:checksums") {
     return "npm run release:desktop:package";
+  }
+  if (name === "release:desktop:secret-template") {
+    return "node scripts/configure-desktop-release-secrets.mjs --write-template";
   }
   if (name === "release:desktop:package") {
     return "node scripts/package-desktop-release.mjs --require-platforms windows,macos,linux";
@@ -201,7 +205,7 @@ function createFixture(t, overrides = {}) {
       "artifactSha256 sha256: artifactSha256\n",
     "scripts/package-desktop-release.test.mjs": "",
     "scripts/configure-desktop-release-secrets.mjs":
-      'ATLASTERM_WINDOWS_CERTIFICATE_FILE ATLASTERM_APPLE_CERTIFICATE_FILE "secret", "set" --body-file desktop-release-evidence-preflight.mjs\n',
+      'ATLASTERM_WINDOWS_CERTIFICATE_FILE ATLASTERM_APPLE_CERTIFICATE_FILE --write-template secret-input-template.env "secret", "set" --body-file desktop-release-evidence-preflight.mjs\n',
     "scripts/configure-desktop-release-secrets.test.mjs": "",
     "scripts/package-sync-release.mjs":
       "removeStaleSyncReleaseBinaries isSyncReleaseBinaryName SHA256SUMS.txt\n",
