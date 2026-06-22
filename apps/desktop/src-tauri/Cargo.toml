@@ -1,0 +1,24 @@
+# Standalone workspace so the heavy Tauri/WebView2 dependency tree does not
+# burden the root workspace's `cargo test` / sync CI lane.
+[workspace]
+
+[package]
+name = "atlasterm-desktop-shell"
+version = "0.1.0-beta.1"
+edition = "2021"
+license = "MIT"
+
+[lib]
+name = "atlasterm_desktop_shell_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+atlasterm-core = { path = "../../../crates/core" }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "io-util"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4"] }

@@ -1,0 +1,44 @@
+appId: ${ATLASTERM_MAESTRO_APP_ID}
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "sync-status-panel"
+- assertVisible:
+    id: "sync-primary-action"
+- tapOn:
+    id: "sync-primary-action"
+- assertVisible:
+    id: "sync-status-panel"
+- assertVisible:
+    id: "sync-status-offline"
+- assertVisible:
+    id: "sync-error-panel"
+- assertVisible:
+    id: "sync-error-offline-fallback"
+- scrollUntilVisible:
+    element:
+      id: "sync-preview-workspace"
+    direction: DOWN
+    visibilityPercentage: 60
+    timeout: 10000
+- assertVisible:
+    id: "sync-preview-workspace"
+- assertVisible:
+    id: "sync-preview-command"
+- scrollUntilVisible:
+    element:
+      id: "emergency-channel-relay"
+    direction: DOWN
+    visibilityPercentage: 60
+    timeout: 10000
+- assertVisible:
+    id: "emergency-channel-relay"
+- scrollUntilVisible:
+    element:
+      id: "emergency-channel-local-cache"
+    direction: DOWN
+    visibilityPercentage: 60
+    timeout: 10000
+- assertVisible:
+    id: "emergency-channel-local-cache"

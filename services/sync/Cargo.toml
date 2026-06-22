@@ -1,0 +1,22 @@
+[package]
+name = "atlasterm-sync"
+version = "0.1.0-beta.1"
+edition = "2021"
+description = "JoeSSH sync service API with in-memory and JSON-backed ledgers"
+license = "MIT"
+
+[dependencies]
+anyhow = "1"
+axum = { version = "0.7", features = ["macros"] }
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "limit", "set-header", "trace"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+uuid = { version = "1", features = ["serde", "v4"] }
+
+[dev-dependencies]
+tower = { version = "0.4", features = ["util"] }

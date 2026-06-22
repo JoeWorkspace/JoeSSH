@@ -1,0 +1,15 @@
+.git
+.github
+.codex
+node_modules
+**/node_modules
+target
+**/target
+dist
+**/dist
+reports/release
+coverage
+**/coverage
+.env
+.env.*
+npm-debug.log*

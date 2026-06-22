@@ -1,0 +1,41 @@
+{
+  "id": "/",
+  "name": "JoeSSH Admin",
+  "short_name": "JoeSSH",
+  "description": "Team management, device status, audit logs, and sync operations.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#101820",
+  "theme_color": "#101820",
+  "orientation": "any",
+  "scope": "/",
+  "shortcuts": [
+    {
+      "name": "Team Dashboard",
+      "short_name": "Team",
+      "url": "/#team",
+      "icons": [{ "src": "/favicon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Device Status",
+      "short_name": "Devices",
+      "url": "/#devices",
+      "icons": [{ "src": "/favicon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Audit Log",
+      "short_name": "Audit",
+      "url": "/#audit",
+      "icons": [{ "src": "/favicon.svg", "sizes": "any" }]
+    }
+  ],
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

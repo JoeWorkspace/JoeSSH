@@ -1,0 +1,17 @@
+# JoeSSH Workbench
+
+JoeSSH is a local-first remote workbench for SSH terminals, SFTP file management, team access control, and session management.
+
+## Features
+
+- [SSH Terminal](/features/terminal) - Multi-tab terminal sessions with command preflight and safety guardrails
+- [SFTP Browser](/features/sftp) - File transfer and remote file management
+- [Team Access](/features/team) - JIT access, shared vaults, and audit trails
+- [Port Forwarding](/features/forwarding) - Local and remote port forwarding
+- [Session Recording](/features/recording) - Terminal session recording and playback
+
+## Documentation
+
+- [Getting Started](/docs/getting-started)
+- [API Reference](/docs/api)
+- [Security Model](/docs/security)

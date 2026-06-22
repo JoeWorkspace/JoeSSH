@@ -1,0 +1,22 @@
+[package]
+name = "atlasterm-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "atlasterm_core"
+path = "src/lib.rs"
+
+[dependencies]
+async-trait = "0.1"
+serde = { version = "1", features = ["derive"] }
+thiserror = "1"
+time = { version = "0.3", features = ["serde", "formatting"] }
+uuid = { version = "1", features = ["serde", "v4"] }
+tokio = { version = "1", features = ["net", "io-util", "rt", "sync", "macros", "time"] }
+russh = { version = "0.61", default-features = false, features = ["ring", "flate2"] }
+russh-sftp = "2"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt", "rt-multi-thread", "net", "io-util", "time"] }

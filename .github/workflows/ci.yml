@@ -1,0 +1,271 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "23 3 * * 1-5"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run qa:handoff-hygiene
+      - run: npm run qa:artifact-checksums
+      - run: npm run qa:desktop-release-package
+      - run: npm run qa:desktop-release-evidence
+      - run: npm run qa:sync-release-package
+      - run: npm run qa:sync-release-evidence
+      - run: npm run qa:web-release
+      - run: npm run qa:release-sbom
+      - run: npm run qa:release-draft
+      - run: npm run qa:release-publish-preflight
+      - run: npm run qa:lighthouse-audit
+      - run: npm run test:web-admin-bundle-token-scan
+
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+
+  test-unit:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx vitest run --coverage
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 14
+
+  test-mobile:
+    name: Mobile Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test -w @atlasterm/mobile
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run qa:bundle-size
+      - run: npm run qa:subresource-integrity
+      - run: npm run qa:security-headers
+      - run: npm run qa:i18n-release
+      - run: npm run qa:sync-api-docs
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-dist
+          path: |
+            apps/web/dist/
+            apps/desktop/dist/
+          retention-days: 7
+
+  test-e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: npm ci
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - run: npx playwright install --with-deps chromium
+      - run: npm run qa:e2e:fresh
+      - run: npm run qa:e2e:web-real-sync:fresh
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: tests/e2e/playwright-report/
+          retention-days: 7
+
+  visual-qa:
+    name: Visual QA
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-visual-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - run: npx playwright install --with-deps chromium
+      - run: npm run qa:e2e:visual:fresh
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: visual-qa-report
+          path: tests/e2e/test-results/
+          retention-days: 7
+
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run qa:prod-audit
+
+  rust:
+    name: Rust Service
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo install cargo-audit --locked
+      - run: cargo fmt --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace
+      - run: cargo audit --deny warnings
+
+  tauri-shell:
+    name: Tauri Shell
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: npm ci
+      - name: Install Tauri Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+      - run: npm run qa:tauri
+
+  public-release-readiness:
+    name: Public Release Readiness
+    runs-on: ubuntu-latest
+    needs:
+      [
+        lint,
+        typecheck,
+        test-unit,
+        test-mobile,
+        build,
+        test-e2e,
+        visual-qa,
+        security-audit,
+        rust,
+        tauri-shell,
+        lighthouse,
+      ]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: npm ci
+      - run: npm run qa:mobile:native-preflight
+      - run: npm run qa:mobile-public-env
+      - run: npm run release:sbom
+      - run: npm run release:sbom:verify
+      - run: npm run qa:web-admin-proxy-smoke
+      - run: npm run qa:web-admin-bundle-token-scan
+      - run: npm run qa:web-admin-sync-topology-release-smoke
+      - run: npm run qa:sync:self-hosted-smoke
+      - run: npm run qa:sync:release-smoke
+      - run: npm run qa:sync:release-backup-restore-smoke
+      - run: npm run qa:sync:config-guard-smoke
+      - run: npm run qa:sync:backup-restore-smoke
+      - run: node scripts/verify-sync-release-evidence.mjs
+      - run: npm run qa:release-provenance
+      - run: node scripts/check-public-release-readiness.mjs
+
+  lighthouse:
+    name: Lighthouse
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.event_name == 'schedule' || github.event_name == 'push' || github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run qa:lighthouse
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse-report
+          path: reports/lighthouse
+          retention-days: 30

@@ -1,0 +1,89 @@
+[[permission]]
+identifier = "allow-ssh-connect"
+description = "Allows the main window to open and authenticate SSH sessions."
+commands.allow = ["ssh_connect"]
+
+[[permission]]
+identifier = "allow-ssh-host-key-probe"
+description = "Allows the main window to inspect a server host key before authenticating."
+commands.allow = ["ssh_host_key_probe"]
+
+[[permission]]
+identifier = "allow-ssh-exec"
+description = "Allows the main window to run one-shot commands on an existing SSH session."
+commands.allow = ["ssh_exec"]
+
+[[permission]]
+identifier = "allow-known-hosts-count"
+description = "Allows the main window to read the count of native known-host pins."
+commands.allow = ["known_hosts_count"]
+
+[[permission]]
+identifier = "allow-known-hosts-list"
+description = "Allows the main window to list native known-host pins and audit metadata."
+commands.allow = ["known_hosts_list"]
+
+[[permission]]
+identifier = "allow-known-hosts-remove"
+description = "Allows the main window to remove one native known-host pin."
+commands.allow = ["known_hosts_remove"]
+
+[[permission]]
+identifier = "allow-known-hosts-clear"
+description = "Allows the main window to clear native known-host pins."
+commands.allow = ["known_hosts_clear"]
+
+[[permission]]
+identifier = "allow-sftp-list"
+description = "Allows the main window to list remote directories over SFTP."
+commands.allow = ["sftp_list"]
+
+[[permission]]
+identifier = "allow-sftp-read"
+description = "Allows the main window to download remote files over SFTP."
+commands.allow = ["sftp_read"]
+
+[[permission]]
+identifier = "allow-sftp-write"
+description = "Allows the main window to upload remote files over SFTP."
+commands.allow = ["sftp_write"]
+
+[[permission]]
+identifier = "allow-forward-start"
+description = "Allows the main window to start local port forwards through SSH."
+commands.allow = ["forward_start"]
+
+[[permission]]
+identifier = "allow-forward-stop"
+description = "Allows the main window to stop local port forwards."
+commands.allow = ["forward_stop"]
+
+[[permission]]
+identifier = "allow-ssh-disconnect"
+description = "Allows the main window to close SSH sessions."
+commands.allow = ["ssh_disconnect"]
+
+[[permission]]
+identifier = "allow-pty-open"
+description = "Allows the main window to open interactive PTY shells."
+commands.allow = ["pty_open"]
+
+[[permission]]
+identifier = "allow-pty-write"
+description = "Allows the main window to write stdin bytes to PTY shells."
+commands.allow = ["pty_write"]
+
+[[permission]]
+identifier = "allow-pty-resize"
+description = "Allows the main window to resize PTY shells."
+commands.allow = ["pty_resize"]
+
+[[permission]]
+identifier = "allow-pty-close"
+description = "Allows the main window to close PTY shells."
+commands.allow = ["pty_close"]
+
+[[permission]]
+identifier = "allow-test-connection"
+description = "Allows the main window to test TCP reachability without opening a session."
+commands.allow = ["test_connection"]

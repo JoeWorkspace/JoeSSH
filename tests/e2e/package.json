@@ -1,0 +1,21 @@
+{
+  "name": "@atlasterm/e2e",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:fresh": "node scripts/run-playwright-with-fresh-ports.mjs",
+    "test:i18n-strict": "playwright test --grep @i18n-strict",
+    "test:visual": "playwright test --config=playwright.visual.config.ts",
+    "test:visual:fresh": "node scripts/run-playwright-with-fresh-ports.mjs --config=playwright.visual.config.ts",
+    "test:web": "playwright test --config=playwright.web.config.ts",
+    "test:web:fresh": "node scripts/run-playwright-with-fresh-ports.mjs --config=playwright.web.config.ts",
+    "test:web:real-sync": "playwright test --config=playwright.web-real-sync.config.ts",
+    "test:web:real-sync:fresh": "node scripts/run-playwright-with-fresh-ports.mjs --config=playwright.web-real-sync.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "install:browsers": "playwright install chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1"
+  }
+}

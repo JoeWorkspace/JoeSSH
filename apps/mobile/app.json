@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "JoeSSH",
+    "slug": "atlasterm-mobile",
+    "version": "0.1.0-beta.1",
+    "orientation": "portrait",
+    "scheme": "atlasterm",
+    "userInterfaceStyle": "automatic",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.atlasterm.mobile"
+    },
+    "android": {
+      "package": "com.atlasterm.mobile"
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router"
+    ]
+  }
+}

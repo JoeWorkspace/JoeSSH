@@ -1,0 +1,324 @@
+:root {
+  color-scheme: dark light;
+  scrollbar-color: var(--atlas-border) var(--atlas-bg);
+  --atlas-bg: #101215;
+  --atlas-bg-soft: #171a1f;
+  --atlas-bg-raised: #1e2228;
+  --atlas-border: #313843;
+  --atlas-border-strong: #45505f;
+  --atlas-text: #eff3f7;
+  --atlas-text-muted: #a3adba;
+  --atlas-text-faint: #77818f;
+  --atlas-accent: #62d6bd;
+  --atlas-accent-strong: #25b89a;
+  --atlas-blue: #6ea8fe;
+  --atlas-amber: #f0b45b;
+  --atlas-red: #ff6b73;
+  --atlas-violet: #b698ff;
+  --atlas-green: #82d97d;
+  --atlas-shadow: 0 18px 55px rgba(0, 0, 0, 0.34);
+  --elev-1: 0 1px 2px rgba(0, 0, 0, 0.30), 0 1px 1px rgba(0, 0, 0, 0.20);
+  --elev-2: 0 4px 12px rgba(0, 0, 0, 0.35), 0 2px 4px rgba(0, 0, 0, 0.25);
+  --atlas-terminal-bg: #0c0f14;
+  --dur-1: 100ms;
+  --dur-2: 150ms;
+  --dur-3: 240ms;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: var(--atlas-bg);
+  color: var(--atlas-text);
+}
+
+/* Respect users who prefer reduced motion: neutralize all transitions and
+   animations app-wide so the micro-interaction layer never causes discomfort. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+.ui-button {
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  cursor: pointer;
+  display: inline-flex;
+  font-weight: 650;
+  gap: 8px;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 12px;
+  transition:
+    background var(--dur-2) var(--ease),
+    border-color var(--dur-2) var(--ease),
+    color var(--dur-2) var(--ease),
+    box-shadow var(--dur-2) var(--ease),
+    transform var(--dur-1) var(--ease);
+}
+
+.ui-button:hover {
+  transform: translateY(-1px);
+}
+
+.ui-button:active {
+  transform: translateY(0) scale(0.97);
+}
+
+.ui-button:focus-visible {
+  outline: 2px solid var(--atlas-accent);
+  outline-offset: 2px;
+}
+
+.ui-button--default {
+  background: var(--atlas-accent);
+  color: #05120f;
+}
+
+.ui-button--ghost {
+  background: transparent;
+  border-color: var(--atlas-border);
+  color: var(--atlas-text-muted);
+}
+
+.ui-button--ghost:hover,
+.ui-button--quiet:hover {
+  background: #27303a;
+  color: var(--atlas-text);
+}
+
+.ui-button--quiet {
+  background: transparent;
+  color: var(--atlas-text-muted);
+}
+
+.ui-button--danger {
+  background: rgba(255, 107, 115, 0.13);
+  border-color: rgba(255, 107, 115, 0.34);
+  color: #ffb0b5;
+}
+
+.ui-button--sm {
+  min-height: 28px;
+  padding: 0 9px;
+  font-size: 12px;
+}
+
+.ui-button--icon {
+  aspect-ratio: 1;
+  min-height: 34px;
+  padding: 0;
+  width: 34px;
+}
+
+.ui-button--icon:hover {
+  background: var(--atlas-bg-soft);
+  color: var(--atlas-text);
+}
+
+.ui-badge {
+  align-items: center;
+  border: 1px solid var(--atlas-border);
+  border-radius: 999px;
+  color: var(--atlas-text-muted);
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 700;
+  min-height: 22px;
+  padding: 0 8px;
+  white-space: nowrap;
+}
+
+.ui-badge--good {
+  background: rgba(130, 217, 125, 0.12);
+  border-color: rgba(130, 217, 125, 0.35);
+  color: var(--atlas-green);
+}
+
+.ui-badge--warn {
+  background: rgba(240, 180, 91, 0.12);
+  border-color: rgba(240, 180, 91, 0.35);
+  color: var(--atlas-amber);
+}
+
+.ui-badge--info {
+  background: rgba(110, 168, 254, 0.12);
+  border-color: rgba(110, 168, 254, 0.35);
+  color: var(--atlas-blue);
+}
+
+.ui-badge--premium {
+  background: rgba(182, 152, 255, 0.13);
+  border-color: rgba(182, 152, 255, 0.38);
+  color: #d7c8ff;
+}
+
+.ui-panel {
+  background: var(--atlas-bg-soft);
+  border: 1px solid var(--atlas-border);
+  box-shadow: var(--elev-1);
+  transition: box-shadow var(--dur-2) var(--ease);
+}
+
+.ui-segmented {
+  align-items: center;
+  background: var(--atlas-bg);
+  border: 1px solid var(--atlas-border);
+  border-radius: 8px;
+  display: inline-flex;
+  padding: 3px;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.ui-segmented__item {
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  color: var(--atlas-text-muted);
+  cursor: pointer;
+  min-height: 26px;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+.ui-segmented__item[aria-selected="true"] {
+  background: var(--atlas-bg-raised);
+  color: var(--atlas-text);
+  box-shadow: inset 0 0 0 1px var(--atlas-border);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+    --atlas-bg: #f5f7fa;
+    --atlas-bg-soft: #ebeef3;
+    --atlas-bg-raised: #ffffff;
+    --atlas-border: #d0d7e0;
+    --atlas-border-strong: #b0bac6;
+    --atlas-text: #1a2030;
+    --atlas-text-muted: #404d5c;
+    --atlas-text-faint: #5a6a7a;
+    --atlas-accent: #087a60;
+    --atlas-accent-strong: #065e4a;
+    --atlas-blue: #2563b8;
+    --atlas-amber: #c88a20;
+    --atlas-red: #d94050;
+    --atlas-violet: #7c5dd0;
+    --atlas-green: #167a16;
+    --atlas-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+    --elev-1: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.05);
+    --elev-2: 0 4px 12px rgba(16, 24, 40, 0.10), 0 2px 4px rgba(16, 24, 40, 0.06);
+  }
+
+  .ui-button--ghost:hover,
+  .ui-button--quiet:hover {
+    background: rgba(0, 0, 0, 0.05);
+  }
+
+  .ui-button--default {
+    color: #ffffff;
+  }
+
+  .ui-badge--good {
+    background: var(--atlas-bg-soft);
+  }
+
+  .ui-badge--info {
+    background: var(--atlas-bg-soft);
+  }
+
+  .ui-badge--warn {
+    background: var(--atlas-bg-soft);
+    border-color: rgba(112, 70, 0, 0.42);
+    color: #704600;
+  }
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --atlas-bg: #f5f7fa;
+  --atlas-bg-soft: #ebeef3;
+  --atlas-bg-raised: #ffffff;
+  --atlas-border: #d0d7e0;
+  --atlas-border-strong: #b0bac6;
+  --atlas-text: #1a2030;
+  --atlas-text-muted: #404d5c;
+  --atlas-text-faint: #5a6a7a;
+  --atlas-accent: #087a60;
+  --atlas-accent-strong: #065e4a;
+  --atlas-blue: #2563b8;
+  --atlas-amber: #c88a20;
+  --atlas-red: #d94050;
+  --atlas-violet: #7c5dd0;
+  --atlas-green: #167a16;
+  --atlas-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+  --elev-1: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.05);
+  --elev-2: 0 4px 12px rgba(16, 24, 40, 0.10), 0 2px 4px rgba(16, 24, 40, 0.06);
+}
+
+[data-theme="light"] .ui-badge--good,
+[data-theme="light"] .ui-badge--info {
+  background: var(--atlas-bg-soft);
+}
+
+[data-theme="light"] .ui-badge--warn {
+  background: var(--atlas-bg-soft);
+  border-color: rgba(112, 70, 0, 0.42);
+  color: #704600;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --atlas-bg: #101215;
+  --atlas-bg-soft: #171a1f;
+  --atlas-bg-raised: #1e2228;
+  --atlas-border: #313843;
+  --atlas-border-strong: #45505f;
+  --atlas-text: #eff3f7;
+  --atlas-text-muted: #a3adba;
+  --atlas-text-faint: #77818f;
+  --atlas-accent: #62d6bd;
+  --atlas-accent-strong: #25b89a;
+  --atlas-blue: #6ea8fe;
+  --atlas-amber: #f0b45b;
+  --atlas-red: #ff6b73;
+  --atlas-violet: #b698ff;
+  --atlas-green: #82d97d;
+  --atlas-shadow: 0 18px 55px rgba(0, 0, 0, 0.34);
+}

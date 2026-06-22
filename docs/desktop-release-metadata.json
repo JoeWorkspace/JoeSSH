@@ -1,0 +1,14 @@
+{
+  "productName": "JoeSSH",
+  "identifier": "dev.atlasterm.joessh",
+  "publisher": "JoeSSH Project",
+  "copyright": "Copyright (c) 2026 JoeSSH contributors",
+  "category": "Developer Tools",
+  "bundleTargets": ["windows", "macos", "linux"],
+  "signingEvidence": {
+    "windows": "ATLASTERM_DESKTOP_WINDOWS_SIGNATURE_VERIFICATION",
+    "macosSignature": "ATLASTERM_DESKTOP_MACOS_SIGNATURE_VERIFICATION",
+    "macosNotarization": "ATLASTERM_DESKTOP_MACOS_NOTARIZATION_VERIFICATION"
+  },
+  "linuxPackageTypes": ["AppImage", "deb", "rpm"]
+}

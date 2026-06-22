@@ -1,0 +1,24 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "baseUrl": ".",
+    "paths": {
+      "@atlasterm/i18n": [
+        "../../packages/i18n/src/index"
+      ],
+      "@/*": [
+        "./*"
+      ],
+      "react-native": [
+        "test/reactNativeMock.ts"
+      ]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx"
+  ]
+}
