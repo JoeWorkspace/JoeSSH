@@ -1,4 +1,5 @@
 use std::net::SocketAddr;
+use std::path::PathBuf;
 use std::time::Duration;
 
 use atlasterm_core::{probe_host_key, HostKeyPolicy, PtyOutput, SshAuth, SshClient, SshConfig};
@@ -24,7 +25,7 @@ async fn real_ssh_smoke_covers_exec_pty_sftp_and_forwarding() {
         host: fixture.host.clone(),
         port: fixture.port,
         username: fixture.username.clone(),
-        auth: SshAuth::Password(fixture.password.clone()),
+        auth: fixture.auth.clone(),
         host_key_policy: HostKeyPolicy::Pinned(fingerprint.clone()),
         connect_timeout_ms: 10_000,
     })
@@ -37,20 +38,20 @@ async fn real_ssh_smoke_covers_exec_pty_sftp_and_forwarding() {
         "authenticated session should capture the same host-key fingerprint"
     );
 
-    verify_exec(&client).await;
+    verify_exec(&client, &fixture.exec_command, &fixture.exec_expected).await;
     verify_sftp(&client, &fixture.remote_dir).await;
-    verify_pty(&client).await;
+    verify_pty(&client, &fixture.pty_command, &fixture.pty_expected).await;
     verify_forwarding(&client).await;
 }
 
-async fn verify_exec(client: &SshClient) {
+async fn verify_exec(client: &SshClient, command: &str, expected: &[u8]) {
     let (exit_status, stdout) = client
-        .exec("printf 'joessh-exec-ok'")
+        .exec(command)
         .await
         .expect("exec should run through the real SSH session");
 
     assert_eq!(exit_status, 0);
-    assert_eq!(stdout, b"joessh-exec-ok");
+    assert_eq!(stdout, expected);
 }
 
 async fn verify_sftp(client: &SshClient, remote_dir: &str) {
@@ -92,14 +93,14 @@ async fn verify_sftp(client: &SshClient, remote_dir: &str) {
     );
 }
 
-async fn verify_pty(client: &SshClient) {
+async fn verify_pty(client: &SshClient, command: &str, expected: &[u8]) {
     let session = client
         .open_shell(80, 24)
         .await
         .expect("PTY shell should open over the authenticated SSH session");
     let (writer, mut reader) = session.split();
     writer
-        .write(b"printf 'joessh-pty-ok'\nexit\n")
+        .write(command.as_bytes())
         .await
         .expect("PTY should accept input");
 
@@ -116,8 +117,8 @@ async fn verify_pty(client: &SshClient) {
             Ok(Some(PtyOutput::Data(chunk))) => {
                 output.extend_from_slice(&chunk);
                 if output
-                    .windows(b"joessh-pty-ok".len())
-                    .any(|window| window == b"joessh-pty-ok")
+                    .windows(expected.len())
+                    .any(|window| window == expected)
                 {
                     writer.close().await.ok();
                     return;
@@ -129,7 +130,8 @@ async fn verify_pty(client: &SshClient) {
     }
 
     panic!(
-        "PTY output did not contain marker; captured output: {}",
+        "PTY output did not contain marker {}; captured output: {}",
+        String::from_utf8_lossy(expected),
         String::from_utf8_lossy(&output)
     );
 }
@@ -196,8 +198,12 @@ struct RealSshFixture {
     host: String,
     port: u16,
     username: String,
-    password: String,
+    auth: SshAuth,
     remote_dir: String,
+    exec_command: String,
+    exec_expected: Vec<u8>,
+    pty_command: String,
+    pty_expected: Vec<u8>,
 }
 
 impl RealSshFixture {
@@ -212,12 +218,64 @@ impl RealSshFixture {
                 .parse()
                 .expect("JOESSH_REAL_SSH_PORT must be a u16"),
             username: required_env("JOESSH_REAL_SSH_USERNAME"),
-            password: required_env("JOESSH_REAL_SSH_PASSWORD"),
+            auth: read_auth_from_env(),
             remote_dir: required_env("JOESSH_REAL_SSH_REMOTE_DIR"),
+            exec_command: optional_env("JOESSH_REAL_SSH_EXEC_COMMAND")
+                .map(decode_escaped_command)
+                .unwrap_or_else(|| "printf 'joessh-exec-ok'".into()),
+            exec_expected: optional_env("JOESSH_REAL_SSH_EXEC_EXPECTED")
+                .unwrap_or_else(|| "joessh-exec-ok".into())
+                .into_bytes(),
+            pty_command: optional_env("JOESSH_REAL_SSH_PTY_COMMAND")
+                .map(decode_escaped_command)
+                .unwrap_or_else(|| "printf 'joessh-pty-ok'\nexit\n".into()),
+            pty_expected: optional_env("JOESSH_REAL_SSH_PTY_EXPECTED")
+                .unwrap_or_else(|| "joessh-pty-ok".into())
+                .into_bytes(),
         })
     }
 }
 
 fn required_env(name: &str) -> String {
     std::env::var(name).unwrap_or_else(|_| panic!("{name} must be set for real SSH smoke"))
+}
+
+fn optional_env(name: &str) -> Option<String> {
+    std::env::var(name)
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+}
+
+fn read_auth_from_env() -> SshAuth {
+    let private_key_pem = optional_env("JOESSH_REAL_SSH_PRIVATE_KEY_PEM");
+    let private_key_path = optional_env("JOESSH_REAL_SSH_PRIVATE_KEY_PATH");
+
+    if private_key_pem.is_some() && private_key_path.is_some() {
+        panic!(
+            "set only one of JOESSH_REAL_SSH_PRIVATE_KEY_PEM or JOESSH_REAL_SSH_PRIVATE_KEY_PATH"
+        );
+    }
+
+    if let Some(pem) = private_key_pem {
+        return SshAuth::PrivateKey {
+            pem,
+            passphrase: optional_env("JOESSH_REAL_SSH_PRIVATE_KEY_PASSPHRASE"),
+        };
+    }
+
+    if let Some(path) = private_key_path {
+        let pem = std::fs::read_to_string(PathBuf::from(path))
+            .expect("JOESSH_REAL_SSH_PRIVATE_KEY_PATH must point at a readable private key file");
+        return SshAuth::PrivateKey {
+            pem,
+            passphrase: optional_env("JOESSH_REAL_SSH_PRIVATE_KEY_PASSPHRASE"),
+        };
+    }
+
+    SshAuth::Password(required_env("JOESSH_REAL_SSH_PASSWORD"))
+}
+
+fn decode_escaped_command(value: String) -> String {
+    value.replace("\\r", "\r").replace("\\n", "\n")
 }

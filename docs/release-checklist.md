@@ -137,6 +137,10 @@ native apps stay in preflight/device-smoke validation until a later beta.
   `npm run qa:desktop:real-ssh-smoke:required` through
   `npm run qa:release:public`; missing `JOESSH_REAL_SSH_*` fixture variables are
   a No-Go and must not be counted as a skipped dogfood pass.
+- The fixture must provide exactly one auth source:
+  `JOESSH_REAL_SSH_PASSWORD`, `JOESSH_REAL_SSH_PRIVATE_KEY_PEM`, or
+  `JOESSH_REAL_SSH_PRIVATE_KEY_PATH`; optional command overrides may adapt the
+  exec/PTTY markers to POSIX or Windows OpenSSH shells.
 
 ## Web And Sync Checks
 

@@ -544,8 +544,9 @@ function checkReleaseToolingFiles() {
     readTextIfExists("scripts/require-real-ssh-smoke-env.mjs") ?? "";
   passIf(
     requiredRealSshSmokeEnv.includes("JOESSH_REAL_SSH_SMOKE") &&
-      requiredRealSshSmokeEnv.includes("JOESSH_REAL_SSH_HOST") &&
-      requiredRealSshSmokeEnv.includes("JOESSH_REAL_SSH_PASSWORD") &&
+    requiredRealSshSmokeEnv.includes("JOESSH_REAL_SSH_HOST") &&
+    requiredRealSshSmokeEnv.includes("JOESSH_REAL_SSH_PASSWORD") &&
+      requiredRealSshSmokeEnv.includes("JOESSH_REAL_SSH_PRIVATE_KEY_PATH") &&
       requiredRealSshSmokeEnv.includes("JOESSH_REAL_SSH_REMOTE_DIR") &&
       requiredRealSshSmokeEnv.includes("JOESSH_REAL_SSH_PORT must be an integer"),
     "Required Desktop SSH smoke env guard rejects missing real dogfood fixtures",

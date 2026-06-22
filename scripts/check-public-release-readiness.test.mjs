@@ -175,7 +175,7 @@ function createFixture(t, overrides = {}) {
       "repos/${repo}/actions/secrets ATLASTERM_WINDOWS_CERTIFICATE ATLASTERM_APPLE_CERTIFICATE formal_evidence=true workflowRunArgs\n",
     "scripts/desktop-release-evidence-preflight.test.mjs": "",
     "scripts/require-real-ssh-smoke-env.mjs":
-      "JOESSH_REAL_SSH_SMOKE JOESSH_REAL_SSH_HOST JOESSH_REAL_SSH_PASSWORD JOESSH_REAL_SSH_REMOTE_DIR JOESSH_REAL_SSH_PORT must be an integer\n",
+      "JOESSH_REAL_SSH_SMOKE JOESSH_REAL_SSH_HOST JOESSH_REAL_SSH_PASSWORD JOESSH_REAL_SSH_PRIVATE_KEY_PATH JOESSH_REAL_SSH_REMOTE_DIR JOESSH_REAL_SSH_PORT must be an integer\n",
     "scripts/require-real-ssh-smoke-env.test.mjs": "",
     "scripts/package-desktop-release.mjs":
       "artifactSha256 sha256: artifactSha256\n",
