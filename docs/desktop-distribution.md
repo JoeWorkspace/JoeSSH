@@ -61,6 +61,21 @@ If any platform build, signature check, notarization assessment, checksum, or
 evidence binding fails, the workflow does not produce
 `desktop-release-evidence`.
 
+Formal Desktop evidence requires these GitHub Actions secrets:
+
+- Windows: `ATLASTERM_WINDOWS_CERTIFICATE`,
+  `ATLASTERM_WINDOWS_CERTIFICATE_PASSWORD`,
+  `ATLASTERM_WINDOWS_CERTIFICATE_THUMBPRINT`, and
+  `ATLASTERM_WINDOWS_TIMESTAMP_URL`.
+- macOS: `ATLASTERM_APPLE_CERTIFICATE`,
+  `ATLASTERM_APPLE_CERTIFICATE_PASSWORD`, `ATLASTERM_APPLE_ID`,
+  `ATLASTERM_APPLE_PASSWORD`, `ATLASTERM_APPLE_TEAM_ID`, and
+  `ATLASTERM_KEYCHAIN_PASSWORD`.
+
+The Windows certificate must be a base64-encoded `.pfx`. The macOS certificate
+must be a base64-encoded `.p12` with a Developer ID Application identity that can
+be imported into the temporary CI keychain.
+
 ## Signing And Platform Rules
 
 - Windows: public installers must be code signed before upload.

@@ -73,9 +73,110 @@ jobs:
 
       - run: npm ci
 
+      - name: Prepare Windows signing certificate
+        if: runner.os == 'Windows' && inputs.formal_evidence
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.ATLASTERM_WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.ATLASTERM_WINDOWS_CERTIFICATE_PASSWORD }}
+          WINDOWS_CERTIFICATE_THUMBPRINT: ${{ secrets.ATLASTERM_WINDOWS_CERTIFICATE_THUMBPRINT }}
+          WINDOWS_TIMESTAMP_URL: ${{ secrets.ATLASTERM_WINDOWS_TIMESTAMP_URL }}
+        run: |
+          $missing = @()
+          foreach ($name in @(
+            "WINDOWS_CERTIFICATE",
+            "WINDOWS_CERTIFICATE_PASSWORD",
+            "WINDOWS_CERTIFICATE_THUMBPRINT",
+            "WINDOWS_TIMESTAMP_URL"
+          )) {
+            if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
+              $missing += $name
+            }
+          }
+          if ($missing.Count -gt 0) {
+            throw "Missing Windows signing secret(s): $($missing -join ', ')"
+          }
+
+          New-Item -ItemType Directory -Force -Path certificate | Out-Null
+          [IO.File]::WriteAllBytes(
+            "certificate\certificate.pfx",
+            [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE)
+          )
+          $password = ConvertTo-SecureString -String $env:WINDOWS_CERTIFICATE_PASSWORD -Force -AsPlainText
+          Import-PfxCertificate -FilePath certificate\certificate.pfx -CertStoreLocation Cert:\CurrentUser\My -Password $password | Out-Null
+
+          $config = @{
+            bundle = @{
+              windows = @{
+                certificateThumbprint = $env:WINDOWS_CERTIFICATE_THUMBPRINT
+                digestAlgorithm = "sha256"
+                timestampUrl = $env:WINDOWS_TIMESTAMP_URL
+              }
+            }
+          } | ConvertTo-Json -Depth 5
+          Set-Content -Path tauri.windows.signing.json -Value $config -Encoding UTF8
+          "ATLASTERM_DESKTOP_RELEASE_TAURI_CONFIGS=tauri.windows.signing.json" >> $env:GITHUB_ENV
+
+      - name: Prepare macOS signing certificate
+        if: runner.os == 'macOS' && inputs.formal_evidence
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.ATLASTERM_APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.ATLASTERM_APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.ATLASTERM_APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.ATLASTERM_APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.ATLASTERM_APPLE_TEAM_ID }}
+          KEYCHAIN_PASSWORD: ${{ secrets.ATLASTERM_KEYCHAIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          missing=()
+          for name in \
+            APPLE_CERTIFICATE \
+            APPLE_CERTIFICATE_PASSWORD \
+            APPLE_ID \
+            APPLE_PASSWORD \
+            APPLE_TEAM_ID \
+            KEYCHAIN_PASSWORD; do
+            if [[ -z "${!name:-}" ]]; then
+              missing+=("${name}")
+            fi
+          done
+          if (( ${#missing[@]} > 0 )); then
+            printf 'Missing macOS signing/notarization secret(s): %s\n' "${missing[*]}" >&2
+            exit 1
+          fi
+
+          echo "${APPLE_CERTIFICATE}" | base64 --decode > certificate.p12
+          security create-keychain -p "${KEYCHAIN_PASSWORD}" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "${KEYCHAIN_PASSWORD}" build.keychain
+          security set-keychain-settings -t 3600 -u build.keychain
+          security import certificate.p12 -k build.keychain -P "${APPLE_CERTIFICATE_PASSWORD}" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${KEYCHAIN_PASSWORD}" build.keychain
+          security find-identity -v -p codesigning build.keychain
+
+          cert_id="$(
+            security find-identity -v -p codesigning build.keychain |
+              awk -F '"' '/Developer ID Application/ { print $2; exit }'
+          )"
+          if [[ -z "${cert_id}" ]]; then
+            cert_id="$(
+              security find-identity -v -p codesigning build.keychain |
+                awk -F '"' '/"/ { print $2; exit }'
+            )"
+          fi
+          if [[ -z "${cert_id}" ]]; then
+            echo "No macOS codesigning identity found after certificate import." >&2
+            exit 1
+          fi
+          echo "APPLE_SIGNING_IDENTITY=${cert_id}" >> "${GITHUB_ENV}"
+
       - name: Build Desktop bundle
         env:
           ATLASTERM_DESKTOP_RELEASE_BUNDLES: ${{ matrix.bundles }}
+          APPLE_ID: ${{ secrets.ATLASTERM_APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.ATLASTERM_APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.ATLASTERM_APPLE_TEAM_ID }}
         run: npm run release:desktop:build
 
       - name: Verify Windows signature
