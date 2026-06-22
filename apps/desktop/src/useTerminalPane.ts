@@ -79,9 +79,17 @@ export function useTerminalPane({
   const [autocompleteCommands, setAutocompleteCommands] = useState<readonly string[]>([]);
 
   useEffect(() => {
+    let cancelled = false;
     if (commandInput && commandInput.length >= 2 && autocompleteCommands.length === 0) {
-      import("./autocompleteCommands").then((m) => setAutocompleteCommands(m.terminalAutocompleteCommands));
+      import("./autocompleteCommands").then((m) => {
+        if (!cancelled) {
+          setAutocompleteCommands(m.terminalAutocompleteCommands);
+        }
+      });
     }
+    return () => {
+      cancelled = true;
+    };
   }, [commandInput, autocompleteCommands.length]);
 
   const autocompleteSuggestions = useMemo(() => {
