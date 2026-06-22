@@ -3,7 +3,7 @@
 Public Beta supports a self-hosted, single-process Sync Service. The JSON ledger
 is intended for one running service instance. Multi-writer or clustered
 production deployments require a transactional database backend and are outside
-the `0.1.0-beta.3` support promise.
+the `0.1.0-beta.4` support promise.
 
 ## Required Configuration
 
@@ -60,7 +60,7 @@ ATLASTERM_SYNC_MAX_LEDGER_BYTES=67108864
 Build from the repository root:
 
 ```bash
-docker build -f services/sync/Dockerfile -t joessh-sync:0.1.0-beta.3 .
+docker build -f services/sync/Dockerfile -t joessh-sync:0.1.0-beta.4 .
 docker run --rm -p 4100:4100 \
   --read-only \
   --cap-drop=ALL \
@@ -75,7 +75,7 @@ docker run --rm -p 4100:4100 \
   -e ATLASTERM_SYNC_CORS_ORIGINS=https://admin.example.com \
   -e ATLASTERM_SYNC_STORAGE_PATH=/var/lib/joessh-sync/ledger.json \
   -v joessh-sync-data:/var/lib/joessh-sync \
-  joessh-sync:0.1.0-beta.3
+  joessh-sync:0.1.0-beta.4
 ```
 
 The container defaults to `ATLASTERM_SYNC_BIND=0.0.0.0:4100` and

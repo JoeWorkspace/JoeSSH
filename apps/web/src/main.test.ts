@@ -292,7 +292,7 @@ describe("web entry telemetry policy", () => {
 
     expect(content).toContain("VITE_ATLASTERM_TELEMETRY_OPT_IN");
     expect(content).toContain("createNoopErrorMonitor");
-    expect(content).toContain("0.1.0-beta.3");
+    expect(content).toContain("0.1.0-beta.4");
     expect(content).not.toContain("version: '0.1.0'");
     expect(content).not.toContain('version: "0.1.0"');
   });
@@ -308,5 +308,24 @@ describe("web entry telemetry policy", () => {
     expect(content).toContain("uninstall?.()");
     expect(content).toContain("errorMonitor.disable()");
     expect(content).toContain("setTelemetryEnabled(nextEnabled)");
+  });
+});
+
+describe("web release shell build", () => {
+  it("keeps the critical shell injection wired before SRI", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const packageJsonPath = path.resolve(__dirname, "../package.json");
+    const inlineShellPath = path.resolve(__dirname, "../inline-shell.mjs");
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
+    const inlineShell = fs.readFileSync(inlineShellPath, "utf-8");
+
+    expect(packageJson.scripts.build).toContain("node inline-shell.mjs");
+    expect(packageJson.scripts.build.indexOf("node inline-shell.mjs")).toBeLessThan(
+      packageJson.scripts.build.indexOf("apply-subresource-integrity.mjs"),
+    );
+    expect(inlineShell).toContain("data-joessh-critical-shell");
+    expect(inlineShell).toContain("adminShellSkeleton");
+    expect(inlineShell).not.toContain("Math.random");
   });
 });

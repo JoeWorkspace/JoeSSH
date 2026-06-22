@@ -1,6 +1,6 @@
 # JoeSSH Public Beta Release Checklist
 
-This checklist defines the public beta bar for `0.1.0-beta.3`. The first public
+This checklist defines the public beta bar for `0.1.0-beta.4`. The first public
 release includes Desktop, Web Admin, and the self-hosted Sync Service. Mobile
 native apps stay in preflight/device-smoke validation until a later beta.
 
@@ -14,8 +14,8 @@ native apps stay in preflight/device-smoke validation until a later beta.
   checkout before running any release, tag, checksum, or GitHub draft step.
 - Confirm the release version is aligned across root package metadata, Desktop,
   Web Admin, Mobile metadata, Tauri, and Sync Service Cargo metadata.
-- Update `CHANGELOG.md` with the `0.1.0-beta.3` section.
-- Update `docs/release-notes/0.1.0-beta.3.md`; the GitHub Release draft uses
+- Update `CHANGELOG.md` with the `0.1.0-beta.4` section.
+- Update `docs/release-notes/0.1.0-beta.4.md`; the GitHub Release draft uses
   this versioned notes file, not the release checklist.
 - Run `npm run qa:release:public` on a clean release machine.
   The root QA portion uses `npm run qa:e2e:fresh` so release-machine E2E
@@ -33,7 +33,7 @@ native apps stay in preflight/device-smoke validation until a later beta.
 - Build release artifacts and generate per-artifact `SHA256` checksum files
   before uploading.
 - Run `npm run release:web` and confirm the GitHub Release includes
-  `reports/release/web/joessh-web-admin-0.1.0-beta.3.zip`, not only a checksum
+  `reports/release/web/joessh-web-admin-0.1.0-beta.4.zip`, not only a checksum
   manifest for unpackaged `dist` files. The Web package self-test must keep
   `--output` and `--checksum` writes inside the repository root.
 - Run `node scripts/verify-web-release-package.mjs` or rely on
@@ -209,7 +209,7 @@ native apps stay in preflight/device-smoke validation until a later beta.
 - Create the GitHub Release as a draft first with `npm run release:desktop:draft`.
   The draft script requires Desktop, Web Admin, and Sync `SHA256SUMS.txt`
   manifests, a clean Git working tree outside `reports/release/`, a
-  `v0.1.0-beta.3` tag pointing at `HEAD`, authenticated GitHub CLI state, no
+  `v0.1.0-beta.4` tag pointing at `HEAD`, authenticated GitHub CLI state, no
   existing GitHub Release with that tag, the versioned release notes file, and verifies all
   staged `reports/release/**/SHA256SUMS.txt` files before invoking
   `gh release create`.

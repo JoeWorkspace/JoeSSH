@@ -1435,7 +1435,7 @@ const errorMonitor = desktopTelemetryAvailable
   ? createErrorMonitor({
       app: "desktop",
       endpoint: desktopEnv.VITE_ATLASTERM_ERROR_MONITOR_ENDPOINT,
-      version: desktopEnv.VITE_ATLASTERM_APP_VERSION ?? "0.1.0-beta.3",
+      version: desktopEnv.VITE_ATLASTERM_APP_VERSION ?? "0.1.0-beta.4",
     })
   : createNoopErrorMonitor();
 

@@ -1,11 +1,11 @@
 {
   "name": "@atlasterm/web",
-  "version": "0.1.0-beta.3",
+  "version": "0.1.0-beta.4",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 4200",
-    "build": "tsc && vite build && node ../../scripts/apply-subresource-integrity.mjs dist",
+    "build": "tsc && vite build && node inline-shell.mjs && node ../../scripts/apply-subresource-integrity.mjs dist",
     "preview": "vite preview --host 127.0.0.1 --port 4200",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"

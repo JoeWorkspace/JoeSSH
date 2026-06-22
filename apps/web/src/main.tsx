@@ -905,7 +905,7 @@ const errorMonitor = webTelemetryAvailable
   ? createErrorMonitor({
       app: 'web',
       endpoint: webEnv.VITE_ATLASTERM_ERROR_MONITOR_ENDPOINT,
-      version: webEnv.VITE_ATLASTERM_APP_VERSION ?? '0.1.0-beta.3',
+      version: webEnv.VITE_ATLASTERM_APP_VERSION ?? '0.1.0-beta.4',
     })
   : createNoopErrorMonitor();
 
