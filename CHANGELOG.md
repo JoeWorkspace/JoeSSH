@@ -27,6 +27,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pull request checklist wording now references the test gate without a fixed
   test count.
 
+## [0.1.0-beta.8] - 2026-06-23
+
+### Fixed
+- Public Beta release notes now include the Sync Service and SHA256 evidence
+  language required by the release readiness gate.
+
+### Changed
+- Rolled the Public Beta candidate forward from `0.1.0-beta.7` to
+  `0.1.0-beta.8` without moving the already-published beta7 tag.
+
 ## [0.1.0-beta.7] - 2026-06-23
 
 ### Added
@@ -41,9 +51,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Public Beta release docs now treat Desktop diagnostics and signing-secret
   templates as handoff-only local artifacts, separate from the final
   `reports/release/` upload tree.
-- The current Public Beta candidate version is `0.1.0-beta.7`, preserving
-  `0.1.0-beta.5` as the last pushed candidate while local release evidence is
-  refreshed.
+- The beta7 candidate preserved `0.1.0-beta.5` as the last pushed candidate
+  while local release evidence was refreshed.
 
 ## [0.1.0-beta.5] - 2026-06-22
 

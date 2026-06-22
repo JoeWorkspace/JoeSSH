@@ -4,7 +4,7 @@
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 0.1.0-beta.7 | Public Beta |
+| 0.1.0-beta.8 | Public Beta |
 | 0.1.x   | :white_check_mark: |
 
 ## Reporting a Vulnerability

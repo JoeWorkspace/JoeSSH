@@ -277,7 +277,7 @@
   `release-evidence.json`.
 - Web Admin public release packages are built with `npm run release:web`; the
   gate verifies the uploadable
-  `reports/release/web/joessh-web-admin-0.1.0-beta.7.zip` artifact rather than
+  `reports/release/web/joessh-web-admin-0.1.0-beta.8.zip` artifact rather than
   checksum coverage for loose `dist` files. The package self-test also rejects
   `--output` or `--checksum` paths outside the repository root so release
   artifacts cannot be written outside the staged release tree by mistake.
@@ -299,7 +299,7 @@
   preserved, and `reports/release/sync/SHA256SUMS.txt` targets the current
   platform artifact.
 - Packaged Sync release candidates pass `npm run qa:sync:release-smoke`, which
-  builds `reports/release/sync/joessh-sync-0.1.0-beta.7-<platform>-<arch>`,
+  builds `reports/release/sync/joessh-sync-0.1.0-beta.8-<platform>-<arch>`,
   verifies its checksum manifest, and runs the same local service smoke against
   the published binary.
 - Packaged Sync backup/restore release candidates pass
