@@ -31,6 +31,7 @@ const releaseScriptNames = [
   "qa:sync:release-smoke",
   "qa:tauri",
   "qa:desktop:real-ssh-smoke",
+  "qa:desktop:real-ssh-smoke:fixture",
   "qa:desktop:real-ssh-smoke:required",
   "test:desktop-real-ssh-smoke-env",
   "test:desktop-release-package",
@@ -97,6 +98,9 @@ function fixtureScriptValue(name, overrides = {}) {
   }
   if (name === "qa:desktop:real-ssh-smoke:required") {
     return "node scripts/require-real-ssh-smoke-env.mjs && npm run qa:desktop:real-ssh-smoke";
+  }
+  if (name === "qa:desktop:real-ssh-smoke:fixture") {
+    return "node scripts/run-real-ssh-smoke-fixture.mjs";
   }
   if (name === "release:desktop:checksums") {
     return "npm run release:desktop:package";
@@ -177,6 +181,8 @@ function createFixture(t, overrides = {}) {
     "scripts/require-real-ssh-smoke-env.mjs":
       "JOESSH_REAL_SSH_SMOKE JOESSH_REAL_SSH_HOST JOESSH_REAL_SSH_PASSWORD JOESSH_REAL_SSH_PRIVATE_KEY_PATH JOESSH_REAL_SSH_REMOTE_DIR JOESSH_REAL_SSH_PORT must be an integer\n",
     "scripts/require-real-ssh-smoke-env.test.mjs": "",
+    "scripts/run-real-ssh-smoke-fixture.mjs":
+      'reports", "smoke", "desktop", "real-ssh-smoke.json JOESSH_REAL_SSH_PRIVATE_KEY_PATH qa:desktop:real-ssh-smoke:required local forwarding start/traffic/shutdown\n',
     "scripts/package-desktop-release.mjs":
       "artifactSha256 sha256: artifactSha256\n",
     "scripts/package-desktop-release.test.mjs": "",

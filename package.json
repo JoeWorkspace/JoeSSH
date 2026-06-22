@@ -91,6 +91,7 @@
     "qa:sync-release-package": "npm run test:sync-release-package",
     "qa:web-admin-bundle-token-scan": "npm run test:web-admin-bundle-token-scan && npm run build:web && node scripts/check-web-admin-bundle-token-scan.mjs apps/web/dist",
     "qa:desktop:real-ssh-smoke": "cargo test -p atlasterm-core --test real_ssh_smoke -- --nocapture",
+    "qa:desktop:real-ssh-smoke:fixture": "node scripts/run-real-ssh-smoke-fixture.mjs",
     "qa:desktop:real-ssh-smoke:required": "node scripts/require-real-ssh-smoke-env.mjs && npm run qa:desktop:real-ssh-smoke",
     "qa:web-release": "npm run test:web-release && npm run test:web-release-verify",
     "qa:web-admin-sync-topology-smoke": "node scripts/smoke-web-admin-sync-release-topology.mjs",

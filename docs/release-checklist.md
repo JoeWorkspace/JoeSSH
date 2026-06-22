@@ -141,6 +141,10 @@ native apps stay in preflight/device-smoke validation until a later beta.
   `JOESSH_REAL_SSH_PASSWORD`, `JOESSH_REAL_SSH_PRIVATE_KEY_PEM`, or
   `JOESSH_REAL_SSH_PRIVATE_KEY_PATH`; optional command overrides may adapt the
   exec/PTTY markers to POSIX or Windows OpenSSH shells.
+- On Windows release machines, `npm run qa:desktop:real-ssh-smoke:fixture`
+  starts a temporary local OpenSSH fixture, runs the required real SSH smoke,
+  and writes `reports/smoke/desktop/real-ssh-smoke.json` plus its checksum
+  manifest for dogfood evidence.
 
 ## Web And Sync Checks
 

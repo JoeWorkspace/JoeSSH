@@ -133,6 +133,7 @@ function checkPackageScripts() {
     "qa:sync:release-smoke",
     "qa:tauri",
     "qa:desktop:real-ssh-smoke",
+    "qa:desktop:real-ssh-smoke:fixture",
     "qa:desktop:real-ssh-smoke:required",
     "test:desktop-real-ssh-smoke-env",
     "test:desktop-release-package",
@@ -340,6 +341,13 @@ function checkPackageScripts() {
     "Required Desktop SSH smoke verifies fixture env before running dogfood",
     requiredRealSshSmokeScript,
   );
+  const fixtureRealSshSmokeScript =
+    packageJson.scripts?.["qa:desktop:real-ssh-smoke:fixture"] ?? "";
+  passIf(
+    fixtureRealSshSmokeScript.includes("run-real-ssh-smoke-fixture.mjs"),
+    "Desktop SSH smoke fixture runner is available for release-machine dogfood",
+    fixtureRealSshSmokeScript,
+  );
 
   const rootQaScript = packageJson.scripts?.qa ?? "";
   passIf(
@@ -442,6 +450,7 @@ function checkReleaseToolingFiles() {
     "scripts/desktop-release-evidence-preflight.test.mjs",
     "scripts/require-real-ssh-smoke-env.mjs",
     "scripts/require-real-ssh-smoke-env.test.mjs",
+    "scripts/run-real-ssh-smoke-fixture.mjs",
     "scripts/package-web-release.mjs",
     "scripts/package-web-release.test.mjs",
     "scripts/verify-web-release-package.mjs",
@@ -550,6 +559,15 @@ function checkReleaseToolingFiles() {
       requiredRealSshSmokeEnv.includes("JOESSH_REAL_SSH_REMOTE_DIR") &&
       requiredRealSshSmokeEnv.includes("JOESSH_REAL_SSH_PORT must be an integer"),
     "Required Desktop SSH smoke env guard rejects missing real dogfood fixtures",
+  );
+  const realSshFixtureRunner =
+    readTextIfExists("scripts/run-real-ssh-smoke-fixture.mjs") ?? "";
+  passIf(
+    realSshFixtureRunner.includes("reports\", \"smoke\", \"desktop\", \"real-ssh-smoke.json") &&
+      realSshFixtureRunner.includes("JOESSH_REAL_SSH_PRIVATE_KEY_PATH") &&
+      realSshFixtureRunner.includes("qa:desktop:real-ssh-smoke:required") &&
+      realSshFixtureRunner.includes("local forwarding start/traffic/shutdown"),
+    "Desktop SSH smoke fixture runner writes reusable dogfood evidence",
   );
 
   const desktopSecretConfigurator =
