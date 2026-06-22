@@ -133,6 +133,10 @@ native apps stay in preflight/device-smoke validation until a later beta.
   `JOESSH_REAL_SSH_SMOKE=1` against a loopback OpenSSH fixture and cover
   host-key probe, pinned trust, password authentication, exec, PTY, SFTP
   list/download/upload/overwrite, local forwarding, and forward shutdown.
+- Public Beta release-machine QA must use
+  `npm run qa:desktop:real-ssh-smoke:required` through
+  `npm run qa:release:public`; missing `JOESSH_REAL_SSH_*` fixture variables are
+  a No-Go and must not be counted as a skipped dogfood pass.
 
 ## Web And Sync Checks
 

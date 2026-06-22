@@ -133,6 +133,8 @@ function checkPackageScripts() {
     "qa:sync:release-smoke",
     "qa:tauri",
     "qa:desktop:real-ssh-smoke",
+    "qa:desktop:real-ssh-smoke:required",
+    "test:desktop-real-ssh-smoke-env",
     "test:desktop-release-package",
     "qa:desktop-release-package",
     "test:desktop-release-evidence",
@@ -273,6 +275,11 @@ function checkPackageScripts() {
 
   const publicReleaseScript = packageJson.scripts?.["qa:release:public"] ?? "";
   passIf(
+    publicReleaseScript.includes("qa:desktop:real-ssh-smoke:required"),
+    "Public release QA requires real Desktop SSH smoke fixture",
+    publicReleaseScript,
+  );
+  passIf(
     publicReleaseScript.includes("qa:rust-advisory"),
     "Public release QA runs Rust advisory audit",
     publicReleaseScript,
@@ -301,6 +308,11 @@ function checkPackageScripts() {
   const publicReleaseLocalScript =
     packageJson.scripts?.["qa:release:public:local"] ?? "";
   passIf(
+    publicReleaseLocalScript.includes("qa:desktop:real-ssh-smoke:required"),
+    "Local public release QA requires real Desktop SSH smoke fixture",
+    publicReleaseLocalScript,
+  );
+  passIf(
     publicReleaseLocalScript.includes("qa:mobile-public-env"),
     "Local public release QA rejects mobile public bearer-token env",
     publicReleaseLocalScript,
@@ -318,6 +330,15 @@ function checkPackageScripts() {
       mobilePublicEnvScript.includes("check-mobile-public-env.mjs"),
     "Mobile public env QA runs tests and the env guard",
     mobilePublicEnvScript,
+  );
+
+  const requiredRealSshSmokeScript =
+    packageJson.scripts?.["qa:desktop:real-ssh-smoke:required"] ?? "";
+  passIf(
+    requiredRealSshSmokeScript.includes("require-real-ssh-smoke-env.mjs") &&
+      requiredRealSshSmokeScript.includes("qa:desktop:real-ssh-smoke"),
+    "Required Desktop SSH smoke verifies fixture env before running dogfood",
+    requiredRealSshSmokeScript,
   );
 
   const rootQaScript = packageJson.scripts?.qa ?? "";
@@ -419,6 +440,8 @@ function checkReleaseToolingFiles() {
     "scripts/download-desktop-release-evidence.test.mjs",
     "scripts/desktop-release-evidence-preflight.mjs",
     "scripts/desktop-release-evidence-preflight.test.mjs",
+    "scripts/require-real-ssh-smoke-env.mjs",
+    "scripts/require-real-ssh-smoke-env.test.mjs",
     "scripts/package-web-release.mjs",
     "scripts/package-web-release.test.mjs",
     "scripts/verify-web-release-package.mjs",
@@ -515,6 +538,17 @@ function checkReleaseToolingFiles() {
       desktopReleaseWorkflow.includes("bundle_dmg.sh") &&
       desktopReleaseWorkflow.includes("hdiutil info"),
     "Desktop release workflow preserves macOS DMG failure diagnostics",
+  );
+
+  const requiredRealSshSmokeEnv =
+    readTextIfExists("scripts/require-real-ssh-smoke-env.mjs") ?? "";
+  passIf(
+    requiredRealSshSmokeEnv.includes("JOESSH_REAL_SSH_SMOKE") &&
+      requiredRealSshSmokeEnv.includes("JOESSH_REAL_SSH_HOST") &&
+      requiredRealSshSmokeEnv.includes("JOESSH_REAL_SSH_PASSWORD") &&
+      requiredRealSshSmokeEnv.includes("JOESSH_REAL_SSH_REMOTE_DIR") &&
+      requiredRealSshSmokeEnv.includes("JOESSH_REAL_SSH_PORT must be an integer"),
+    "Required Desktop SSH smoke env guard rejects missing real dogfood fixtures",
   );
 
   const desktopSecretConfigurator =

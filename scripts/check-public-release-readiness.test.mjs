@@ -31,6 +31,8 @@ const releaseScriptNames = [
   "qa:sync:release-smoke",
   "qa:tauri",
   "qa:desktop:real-ssh-smoke",
+  "qa:desktop:real-ssh-smoke:required",
+  "test:desktop-real-ssh-smoke-env",
   "test:desktop-release-package",
   "qa:desktop-release-package",
   "test:desktop-release-evidence",
@@ -85,13 +87,16 @@ function fixtureScriptValue(name, overrides = {}) {
     return overrides[name];
   }
   if (name === "qa:release:public" || name === "qa:release:public:local") {
-    return "npm run qa:mobile-public-env && npm run qa:rust-advisory && npm run qa:lighthouse && npm run qa:web-admin-sync-topology-release-smoke && npm run qa:sync:release-backup-restore-smoke && npm run qa:sync:backup-restore-smoke && node scripts/verify-sync-release-evidence.mjs";
+    return "npm run qa:mobile-public-env && npm run qa:desktop:real-ssh-smoke:required && npm run qa:rust-advisory && npm run qa:lighthouse && npm run qa:web-admin-sync-topology-release-smoke && npm run qa:sync:release-backup-restore-smoke && npm run qa:sync:backup-restore-smoke && node scripts/verify-sync-release-evidence.mjs";
   }
   if (name === "qa:mobile-public-env") {
     return "npm run test:mobile-public-env && node scripts/check-mobile-public-env.mjs";
   }
   if (name === "qa") {
     return "npm run lint && npm run qa:lighthouse-audit && npm run qa:e2e:fresh";
+  }
+  if (name === "qa:desktop:real-ssh-smoke:required") {
+    return "node scripts/require-real-ssh-smoke-env.mjs && npm run qa:desktop:real-ssh-smoke";
   }
   if (name === "release:desktop:checksums") {
     return "npm run release:desktop:package";
@@ -169,6 +174,9 @@ function createFixture(t, overrides = {}) {
     "scripts/desktop-release-evidence-preflight.mjs":
       "repos/${repo}/actions/secrets ATLASTERM_WINDOWS_CERTIFICATE ATLASTERM_APPLE_CERTIFICATE formal_evidence=true workflowRunArgs\n",
     "scripts/desktop-release-evidence-preflight.test.mjs": "",
+    "scripts/require-real-ssh-smoke-env.mjs":
+      "JOESSH_REAL_SSH_SMOKE JOESSH_REAL_SSH_HOST JOESSH_REAL_SSH_PASSWORD JOESSH_REAL_SSH_REMOTE_DIR JOESSH_REAL_SSH_PORT must be an integer\n",
+    "scripts/require-real-ssh-smoke-env.test.mjs": "",
     "scripts/package-desktop-release.mjs":
       "artifactSha256 sha256: artifactSha256\n",
     "scripts/package-desktop-release.test.mjs": "",
@@ -898,6 +906,35 @@ test("rejects public release scripts without Lighthouse release-machine gate", (
   assert.match(
     result.stdout,
     /FAIL Public release QA runs Web Admin Lighthouse on the release machine/,
+  );
+});
+
+test("rejects public release scripts without required real Desktop SSH smoke fixture", (t) => {
+  const scripts = Object.fromEntries(
+    releaseScriptNames.map((name) => [name, fixtureScriptValue(name)]),
+  );
+  scripts["qa:release:public"] =
+    "npm run qa:mobile-public-env && npm run qa:rust-advisory && npm run qa:lighthouse && npm run qa:web-admin-sync-topology-release-smoke && npm run qa:sync:release-backup-restore-smoke && npm run qa:sync:backup-restore-smoke && node scripts/verify-sync-release-evidence.mjs";
+  scripts["qa:release:public:local"] =
+    "npm run qa:mobile-public-env && npm run qa:rust-advisory && npm run qa:lighthouse && npm run qa:web-admin-sync-topology-release-smoke && npm run qa:sync:release-backup-restore-smoke && npm run qa:sync:backup-restore-smoke && node scripts/verify-sync-release-evidence.mjs";
+
+  const result = runChecker(
+    createFixture(t, {
+      "package.json": JSON.stringify({
+        version: "0.1.0-beta.1",
+        scripts,
+      }),
+    }),
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stdout,
+    /FAIL Public release QA requires real Desktop SSH smoke fixture/,
+  );
+  assert.match(
+    result.stdout,
+    /FAIL Local public release QA requires real Desktop SSH smoke fixture/,
   );
 });
 
