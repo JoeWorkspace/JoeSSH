@@ -99,6 +99,18 @@ test("records No-Go blockers without hiding GitHub billing annotations", (t) => 
   assert(report.blockers.some((blocker) => blocker.id === "github-ci"));
 });
 
+test("rejects checksum manifest entries outside the release root", (t) => {
+  const { fakePath, root, statePath } = createFixture(t);
+  writeFile(root, "reports/release/web/SHA256SUMS.txt", `${"a".repeat(64)}  ../outside.zip\n`);
+  const result = runAudit(root, fakePath, statePath, ["--skip-github"]);
+
+  assert.equal(result.status, 0);
+  const report = JSON.parse(readFileSync(join(root, "reports/release/public-beta-rc-audit.json"), "utf8"));
+  const blocker = report.blockers.find((entry) => entry.id === "release-web");
+  assert(blocker);
+  assert.match(blocker.detail, /escapes the release root/);
+});
+
 function writeDogfood(root, { passed }) {
   const evidence = {
     auth: "private-key",

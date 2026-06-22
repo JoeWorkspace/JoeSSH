@@ -278,7 +278,13 @@ function verifyChecksumManifest(relativePath) {
     if (!match?.groups) {
       return { ok: false, detail: `${relativePath} contains an invalid checksum line.` };
     }
-    const artifactPath = resolve(root, match.groups.path.replace(/\//g, "\\"));
+    if (isManifestAbsolutePath(match.groups.path)) {
+      return { ok: false, detail: `${match.groups.path} referenced by ${relativePath} must be relative.` };
+    }
+    const artifactPath = resolveManifestEntryPath(match.groups.path);
+    if (!isInsideRoot(artifactPath, root)) {
+      return { ok: false, detail: `${match.groups.path} referenced by ${relativePath} escapes the release root.` };
+    }
     if (!existsSync(artifactPath)) {
       return { ok: false, detail: `${match.groups.path} referenced by ${relativePath} is missing.` };
     }
@@ -289,6 +295,14 @@ function verifyChecksumManifest(relativePath) {
   }
 
   return { ok: true, detail: `verified ${lines.length} checksum${lines.length === 1 ? "" : "s"}` };
+}
+
+function resolveManifestEntryPath(entryPath) {
+  return resolve(root, ...entryPath.split(/[\\/]+/).filter(Boolean));
+}
+
+function isManifestAbsolutePath(entryPath) {
+  return isAbsolute(entryPath) || /^[A-Za-z]:[\\/]/.test(entryPath);
 }
 
 function writeReport() {
