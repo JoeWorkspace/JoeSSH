@@ -6,8 +6,10 @@ build/
 .vite/
 .turbo/
 coverage/
+reports/
 artifacts/
 playwright-report/
+playwright-visual-report/
 test-results/
 **/playwright-report/
 **/test-results/
