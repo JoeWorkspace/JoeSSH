@@ -7,7 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-beta.9] - 2026-06-23
+
 ### Added
+- Public Beta dogfood evidence template and verifier covering the top Desktop,
+  Web Admin, Sync, rollback, and release-evidence review tasks without allowing
+  open P0/P1 findings.
+- Internal-only unsigned Desktop staging handoff report that records artifact
+  path, SHA256, Git ref, and Windows Authenticode status while keeping unsigned
+  builds out of `reports/release`.
 - Repository release handoff playbook for moving reviewed work from a damaged
   `.git` planning workspace into a healthy checkout before Public Beta tagging,
   checksums, SBOM generation, or GitHub Release drafting.
@@ -15,7 +23,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   proxy deployments fail closed unless a distinct inbound operator token is
   configured and verified before the upstream admin token is injected.
 
+### Fixed
+- Desktop host-key probing now ignores stale results when the connection form
+  changes mid-probe.
+- Desktop SFTP listing, download, and overwrite flows now pin the directory
+  context so slow listings or pending overwrite confirmations cannot target the
+  wrong folder.
+- Tauri SFTP IPC now rejects unsafe remote paths with traversal, control
+  characters, bidi controls, or backslashes before reaching the SFTP backend.
+- Desktop port-forward runtime cleanup now stops active native forwards when
+  the backend session changes and ignores stale start results.
+- Invalid Desktop connection-import files now surface an error toast instead of
+  silently reporting zero imported connections.
+
 ### Changed
+- Release readiness now requires the dogfood verifier, native SFTP path guard,
+  forward lifecycle cleanup evidence, and unsigned-staging handoff guard.
 - Public release readiness now requires the repository handoff playbook and
   blocks stale fixed test-count or absolute coverage claims in the changelog.
 - Desktop known-host Settings actions now require confirmation before removing

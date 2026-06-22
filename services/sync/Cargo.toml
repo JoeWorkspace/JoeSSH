@@ -1,6 +1,6 @@
 [package]
 name = "atlasterm-sync"
-version = "0.1.0-beta.8"
+version = "0.1.0-beta.9"
 edition = "2021"
 description = "JoeSSH sync service API with in-memory and JSON-backed ledgers"
 license = "MIT"

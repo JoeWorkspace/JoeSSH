@@ -1,6 +1,6 @@
 # JoeSSH Public Beta Dogfood Script
 
-This script is the repeatable operator dogfood path for `0.1.0-beta.8`.
+This script is the repeatable operator dogfood path for `0.1.0-beta.9`.
 It is for internal dogfood and release-candidate evidence, not a substitute for
 signed Desktop formal release evidence.
 
