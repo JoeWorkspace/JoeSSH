@@ -11,7 +11,7 @@ describe('mobile entry telemetry policy', () => {
     expect(content).toContain('isTelemetryOptedIn');
     expect(content).toContain("messageLabel={t('mobile.error.boundary.message')}");
     expect(content).not.toContain('this.state.error.message');
-    expect(content).toContain('0.1.0-beta.4');
+    expect(content).toContain('0.1.0-beta.5');
     expect(content).not.toContain("version: '0.1.0'");
     expect(content).not.toContain('version: "0.1.0"');
   });

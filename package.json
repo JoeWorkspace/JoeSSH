@@ -1,6 +1,6 @@
 {
   "name": "atlasterm",
-  "version": "0.1.0-beta.4",
+  "version": "0.1.0-beta.5",
   "private": true,
   "description": "JoeSSH monorepo for a local-first SSH, terminal, SFTP, forwarding, sync, and team workspace product.",
   "license": "MIT",
@@ -57,6 +57,7 @@
     "test:handoff-hygiene": "node --test scripts/check-handoff-hygiene.test.mjs",
     "test:artifact-checksums": "node --test scripts/verify-artifact-checksums.test.mjs",
     "test:desktop-real-ssh-smoke-env": "node --test scripts/require-real-ssh-smoke-env.test.mjs",
+    "test:desktop-real-ssh-smoke-fixture": "node --test scripts/run-real-ssh-smoke-fixture.test.mjs",
     "test:desktop-release-package": "node --test scripts/package-desktop-release.test.mjs",
     "test:desktop-release-evidence": "node --test scripts/verify-desktop-release-evidence.test.mjs",
     "test:desktop-release-secrets": "node --test scripts/configure-desktop-release-secrets.test.mjs",
@@ -107,6 +108,7 @@
     "qa:release": "npm run qa:release:app",
     "qa:release:app": "npm run qa && npm run qa:i18n-release && npm run qa:mobile:native-preflight",
     "qa:release:public": "npm run qa:release && npm run qa:mobile-public-env && npm run qa:rust && npm run qa:desktop:real-ssh-smoke:required && npm run qa:rust-advisory && npm run qa:tauri && npm run qa:prod-audit && npm run release:sbom && npm run release:sbom:verify && npm run qa:lighthouse && npm run qa:web-admin-proxy-smoke && npm run qa:web-admin-bundle-token-scan && npm run qa:web-admin-sync-topology-release-smoke && npm run qa:sync:self-hosted-smoke && npm run qa:sync:release-smoke && npm run qa:sync:release-backup-restore-smoke && npm run qa:sync:config-guard-smoke && npm run qa:sync:backup-restore-smoke && node scripts/verify-sync-release-evidence.mjs && npm run qa:e2e:web-real-sync:fresh && npm run qa:e2e:visual:fresh && node scripts/check-public-release-readiness.mjs",
+    "qa:release:public:fixture": "node scripts/run-real-ssh-smoke-fixture.mjs -- npm run qa:release:public",
     "qa:release:public:local": "npm run qa:release && npm run qa:mobile-public-env && npm run qa:rust && npm run qa:desktop:real-ssh-smoke:required && npm run qa:rust-advisory && npm run qa:tauri && npm run qa:prod-audit && npm run release:sbom && npm run release:sbom:verify && npm run qa:lighthouse && npm run qa:web-admin-proxy-smoke && npm run qa:web-admin-bundle-token-scan && npm run qa:web-admin-sync-topology-release-smoke && npm run qa:sync:self-hosted-smoke && npm run qa:sync:release-smoke && npm run qa:sync:release-backup-restore-smoke && npm run qa:sync:config-guard-smoke && npm run qa:sync:backup-restore-smoke && node scripts/verify-sync-release-evidence.mjs && npm run qa:e2e:web-real-sync:fresh && npm run qa:e2e:visual:fresh && node scripts/check-public-release-readiness.mjs --allow-unhealthy-git",
     "qa:release:strict": "npm run qa:release:public && npm run smoke:native:devices -w @atlasterm/mobile",
     "qa:rust": "cargo fmt --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace",

@@ -19,6 +19,7 @@ const sshKeygenCommand = process.env.JOESSH_REAL_SSH_FIXTURE_SSH_KEYGEN ?? findC
 const sftpServerCommand = process.env.JOESSH_REAL_SSH_FIXTURE_SFTP_SERVER ?? findCommand("sftp-server");
 const outputPath = resolve(root, "reports", "smoke", "desktop", "real-ssh-smoke.json");
 const checksumPath = resolve(root, "reports", "smoke", "desktop", "real-ssh-smoke-SHA256SUMS.txt");
+const wrappedCommand = parseWrappedCommand(process.argv.slice(2));
 
 if (process.platform !== "win32") {
   fail("The local OpenSSH fixture runner currently supports Windows release machines. Use the CI loopback OpenSSH fixture on Linux.");
@@ -39,9 +40,16 @@ try {
   const fixture = prepareFixture(tempRoot);
   sshd = startSshd(fixture);
   await waitForPort(fixture.port);
-  const result = runSmoke(fixture);
-  exitCode = result.status ?? 1;
-  writeEvidence(fixture, startedAt, new Date(), result);
+  const smokeResult = runSmoke(fixture);
+  let wrappedResult = null;
+  exitCode = smokeResult.status ?? 1;
+
+  if (exitCode === 0 && wrappedCommand) {
+    wrappedResult = runFixtureCommand(fixture, wrappedCommand);
+    exitCode = wrappedResult.status ?? 1;
+  }
+
+  writeEvidence(fixture, startedAt, new Date(), smokeResult, wrappedResult);
 } catch (error) {
   errorMessage = error instanceof Error ? error.message : String(error);
   writeEvidence(null, startedAt, new Date(), {
@@ -132,6 +140,13 @@ function startSshd(fixture) {
 }
 
 function runSmoke(fixture) {
+  return runFixtureCommand(fixture, {
+    args: ["run", "qa:desktop:real-ssh-smoke:required"],
+    command: npmCommand,
+  });
+}
+
+function runFixtureCommand(fixture, commandSpec) {
   const env = {
     ...process.env,
     JOESSH_REAL_SSH_SMOKE: "1",
@@ -148,7 +163,7 @@ function runSmoke(fixture) {
   delete env.JOESSH_REAL_SSH_PASSWORD;
   delete env.JOESSH_REAL_SSH_PRIVATE_KEY_PEM;
 
-  return spawnSync(npmCommand, ["run", "qa:desktop:real-ssh-smoke:required"], {
+  return spawnSync(commandSpec.command, commandSpec.args, {
     cwd: root,
     encoding: "utf8",
     env,
@@ -157,7 +172,7 @@ function runSmoke(fixture) {
   });
 }
 
-function writeEvidence(fixture, started, finished, result) {
+function writeEvidence(fixture, started, finished, result, wrappedResult = null) {
   const evidence = {
     auth: "private-key",
     checks: [
@@ -178,12 +193,25 @@ function writeEvidence(fixture, started, finished, result) {
     stdoutTail: tail(result.stdout ?? ""),
   };
 
+  if (wrappedCommand) {
+    evidence.wrappedCommand = {
+      provided: true,
+      status: wrappedResult?.status ?? null,
+      stderrTail: tail(wrappedResult?.error ? `${wrappedResult.stderr ?? ""}\n${wrappedResult.error.message}` : (wrappedResult?.stderr ?? "")),
+      stdoutTail: tail(wrappedResult?.stdout ?? ""),
+    };
+  }
+
   mkdirSync(dirname(outputPath), { recursive: true });
   writeFileSync(outputPath, `${JSON.stringify(evidence, null, 2)}\n`);
   writeFileSync(checksumPath, `${sha256(outputPath)}  ${toReleasePath(outputPath)}\n`);
 
   process.stdout.write(result.stdout ?? "");
   process.stderr.write(result.stderr ?? "");
+  if (wrappedResult) {
+    process.stdout.write(wrappedResult.stdout ?? "");
+    process.stderr.write(wrappedResult.stderr ?? "");
+  }
   console.log(`Wrote ${toReleasePath(outputPath)}`);
   console.log(`Wrote ${toReleasePath(checksumPath)}`);
 }
@@ -290,6 +318,26 @@ function findCommand(name) {
     stdio: ["ignore", "pipe", "ignore"],
   });
   return result.status === 0 ? result.stdout.split(/\r?\n/).find((line) => line.trim())?.trim() : null;
+}
+
+function parseWrappedCommand(args) {
+  const separator = args.indexOf("--");
+  if (separator === -1) {
+    if (args.length > 0) {
+      fail("Usage: node scripts/run-real-ssh-smoke-fixture.mjs [-- <command> ...]");
+    }
+    return null;
+  }
+
+  const command = args[separator + 1];
+  if (!command) {
+    fail("-- must be followed by a command to run with the local OpenSSH fixture environment.");
+  }
+
+  return {
+    args: args.slice(separator + 2),
+    command: process.platform === "win32" && command.toLowerCase() === "npm" ? npmCommand : command,
+  };
 }
 
 function toSshPath(path) {

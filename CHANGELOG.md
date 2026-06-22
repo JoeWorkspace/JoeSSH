@@ -27,6 +27,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pull request checklist wording now references the test gate without a fixed
   test count.
 
+## [0.1.0-beta.5] - 2026-06-22
+
+### Added
+- Fixture-backed Public Beta release gate wrapper so release machines can run
+  the full `qa:release:public` command under a local OpenSSH dogfood fixture
+  while still writing real Desktop SSH smoke evidence first.
+
 ## [0.1.0-beta.4] - 2026-06-22
 
 ### Added
