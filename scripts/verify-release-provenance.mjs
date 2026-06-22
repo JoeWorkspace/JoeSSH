@@ -4,22 +4,28 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { basename, isAbsolute, relative, resolve } from "node:path";
 
 const defaultRoot = resolve(import.meta.dirname, "..");
-const {
-  checksumPath,
-  provenancePath,
-  root,
-  skipCurrentGitCheck,
-} = parseArgs(process.argv.slice(2));
+const { checksumPath, provenancePath, root, skipCurrentGitCheck } = parseArgs(
+  process.argv.slice(2),
+);
 const packageJson = readJson("package.json");
 const releaseTag = `v${packageJson.version}`;
 const gitCommand = process.env.ATLASTERM_RELEASE_GIT_COMMAND ?? "git";
-const gitCommandPrefixArgs = parseCommandPrefixArgs("ATLASTERM_RELEASE_GIT_ARGS");
-const npmCommand = process.env.ATLASTERM_RELEASE_NPM_COMMAND ?? "npm";
-const npmCommandPrefixArgs = parseCommandPrefixArgs("ATLASTERM_RELEASE_NPM_ARGS");
+const gitCommandPrefixArgs = parseCommandPrefixArgs(
+  "ATLASTERM_RELEASE_GIT_ARGS",
+);
+const npmCommand =
+  process.env.ATLASTERM_RELEASE_NPM_COMMAND ?? defaultNpmCommand();
+const npmCommandPrefixArgs = parseCommandPrefixArgs(
+  "ATLASTERM_RELEASE_NPM_ARGS",
+);
 const cargoCommand = process.env.ATLASTERM_RELEASE_CARGO_COMMAND ?? "cargo";
-const cargoCommandPrefixArgs = parseCommandPrefixArgs("ATLASTERM_RELEASE_CARGO_ARGS");
+const cargoCommandPrefixArgs = parseCommandPrefixArgs(
+  "ATLASTERM_RELEASE_CARGO_ARGS",
+);
 const rustcCommand = process.env.ATLASTERM_RELEASE_RUSTC_COMMAND ?? "rustc";
-const rustcCommandPrefixArgs = parseCommandPrefixArgs("ATLASTERM_RELEASE_RUSTC_ARGS");
+const rustcCommandPrefixArgs = parseCommandPrefixArgs(
+  "ATLASTERM_RELEASE_RUSTC_ARGS",
+);
 const requiredLockfiles = [
   "package-lock.json",
   "Cargo.lock",
@@ -60,12 +66,18 @@ function readProvenance() {
   try {
     return JSON.parse(readFileSync(provenancePath, "utf8"));
   } catch (error) {
-    fail(`Release provenance is not valid JSON: ${error instanceof Error ? error.message : String(error)}`);
+    fail(
+      `Release provenance is not valid JSON: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 }
 
 function validateTopLevel() {
-  if (provenance === null || typeof provenance !== "object" || Array.isArray(provenance)) {
+  if (
+    provenance === null ||
+    typeof provenance !== "object" ||
+    Array.isArray(provenance)
+  ) {
     errors.push("release provenance must be a JSON object");
     return;
   }
@@ -76,21 +88,36 @@ function validateTopLevel() {
     errors.push("product must be JoeSSH");
   }
   if (provenance.version !== packageJson.version) {
-    errors.push(`version must match package.json version ${packageJson.version}`);
+    errors.push(
+      `version must match package.json version ${packageJson.version}`,
+    );
   }
   if (provenance.releaseTag !== releaseTag) {
     errors.push(`releaseTag must be ${releaseTag}`);
   }
-  if (typeof provenance.generatedAt !== "string" || Number.isNaN(Date.parse(provenance.generatedAt))) {
+  if (
+    typeof provenance.generatedAt !== "string" ||
+    Number.isNaN(Date.parse(provenance.generatedAt))
+  ) {
     errors.push("generatedAt must be an ISO timestamp");
   }
-  if (provenance.source === null || typeof provenance.source !== "object" || Array.isArray(provenance.source)) {
+  if (
+    provenance.source === null ||
+    typeof provenance.source !== "object" ||
+    Array.isArray(provenance.source)
+  ) {
     errors.push("source must be a JSON object");
   }
-  if (!Array.isArray(provenance.lockfiles) || provenance.lockfiles.length === 0) {
+  if (
+    !Array.isArray(provenance.lockfiles) ||
+    provenance.lockfiles.length === 0
+  ) {
     errors.push("lockfiles must be a non-empty array");
   }
-  if (!Array.isArray(provenance.checksumManifests) || provenance.checksumManifests.length === 0) {
+  if (
+    !Array.isArray(provenance.checksumManifests) ||
+    provenance.checksumManifests.length === 0
+  ) {
     errors.push("checksumManifests must be a non-empty array");
   }
   validateReleaseNotes();
@@ -109,7 +136,10 @@ function validateCurrentGit() {
   if (!isShaLike(source.releaseTagCommit)) {
     errors.push("source.releaseTagCommit must be a Git commit hash");
   }
-  if (typeof source.repository !== "string" || source.repository.trim() === "") {
+  if (
+    typeof source.repository !== "string" ||
+    source.repository.trim() === ""
+  ) {
     errors.push("source.repository must record the Git remote origin URL");
   }
   if (source.gitFsckStrict !== true) {
@@ -124,17 +154,30 @@ function validateCurrentGit() {
 
   const insideWorkTree = runGit(["rev-parse", "--is-inside-work-tree"]);
   if (insideWorkTree.status !== 0 || insideWorkTree.stdout.trim() !== "true") {
-    errors.push("Git checkout metadata is required to verify release provenance");
+    errors.push(
+      "Git checkout metadata is required to verify release provenance",
+    );
     return;
   }
 
-  const status = runGit(["status", "--porcelain=v1", "--untracked-files=all", "--", ".", ":(exclude)reports/release"]);
+  const status = runGit([
+    "status",
+    "--porcelain=v1",
+    "--untracked-files=all",
+    "--",
+    ".",
+    ":(exclude)reports/release",
+  ]);
   if (status.status !== 0) {
-    errors.push("Git working tree status is required to verify release provenance");
+    errors.push(
+      "Git working tree status is required to verify release provenance",
+    );
     return;
   }
   if (status.stdout.trim() !== "") {
-    errors.push(`Git working tree outside reports/release must be clean to verify release provenance: ${status.stdout.trim()}`);
+    errors.push(
+      `Git working tree outside reports/release must be clean to verify release provenance: ${status.stdout.trim()}`,
+    );
   }
 
   const head = runGit(["rev-parse", "HEAD"]);
@@ -144,7 +187,9 @@ function validateCurrentGit() {
   }
   const tagCommit = runGit(["rev-parse", "--verify", `${releaseTag}^{}`]);
   if (tagCommit.status !== 0) {
-    errors.push(`Release tag ${releaseTag} must exist to verify release provenance`);
+    errors.push(
+      `Release tag ${releaseTag} must exist to verify release provenance`,
+    );
     return;
   }
 
@@ -155,7 +200,9 @@ function validateCurrentGit() {
     errors.push(`source.releaseTagCommit does not match ${releaseTag}`);
   }
   if (head.stdout.trim() !== tagCommit.stdout.trim()) {
-    errors.push(`Release tag ${releaseTag} must point at HEAD to verify release provenance`);
+    errors.push(
+      `Release tag ${releaseTag} must point at HEAD to verify release provenance`,
+    );
   }
 
   const fsck = runGit(["fsck", "--strict"]);
@@ -221,7 +268,11 @@ function validateVerifiers() {
 
 function validateToolchain() {
   const toolchain = provenance.toolchain;
-  if (toolchain === null || typeof toolchain !== "object" || Array.isArray(toolchain)) {
+  if (
+    toolchain === null ||
+    typeof toolchain !== "object" ||
+    Array.isArray(toolchain)
+  ) {
     errors.push("toolchain must be a JSON object");
     return;
   }
@@ -234,18 +285,26 @@ function validateToolchain() {
   };
   for (const [key, value] of Object.entries(expected)) {
     if (toolchain[key] !== value) {
-      errors.push(`toolchain.${key} must match the current release machine ${key} version`);
+      errors.push(
+        `toolchain.${key} must match the current release machine ${key} version`,
+      );
     }
   }
 
   const expectedTauri = collectTauriVersions();
-  if (toolchain.tauri === null || typeof toolchain.tauri !== "object" || Array.isArray(toolchain.tauri)) {
+  if (
+    toolchain.tauri === null ||
+    typeof toolchain.tauri !== "object" ||
+    Array.isArray(toolchain.tauri)
+  ) {
     errors.push("toolchain.tauri must be a JSON object");
     return;
   }
   for (const [key, value] of Object.entries(expectedTauri)) {
     if (toolchain.tauri[key] !== value) {
-      errors.push(`toolchain.tauri.${key} must match the current lockfile version`);
+      errors.push(
+        `toolchain.tauri.${key} must match the current lockfile version`,
+      );
     }
   }
 }
@@ -300,7 +359,9 @@ function validateChecksumManifests() {
     (path) => !stagedManifestPaths.includes(path),
   );
   for (const path of missingStagedManifests) {
-    errors.push(`required Public Beta checksum manifest is missing from reports/release: ${path}`);
+    errors.push(
+      `required Public Beta checksum manifest is missing from reports/release: ${path}`,
+    );
   }
   const unexpectedStagedManifests = stagedManifestPaths.filter(
     (path) => !requiredChecksumManifests.includes(path),
@@ -316,12 +377,19 @@ function validateChecksumManifests() {
       errors.push("checksumManifests entries must be JSON objects");
       continue;
     }
-    if (!isSafeRelativePath(manifest.path) || !manifest.path.endsWith("SHA256SUMS.txt")) {
-      errors.push("checksumManifests entries must use safe SHA256SUMS.txt paths");
+    if (
+      !isSafeRelativePath(manifest.path) ||
+      !manifest.path.endsWith("SHA256SUMS.txt")
+    ) {
+      errors.push(
+        "checksumManifests entries must use safe SHA256SUMS.txt paths",
+      );
       continue;
     }
     if (!isSha256(manifest.sha256)) {
-      errors.push(`checksum manifest ${manifest.path} must record a lowercase SHA256`);
+      errors.push(
+        `checksum manifest ${manifest.path} must record a lowercase SHA256`,
+      );
       continue;
     }
     if (!Array.isArray(manifest.entries) || manifest.entries.length === 0) {
@@ -338,7 +406,9 @@ function validateChecksumManifests() {
   }
   for (const path of manifestEntries.keys()) {
     if (!expectedManifestPaths.includes(path)) {
-      errors.push(`release provenance references stale checksum manifest ${path}`);
+      errors.push(
+        `release provenance references stale checksum manifest ${path}`,
+      );
     }
   }
 
@@ -361,15 +431,21 @@ function validateChecksumManifest(manifest) {
   const expectedEntries = new Map();
   for (const entry of manifest.entries) {
     if (!isRecord(entry)) {
-      errors.push(`checksum manifest ${manifest.path} entries must be JSON objects`);
+      errors.push(
+        `checksum manifest ${manifest.path} entries must be JSON objects`,
+      );
       continue;
     }
     if (!isSafeRelativePath(entry.path)) {
-      errors.push(`checksum manifest ${manifest.path} has an unsafe artifact path`);
+      errors.push(
+        `checksum manifest ${manifest.path} has an unsafe artifact path`,
+      );
       continue;
     }
     if (!isSha256(entry.sha256)) {
-      errors.push(`checksum manifest ${manifest.path} entry ${entry.path} must record a lowercase SHA256`);
+      errors.push(
+        `checksum manifest ${manifest.path} entry ${entry.path} must record a lowercase SHA256`,
+      );
       continue;
     }
     expectedEntries.set(entry.path, entry.sha256);
@@ -377,7 +453,9 @@ function validateChecksumManifest(manifest) {
 
   for (const actualEntry of actualEntries) {
     if (!expectedEntries.has(actualEntry.path)) {
-      errors.push(`release provenance is missing artifact ${actualEntry.path} from ${manifest.path}`);
+      errors.push(
+        `release provenance is missing artifact ${actualEntry.path} from ${manifest.path}`,
+      );
       continue;
     }
     if (expectedEntries.get(actualEntry.path) !== actualEntry.sha256) {
@@ -385,7 +463,9 @@ function validateChecksumManifest(manifest) {
     }
     const artifactPath = resolve(root, actualEntry.path);
     if (!existsSync(artifactPath) || !statSync(artifactPath).isFile()) {
-      errors.push(`checksum manifest ${manifest.path} references missing artifact ${actualEntry.path}`);
+      errors.push(
+        `checksum manifest ${manifest.path} references missing artifact ${actualEntry.path}`,
+      );
       continue;
     }
     if (sha256File(artifactPath) !== actualEntry.sha256) {
@@ -394,30 +474,42 @@ function validateChecksumManifest(manifest) {
   }
   for (const expectedPath of expectedEntries.keys()) {
     if (!actualEntries.some((entry) => entry.path === expectedPath)) {
-      errors.push(`release provenance references stale artifact ${expectedPath} from ${manifest.path}`);
+      errors.push(
+        `release provenance references stale artifact ${expectedPath} from ${manifest.path}`,
+      );
     }
   }
 }
 
 function validateProvenanceChecksum() {
   if (!existsSync(checksumPath)) {
-    errors.push(`missing provenance checksum manifest ${toReleasePath(checksumPath)}`);
+    errors.push(
+      `missing provenance checksum manifest ${toReleasePath(checksumPath)}`,
+    );
     return;
   }
   if (!statSync(checksumPath).isFile()) {
-    errors.push(`provenance checksum manifest is not a file ${toReleasePath(checksumPath)}`);
+    errors.push(
+      `provenance checksum manifest is not a file ${toReleasePath(checksumPath)}`,
+    );
     return;
   }
 
   const entries = parseChecksumManifest(checksumPath);
   const provenanceReleasePath = toReleasePath(provenancePath);
-  const entry = entries.find((candidate) => candidate.path === provenanceReleasePath);
+  const entry = entries.find(
+    (candidate) => candidate.path === provenanceReleasePath,
+  );
   if (!entry) {
-    errors.push(`provenance checksum manifest does not list ${provenanceReleasePath}`);
+    errors.push(
+      `provenance checksum manifest does not list ${provenanceReleasePath}`,
+    );
     return;
   }
   if (entry.sha256 !== sha256File(provenancePath)) {
-    errors.push(`provenance checksum manifest hash mismatch for ${provenanceReleasePath}`);
+    errors.push(
+      `provenance checksum manifest hash mismatch for ${provenanceReleasePath}`,
+    );
   }
 }
 
@@ -442,25 +534,34 @@ function collectReleaseChecksumManifests() {
 function parseChecksumManifest(manifestPath) {
   const entries = [];
   const displayManifestPath = toReleasePath(manifestPath);
-  readFileSync(manifestPath, "utf8").split(/\r?\n/).forEach((line, index) => {
-    if (line.trim() === "" || line.trimStart().startsWith("#")) {
-      return;
-    }
+  readFileSync(manifestPath, "utf8")
+    .split(/\r?\n/)
+    .forEach((line, index) => {
+      if (line.trim() === "" || line.trimStart().startsWith("#")) {
+        return;
+      }
 
-    const match = line.match(/^([a-fA-F0-9]{64})\s\s(.+)$/);
-    if (!match) {
-      errors.push(`${displayManifestPath}:${index + 1} is not '<sha256>  <relative-path>'`);
-      return;
-    }
+      const match = line.match(/^([a-fA-F0-9]{64})\s\s(.+)$/);
+      if (!match) {
+        errors.push(
+          `${displayManifestPath}:${index + 1} is not '<sha256>  <relative-path>'`,
+        );
+        return;
+      }
 
-    const artifactPath = match[2].replaceAll("\\", "/");
-    if (!isSafeRelativePath(artifactPath)) {
-      errors.push(`${displayManifestPath}:${index + 1} uses an unsafe artifact path`);
-      return;
-    }
+      const artifactPath = match[2].replaceAll("\\", "/");
+      if (!isSafeRelativePath(artifactPath)) {
+        errors.push(
+          `${displayManifestPath}:${index + 1} uses an unsafe artifact path`,
+        );
+        return;
+      }
 
-    entries.push({ path: toReleasePath(resolve(root, artifactPath)), sha256: match[1].toLowerCase() });
-  });
+      entries.push({
+        path: toReleasePath(resolve(root, artifactPath)),
+        sha256: match[1].toLowerCase(),
+      });
+    });
   return entries;
 }
 
@@ -502,7 +603,9 @@ function getCargoLockPackageVersion(lockText, packageName) {
   );
   const match = lockText.match(packagePattern);
   if (!match) {
-    errors.push(`apps/desktop/src-tauri/Cargo.lock is missing ${packageName} version`);
+    errors.push(
+      `apps/desktop/src-tauri/Cargo.lock is missing ${packageName} version`,
+    );
     return "";
   }
   return match[1];
@@ -550,7 +653,10 @@ function isSafeRelativePath(path) {
   }
   const fullPath = resolve(root, path);
   const relativePath = relative(root, fullPath);
-  return relativePath === "" || (!relativePath.startsWith("..") && !isAbsolute(relativePath));
+  return (
+    relativePath === "" ||
+    (!relativePath.startsWith("..") && !isAbsolute(relativePath))
+  );
 }
 
 function isSha256(value) {
@@ -625,8 +731,14 @@ function parseArgs(args) {
   }
 
   return {
-    checksumPath: resolve(root, checksumPath ?? "reports/release/release-provenance-SHA256SUMS.txt"),
-    provenancePath: resolve(root, provenancePath ?? "reports/release/release-provenance.json"),
+    checksumPath: resolve(
+      root,
+      checksumPath ?? "reports/release/release-provenance-SHA256SUMS.txt",
+    ),
+    provenancePath: resolve(
+      root,
+      provenancePath ?? "reports/release/release-provenance.json",
+    ),
     root,
     skipCurrentGitCheck,
   };
@@ -640,7 +752,10 @@ function parseCommandPrefixArgs(envName) {
 
   try {
     const value = JSON.parse(raw);
-    if (Array.isArray(value) && value.every((entry) => typeof entry === "string")) {
+    if (
+      Array.isArray(value) &&
+      value.every((entry) => typeof entry === "string")
+    ) {
       return value;
     }
   } catch {
@@ -648,6 +763,10 @@ function parseCommandPrefixArgs(envName) {
   }
 
   fail(`${envName} must be a JSON string array when set.`);
+}
+
+function defaultNpmCommand() {
+  return process.platform === "win32" ? "npm.cmd" : "npm";
 }
 
 function fail(message) {

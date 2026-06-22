@@ -1,26 +1,42 @@
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { basename, isAbsolute, relative, resolve } from "node:path";
 
 const defaultRoot = resolve(import.meta.dirname, "..");
-const {
-  checksumPath,
-  notesFile,
-  outputPath,
-  root,
-} = parseArgs(process.argv.slice(2));
+const { checksumPath, notesFile, outputPath, root } = parseArgs(
+  process.argv.slice(2),
+);
 const packageJson = readJson("package.json");
 const releaseTag = `v${packageJson.version}`;
-const releaseNotesPath = resolve(root, notesFile ?? `docs/release-notes/${packageJson.version}.md`);
+const releaseNotesPath = resolve(
+  root,
+  notesFile ?? `docs/release-notes/${packageJson.version}.md`,
+);
 const gitCommand = process.env.ATLASTERM_RELEASE_GIT_COMMAND ?? "git";
-const gitCommandPrefixArgs = parseCommandPrefixArgs("ATLASTERM_RELEASE_GIT_ARGS");
-const npmCommand = process.env.ATLASTERM_RELEASE_NPM_COMMAND ?? "npm";
-const npmCommandPrefixArgs = parseCommandPrefixArgs("ATLASTERM_RELEASE_NPM_ARGS");
+const gitCommandPrefixArgs = parseCommandPrefixArgs(
+  "ATLASTERM_RELEASE_GIT_ARGS",
+);
+const npmCommand =
+  process.env.ATLASTERM_RELEASE_NPM_COMMAND ?? defaultNpmCommand();
+const npmCommandPrefixArgs = parseCommandPrefixArgs(
+  "ATLASTERM_RELEASE_NPM_ARGS",
+);
 const cargoCommand = process.env.ATLASTERM_RELEASE_CARGO_COMMAND ?? "cargo";
-const cargoCommandPrefixArgs = parseCommandPrefixArgs("ATLASTERM_RELEASE_CARGO_ARGS");
+const cargoCommandPrefixArgs = parseCommandPrefixArgs(
+  "ATLASTERM_RELEASE_CARGO_ARGS",
+);
 const rustcCommand = process.env.ATLASTERM_RELEASE_RUSTC_COMMAND ?? "rustc";
-const rustcCommandPrefixArgs = parseCommandPrefixArgs("ATLASTERM_RELEASE_RUSTC_ARGS");
+const rustcCommandPrefixArgs = parseCommandPrefixArgs(
+  "ATLASTERM_RELEASE_RUSTC_ARGS",
+);
 const requiredLockfiles = [
   "package-lock.json",
   "Cargo.lock",
@@ -36,7 +52,9 @@ const requiredChecksumManifests = [
 ];
 
 if (!existsSync(releaseNotesPath) || !statSync(releaseNotesPath).isFile()) {
-  fail(`Release notes file is required to generate release provenance: ${toReleasePath(releaseNotesPath)}`);
+  fail(
+    `Release notes file is required to generate release provenance: ${toReleasePath(releaseNotesPath)}`,
+  );
 }
 
 const git = verifyReleaseGitCheckout();
@@ -73,24 +91,43 @@ const provenance = {
 mkdirSync(resolve(outputPath, ".."), { recursive: true });
 writeFileSync(outputPath, `${JSON.stringify(provenance, null, 2)}\n`);
 mkdirSync(resolve(checksumPath, ".."), { recursive: true });
-writeFileSync(checksumPath, `${sha256File(outputPath)}  ${toReleasePath(outputPath)}\n`);
+writeFileSync(
+  checksumPath,
+  `${sha256File(outputPath)}  ${toReleasePath(outputPath)}\n`,
+);
 
 console.log(`Wrote release provenance to ${toReleasePath(outputPath)}`);
-console.log(`Wrote release provenance checksum to ${toReleasePath(checksumPath)}`);
+console.log(
+  `Wrote release provenance checksum to ${toReleasePath(checksumPath)}`,
+);
 
 function verifyReleaseGitCheckout() {
   const insideWorkTree = runGit(["rev-parse", "--is-inside-work-tree"], {
-    message: "Git checkout metadata is required to generate release provenance.",
+    message:
+      "Git checkout metadata is required to generate release provenance.",
   });
   if (insideWorkTree !== "true") {
     fail("Git checkout metadata is required to generate release provenance.");
   }
 
-  const status = runGit(["status", "--porcelain=v1", "--untracked-files=all", "--", ".", ":(exclude)reports/release"], {
-    message: "Git working tree status is required to generate release provenance.",
-  });
+  const status = runGit(
+    [
+      "status",
+      "--porcelain=v1",
+      "--untracked-files=all",
+      "--",
+      ".",
+      ":(exclude)reports/release",
+    ],
+    {
+      message:
+        "Git working tree status is required to generate release provenance.",
+    },
+  );
   if (status.trim() !== "") {
-    fail(`Git working tree outside reports/release must be clean to generate release provenance:\n${status}`);
+    fail(
+      `Git working tree outside reports/release must be clean to generate release provenance:\n${status}`,
+    );
   }
 
   const head = runGit(["rev-parse", "HEAD"], {
@@ -100,7 +137,9 @@ function verifyReleaseGitCheckout() {
     message: `Release tag ${releaseTag} must exist to generate release provenance.`,
   });
   if (head !== tagCommit) {
-    fail(`Release tag ${releaseTag} must point at HEAD to generate release provenance.`);
+    fail(
+      `Release tag ${releaseTag} must point at HEAD to generate release provenance.`,
+    );
   }
 
   runGit(["fsck", "--strict"], {
@@ -120,12 +159,33 @@ function collectToolchain() {
 
   return {
     node: process.version,
-    npm: runTool(npmCommand, npmCommandPrefixArgs, ["--version"], "npm --version"),
-    cargo: runTool(cargoCommand, cargoCommandPrefixArgs, ["--version"], "cargo --version"),
-    rustc: runTool(rustcCommand, rustcCommandPrefixArgs, ["--version"], "rustc --version"),
+    npm: runTool(
+      npmCommand,
+      npmCommandPrefixArgs,
+      ["--version"],
+      "npm --version",
+    ),
+    cargo: runTool(
+      cargoCommand,
+      cargoCommandPrefixArgs,
+      ["--version"],
+      "cargo --version",
+    ),
+    rustc: runTool(
+      rustcCommand,
+      rustcCommandPrefixArgs,
+      ["--version"],
+      "rustc --version",
+    ),
     tauri: {
-      npmApi: getPackageLockVersion(packageLock, "node_modules/@tauri-apps/api"),
-      npmCli: getPackageLockVersion(packageLock, "node_modules/@tauri-apps/cli"),
+      npmApi: getPackageLockVersion(
+        packageLock,
+        "node_modules/@tauri-apps/api",
+      ),
+      npmCli: getPackageLockVersion(
+        packageLock,
+        "node_modules/@tauri-apps/cli",
+      ),
       rustCrate: getCargoLockPackageVersion(desktopCargoLock, "tauri"),
     },
   };
@@ -147,14 +207,22 @@ function collectLockfiles() {
 
 function collectChecksumManifestEvidence() {
   const stagedManifests = collectReleaseChecksumManifests();
-  const missingManifests = requiredChecksumManifests.filter((manifestPath) => !stagedManifests.includes(manifestPath));
+  const missingManifests = requiredChecksumManifests.filter(
+    (manifestPath) => !stagedManifests.includes(manifestPath),
+  );
   if (missingManifests.length > 0) {
-    fail(`Required Public Beta checksum manifest(s) missing for release provenance:\n- ${missingManifests.join("\n- ")}`);
+    fail(
+      `Required Public Beta checksum manifest(s) missing for release provenance:\n- ${missingManifests.join("\n- ")}`,
+    );
   }
 
-  const staleManifests = stagedManifests.filter((manifestPath) => !requiredChecksumManifests.includes(manifestPath));
+  const staleManifests = stagedManifests.filter(
+    (manifestPath) => !requiredChecksumManifests.includes(manifestPath),
+  );
   if (staleManifests.length > 0) {
-    fail(`Unexpected checksum manifest(s) staged for Public Beta release provenance:\n- ${staleManifests.join("\n- ")}`);
+    fail(
+      `Unexpected checksum manifest(s) staged for Public Beta release provenance:\n- ${staleManifests.join("\n- ")}`,
+    );
   }
 
   return requiredChecksumManifests.map((manifestPath) => {
@@ -185,26 +253,39 @@ function parseChecksumManifest(manifestPath) {
 
       const match = line.match(/^([a-fA-F0-9]{64})\s\s(.+)$/);
       if (!match) {
-        fail(`${toReleasePath(manifestPath)}:${index + 1} is not '<sha256>  <relative-path>'`);
+        fail(
+          `${toReleasePath(manifestPath)}:${index + 1} is not '<sha256>  <relative-path>'`,
+        );
       }
 
       const artifactPath = match[2].replaceAll("\\", "/");
       if (isAbsolute(artifactPath)) {
-        fail(`${toReleasePath(manifestPath)}:${index + 1} uses an absolute artifact path`);
+        fail(
+          `${toReleasePath(manifestPath)}:${index + 1} uses an absolute artifact path`,
+        );
       }
 
       const fullArtifactPath = resolve(root, artifactPath);
       if (!isInsideRoot(fullArtifactPath)) {
-        fail(`${toReleasePath(manifestPath)}:${index + 1} escapes the release root`);
+        fail(
+          `${toReleasePath(manifestPath)}:${index + 1} escapes the release root`,
+        );
       }
-      if (!existsSync(fullArtifactPath) || !statSync(fullArtifactPath).isFile()) {
-        fail(`${toReleasePath(manifestPath)}:${index + 1} references missing artifact ${artifactPath}`);
+      if (
+        !existsSync(fullArtifactPath) ||
+        !statSync(fullArtifactPath).isFile()
+      ) {
+        fail(
+          `${toReleasePath(manifestPath)}:${index + 1} references missing artifact ${artifactPath}`,
+        );
       }
 
-      return [{
-        path: toReleasePath(fullArtifactPath),
-        sha256: match[1].toLowerCase(),
-      }];
+      return [
+        {
+          path: toReleasePath(fullArtifactPath),
+          sha256: match[1].toLowerCase(),
+        },
+      ];
     });
 }
 
@@ -233,7 +314,9 @@ function collectFiles(path) {
 function getPackageLockVersion(packageLock, packagePath) {
   const version = packageLock?.packages?.[packagePath]?.version;
   if (typeof version !== "string" || version.trim() === "") {
-    fail(`package-lock.json is missing ${packagePath} version for release provenance`);
+    fail(
+      `package-lock.json is missing ${packagePath} version for release provenance`,
+    );
   }
   return version;
 }
@@ -245,7 +328,9 @@ function getCargoLockPackageVersion(lockText, packageName) {
   );
   const match = lockText.match(packagePattern);
   if (!match) {
-    fail(`apps/desktop/src-tauri/Cargo.lock is missing ${packageName} version for release provenance`);
+    fail(
+      `apps/desktop/src-tauri/Cargo.lock is missing ${packageName} version for release provenance`,
+    );
   }
   return match[1];
 }
@@ -255,7 +340,9 @@ function runGit(args, options) {
 }
 
 function runTool(command, prefixArgs, args, label) {
-  return runCommand(command, [...prefixArgs, ...args], { message: `Unable to record ${label} for release provenance.` });
+  return runCommand(command, [...prefixArgs, ...args], {
+    message: `Unable to record ${label} for release provenance.`,
+  });
 }
 
 function runCommand(command, args, { message }) {
@@ -289,7 +376,10 @@ function toReleasePath(path) {
 
 function isInsideRoot(path) {
   const relativePath = relative(root, path);
-  return relativePath === "" || (!relativePath.startsWith("..") && !isAbsolute(relativePath));
+  return (
+    relativePath === "" ||
+    (!relativePath.startsWith("..") && !isAbsolute(relativePath))
+  );
 }
 
 function escapeRegExp(value) {
@@ -361,9 +451,15 @@ function parseArgs(args) {
   }
 
   return {
-    checksumPath: resolve(root, checksumPath ?? "reports/release/release-provenance-SHA256SUMS.txt"),
+    checksumPath: resolve(
+      root,
+      checksumPath ?? "reports/release/release-provenance-SHA256SUMS.txt",
+    ),
     notesFile,
-    outputPath: resolve(root, outputPath ?? "reports/release/release-provenance.json"),
+    outputPath: resolve(
+      root,
+      outputPath ?? "reports/release/release-provenance.json",
+    ),
     root,
   };
 }
@@ -376,7 +472,10 @@ function parseCommandPrefixArgs(envName) {
 
   try {
     const value = JSON.parse(raw);
-    if (Array.isArray(value) && value.every((entry) => typeof entry === "string")) {
+    if (
+      Array.isArray(value) &&
+      value.every((entry) => typeof entry === "string")
+    ) {
       return value;
     }
   } catch {
@@ -384,6 +483,10 @@ function parseCommandPrefixArgs(envName) {
   }
 
   fail(`${envName} must be a JSON string array when set.`);
+}
+
+function defaultNpmCommand() {
+  return process.platform === "win32" ? "npm.cmd" : "npm";
 }
 
 function fail(message) {
