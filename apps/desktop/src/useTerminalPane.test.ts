@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
-import { act, renderHook } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { act, cleanup, renderHook } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { useTerminalPane } from "./useTerminalPane";
 import type { TerminalLine } from "./terminalExecutor";
 
@@ -29,6 +29,8 @@ const defaultProps = {
   onCommandSubmit: vi.fn(),
   searchQuery: "",
 };
+
+afterEach(() => cleanup());
 
 describe("useTerminalPane", () => {
   describe("search", () => {

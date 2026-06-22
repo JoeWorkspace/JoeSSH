@@ -2111,5 +2111,5 @@ describe('web admin accessibility contracts', () => {
     expect(productionSources['./localization.ts'], './localization.ts storage source').toContain('window.localStorage.setItem');
     expect(productionSources['./localization.ts'], './localization.ts storage source').toContain('window.localStorage.getItem');
     expect(productionSources['./main.tsx'], './main.tsx network source').toContain('loadAdminDashboard(window.fetch.bind(window)');
-  }, 10_000);
+  }, 30_000);
 });

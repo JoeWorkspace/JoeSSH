@@ -64,6 +64,7 @@ async function assertDesktopVisualPath(page: Page, language: 'en' | 'zh-CN') {
   await expect(page.locator('.sidebar')).toBeVisible();
   await expect(page.locator('.terminal-pane').first()).toBeVisible();
   await expect(page.locator('.context-pane')).toBeVisible();
+  await expect(page.locator('.context-pane .skeleton--card')).toHaveCount(0);
   await expect(page.getByRole('log', { name: language === 'en' ? 'sample shell' : undefined }).first()).toBeVisible();
   if (language === 'en') {
     await expect(page.getByText('No SSH session').first()).toBeVisible();
