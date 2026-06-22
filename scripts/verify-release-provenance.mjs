@@ -623,6 +623,7 @@ function runTool(command, prefixArgs, args) {
   const result = spawnSync(command, [...prefixArgs, ...args], {
     cwd: root,
     encoding: "utf8",
+    shell: shouldRunWithShell(command),
     stdio: ["ignore", "pipe", "pipe"],
   });
   if (result.status !== 0) {
@@ -767,6 +768,12 @@ function parseCommandPrefixArgs(envName) {
 
 function defaultNpmCommand() {
   return process.platform === "win32" ? "npm.cmd" : "npm";
+}
+
+function shouldRunWithShell(command) {
+  return (
+    process.platform === "win32" && /(^|[\\/])npm(?:\.cmd)?$/i.test(command)
+  );
 }
 
 function fail(message) {
