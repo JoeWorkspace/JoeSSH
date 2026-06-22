@@ -76,6 +76,19 @@ The Windows certificate must be a base64-encoded `.pfx`. The macOS certificate
 must be a base64-encoded `.p12` with a Developer ID Application identity that can
 be imported into the temporary CI keychain.
 
+Before triggering formal evidence, verify that the repository has the required
+secret names and that the workflow is available:
+
+```bash
+npm run release:desktop:evidence-preflight -- --repo JoeWorkspace/JoeSSH
+npm run release:desktop:evidence-workflow -- --repo JoeWorkspace/JoeSSH --ref v0.1.0-beta.1
+```
+
+The preflight checks GitHub CLI authentication, lists repository secret names
+without reading secret values, verifies `.github/workflows/desktop-release-artifacts.yml`,
+and only dispatches the workflow when all required signing and notarization
+secret names exist.
+
 ## Signing And Platform Rules
 
 - Windows: public installers must be code signed before upload.
