@@ -49,6 +49,7 @@ const releaseScriptNames = [
   "test:release-sbom",
   "test:release-publish-preflight",
   "test:release-provenance",
+  "test:release-rc-audit",
   "test:release-readiness",
   "test:web-admin-bundle-token-scan",
   "test:mobile-public-env",
@@ -58,6 +59,7 @@ const releaseScriptNames = [
   "qa:release-sbom",
   "qa:release-publish-preflight",
   "qa:release-provenance",
+  "qa:release-rc-audit",
   "qa:release-readiness",
   "qa:web-admin-bundle-token-scan",
   "qa:mobile-public-env",
@@ -76,6 +78,8 @@ const releaseScriptNames = [
   "release:publish-preflight",
   "release:provenance",
   "release:provenance:verify",
+  "release:rc-audit",
+  "release:rc-audit:report",
   "release:verify-checksums",
   "release:sbom",
   "release:sbom:verify",
@@ -128,6 +132,12 @@ function fixtureScriptValue(name, overrides = {}) {
   }
   if (name === "release:provenance:verify") {
     return "node scripts/verify-release-provenance.mjs";
+  }
+  if (name === "release:rc-audit") {
+    return "node scripts/audit-public-beta-rc.mjs";
+  }
+  if (name === "release:rc-audit:report") {
+    return "node scripts/audit-public-beta-rc.mjs --no-fail";
   }
   return "echo ok";
 }
@@ -221,6 +231,9 @@ function createFixture(t, overrides = {}) {
     "scripts/verify-release-provenance.mjs":
       "source.repository git fsck --strict release notes hash mismatch artifact hash mismatch requiredChecksumManifests unexpected Public Beta checksum manifest is staged\n",
     "scripts/verify-release-provenance.test.mjs": "",
+    "scripts/audit-public-beta-rc.mjs":
+      'public-beta-rc-audit.json desktop-signing-secrets desktop-dogfood publish-preflight github-ci check-runs/${checkRunId}/annotations\n',
+    "scripts/audit-public-beta-rc.test.mjs": "",
     "scripts/release-publish-preflight.mjs":
       'Verify release Git checkout rev-parse --porcelain=v1 :(exclude)reports/release must point at HEAD for publish preflight verify-web-release-package.mjs verify-sync-release-evidence.mjs verify-artifact-checksums.mjs --all-release verify-release-provenance.mjs Verify GitHub CLI publish readiness ATLASTERM_RELEASE_GH_COMMAND auth", "status release", "view", releaseTag already exists; refusing to publish a duplicate release\n',
     "scripts/release-publish-preflight.test.mjs": "",

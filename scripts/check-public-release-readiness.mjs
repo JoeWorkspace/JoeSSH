@@ -151,6 +151,7 @@ function checkPackageScripts() {
     "test:release-sbom",
     "test:release-publish-preflight",
     "test:release-provenance",
+    "test:release-rc-audit",
     "test:release-readiness",
     "test:web-admin-bundle-token-scan",
     "test:mobile-public-env",
@@ -160,6 +161,7 @@ function checkPackageScripts() {
     "qa:release-sbom",
     "qa:release-publish-preflight",
     "qa:release-provenance",
+    "qa:release-rc-audit",
     "qa:release-readiness",
     "qa:web-admin-bundle-token-scan",
     "qa:mobile-public-env",
@@ -178,6 +180,8 @@ function checkPackageScripts() {
     "release:publish-preflight",
     "release:provenance",
     "release:provenance:verify",
+    "release:rc-audit",
+    "release:rc-audit:report",
     "release:verify-checksums",
     "release:sbom",
     "release:sbom:verify",
@@ -471,6 +475,8 @@ function checkReleaseToolingFiles() {
     "scripts/generate-release-provenance.mjs",
     "scripts/verify-release-provenance.mjs",
     "scripts/verify-release-provenance.test.mjs",
+    "scripts/audit-public-beta-rc.mjs",
+    "scripts/audit-public-beta-rc.test.mjs",
     "scripts/release-publish-preflight.mjs",
     "scripts/release-publish-preflight.test.mjs",
   ]) {
@@ -591,6 +597,17 @@ function checkReleaseToolingFiles() {
         'resolve(root, "apps", "desktop", "src-tauri", "target", "release", "bundle")',
       ),
     "GitHub Release draft uploads only staged reports/release artifacts",
+  );
+
+  const rcAudit = readTextIfExists("scripts/audit-public-beta-rc.mjs") ?? "";
+  passIf(
+    rcAudit.includes("public-beta-rc-audit.json") &&
+      rcAudit.includes("desktop-signing-secrets") &&
+      rcAudit.includes("desktop-dogfood") &&
+      rcAudit.includes("publish-preflight") &&
+      rcAudit.includes("github-ci") &&
+      rcAudit.includes("check-runs/${checkRunId}/annotations"),
+    "Public Beta RC audit binds dogfood, signing, preflight, and CI blocker evidence",
   );
 
   const releasePublishPreflight =
