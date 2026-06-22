@@ -35,6 +35,8 @@ const releaseScriptNames = [
   "qa:desktop-release-package",
   "test:desktop-release-evidence",
   "qa:desktop-release-evidence",
+  "test:desktop-release-secrets",
+  "qa:desktop-release-secrets",
   "test:desktop-release-evidence-download",
   "qa:desktop-release-evidence-download",
   "test:desktop-release-evidence-preflight",
@@ -62,6 +64,7 @@ const releaseScriptNames = [
   "release:desktop:build",
   "release:desktop:package",
   "release:desktop:checksums",
+  "release:desktop:configure-secrets",
   "release:desktop:verify-evidence",
   "release:desktop:evidence-download",
   "release:desktop:evidence-preflight",
@@ -95,6 +98,9 @@ function fixtureScriptValue(name, overrides = {}) {
   }
   if (name === "release:desktop:package") {
     return "node scripts/package-desktop-release.mjs --require-platforms windows,macos,linux";
+  }
+  if (name === "release:desktop:configure-secrets") {
+    return "node scripts/configure-desktop-release-secrets.mjs";
   }
   if (name === "release:desktop:evidence-preflight") {
     return "node scripts/desktop-release-evidence-preflight.mjs";
@@ -164,6 +170,9 @@ function createFixture(t, overrides = {}) {
     "scripts/package-desktop-release.mjs":
       "artifactSha256 sha256: artifactSha256\n",
     "scripts/package-desktop-release.test.mjs": "",
+    "scripts/configure-desktop-release-secrets.mjs":
+      'ATLASTERM_WINDOWS_CERTIFICATE_FILE ATLASTERM_APPLE_CERTIFICATE_FILE "secret", "set" --body-file desktop-release-evidence-preflight.mjs\n',
+    "scripts/configure-desktop-release-secrets.test.mjs": "",
     "scripts/package-sync-release.mjs":
       "removeStaleSyncReleaseBinaries isSyncReleaseBinaryName SHA256SUMS.txt\n",
     "scripts/package-sync-release.test.mjs": "",
@@ -347,6 +356,7 @@ function ciFixture() {
     "npm run qa:artifact-checksums",
     "npm run qa:desktop-release-package",
     "npm run qa:desktop-release-evidence",
+    "npm run qa:desktop-release-secrets",
     "npm run qa:desktop-release-evidence-download",
     "npm run qa:desktop-release-evidence-preflight",
     "npm run qa:sync-release-package",

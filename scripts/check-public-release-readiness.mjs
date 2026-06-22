@@ -137,6 +137,8 @@ function checkPackageScripts() {
     "qa:desktop-release-package",
     "test:desktop-release-evidence",
     "qa:desktop-release-evidence",
+    "test:desktop-release-secrets",
+    "qa:desktop-release-secrets",
     "test:desktop-release-evidence-download",
     "qa:desktop-release-evidence-download",
     "test:desktop-release-evidence-preflight",
@@ -164,6 +166,7 @@ function checkPackageScripts() {
     "release:desktop:build",
     "release:desktop:package",
     "release:desktop:checksums",
+    "release:desktop:configure-secrets",
     "release:desktop:verify-evidence",
     "release:desktop:evidence-download",
     "release:desktop:evidence-preflight",
@@ -258,6 +261,15 @@ function checkPackageScripts() {
     "Desktop formal evidence download script imports workflow evidence",
     desktopEvidenceDownloadScript,
   );
+  const desktopConfigureSecretsScript =
+    packageJson.scripts?.["release:desktop:configure-secrets"] ?? "";
+  passIf(
+    desktopConfigureSecretsScript.includes(
+      "configure-desktop-release-secrets.mjs",
+    ),
+    "Desktop formal evidence secret configuration script sets signing secrets",
+    desktopConfigureSecretsScript,
+  );
 
   const publicReleaseScript = packageJson.scripts?.["qa:release:public"] ?? "";
   passIf(
@@ -343,6 +355,7 @@ function checkCiPublicReleaseWiring() {
     "npm run qa:artifact-checksums",
     "npm run qa:desktop-release-package",
     "npm run qa:desktop-release-evidence",
+    "npm run qa:desktop-release-secrets",
     "npm run qa:desktop-release-evidence-download",
     "npm run qa:desktop-release-evidence-preflight",
     "npm run qa:sync-release-package",
@@ -394,6 +407,8 @@ function checkReleaseToolingFiles() {
   for (const relativePath of [
     "scripts/package-desktop-release.mjs",
     "scripts/package-desktop-release.test.mjs",
+    "scripts/configure-desktop-release-secrets.mjs",
+    "scripts/configure-desktop-release-secrets.test.mjs",
     "scripts/package-sync-release.mjs",
     "scripts/package-sync-release.test.mjs",
     "scripts/verify-sync-release-evidence.mjs",
@@ -490,6 +505,17 @@ function checkReleaseToolingFiles() {
       desktopEvidenceDownloader.includes("artifact.expired") &&
       desktopEvidenceDownloader.includes("reports/release/desktop/"),
     "Desktop formal evidence downloader imports only verified workflow evidence",
+  );
+
+  const desktopSecretConfigurator =
+    readTextIfExists("scripts/configure-desktop-release-secrets.mjs") ?? "";
+  passIf(
+    desktopSecretConfigurator.includes("ATLASTERM_WINDOWS_CERTIFICATE_FILE") &&
+      desktopSecretConfigurator.includes("ATLASTERM_APPLE_CERTIFICATE_FILE") &&
+      desktopSecretConfigurator.includes('"secret", "set"') &&
+      desktopSecretConfigurator.includes("--body-file") &&
+      desktopSecretConfigurator.includes("desktop-release-evidence-preflight.mjs"),
+    "Desktop formal evidence secret configurator sets GitHub secrets from env or files without command-line values",
   );
 
   const releaseDraft =

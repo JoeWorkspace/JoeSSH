@@ -76,6 +76,25 @@ The Windows certificate must be a base64-encoded `.pfx`. The macOS certificate
 must be a base64-encoded `.p12` with a Developer ID Application identity that can
 be imported into the temporary CI keychain.
 
+To set the required GitHub Actions secrets without exposing values in command
+arguments or logs, provide the text values as environment variables and the raw
+certificate files through `*_FILE` variables, then run:
+
+```bash
+export ATLASTERM_WINDOWS_CERTIFICATE_FILE=/secure/path/windows.pfx
+export ATLASTERM_APPLE_CERTIFICATE_FILE=/secure/path/developer-id-application.p12
+# Export the remaining password, thumbprint, timestamp, Apple ID, app password,
+# team ID, and keychain password variables listed above.
+npm run release:desktop:configure-secrets -- --repo JoeWorkspace/JoeSSH
+```
+
+`release:desktop:configure-secrets` accepts either each exact secret name or a
+matching `*_FILE` variable. Certificate files are base64-encoded locally before
+being sent to GitHub. Text `*_FILE` inputs have one trailing newline removed so
+secrets copied from password manager files do not accidentally include the file
+line ending. The script verifies the resulting secret names with the formal
+evidence preflight before it exits.
+
 Before triggering formal evidence, verify that the repository has the required
 secret names and that the workflow is available:
 
