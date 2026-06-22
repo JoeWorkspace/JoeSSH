@@ -50,7 +50,7 @@ test.describe('JoeSSH scripted visual QA', () => {
     await expect(page).toHaveScreenshot(`web-admin-${testInfo.project.name}-en.png`, {
       animations: 'disabled',
       fullPage: true,
-      mask: [page.locator('.snapshotStatus time')],
+      mask: [page.locator('.snapshotStatus dl > div').nth(3).locator('dd')],
     });
   });
 });
