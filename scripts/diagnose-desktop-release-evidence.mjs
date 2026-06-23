@@ -685,6 +685,9 @@ function buildUnblockSteps(blockers) {
   steps.push(
     "After Desktop formal evidence imports, rerun release:provenance, release:provenance:verify, release:publish-preflight, and release:rc-audit:report.",
   );
+  steps.push(
+    "For local/self-hosted publication, rerun release:provenance:local, release:provenance:verify:local, release:publish-preflight:local, and release:rc-audit:report -- --release-authority local --skip-github.",
+  );
   return [...new Set(steps)];
 }
 

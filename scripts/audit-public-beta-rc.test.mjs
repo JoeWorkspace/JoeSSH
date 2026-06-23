@@ -83,6 +83,23 @@ test("writes a Go audit report when release evidence and gates pass", (t) => {
   assert.equal(report.blockers.length, 0);
 });
 
+test("uses local publish preflight without requiring GitHub signing secrets", (t) => {
+  const { fakePath, root, statePath } = createFixture(t, {
+    desktopSecretsOk: false,
+    publishPreflightOk: true,
+  });
+  const result = runAudit(root, fakePath, statePath, ["--release-authority", "local", "--skip-github"]);
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /GO \(0 blockers\)/);
+  const report = JSON.parse(readFileSync(join(root, "reports/release/public-beta-rc-audit.json"), "utf8"));
+  assert.equal(report.releaseAuthority, "local");
+  assert.equal(report.decision, "go");
+  assert.equal(report.blockers.length, 0);
+  assert.equal(report.checks.find((check) => check.id === "publish-preflight")?.label, "Local release publish preflight");
+  assert.equal(report.checks.find((check) => check.id === "desktop-signing-secrets")?.status, "unknown");
+});
+
 test("records No-Go blockers without hiding GitHub billing annotations", (t) => {
   const { fakePath, root, statePath } = createFixture(t, {
     ciConclusion: "failure",
@@ -191,6 +208,11 @@ if (tool === "npm") {
   if (is("run", "release:publish-preflight")) {
     if (state.publishPreflightOk) process.exit(0);
     console.error("Release tag v0.1.0-beta.1 must point at HEAD for publish preflight.");
+    process.exit(1);
+  }
+  if (is("run", "release:publish-preflight:local")) {
+    if (state.publishPreflightOk) process.exit(0);
+    console.error("Local release authority verification failed.");
     process.exit(1);
   }
   if (is("run", "release:desktop:configure-secrets", "--", "--verify-only")) {

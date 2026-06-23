@@ -271,6 +271,10 @@
   `npm run release:local-authority`, `npm run release:provenance:local`, and
   `npm run release:provenance:verify:local` so the release gate log and
   operator-confirmed publication target are part of provenance.
+- Local/self-hosted RC audits use
+  `npm run release:rc-audit:report -- --release-authority local --skip-github`
+  so GitHub CI or billing state is recorded separately from local publication
+  readiness.
 - `npm run release:verify-checksums` recursively discovers every staged
   `reports/release/**/SHA256SUMS.txt` manifest so Desktop evidence, Sync smoke
   evidence, SBOM, Web Admin, and future release attachments cannot bypass hash

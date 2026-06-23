@@ -43,7 +43,13 @@ const steps = [
   },
   {
     label: "Verify Desktop signing/distribution evidence",
-    args: [resolve(scriptRoot, "scripts", "verify-desktop-release-evidence.mjs"), "--root", root, "--require-source"],
+    args: [
+      resolve(scriptRoot, "scripts", "verify-desktop-release-evidence.mjs"),
+      "--root",
+      root,
+      "--require-source",
+      "--require-current-git-source",
+    ],
   },
   {
     label: "Verify release SBOM",

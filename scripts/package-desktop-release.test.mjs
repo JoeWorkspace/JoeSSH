@@ -186,6 +186,7 @@ test("packages Desktop local source evidence from a healthy release checkout", (
   assert.equal(source.source.gitCommit, "abc123");
   assert.equal(source.source.gitFsckStrict, true);
   assert.equal(source.formalEvidenceJob.name, "Package Formal Desktop Evidence");
+  assert.equal(source.formalEvidenceJob.command, "npm run release:desktop:package:local-source");
   assert.equal(source.formalEvidenceJob.artifactRoot, "reports/release/desktop");
   const manifest = readReleaseFile(root, "reports/release/desktop/release-evidence-SHA256SUMS.txt");
   assert.match(manifest, /reports\/release\/desktop\/release-evidence\.json/);

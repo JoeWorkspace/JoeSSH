@@ -63,7 +63,15 @@ writeFileSync(checksumPath, `${sha256File(evidencePath)}  ${toReleasePath(eviden
 
 const verified = spawnSync(
   process.execPath,
-  [resolve(defaultRoot, "scripts", "verify-local-release-authority.mjs"), "--root", root],
+  [
+    resolve(defaultRoot, "scripts", "verify-local-release-authority.mjs"),
+    "--root",
+    root,
+    "--evidence",
+    evidencePath,
+    "--checksum",
+    checksumPath,
+  ],
   {
     cwd: root,
     encoding: "utf8",

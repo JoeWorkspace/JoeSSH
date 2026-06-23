@@ -92,6 +92,7 @@ route, not a blocker for the first Public Beta.
    npm run release:provenance:local
    npm run release:provenance:verify:local
    npm run release:publish-preflight:local
+   npm run release:rc-audit:report -- --release-authority local --skip-github
    ```
 
 ## Acceptance Evidence
@@ -112,7 +113,9 @@ Keep these outputs with the release handoff notes:
 - For local/self-hosted publication:
   `reports/release/local-release-authority.json`,
   `reports/release/local-release-authority-SHA256SUMS.txt`, and
-  `npm run release:publish-preflight:local` output.
+  `npm run release:publish-preflight:local` plus
+  `npm run release:rc-audit:report -- --release-authority local --skip-github`
+  output.
 - `reports/release/**/SHA256SUMS.txt`.
 - `reports/release/desktop/release-evidence.json`.
 - `reports/release/desktop/release-evidence-source.json`.

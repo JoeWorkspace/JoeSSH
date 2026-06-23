@@ -237,7 +237,10 @@ function createLocalEvidenceSource() {
     artifactName: "desktop-release-evidence",
     formalEvidenceJob: {
       artifactRoot: "reports/release/desktop",
-      command: "npm run release:desktop:package",
+      command:
+        sourceAuthority === "local"
+          ? "npm run release:desktop:package:local-source"
+          : "npm run release:desktop:package -- --source-authority self-hosted",
       conclusion: "success",
       name: "Package Formal Desktop Evidence",
       status: "completed",

@@ -149,6 +149,28 @@ test("generates and verifies local release authority evidence", (t) => {
   assert.equal(verified.status, 0, verified.stdout + verified.stderr);
 });
 
+test("generates and self-verifies custom local release authority paths", (t) => {
+  const root = createFixture(t);
+  const env = createFakeGitCommands(root);
+
+  const generated = runGenerator(root, env, [
+    "--output",
+    "reports/release/custom/local-release-authority.json",
+    "--checksum",
+    "reports/release/custom/local-release-authority-SHA256SUMS.txt",
+  ]);
+
+  assert.equal(generated.status, 0, generated.stdout + generated.stderr);
+  assert.match(generated.stdout, /Local release authority verified for v0\.1\.0-beta\.1/);
+  const verified = runVerifier(root, env, [
+    "--evidence",
+    "reports/release/custom/local-release-authority.json",
+    "--checksum",
+    "reports/release/custom/local-release-authority-SHA256SUMS.txt",
+  ]);
+  assert.equal(verified.status, 0, verified.stdout + verified.stderr);
+});
+
 test("rejects local release authority generation without a release readiness success marker", (t) => {
   const root = createFixture(t, {
     logText: "> npm run qa:release:public\nrelease failed before readiness\n",

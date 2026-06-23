@@ -191,6 +191,7 @@ npm run release:local-authority -- --gate-command "npm run qa:release:public:fix
 npm run release:provenance:local
 npm run release:provenance:verify:local
 npm run release:publish-preflight:local
+npm run release:rc-audit:report -- --release-authority local --skip-github
 ```
 
 The local preflight still requires a healthy Git checkout, the release tag at
@@ -295,6 +296,7 @@ npm run release:local-authority -- --gate-command "npm run qa:release:public:fix
 npm run release:provenance:local
 npm run release:provenance:verify:local
 npm run release:publish-preflight:local
+npm run release:rc-audit:report -- --release-authority local --skip-github
 ```
 
 The publish preflight verifies all Desktop/Web/Sync checksum manifests, Desktop

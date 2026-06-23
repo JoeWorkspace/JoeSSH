@@ -113,7 +113,10 @@ native apps stay in preflight/device-smoke validation until a later beta.
     `npm run release:local-authority -- --gate-command "npm run qa:release:public:fixture" --target "<operator-confirmed target>"`,
     `npm run release:provenance:local`,
     `npm run release:provenance:verify:local`, and
-    `npm run release:publish-preflight:local`.
+    `npm run release:publish-preflight:local`. Use
+    `npm run release:rc-audit:report -- --release-authority local --skip-github`
+    for the final local RC audit when GitHub CI is not the publication
+    authority.
 - Run `npm run release:provenance` after the annotated tag exists and staged
   Desktop, Web Admin, Sync, SBOM, and evidence manifests are complete. It writes
   `reports/release/release-provenance.json` plus
@@ -279,6 +282,10 @@ native apps stay in preflight/device-smoke validation until a later beta.
   must pass before copying or exposing any files from `reports/release/`. The
   local authority evidence must identify the operator-confirmed target and prove
   the public release gate passed from the same healthy tagged checkout.
+- For local/self-hosted RC judgment, run
+  `npm run release:rc-audit:report -- --release-authority local --skip-github`
+  so the audit uses local publish preflight and does not turn GitHub CI billing
+  state into a local publication blocker.
 - The draft script also supports `--dry-run` for release-machine preflight and
   CI fixture tests; dry-run still verifies required manifests and hashes without
   requiring GitHub CLI access.

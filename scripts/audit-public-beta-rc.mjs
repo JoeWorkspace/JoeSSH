@@ -15,6 +15,7 @@ const {
   noFail,
   outputPath,
   repo: explicitRepo,
+  releaseAuthority,
   root,
   skipGithub,
 } = parseArgs(process.argv.slice(2));
@@ -36,6 +37,7 @@ const report = {
   checks,
   decision: "no-go",
   generatedAt: new Date().toISOString(),
+  releaseAuthority,
   releaseTag,
   repository: repo,
   root,
@@ -194,10 +196,11 @@ function auditDesktopDogfood() {
 }
 
 function auditPublishPreflight() {
-  const result = runNpm(["run", "release:publish-preflight"]);
+  const scriptName = releaseAuthority === "local" ? "release:publish-preflight:local" : "release:publish-preflight";
+  const result = runNpm(["run", scriptName]);
   addCheck(
     "publish-preflight",
-    "Release publish preflight",
+    releaseAuthority === "local" ? "Local release publish preflight" : "Release publish preflight",
     result.status === 0 ? "pass" : "fail",
     result.status === 0 ? "passed" : tail(commandDiagnostic(result)).join("\n"),
     result.status !== 0,
@@ -205,6 +208,16 @@ function auditPublishPreflight() {
 }
 
 function auditDesktopSigningSecrets() {
+  if (releaseAuthority === "local") {
+    addCheck(
+      "desktop-signing-secrets",
+      "Desktop signing/notarization secret preflight",
+      "unknown",
+      "Skipped for local release authority; formal Desktop source evidence is verified by publish preflight.",
+    );
+    return;
+  }
+
   const result = runNpm(["run", "release:desktop:configure-secrets", "--", "--verify-only"]);
   addCheck(
     "desktop-signing-secrets",
@@ -477,6 +490,7 @@ function toReleasePath(path) {
 function parseArgs(args) {
   let noFail = false;
   let outputPath = null;
+  let releaseAuthority = process.env.ATLASTERM_RELEASE_AUTHORITY ?? "github";
   let repo = null;
   let root = scriptRoot;
   let skipGithub = false;
@@ -489,6 +503,19 @@ function parseArgs(args) {
     }
     if (arg === "--skip-github") {
       skipGithub = true;
+      continue;
+    }
+    if (arg === "--release-authority" || arg === "--authority") {
+      releaseAuthority = readValue(args, index, arg);
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--release-authority=")) {
+      releaseAuthority = arg.slice("--release-authority=".length);
+      continue;
+    }
+    if (arg.startsWith("--authority=")) {
+      releaseAuthority = arg.slice("--authority=".length);
       continue;
     }
     if (arg === "--output") {
@@ -525,8 +552,11 @@ function parseArgs(args) {
   if (!isInsideRoot(outputPath, root)) {
     fail("--output must stay inside --root.");
   }
+  if (!["github", "local"].includes(releaseAuthority)) {
+    fail("--release-authority must be github or local.");
+  }
 
-  return { noFail, outputPath, repo, root, skipGithub };
+  return { noFail, outputPath, releaseAuthority, repo, root, skipGithub };
 }
 
 function readValue(args, index, arg) {

@@ -1,11 +1,13 @@
 import { createHash } from "node:crypto";
+import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { basename, isAbsolute, relative, resolve } from "node:path";
 
 const defaultRoot = resolve(import.meta.dirname, "..");
-const { evidenceChecksumPath, evidencePath, manifestPath, requireSource, root, sourcePath } = parseArgs(
-  process.argv.slice(2),
-);
+const { evidenceChecksumPath, evidencePath, manifestPath, requireCurrentGitSource, requireSource, root, sourcePath } =
+  parseArgs(process.argv.slice(2));
+const gitCommand = process.env.ATLASTERM_RELEASE_GIT_COMMAND ?? "git";
+const gitCommandPrefixArgs = parseCommandPrefixArgs("ATLASTERM_RELEASE_GIT_ARGS");
 const errors = [];
 
 const manifestEntries = readChecksumManifest(resolve(root, manifestPath));
@@ -187,6 +189,9 @@ function validateEvidenceSource(source) {
   ) {
     errors.push("desktop evidence source sidecar importedAt must be a valid ISO date string");
   }
+  if (requireCurrentGitSource) {
+    validateCurrentGitSource(source.releaseTagCommit);
+  }
 
   if (sourceAuthority === "github") {
     validateWorkflowRunSource(source.workflowRun, source.releaseTagCommit);
@@ -202,6 +207,27 @@ function validateEvidenceSource(source) {
   validateLocalSource(source.source, source.releaseTagCommit);
   validateLocalRunnerSource(source.runner);
   validateLocalFormalEvidenceJobSource(source.formalEvidenceJob);
+}
+
+function validateCurrentGitSource(releaseTagCommit) {
+  const expectedReleaseRef = readExpectedReleaseRef();
+  const head = runGit(["rev-parse", "HEAD"]);
+  const tag = runGit(["rev-parse", "--verify", `${expectedReleaseRef}^{}`]);
+  if (head.status !== 0) {
+    errors.push("desktop evidence source sidecar could not be bound to current HEAD");
+  }
+  if (tag.status !== 0) {
+    errors.push(`desktop evidence source sidecar could not resolve ${expectedReleaseRef}`);
+  }
+  if (typeof releaseTagCommit !== "string" || releaseTagCommit.trim() === "") {
+    return;
+  }
+  if (head.status === 0 && releaseTagCommit !== head.stdout.trim()) {
+    errors.push("desktop evidence source sidecar releaseTagCommit must match current HEAD");
+  }
+  if (tag.status === 0 && releaseTagCommit !== tag.stdout.trim()) {
+    errors.push(`desktop evidence source sidecar releaseTagCommit must match ${expectedReleaseRef}`);
+  }
 }
 
 function validateWorkflowRunSource(workflowRun, releaseTagCommit) {
@@ -491,11 +517,20 @@ function sha256File(path) {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
 
+function runGit(args) {
+  return spawnSync(gitCommand, [...gitCommandPrefixArgs, ...args], {
+    cwd: root,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+}
+
 function parseArgs(args) {
   let root = defaultRoot;
   let manifestPath = "reports/release/desktop/SHA256SUMS.txt";
   let evidencePath = "reports/release/desktop/release-evidence.json";
   let evidenceChecksumPath = "reports/release/desktop/release-evidence-SHA256SUMS.txt";
+  let requireCurrentGitSource = false;
   let requireSource = false;
   let sourcePath = "reports/release/desktop/release-evidence-source.json";
 
@@ -545,6 +580,10 @@ function parseArgs(args) {
       requireSource = true;
       continue;
     }
+    if (arg === "--require-current-git-source") {
+      requireCurrentGitSource = true;
+      continue;
+    }
     if (arg === "--source") {
       const value = args[index + 1];
       if (!value) {
@@ -562,7 +601,23 @@ function parseArgs(args) {
     fail(`Unknown argument: ${arg}`);
   }
 
-  return { evidenceChecksumPath, evidencePath, manifestPath, requireSource, root, sourcePath };
+  return { evidenceChecksumPath, evidencePath, manifestPath, requireCurrentGitSource, requireSource, root, sourcePath };
+}
+
+function parseCommandPrefixArgs(envName) {
+  const raw = process.env[envName];
+  if (!raw) {
+    return [];
+  }
+  try {
+    const value = JSON.parse(raw);
+    if (Array.isArray(value) && value.every((entry) => typeof entry === "string")) {
+      return value;
+    }
+  } catch {
+    // Fall through to the explicit failure below.
+  }
+  fail(`${envName} must be a JSON string array when set.`);
 }
 
 function displayPath(path) {

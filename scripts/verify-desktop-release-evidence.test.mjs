@@ -148,10 +148,48 @@ function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
 }
 
-function runChecker(root, args = []) {
+function runChecker(root, args = [], env = {}) {
   return spawnSync(process.execPath, [CHECKER_PATH, "--root", root, ...args], {
     encoding: "utf8",
+    env: {
+      ...process.env,
+      ...env,
+    },
   });
+}
+
+function createFakeGitCommands(root, options = {}) {
+  const binDir = join(root, "fake-bin");
+  mkdirSync(binDir, { recursive: true });
+  const state = {
+    head: "abc123",
+    tag: "abc123",
+    ...options,
+  };
+  const fakeGitPath = join(binDir, "git.js");
+  writeFileSync(
+    fakeGitPath,
+    `
+const args = process.argv.slice(2);
+const state = ${JSON.stringify(state)};
+const key = args.join(" ");
+if (key === "rev-parse HEAD") {
+  console.log(state.head);
+  process.exit(0);
+}
+if (key === "rev-parse --verify v0.1.0-beta.1^{}") {
+  console.log(state.tag);
+  process.exit(0);
+}
+console.error("unexpected git args: " + key);
+process.exit(2);
+`,
+    "utf8",
+  );
+  return {
+    ATLASTERM_RELEASE_GIT_ARGS: JSON.stringify([fakeGitPath]),
+    ATLASTERM_RELEASE_GIT_COMMAND: process.execPath,
+  };
 }
 
 test("accepts complete desktop release evidence", (t) => {
@@ -176,6 +214,16 @@ test("accepts formal desktop evidence with a local source sidecar", (t) => {
   writeEvidenceSource(root, localEvidenceSourceOverride());
 
   const result = runChecker(root, ["--require-source"]);
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /Desktop release evidence verified for 3 artifact/);
+});
+
+test("accepts formal desktop evidence when source sidecar matches current Git", (t) => {
+  const root = createFixture(t);
+  writeEvidenceSource(root, localEvidenceSourceOverride());
+
+  const result = runChecker(root, ["--require-source", "--require-current-git-source"], createFakeGitCommands(root));
 
   assert.equal(result.status, 0);
   assert.match(result.stdout, /Desktop release evidence verified for 3 artifact/);
@@ -213,6 +261,21 @@ test("rejects local desktop evidence source sidecars from a different commit", (
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /source\.gitCommit must match releaseTagCommit/);
+});
+
+test("rejects source sidecars that do not match the current release tag commit", (t) => {
+  const root = createFixture(t);
+  writeEvidenceSource(root, localEvidenceSourceOverride());
+
+  const result = runChecker(
+    root,
+    ["--require-source", "--require-current-git-source"],
+    createFakeGitCommands(root, { head: "def456", tag: "def456" }),
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /releaseTagCommit must match current HEAD/);
+  assert.match(result.stderr, /releaseTagCommit must match v0\.1\.0-beta\.1/);
 });
 
 test("rejects unsigned Windows artifacts", (t) => {
