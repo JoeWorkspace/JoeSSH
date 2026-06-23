@@ -145,6 +145,49 @@ function desktopEvidenceSourceFixture() {
   );
 }
 
+function localDesktopEvidenceSourceFixture() {
+  return JSON.stringify(
+    {
+      artifactName: "desktop-release-evidence",
+      formalEvidenceJob: {
+        artifactRoot: "reports/release/desktop",
+        command: "npm run release:desktop:package",
+        conclusion: "success",
+        name: "Package Formal Desktop Evidence",
+        status: "completed",
+      },
+      importedAt: "2026-06-21T00:00:00.000Z",
+      releaseRef: "v0.1.0-beta.1",
+      releaseTagCommit: "abc123",
+      repository: "https://github.com/joessh/joessh.git",
+      runner: {
+        os: "linux",
+        type: "self-hosted-release-machine",
+      },
+      source: {
+        cleanTreeExcluding: "reports/release",
+        gitCommit: "abc123",
+        gitFsckStrict: true,
+        releaseTagCommit: "abc123",
+      },
+      sourceAuthority: "local",
+      sourceVersion: 1,
+    },
+    null,
+    2,
+  );
+}
+
+function writeLocalDesktopEvidenceSourceFixture(root) {
+  const desktopEvidence = readFile(root, "reports/release/desktop/release-evidence.json");
+  const desktopEvidenceSource = localDesktopEvidenceSourceFixture();
+  writeFile(root, "reports/release/desktop/release-evidence-source.json", desktopEvidenceSource);
+  writeManifest(root, "reports/release/desktop/release-evidence-SHA256SUMS.txt", [
+    [desktopEvidence, "reports/release/desktop/release-evidence.json"],
+    [desktopEvidenceSource, "reports/release/desktop/release-evidence-source.json"],
+  ]);
+}
+
 function writeWebDistFixture(root) {
   const files = {
     "apps/web/dist/.well-known/security.txt": "Contact: mailto:security@example.com\n",
@@ -233,7 +276,7 @@ function writeManifest(root, relativePath, entries) {
   );
 }
 
-function writeReleaseProvenanceFixture(root) {
+function writeReleaseProvenanceFixture(root, options = {}) {
   const manifestPaths = [
     "reports/release/SBOM-SHA256SUMS.txt",
     "reports/release/desktop/SHA256SUMS.txt",
@@ -241,6 +284,7 @@ function writeReleaseProvenanceFixture(root) {
     "reports/release/sync/SHA256SUMS.txt",
     "reports/release/sync/backup-restore-smoke-SHA256SUMS.txt",
     "reports/release/web/SHA256SUMS.txt",
+    ...(options.releaseAuthority === "local" ? ["reports/release/local-release-authority-SHA256SUMS.txt"] : []),
   ];
   const provenance = JSON.stringify(
     {
@@ -257,6 +301,7 @@ function writeReleaseProvenanceFixture(root) {
       ].map((path) => ({ path, sha256: sha256(readFile(root, path)) })),
       product: "JoeSSH",
       provenanceVersion: 1,
+      releaseAuthority: options.releaseAuthority ?? "github",
       releaseNotes: {
         path: "docs/release-notes/0.1.0-beta.1.md",
         sha256: sha256(readFile(root, "docs/release-notes/0.1.0-beta.1.md")),
@@ -285,6 +330,7 @@ function writeReleaseProvenanceFixture(root) {
         "verify-web-release-package.mjs",
         "verify-sync-release-evidence.mjs",
         "verify-desktop-release-evidence.mjs --require-source",
+        ...(options.releaseAuthority === "local" ? ["verify-local-release-authority.mjs"] : []),
         "verify-release-sbom.mjs",
         "verify-release-provenance.mjs",
       ],
@@ -324,8 +370,58 @@ function cargoLockFixture(packages) {
     .join("\n");
 }
 
-function runPreflight(root, env = createFakeGitCommands(root)) {
-  return spawnSync(process.execPath, [PREFLIGHT_SCRIPT_PATH, "--root", root], {
+function writeLocalReleaseAuthorityFixture(root) {
+  const logPath = "reports/release/local-release-authority/qa-release-public.log";
+  const logText = [
+    "> atlasterm@0.1.0-beta.1 qa:release:public:fixture",
+    "> npm run qa:release:public",
+    "Public Beta release readiness checks passed.",
+    "",
+  ].join("\n");
+  writeFile(root, logPath, logText);
+  const evidence = JSON.stringify(
+    {
+      authority: "local",
+      authorityVersion: 1,
+      generatedAt: "2026-06-21T00:00:00.000Z",
+      operator: "release-operator",
+      publication: {
+        artifactRoot: "reports/release",
+        duplicateCheck: "operator-confirmed-no-existing-release-for-tag",
+        target: "self-hosted download bucket",
+      },
+      releaseGate: {
+        command: "npm run qa:release:public:fixture",
+        completedAt: "2026-06-21T00:00:00.000Z",
+        logPath,
+        logSha256: sha256(logText),
+        status: "passed",
+      },
+      releaseTag: "v0.1.0-beta.1",
+      runner: {
+        os: "linux",
+        type: "self-hosted-release-machine",
+      },
+      source: {
+        cleanTreeExcluding: "reports/release",
+        gitCommit: "abc123",
+        gitFsckStrict: true,
+        releaseTagCommit: "abc123",
+        repository: "https://github.com/joessh/joessh.git",
+      },
+      version: "0.1.0-beta.1",
+    },
+    null,
+    2,
+  );
+  writeFile(root, "reports/release/local-release-authority.json", `${evidence}\n`);
+  writeManifest(root, "reports/release/local-release-authority-SHA256SUMS.txt", [
+    [`${evidence}\n`, "reports/release/local-release-authority.json"],
+  ]);
+}
+
+function runPreflight(root, env = createFakeGitCommands(root), extraArgs = []) {
+  return spawnSync(process.execPath, [PREFLIGHT_SCRIPT_PATH, "--root", root, ...extraArgs], {
     encoding: "utf8",
     env: {
       ...process.env,
@@ -481,6 +577,35 @@ test("publish preflight verifies checksums, evidence, SBOM, provenance, and rele
   assert.match(result.stdout, /Verify release provenance/);
   assert.match(result.stdout, /Release draft dry run passed for v0\.1\.0-beta\.1/);
   assert.match(result.stdout, /Public release publish preflight passed/);
+});
+
+test("publish preflight can use local release authority without GitHub release checks", (t) => {
+  const root = createReleaseFixture(t);
+  writeLocalDesktopEvidenceSourceFixture(root);
+  writeLocalReleaseAuthorityFixture(root);
+  writeReleaseProvenanceFixture(root, { releaseAuthority: "local" });
+  const result = runPreflight(root, createFakeGitCommands(root, { ghAuthFails: true }), [
+    "--release-authority",
+    "local",
+  ]);
+
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /with local release authority/);
+  assert.match(result.stdout, /Verify local release authority evidence/);
+  assert.match(result.stdout, /Local release authority verified for v0\.1\.0-beta\.1/);
+  assert.doesNotMatch(result.stdout + result.stderr, /Verify GitHub CLI publish readiness/);
+  assert.doesNotMatch(result.stdout + result.stderr, /GitHub Release draft dry run/);
+  assert.match(result.stdout, /Verify local publication target/);
+  assert.match(result.stdout, /Public release publish preflight passed/);
+});
+
+test("local publish preflight rejects missing local release authority evidence", (t) => {
+  const root = createReleaseFixture(t);
+  const result = runPreflight(root, createFakeGitCommands(root), ["--release-authority", "local"]);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Missing local release authority evidence/);
+  assert.match(result.stderr, /Public release publish preflight failed: Verify local release authority evidence/);
 });
 
 test("publish preflight rejects missing Git checkout metadata", (t) => {

@@ -4,7 +4,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { basename, isAbsolute, relative, resolve } from "node:path";
 
 const defaultRoot = resolve(import.meta.dirname, "..");
-const { checksumPath, provenancePath, root, skipCurrentGitCheck } = parseArgs(
+const { checksumPath, provenancePath, releaseAuthority, root, skipCurrentGitCheck } = parseArgs(
   process.argv.slice(2),
 );
 const packageJson = readJson("package.json");
@@ -38,6 +38,7 @@ const requiredChecksumManifests = [
   "reports/release/sync/SHA256SUMS.txt",
   "reports/release/sync/backup-restore-smoke-SHA256SUMS.txt",
   "reports/release/web/SHA256SUMS.txt",
+  ...(releaseAuthority === "local" ? ["reports/release/local-release-authority-SHA256SUMS.txt"] : []),
 ];
 const errors = [];
 
@@ -47,6 +48,7 @@ validateCurrentGit();
 validateToolchain();
 validateLockfiles();
 validateChecksumManifests();
+validateLocalReleaseAuthority();
 validateProvenanceChecksum();
 
 if (errors.length > 0) {
@@ -86,6 +88,9 @@ function validateTopLevel() {
   }
   if (provenance.product !== "JoeSSH") {
     errors.push("product must be JoeSSH");
+  }
+  if ((provenance.releaseAuthority ?? "github") !== releaseAuthority) {
+    errors.push(`releaseAuthority must be ${releaseAuthority}`);
   }
   if (provenance.version !== packageJson.version) {
     errors.push(
@@ -251,6 +256,7 @@ function validateVerifiers() {
     "verify-web-release-package.mjs",
     "verify-sync-release-evidence.mjs",
     "verify-desktop-release-evidence.mjs --require-source",
+    ...(releaseAuthority === "local" ? ["verify-local-release-authority.mjs"] : []),
     "verify-release-sbom.mjs",
     "verify-release-provenance.mjs",
   ];
@@ -495,6 +501,29 @@ function validateChecksumManifest(manifest) {
   }
 }
 
+function validateLocalReleaseAuthority() {
+  if (releaseAuthority !== "local") {
+    return;
+  }
+  const args = [resolve(defaultRoot, "scripts", "verify-local-release-authority.mjs"), "--root", root];
+  if (skipCurrentGitCheck) {
+    args.push("--skip-current-git-check");
+  }
+  const result = spawnSync(
+    process.execPath,
+    args,
+    {
+      cwd: root,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
+  if (result.status !== 0) {
+    const diagnostic = `${result.stdout}\n${result.stderr}`.trim();
+    errors.push(diagnostic ? `local release authority verification failed: ${diagnostic}` : "local release authority verification failed");
+  }
+}
+
 function validateProvenanceChecksum() {
   if (!existsSync(checksumPath)) {
     errors.push(
@@ -694,12 +723,30 @@ function parseArgs(args) {
   let root = defaultRoot;
   let provenancePath = null;
   let checksumPath = null;
+  let releaseAuthority = process.env.ATLASTERM_RELEASE_AUTHORITY ?? "github";
   let skipCurrentGitCheck = false;
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
     if (arg === "--skip-current-git-check") {
       skipCurrentGitCheck = true;
+      continue;
+    }
+    if (arg === "--release-authority" || arg === "--authority") {
+      const value = args[index + 1];
+      if (!value) {
+        fail(`${arg} requires github or local.`);
+      }
+      releaseAuthority = value;
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--release-authority=")) {
+      releaseAuthority = arg.slice("--release-authority=".length);
+      continue;
+    }
+    if (arg.startsWith("--authority=")) {
+      releaseAuthority = arg.slice("--authority=".length);
       continue;
     }
     if (arg === "--root") {
@@ -745,6 +792,10 @@ function parseArgs(args) {
     fail(`Unknown argument: ${arg}`);
   }
 
+  if (!["github", "local"].includes(releaseAuthority)) {
+    fail("--release-authority must be github or local.");
+  }
+
   return {
     checksumPath: resolve(
       root,
@@ -754,6 +805,7 @@ function parseArgs(args) {
       root,
       provenancePath ?? "reports/release/release-provenance.json",
     ),
+    releaseAuthority,
     root,
     skipCurrentGitCheck,
   };

@@ -11,7 +11,7 @@ import {
 import { basename, isAbsolute, relative, resolve } from "node:path";
 
 const defaultRoot = resolve(import.meta.dirname, "..");
-const { checksumPath, notesFile, outputPath, root } = parseArgs(
+const { checksumPath, notesFile, outputPath, releaseAuthority, root } = parseArgs(
   process.argv.slice(2),
 );
 const packageJson = readJson("package.json");
@@ -49,6 +49,7 @@ const requiredChecksumManifests = [
   "reports/release/sync/SHA256SUMS.txt",
   "reports/release/sync/backup-restore-smoke-SHA256SUMS.txt",
   "reports/release/web/SHA256SUMS.txt",
+  ...(releaseAuthority === "local" ? ["reports/release/local-release-authority-SHA256SUMS.txt"] : []),
 ];
 
 if (!existsSync(releaseNotesPath) || !statSync(releaseNotesPath).isFile()) {
@@ -61,6 +62,7 @@ const git = verifyReleaseGitCheckout();
 const provenance = {
   provenanceVersion: 1,
   product: "JoeSSH",
+  releaseAuthority,
   version: packageJson.version,
   releaseTag,
   generatedAt: new Date().toISOString(),
@@ -83,6 +85,7 @@ const provenance = {
     "verify-web-release-package.mjs",
     "verify-sync-release-evidence.mjs",
     "verify-desktop-release-evidence.mjs --require-source",
+    ...(releaseAuthority === "local" ? ["verify-local-release-authority.mjs"] : []),
     "verify-release-sbom.mjs",
     "verify-release-provenance.mjs",
   ],
@@ -404,6 +407,7 @@ function parseArgs(args) {
   let outputPath = null;
   let checksumPath = null;
   let notesFile = null;
+  let releaseAuthority = process.env.ATLASTERM_RELEASE_AUTHORITY ?? "github";
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
@@ -455,12 +459,33 @@ function parseArgs(args) {
       index += 1;
       continue;
     }
+    if (arg === "--release-authority" || arg === "--authority") {
+      const value = args[index + 1];
+      if (!value) {
+        fail(`${arg} requires github or local.`);
+      }
+      releaseAuthority = value;
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--release-authority=")) {
+      releaseAuthority = arg.slice("--release-authority=".length);
+      continue;
+    }
+    if (arg.startsWith("--authority=")) {
+      releaseAuthority = arg.slice("--authority=".length);
+      continue;
+    }
     if (arg.startsWith("--notes-file=")) {
       notesFile = arg.slice("--notes-file=".length);
       continue;
     }
 
     fail(`Unknown argument: ${arg}`);
+  }
+
+  if (!["github", "local"].includes(releaseAuthority)) {
+    fail("--release-authority must be github or local.");
   }
 
   return {
@@ -473,6 +498,7 @@ function parseArgs(args) {
       root,
       outputPath ?? "reports/release/release-provenance.json",
     ),
+    releaseAuthority,
     root,
   };
 }

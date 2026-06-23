@@ -119,6 +119,31 @@ function writeEvidenceSource(root, overrides = {}) {
   );
 }
 
+function localEvidenceSourceOverride() {
+  return {
+    formalEvidenceJob: {
+      artifactRoot: "reports/release/desktop",
+      command: "npm run release:desktop:package",
+      conclusion: "success",
+      name: "Package Formal Desktop Evidence",
+      status: "completed",
+    },
+    repository: "https://git.example/JoeWorkspace/JoeSSH.git",
+    runner: {
+      os: "windows",
+      type: "self-hosted-release-machine",
+    },
+    source: {
+      cleanTreeExcluding: "reports/release",
+      gitCommit: "abc123",
+      gitFsckStrict: true,
+      releaseTagCommit: "abc123",
+    },
+    sourceAuthority: "local",
+    workflowRun: undefined,
+  };
+}
+
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
 }
@@ -146,6 +171,16 @@ test("accepts formal desktop evidence with a workflow source sidecar", (t) => {
   assert.match(result.stdout, /Desktop release evidence verified for 3 artifact/);
 });
 
+test("accepts formal desktop evidence with a local source sidecar", (t) => {
+  const root = createFixture(t);
+  writeEvidenceSource(root, localEvidenceSourceOverride());
+
+  const result = runChecker(root, ["--require-source"]);
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /Desktop release evidence verified for 3 artifact/);
+});
+
 test("rejects formal desktop evidence without a workflow source sidecar", (t) => {
   const result = runChecker(createFixture(t), ["--require-source"]);
 
@@ -161,6 +196,23 @@ test("rejects formal desktop evidence source sidecars from a different release r
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /releaseRef must be v0\.1\.0-beta\.1/);
+});
+
+test("rejects local desktop evidence source sidecars from a different commit", (t) => {
+  const root = createFixture(t);
+  const localSource = localEvidenceSourceOverride();
+  writeEvidenceSource(root, {
+    ...localSource,
+    source: {
+      ...localSource.source,
+      gitCommit: "def456",
+    },
+  });
+
+  const result = runChecker(root, ["--require-source"]);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /source\.gitCommit must match releaseTagCommit/);
 });
 
 test("rejects unsigned Windows artifacts", (t) => {

@@ -25,7 +25,7 @@ function writeFile(root, relativePath, content) {
   writeFileSync(path, content, "utf8");
 }
 
-function runPackager(root, extraArgs = []) {
+function runPackager(root, extraArgs = [], env = {}) {
   return spawnSync(
     process.execPath,
     [
@@ -40,12 +40,18 @@ function runPackager(root, extraArgs = []) {
       "spctl --assess reports/release/desktop/JoeSSH_0.1.0-beta.1_aarch64.dmg passed",
       ...extraArgs,
     ],
-    { encoding: "utf8" },
+    {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        ...env,
+      },
+    },
   );
 }
 
-function runEvidenceChecker(root) {
-  return spawnSync(process.execPath, [EVIDENCE_CHECKER_PATH, "--root", root], {
+function runEvidenceChecker(root, extraArgs = []) {
+  return spawnSync(process.execPath, [EVIDENCE_CHECKER_PATH, "--root", root, ...extraArgs], {
     encoding: "utf8",
   });
 }
@@ -56,6 +62,63 @@ function readReleaseFile(root, relativePath) {
 
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
+}
+
+function createFakeGitCommands(root, options = {}) {
+  const binDir = join(root, "fake-bin");
+  mkdirSync(binDir, { recursive: true });
+  const state = {
+    dirtyStatus: "",
+    fsckFails: false,
+    tagCommit: "abc123",
+    ...options,
+  };
+  const fakeGitPath = join(binDir, "git.js");
+  writeFileSync(
+    fakeGitPath,
+    `
+const args = process.argv.slice(2);
+const state = ${JSON.stringify(state)};
+const key = args.join(" ");
+if (key === "rev-parse --is-inside-work-tree") {
+  console.log("true");
+  process.exit(0);
+}
+if (key === "status --porcelain=v1 --untracked-files=all -- . :(exclude)reports/release") {
+  if (state.dirtyStatus) {
+    console.log(state.dirtyStatus);
+  }
+  process.exit(0);
+}
+if (key === "rev-parse HEAD") {
+  console.log("abc123");
+  process.exit(0);
+}
+if (key === "rev-parse --verify v0.1.0-beta.1^{}") {
+  console.log(state.tagCommit);
+  process.exit(0);
+}
+if (key === "remote get-url origin") {
+  console.log("https://github.com/joessh/joessh.git");
+  process.exit(0);
+}
+if (key === "fsck --strict") {
+  if (state.fsckFails) {
+    console.error("dangling object");
+    process.exit(1);
+  }
+  process.exit(0);
+}
+console.error("unexpected git args: " + key);
+process.exit(2);
+`,
+    "utf8",
+  );
+
+  return {
+    ATLASTERM_RELEASE_GIT_ARGS: JSON.stringify([fakeGitPath]),
+    ATLASTERM_RELEASE_GIT_COMMAND: process.execPath,
+  };
 }
 
 test("packages Desktop bundle artifacts with checksums and release evidence", (t) => {
@@ -102,6 +165,49 @@ test("packages Desktop bundle artifacts with checksums and release evidence", (t
 
   const evidenceResult = runEvidenceChecker(root);
   assert.equal(evidenceResult.status, 0, evidenceResult.stdout + evidenceResult.stderr);
+});
+
+test("packages Desktop local source evidence from a healthy release checkout", (t) => {
+  const root = createFixture(t);
+  writeFile(root, "apps/desktop/src-tauri/target/release/bundle/nsis/JoeSSH_0.1.0-beta.1_x64-setup.exe", "windows");
+  writeFile(root, "apps/desktop/src-tauri/target/release/bundle/dmg/JoeSSH_0.1.0-beta.1_aarch64.dmg", "macos");
+  writeFile(root, "apps/desktop/src-tauri/target/release/bundle/appimage/JoeSSH_0.1.0-beta.1_amd64.AppImage", "linux");
+
+  const result = runPackager(
+    root,
+    ["--require-platforms", "windows,macos,linux", "--source-authority", "local", "--runner-type", "self-hosted-release-machine"],
+    createFakeGitCommands(root),
+  );
+
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  const source = JSON.parse(readReleaseFile(root, "reports/release/desktop/release-evidence-source.json"));
+  assert.equal(source.sourceAuthority, "local");
+  assert.equal(source.releaseTagCommit, "abc123");
+  assert.equal(source.source.gitCommit, "abc123");
+  assert.equal(source.source.gitFsckStrict, true);
+  assert.equal(source.formalEvidenceJob.name, "Package Formal Desktop Evidence");
+  assert.equal(source.formalEvidenceJob.artifactRoot, "reports/release/desktop");
+  const manifest = readReleaseFile(root, "reports/release/desktop/release-evidence-SHA256SUMS.txt");
+  assert.match(manifest, /reports\/release\/desktop\/release-evidence\.json/);
+  assert.match(manifest, /reports\/release\/desktop\/release-evidence-source\.json/);
+
+  const evidenceResult = runEvidenceChecker(root, ["--require-source"]);
+  assert.equal(evidenceResult.status, 0, evidenceResult.stdout + evidenceResult.stderr);
+});
+
+test("rejects local source evidence before staging artifacts when the tag drifts", (t) => {
+  const root = createFixture(t);
+  writeFile(root, "apps/desktop/src-tauri/target/release/bundle/nsis/JoeSSH_0.1.0-beta.1_x64-setup.exe", "windows");
+
+  const result = runPackager(
+    root,
+    ["--source-authority", "local"],
+    createFakeGitCommands(root, { tagCommit: "def456" }),
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Release tag v0\.1\.0-beta\.1 must point at HEAD/);
+  assert.equal(existsSync(join(root, "reports", "release", "desktop", "JoeSSH_0.1.0-beta.1_x64-setup.exe")), false);
 });
 
 test("rejects Windows artifacts without signature verification evidence", (t) => {

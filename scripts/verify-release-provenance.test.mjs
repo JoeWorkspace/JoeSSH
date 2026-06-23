@@ -223,14 +223,64 @@ console.log(versions[tool]);
   };
 }
 
-function runGenerator(root, env = createFakeCommands(root)) {
-  return spawnSync(process.execPath, [GENERATOR_PATH, "--root", root], {
+function runGenerator(root, env = createFakeCommands(root), extraArgs = []) {
+  return spawnSync(process.execPath, [GENERATOR_PATH, "--root", root, ...extraArgs], {
     encoding: "utf8",
     env: {
       ...process.env,
       ...env,
     },
   });
+}
+
+function writeLocalReleaseAuthorityFixture(root) {
+  const logPath = "reports/release/local-release-authority/qa-release-public.log";
+  const logText = [
+    "> atlasterm@0.1.0-beta.1 qa:release:public:fixture",
+    "> npm run qa:release:public",
+    "Public Beta release readiness checks passed.",
+    "",
+  ].join("\n");
+  writeFile(root, logPath, logText);
+  const evidence = JSON.stringify(
+    {
+      authority: "local",
+      authorityVersion: 1,
+      generatedAt: "2026-06-21T00:00:00.000Z",
+      operator: "release-operator",
+      publication: {
+        artifactRoot: "reports/release",
+        duplicateCheck: "operator-confirmed-no-existing-release-for-tag",
+        target: "self-hosted download bucket",
+      },
+      releaseGate: {
+        command: "npm run qa:release:public:fixture",
+        completedAt: "2026-06-21T00:00:00.000Z",
+        logPath,
+        logSha256: sha256(logText),
+        status: "passed",
+      },
+      releaseTag: "v0.1.0-beta.1",
+      runner: {
+        os: "linux",
+        type: "self-hosted-release-machine",
+      },
+      source: {
+        cleanTreeExcluding: "reports/release",
+        gitCommit: "abc123",
+        gitFsckStrict: true,
+        releaseTagCommit: "abc123",
+        repository: "https://github.com/joessh/joessh.git",
+      },
+      version: "0.1.0-beta.1",
+    },
+    null,
+    2,
+  );
+  writeFile(root, "reports/release/local-release-authority.json", `${evidence}\n`);
+  writeManifest(root, "reports/release/local-release-authority-SHA256SUMS.txt", [
+    [`${evidence}\n`, "reports/release/local-release-authority.json"],
+  ]);
 }
 
 function runVerifier(root, env = createFakeCommands(root), extraArgs = []) {
@@ -285,6 +335,27 @@ test("generates and verifies release provenance for staged release artifacts", (
   const verified = runVerifier(root, env);
   assert.equal(verified.status, 0, verified.stdout + verified.stderr);
   assert.match(verified.stdout, /Release provenance verified for v0\.1\.0-beta\.1/);
+});
+
+test("generates and verifies release provenance with local release authority", (t) => {
+  const root = createFixture(t);
+  const env = createFakeCommands(root);
+  writeLocalReleaseAuthorityFixture(root);
+
+  const generated = runGenerator(root, env, ["--release-authority", "local"]);
+
+  assert.equal(generated.status, 0, generated.stdout + generated.stderr);
+  const provenance = JSON.parse(readFile(root, "reports/release/release-provenance.json"));
+  assert.equal(provenance.releaseAuthority, "local");
+  assert(
+    provenance.checksumManifests.some(
+      (entry) => entry.path === "reports/release/local-release-authority-SHA256SUMS.txt",
+    ),
+  );
+  assert(provenance.verifiers.includes("verify-local-release-authority.mjs"));
+
+  const verified = runVerifier(root, env, ["--release-authority", "local"]);
+  assert.equal(verified.status, 0, verified.stdout + verified.stderr);
 });
 
 test("rejects release provenance generation without Desktop evidence source coverage", (t) => {

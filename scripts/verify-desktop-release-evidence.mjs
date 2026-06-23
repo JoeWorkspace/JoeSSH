@@ -160,14 +160,17 @@ function validateEvidenceSource(source) {
     return;
   }
 
+  const sourceAuthority = source.sourceAuthority ?? "github";
   if (source.sourceVersion !== 1) {
     errors.push("desktop evidence source sidecar sourceVersion must be 1");
   }
   if (source.artifactName !== "desktop-release-evidence") {
     errors.push("desktop evidence source sidecar artifactName must be desktop-release-evidence");
   }
-  if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(source.repository ?? "")) {
+  if (sourceAuthority === "github" && !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(source.repository ?? "")) {
     errors.push("desktop evidence source sidecar repository must use owner/name format");
+  } else if (sourceAuthority !== "github" && (typeof source.repository !== "string" || source.repository.trim() === "")) {
+    errors.push("desktop evidence source sidecar repository must be a non-empty string");
   }
 
   const expectedReleaseRef = readExpectedReleaseRef();
@@ -185,8 +188,20 @@ function validateEvidenceSource(source) {
     errors.push("desktop evidence source sidecar importedAt must be a valid ISO date string");
   }
 
-  validateWorkflowRunSource(source.workflowRun, source.releaseTagCommit);
-  validateFormalEvidenceJobSource(source.formalEvidenceJob);
+  if (sourceAuthority === "github") {
+    validateWorkflowRunSource(source.workflowRun, source.releaseTagCommit);
+    validateGithubFormalEvidenceJobSource(source.formalEvidenceJob);
+    return;
+  }
+
+  if (!["local", "self-hosted"].includes(sourceAuthority)) {
+    errors.push("desktop evidence source sidecar sourceAuthority must be github, local, or self-hosted");
+    return;
+  }
+
+  validateLocalSource(source.source, source.releaseTagCommit);
+  validateLocalRunnerSource(source.runner);
+  validateLocalFormalEvidenceJobSource(source.formalEvidenceJob);
 }
 
 function validateWorkflowRunSource(workflowRun, releaseTagCommit) {
@@ -217,7 +232,7 @@ function validateWorkflowRunSource(workflowRun, releaseTagCommit) {
   }
 }
 
-function validateFormalEvidenceJobSource(formalEvidenceJob) {
+function validateGithubFormalEvidenceJobSource(formalEvidenceJob) {
   if (formalEvidenceJob === null || typeof formalEvidenceJob !== "object" || Array.isArray(formalEvidenceJob)) {
     errors.push("desktop evidence source sidecar formalEvidenceJob must be an object");
     return;
@@ -231,6 +246,58 @@ function validateFormalEvidenceJobSource(formalEvidenceJob) {
   }
   if (formalEvidenceJob.status !== "completed" || formalEvidenceJob.conclusion !== "success") {
     errors.push("desktop evidence source sidecar formalEvidenceJob must be completed/success");
+  }
+}
+
+function validateLocalSource(source, releaseTagCommit) {
+  if (source === null || typeof source !== "object" || Array.isArray(source)) {
+    errors.push("desktop evidence source sidecar source must be an object for local/self-hosted evidence");
+    return;
+  }
+  if (typeof source.gitCommit !== "string" || source.gitCommit.trim() === "") {
+    errors.push("desktop evidence source sidecar source.gitCommit must be a non-empty string");
+  } else if (releaseTagCommit && source.gitCommit !== releaseTagCommit) {
+    errors.push("desktop evidence source sidecar source.gitCommit must match releaseTagCommit");
+  }
+  if (typeof source.releaseTagCommit !== "string" || source.releaseTagCommit.trim() === "") {
+    errors.push("desktop evidence source sidecar source.releaseTagCommit must be a non-empty string");
+  } else if (releaseTagCommit && source.releaseTagCommit !== releaseTagCommit) {
+    errors.push("desktop evidence source sidecar source.releaseTagCommit must match releaseTagCommit");
+  }
+  if (source.cleanTreeExcluding !== "reports/release") {
+    errors.push("desktop evidence source sidecar source.cleanTreeExcluding must be reports/release");
+  }
+  if (source.gitFsckStrict !== true) {
+    errors.push("desktop evidence source sidecar source.gitFsckStrict must be true");
+  }
+}
+
+function validateLocalRunnerSource(runner) {
+  if (runner === null || typeof runner !== "object" || Array.isArray(runner)) {
+    errors.push("desktop evidence source sidecar runner must be an object for local/self-hosted evidence");
+    return;
+  }
+  if (typeof runner.type !== "string" || runner.type.trim() === "") {
+    errors.push("desktop evidence source sidecar runner.type must be a non-empty string");
+  }
+}
+
+function validateLocalFormalEvidenceJobSource(formalEvidenceJob) {
+  if (formalEvidenceJob === null || typeof formalEvidenceJob !== "object" || Array.isArray(formalEvidenceJob)) {
+    errors.push("desktop evidence source sidecar formalEvidenceJob must be an object");
+    return;
+  }
+  if (formalEvidenceJob.name !== "Package Formal Desktop Evidence") {
+    errors.push("desktop evidence source sidecar formalEvidenceJob.name must be Package Formal Desktop Evidence");
+  }
+  if (formalEvidenceJob.status !== "completed" || formalEvidenceJob.conclusion !== "success") {
+    errors.push("desktop evidence source sidecar formalEvidenceJob must be completed/success");
+  }
+  if (typeof formalEvidenceJob.command !== "string" || formalEvidenceJob.command.trim() === "") {
+    errors.push("desktop evidence source sidecar formalEvidenceJob.command must be a non-empty string");
+  }
+  if (formalEvidenceJob.artifactRoot !== "reports/release/desktop") {
+    errors.push("desktop evidence source sidecar formalEvidenceJob.artifactRoot must be reports/release/desktop");
   }
 }
 

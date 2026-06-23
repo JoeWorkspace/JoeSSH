@@ -73,8 +73,9 @@ native apps stay in preflight/device-smoke validation until a later beta.
   evidence JSON itself. `npm run release:publish-preflight` and the GitHub
   Release draft path run the same verifier with formal source mode, requiring
   `reports/release/desktop/release-evidence-source.json` to be covered by the
-  evidence checksum manifest and to bind the evidence to the GitHub workflow run
-  and `Package Formal Desktop Evidence` job that produced it.
+  evidence checksum manifest and to bind the evidence to either the GitHub
+  workflow run or the local/self-hosted `Package Formal Desktop Evidence` job
+  that produced it.
 - When Desktop formal evidence is not yet Go, run
   `npm run release:desktop:evidence-diagnostics -- --repo JoeWorkspace/JoeSSH`
   and keep `reports/handoff/desktop/formal-evidence-unblock-report.json` with
@@ -88,10 +89,31 @@ native apps stay in preflight/device-smoke validation until a later beta.
   `npm run release:desktop:evidence-download -- --repo JoeWorkspace/JoeSSH --run-id <run-id>`
   so the formal evidence source sidecar records the exact workflow run and
   `Package Formal Desktop Evidence` job.
-- Create the annotated release tag only after source QA is green and release
-  artifacts are staged. `reports/release/` is generated release evidence and is
-  allowed to be present while the source tree outside that directory remains
-  clean.
+- If GitHub Actions is unavailable or intentionally not the release authority,
+  generate formal Desktop evidence on a controlled local/self-hosted release
+  machine with `npm run release:desktop:package:local-source`. The source
+  sidecar must set `sourceAuthority` to `local` or `self-hosted`, bind
+  `releaseTagCommit` to the same commit used by `release:provenance`, record
+  `source.gitFsckStrict: true`, and record the local
+  `Package Formal Desktop Evidence` job command and artifact root. This keeps
+  Desktop evidence formal without depending on a GitHub workflow run.
+- Create the annotated release tag only after source QA is green. For GitHub
+  workflow evidence, release artifacts may already be staged before tagging. For
+  local/self-hosted Desktop source evidence, create the tag before
+  `npm run release:desktop:package:local-source` so the sidecar can bind
+  `releaseTagCommit` to the tagged checkout. `reports/release/` is generated
+  release evidence and is allowed to be present while the source tree outside
+  that directory remains clean.
+- Choose one publication authority before provenance:
+  - GitHub Release authority: use the default `npm run release:provenance`,
+    `npm run release:provenance:verify`, and
+    `npm run release:publish-preflight`.
+  - Local/self-hosted authority: retain the full public release gate log under
+    `reports/release/local-release-authority/qa-release-public.log`, then run
+    `npm run release:local-authority -- --gate-command "npm run qa:release:public:fixture" --target "<operator-confirmed target>"`,
+    `npm run release:provenance:local`,
+    `npm run release:provenance:verify:local`, and
+    `npm run release:publish-preflight:local`.
 - Run `npm run release:provenance` after the annotated tag exists and staged
   Desktop, Web Admin, Sync, SBOM, and evidence manifests are complete. It writes
   `reports/release/release-provenance.json` plus
@@ -99,7 +121,9 @@ native apps stay in preflight/device-smoke validation until a later beta.
   commit, `git fsck --strict` result, release notes hash, lockfile hashes,
   toolchain versions, and the fixed Public Beta checksum manifest set: SBOM,
   Desktop artifacts, Desktop evidence, Sync binary, Sync backup/restore
-  evidence, and Web Admin package. The Desktop evidence manifest must include
+  evidence, and Web Admin package. Local/self-hosted authority mode additionally
+  binds `reports/release/local-release-authority-SHA256SUMS.txt`. The Desktop
+  evidence manifest must include
   `reports/release/desktop/release-evidence-source.json` before provenance is
   generated. Do not generate provenance from a damaged `.git` planning
   workspace.
@@ -113,7 +137,11 @@ native apps stay in preflight/device-smoke validation until a later beta.
   Git checkout, clean working tree outside `reports/release/`, release tag
   pointing at `HEAD`, GitHub CLI availability/authentication, absence of an
   existing GitHub Release for the same tag, and the GitHub Release draft dry-run
-  before upload. The draft dry-run
+  before upload. For local/self-hosted publication, run
+  `npm run release:publish-preflight:local`; it replaces GitHub CLI and draft
+  checks with `reports/release/local-release-authority.json` verification while
+  keeping the same checksum, Desktop, Web, Sync, SBOM, provenance, and healthy
+  Git gates. The draft dry-run
   rejects any staged file that would be uploaded from `reports/release/` unless that file is
   listed in a `SHA256SUMS.txt` manifest; checksum manifests themselves are the
   only upload files exempt from checksum coverage. Raw Tauri bundle outputs must
@@ -230,6 +258,11 @@ native apps stay in preflight/device-smoke validation until a later beta.
 
 ## Release Draft And Rollback
 
+- A Public Beta can be published through GitHub Releases or through an
+  operator-controlled local/self-hosted distribution target. GitHub is a
+  convenient public channel, not the trust boundary; the trust boundary is the
+  healthy checkout, release gate log, formal Desktop evidence, SBOM, checksums,
+  provenance, dogfood evidence, and rollback evidence.
 - Create the GitHub Release as a draft first with `npm run release:desktop:draft`.
   The draft script requires Desktop, Web Admin, and Sync `SHA256SUMS.txt`
   manifests, a clean Git working tree outside `reports/release/`, a
@@ -242,6 +275,10 @@ native apps stay in preflight/device-smoke validation until a later beta.
   release evidence verifier, SBOM verifier, and draft dry-run so missing
   artifacts or stale artifact sha256 bindings or signing evidence do not
   masquerade as release readiness.
+- For local/self-hosted publication, `npm run release:publish-preflight:local`
+  must pass before copying or exposing any files from `reports/release/`. The
+  local authority evidence must identify the operator-confirmed target and prove
+  the public release gate passed from the same healthy tagged checkout.
 - The draft script also supports `--dry-run` for release-machine preflight and
   CI fixture tests; dry-run still verifies required manifests and hashes without
   requiring GitHub CLI access.

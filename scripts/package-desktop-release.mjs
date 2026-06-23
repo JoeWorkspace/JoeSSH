@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { spawnSync } from "node:child_process";
+import { arch, platform, release } from "node:os";
 import {
   copyFileSync,
   existsSync,
@@ -21,12 +23,18 @@ const {
   outputDir,
   requiredPlatforms,
   root,
+  runnerType,
+  sourceAuthority,
+  sourcePath,
   windowsSignatureVerification,
 } = parseArgs(process.argv.slice(2));
 const packageJson = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
 const releaseVersion = packageJson.version;
+const releaseTag = `v${releaseVersion}`;
+const gitCommand = process.env.ATLASTERM_RELEASE_GIT_COMMAND ?? "git";
+const gitCommandPrefixArgs = parseCommandPrefixArgs("ATLASTERM_RELEASE_GIT_ARGS");
 
-if (!isInsideRoot(outputDir) || !isInsideRoot(checksumPath) || !isInsideRoot(evidencePath)) {
+if (!isInsideRoot(outputDir) || !isInsideRoot(checksumPath) || !isInsideRoot(evidencePath) || !isInsideRoot(sourcePath)) {
   fail("Desktop release output paths must stay inside the release root.");
 }
 
@@ -50,6 +58,7 @@ if (staleSourceArtifacts.length > 0) {
 }
 
 validateSignatureEvidence(sourceArtifacts);
+const localEvidenceSource = sourceAuthority ? createLocalEvidenceSource() : null;
 
 mkdirSync(outputDir, { recursive: true });
 removeStaleDesktopArtifacts(outputDir);
@@ -89,11 +98,20 @@ mkdirSync(dirname(checksumPath), { recursive: true });
 mkdirSync(dirname(evidencePath), { recursive: true });
 writeFileSync(checksumPath, `${checksumLines.join("\n")}\n`);
 writeFileSync(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`);
-writeFileSync(evidenceChecksumPath, `${sha256(evidencePath)}  ${toReleasePath(evidencePath)}\n`);
+const evidenceChecksumLines = [`${sha256(evidencePath)}  ${toReleasePath(evidencePath)}`];
+if (localEvidenceSource) {
+  mkdirSync(dirname(sourcePath), { recursive: true });
+  writeFileSync(sourcePath, `${JSON.stringify(localEvidenceSource, null, 2)}\n`);
+  evidenceChecksumLines.push(`${sha256(sourcePath)}  ${toReleasePath(sourcePath)}`);
+}
+writeFileSync(evidenceChecksumPath, `${evidenceChecksumLines.join("\n")}\n`);
 
 console.log(`Packaged ${releaseArtifacts.length} Desktop release artifact(s) into ${toReleasePath(outputDir)}.`);
 console.log(`Wrote ${toReleasePath(checksumPath)}`);
 console.log(`Wrote ${toReleasePath(evidencePath)}`);
+if (sourceAuthority) {
+  console.log(`Wrote ${toReleasePath(sourcePath)}`);
+}
 console.log(`Wrote ${toReleasePath(evidenceChecksumPath)}`);
 
 function collectFiles(path) {
@@ -213,6 +231,77 @@ function validateSignatureEvidence(artifacts) {
   }
 }
 
+function createLocalEvidenceSource() {
+  const source = verifyReleaseGitCheckoutForSource();
+  return {
+    artifactName: "desktop-release-evidence",
+    formalEvidenceJob: {
+      artifactRoot: "reports/release/desktop",
+      command: "npm run release:desktop:package",
+      conclusion: "success",
+      name: "Package Formal Desktop Evidence",
+      status: "completed",
+    },
+    importedAt: new Date().toISOString(),
+    releaseRef: releaseTag,
+    releaseTagCommit: source.tagCommit,
+    repository: source.repository,
+    runner: {
+      os: `${platform()} ${release()} ${arch()}`,
+      type: runnerType,
+    },
+    source: {
+      cleanTreeExcluding: "reports/release",
+      gitCommit: source.head,
+      gitFsckStrict: true,
+      releaseTagCommit: source.tagCommit,
+    },
+    sourceAuthority,
+    sourceVersion: 1,
+  };
+}
+
+function verifyReleaseGitCheckoutForSource() {
+  const insideWorkTree = runGit(
+    ["rev-parse", "--is-inside-work-tree"],
+    "Git checkout metadata is required for Desktop source evidence.",
+  );
+  if (insideWorkTree !== "true") {
+    fail("Git checkout metadata is required for Desktop source evidence.");
+  }
+  const status = runGit(
+    ["status", "--porcelain=v1", "--untracked-files=all", "--", ".", ":(exclude)reports/release"],
+    "Git working tree status is required for Desktop source evidence.",
+  );
+  if (status.trim() !== "") {
+    fail(`Git working tree outside reports/release must be clean for Desktop source evidence:\n${status}`);
+  }
+  const head = runGit(["rev-parse", "HEAD"], "Unable to resolve HEAD for Desktop source evidence.");
+  const tagCommit = runGit(
+    ["rev-parse", "--verify", `${releaseTag}^{}`],
+    `Release tag ${releaseTag} must exist for Desktop source evidence.`,
+  );
+  if (head !== tagCommit) {
+    fail(`Release tag ${releaseTag} must point at HEAD for Desktop source evidence.`);
+  }
+  const repository = runGit(["remote", "get-url", "origin"], "Git remote origin is required for Desktop source evidence.");
+  runGit(["fsck", "--strict"], "git fsck --strict must pass for Desktop source evidence.");
+  return { head, repository, tagCommit };
+}
+
+function runGit(args, message) {
+  const result = spawnSync(gitCommand, [...gitCommandPrefixArgs, ...args], {
+    cwd: root,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  if (result.status !== 0) {
+    const diagnostic = `${result.stdout}\n${result.stderr}`.trim();
+    fail(diagnostic ? `${message}\n${diagnostic}` : message);
+  }
+  return result.stdout.trim();
+}
+
 function sha256(file) {
   return createHash("sha256").update(readFileSync(file)).digest("hex");
 }
@@ -223,9 +312,12 @@ function parseArgs(args) {
   let outputPath = "reports/release/desktop";
   let checksumPath = "reports/release/desktop/SHA256SUMS.txt";
   let evidencePath = "reports/release/desktop/release-evidence.json";
+  let sourcePath = "reports/release/desktop/release-evidence-source.json";
   let windowsSignatureVerification = process.env.ATLASTERM_DESKTOP_WINDOWS_SIGNATURE_VERIFICATION ?? "";
   let macosSignatureVerification = process.env.ATLASTERM_DESKTOP_MACOS_SIGNATURE_VERIFICATION ?? "";
   let macosNotarizationVerification = process.env.ATLASTERM_DESKTOP_MACOS_NOTARIZATION_VERIFICATION ?? "";
+  let sourceAuthority = process.env.ATLASTERM_DESKTOP_RELEASE_SOURCE_AUTHORITY ?? "";
+  let runnerType = process.env.ATLASTERM_DESKTOP_RELEASE_RUNNER_TYPE ?? "local-release-machine";
   let requiredPlatforms = [];
 
   for (let index = 0; index < args.length; index += 1) {
@@ -275,6 +367,33 @@ function parseArgs(args) {
       evidencePath = arg.slice("--evidence=".length);
       continue;
     }
+    if (arg === "--source") {
+      sourcePath = readValue(args, index, arg);
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--source=")) {
+      sourcePath = arg.slice("--source=".length);
+      continue;
+    }
+    if (arg === "--source-authority") {
+      sourceAuthority = readValue(args, index, arg);
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--source-authority=")) {
+      sourceAuthority = arg.slice("--source-authority=".length);
+      continue;
+    }
+    if (arg === "--runner-type") {
+      runnerType = readValue(args, index, arg);
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--runner-type=")) {
+      runnerType = arg.slice("--runner-type=".length);
+      continue;
+    }
     if (arg === "--windows-signature-verification") {
       windowsSignatureVerification = readValue(args, index, arg);
       index += 1;
@@ -315,6 +434,15 @@ function parseArgs(args) {
     fail(`Unknown argument: ${arg}`);
   }
 
+  sourceAuthority = sourceAuthority.trim();
+  runnerType = runnerType.trim();
+  if (sourceAuthority && !["local", "self-hosted"].includes(sourceAuthority)) {
+    fail("--source-authority must be local or self-hosted when provided.");
+  }
+  if (sourceAuthority && runnerType === "") {
+    fail("--runner-type must be non-empty when --source-authority is provided.");
+  }
+
   return {
     bundleDir: resolve(root, bundlePath),
     checksumPath: resolve(root, checksumPath),
@@ -324,6 +452,9 @@ function parseArgs(args) {
     outputDir: resolve(root, outputPath),
     requiredPlatforms,
     root,
+    runnerType,
+    sourceAuthority,
+    sourcePath: resolve(root, sourcePath),
     windowsSignatureVerification: windowsSignatureVerification.trim(),
   };
 }
@@ -359,6 +490,22 @@ function displayPath(path) {
 function isInsideRoot(path) {
   const relativePath = relative(root, path);
   return relativePath === "" || (!relativePath.startsWith("..") && !isAbsolute(relativePath));
+}
+
+function parseCommandPrefixArgs(envName) {
+  const raw = process.env[envName];
+  if (!raw) {
+    return [];
+  }
+  try {
+    const value = JSON.parse(raw);
+    if (Array.isArray(value) && value.every((entry) => typeof entry === "string")) {
+      return value;
+    }
+  } catch {
+    // Fall through to the explicit failure below.
+  }
+  fail(`${envName} must be a JSON string array when set.`);
 }
 
 function fail(message) {

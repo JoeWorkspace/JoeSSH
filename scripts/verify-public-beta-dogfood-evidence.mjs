@@ -1,10 +1,16 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { dirname, isAbsolute, relative, resolve } from "node:path";
 
-const root = resolve(import.meta.dirname, "..");
+const root = resolve(process.env.ATLASTERM_DOGFOOD_ROOT ?? resolve(import.meta.dirname, ".."));
 const packageJson = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
 const expectedVersion = packageJson.version;
 const expectedReleaseTag = `v${expectedVersion}`;
+const expectedArtifacts = {
+  desktopSmoke: "reports/smoke/desktop/real-ssh-smoke.json",
+  webRelease: `reports/release/web/joessh-web-admin-${expectedVersion}.zip`,
+  syncRelease: `reports/release/sync/joessh-sync-${expectedVersion}-win32-x64.exe`,
+  rcAudit: "reports/release/public-beta-rc-audit.json",
+};
 
 const requiredTasks = [
   "desktop-install-launch",
@@ -66,12 +72,7 @@ function writeTemplate(path) {
       profile: "clean",
       desktopBuild: "unsigned internal staging or signed formal evidence",
     },
-    artifacts: {
-      desktopSmoke: "reports/smoke/desktop/real-ssh-smoke.json",
-      webRelease: `reports/release/web/joessh-web-admin-${expectedVersion}.zip`,
-      syncRelease: `reports/release/sync/joessh-sync-${expectedVersion}-win32-x64.exe`,
-      rcAudit: "reports/release/public-beta-rc-audit.json",
-    },
+    artifacts: expectedArtifacts,
     tasks: requiredTasks.map((id) => ({
       id,
       label: taskLabels[id],
@@ -104,9 +105,19 @@ function validateEvidence(evidence) {
       failures.push(`environment.${key} is required`);
     }
   }
-  for (const key of ["desktopSmoke", "webRelease", "syncRelease", "rcAudit"]) {
-    if (!nonEmptyString(evidence.artifacts?.[key])) {
+  for (const [key, expectedPath] of Object.entries(expectedArtifacts)) {
+    const artifactPath = evidence.artifacts?.[key];
+    if (!nonEmptyString(artifactPath)) {
       failures.push(`artifacts.${key} is required`);
+      continue;
+    }
+    if (normalizePath(artifactPath) !== expectedPath) {
+      failures.push(`artifacts.${key} must be ${expectedPath}`);
+      continue;
+    }
+    const artifactFailure = validateRelativeFilePath(`artifacts.${key}`, artifactPath);
+    if (artifactFailure) {
+      failures.push(artifactFailure);
     }
   }
 
@@ -212,6 +223,32 @@ function readValue(argv, index, flag) {
 
 function nonEmptyString(value) {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function validateRelativeFilePath(label, value) {
+  if (isAbsolute(value) || /^[A-Za-z]:[\\/]/.test(value)) {
+    return `${label} must be a relative path`;
+  }
+  const resolvedPath = resolve(root, value);
+  if (!isInsideRoot(resolvedPath)) {
+    return `${label} must stay inside the release workspace`;
+  }
+  if (!existsSync(resolvedPath)) {
+    return `${label} file is missing: ${normalizePath(value)}`;
+  }
+  if (!statSync(resolvedPath).isFile()) {
+    return `${label} must reference a file`;
+  }
+  return null;
+}
+
+function isInsideRoot(path) {
+  const relativePath = relative(root, path);
+  return relativePath === "" || (!relativePath.startsWith("..") && !isAbsolute(relativePath));
+}
+
+function normalizePath(path) {
+  return path.replaceAll("\\", "/");
 }
 
 function displayPath(path) {

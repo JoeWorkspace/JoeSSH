@@ -7,8 +7,9 @@ auditable even when a planning workspace has useful file changes but a damaged
 
 The rule is simple: do not publish from the damaged workspace. Use the damaged
 workspace only as a source of reviewed file content and verification notes.
-Tagging, release notes diffs, CI evidence, SBOM generation, checksums, and
-GitHub Release drafts must happen from a healthy Git checkout.
+Tagging, release notes diffs, CI evidence, SBOM generation, checksums, and any
+GitHub or local/self-hosted publication preflight must happen from a healthy Git
+checkout.
 
 ## When To Use This
 
@@ -82,6 +83,17 @@ route, not a blocker for the first Public Beta.
    npm run release:desktop:draft
    ```
 
+   For a local/self-hosted publication authority, retain the full public gate
+   log under `reports/release/local-release-authority/qa-release-public.log`,
+   replace the provenance and preflight commands with:
+
+   ```bash
+   npm run release:local-authority -- --gate-command "npm run qa:release:public:fixture" --target "<operator-confirmed target>"
+   npm run release:provenance:local
+   npm run release:provenance:verify:local
+   npm run release:publish-preflight:local
+   ```
+
 ## Acceptance Evidence
 
 Keep these outputs with the release handoff notes:
@@ -94,8 +106,13 @@ Keep these outputs with the release handoff notes:
   the local OpenSSH dogfood fixture to supply `JOESSH_REAL_SSH_*` evidence.
 - `node scripts/check-public-release-readiness.mjs` result without
   `--allow-unhealthy-git`.
-- `gh --version`, `gh auth status`, and the `gh release view v0.1.0-beta.9`
-  not-found check from `npm run release:publish-preflight`.
+- For GitHub publication: `gh --version`, `gh auth status`, and the
+  `gh release view v0.1.0-beta.9` not-found check from
+  `npm run release:publish-preflight`.
+- For local/self-hosted publication:
+  `reports/release/local-release-authority.json`,
+  `reports/release/local-release-authority-SHA256SUMS.txt`, and
+  `npm run release:publish-preflight:local` output.
 - `reports/release/**/SHA256SUMS.txt`.
 - `reports/release/desktop/release-evidence.json`.
 - `reports/release/desktop/release-evidence-source.json`.
@@ -106,7 +123,8 @@ Keep these outputs with the release handoff notes:
 - `reports/release/SBOM-SHA256SUMS.txt`.
 - `reports/release/release-provenance.json`.
 - `reports/release/release-provenance-SHA256SUMS.txt`.
-- GitHub Release draft URL and the tag commit SHA.
+- GitHub Release draft URL or local/self-hosted publication target identifier,
+  plus the tag commit SHA.
 
 ## Failure Rules
 

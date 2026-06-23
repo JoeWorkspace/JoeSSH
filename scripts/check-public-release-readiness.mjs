@@ -163,6 +163,8 @@ function checkPackageScripts() {
     "qa:desktop-release-evidence-preflight",
     "test:desktop-unsigned-staging-report",
     "qa:desktop-unsigned-staging-report",
+    "test:local-release-authority",
+    "qa:local-release-authority",
     "test:web-release",
     "qa:web-release",
     "test:release-sbom",
@@ -187,6 +189,7 @@ function checkPackageScripts() {
     "qa:sync:release-backup-restore-smoke",
     "release:desktop:build",
     "release:desktop:package",
+    "release:desktop:package:local-source",
     "release:desktop:checksums",
     "release:desktop:secret-template",
     "release:desktop:configure-secrets",
@@ -198,9 +201,14 @@ function checkPackageScripts() {
     "release:desktop:draft",
     "release:desktop:unsigned-staging-report",
     "release:dogfood-template",
+    "release:local-authority",
+    "release:local-authority:verify",
     "release:publish-preflight",
+    "release:publish-preflight:local",
     "release:provenance",
+    "release:provenance:local",
     "release:provenance:verify",
+    "release:provenance:verify:local",
     "release:rc-audit",
     "release:rc-audit:report",
     "release:verify-checksums",
@@ -219,6 +227,8 @@ function checkPackageScripts() {
     packageJson.scripts?.["release:desktop:checksums"] ?? "";
   const desktopPackageScript =
     packageJson.scripts?.["release:desktop:package"] ?? "";
+  const desktopLocalSourcePackageScript =
+    packageJson.scripts?.["release:desktop:package:local-source"] ?? "";
   passIf(
     desktopPackageScript.includes("--require-platforms") &&
       desktopPackageScript.includes("windows,macos,linux"),
@@ -230,6 +240,12 @@ function checkPackageScripts() {
       desktopChecksumsScript.includes("package-desktop-release.mjs"),
     "Desktop checksum script uses release packaging evidence flow",
     desktopChecksumsScript,
+  );
+  passIf(
+    desktopLocalSourcePackageScript.includes("package-desktop-release.mjs") &&
+      desktopLocalSourcePackageScript.includes("--source-authority local"),
+    "Desktop local source package script records local Desktop source evidence",
+    desktopLocalSourcePackageScript,
   );
   passIf(
     !desktopChecksumsScript.includes("generate-artifact-checksums.mjs") &&
@@ -614,7 +630,7 @@ function checkReleaseToolingFiles() {
       desktopEvidenceVerifier.includes("--require-source") &&
       desktopEvidenceVerifier.includes("workflowRun.headSha must match releaseTagCommit") &&
       desktopEvidenceVerifier.includes("Package Formal Desktop Evidence"),
-    "Desktop release evidence verifier can require formal workflow source provenance",
+    "Desktop release evidence verifier can require formal Desktop source provenance",
   );
   passIf(
     desktopEvidenceVerifier.includes(
@@ -776,7 +792,7 @@ function checkReleaseToolingFiles() {
   passIf(
     releasePublishPreflight.includes("verify-desktop-release-evidence.mjs") &&
       releasePublishPreflight.includes("--require-source"),
-    "Publish preflight requires formal Desktop workflow source provenance",
+    "Publish preflight requires formal Desktop source provenance",
   );
   passIf(
     releasePublishPreflight.includes("Verify GitHub CLI publish readiness") &&

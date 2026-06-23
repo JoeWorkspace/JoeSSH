@@ -6,9 +6,10 @@ signed Desktop formal release evidence.
 
 Unsigned Desktop staging installers may be used for this dogfood only when the
 runner records that the build is unsigned and keeps it out of public release
-artifacts. Public GitHub Release publishing still requires signed Windows
-artifacts, signed and notarized macOS artifacts, Linux package evidence,
-checksums, SBOM, provenance, and `release:publish-preflight`.
+artifacts. Public publishing through either GitHub Releases or a local/self-hosted
+authority still requires signed Windows artifacts, signed and notarized macOS
+artifacts, Linux package evidence, checksums, SBOM, provenance, and the matching
+publish preflight.
 
 For unsigned Desktop staging, record the handoff boundary before dogfood:
 

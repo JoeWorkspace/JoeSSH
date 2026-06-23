@@ -246,14 +246,18 @@
 - Local release candidates pass `npm run qa:release`, which includes root QA, `npm run qa:i18n-release`, and the native mobile smoke preflight.
 - Public Beta release candidates pass `npm run qa:release:public`, which adds Rust workspace gates, required Desktop real SSH smoke fixture validation, Tauri shell build check, high-severity audit, documented accepted moderate risk validation, Web Admin Lighthouse (`npm run qa:lighthouse`) with run warnings treated as release failures, Web Admin bundle token scanning, self-hosted Sync smoke, visual QA, and release metadata checks. Missing `JOESSH_REAL_SSH_*` fixture variables are a No-Go, not a skipped dogfood pass. Windows release machines may run `npm run qa:release:public:fixture` to start the local OpenSSH dogfood fixture, write Desktop real SSH smoke evidence, and then run the full public gate under that fixture environment.
 - Public Beta release candidates include the real Web Admin + Sync browser smoke with `npm run qa:e2e:web-real-sync:fresh` before visual QA.
-- CI must keep the public release gate wired: artifact checksum tests, desktop release packaging tests, desktop release evidence tests, Desktop real SSH smoke with `JOESSH_REAL_SSH_SMOKE=1`, Sync release package hygiene tests, Web Admin release package tests, Web Admin bundle token scan tests, SBOM verifier tests, release provenance tests, Lighthouse audit fail-closed tests, release draft dry-run fixture tests, publish preflight fixture tests, fresh visual QA, production audit with the dependency risk register, Tauri shell build, mobile native preflight, self-hosted Sync smoke, and `check-public-release-readiness` all run from GitHub Actions.
+- CI must keep the public release gate wired: artifact checksum tests, desktop release packaging tests, desktop release evidence tests, local release authority tests, Desktop real SSH smoke with `JOESSH_REAL_SSH_SMOKE=1`, Sync release package hygiene tests, Web Admin release package tests, Web Admin bundle token scan tests, SBOM verifier tests, release provenance tests, Lighthouse audit fail-closed tests, release draft dry-run fixture tests, publish preflight fixture tests, fresh visual QA, production audit with the dependency risk register, Tauri shell build, mobile native preflight, self-hosted Sync smoke, and `check-public-release-readiness` all run in the selected CI or self-hosted gate environment. GitHub Actions is supported, but not required to be the publication authority.
 - Release machines must run `npm run release:publish-preflight` after Desktop,
   Web Admin, Sync, and SBOM artifacts are generated; this command verifies the
   healthy Git checkout, clean working tree outside `reports/release/`, release
   tag pointing at `HEAD`, actual checksum manifests, Desktop signing/notarization evidence, SBOM
   coverage, release provenance, GitHub CLI availability/authentication, absence
   of an existing GitHub Release for the same tag, and GitHub Release draft
-  dry-run before upload. The draft dry-run
+  dry-run before upload. For local/self-hosted publication, run
+  `npm run release:publish-preflight:local`; it verifies
+  `reports/release/local-release-authority.json` instead of GitHub CLI and draft
+  state while preserving the same artifact, evidence, provenance, checksum, and
+  healthy Git gates. The draft dry-run
   only uploads staged files from `reports/release/` and compares that upload set
   against all `SHA256SUMS.txt` entries, so every uploaded evidence or artifact
   file must be checksum-covered before release.
@@ -263,7 +267,10 @@
   commit, `git fsck --strict` result, release notes hash,
   lockfile hashes, toolchain versions, the fixed Public Beta checksum manifest
   set, and staged artifact hashes into
-  `reports/release/release-provenance.json`.
+  `reports/release/release-provenance.json`. Local/self-hosted publication uses
+  `npm run release:local-authority`, `npm run release:provenance:local`, and
+  `npm run release:provenance:verify:local` so the release gate log and
+  operator-confirmed publication target are part of provenance.
 - `npm run release:verify-checksums` recursively discovers every staged
   `reports/release/**/SHA256SUMS.txt` manifest so Desktop evidence, Sync smoke
   evidence, SBOM, Web Admin, and future release attachments cannot bypass hash

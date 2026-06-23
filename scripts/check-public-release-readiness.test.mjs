@@ -54,6 +54,8 @@ const releaseScriptNames = [
   "qa:desktop-release-evidence-preflight",
   "test:desktop-unsigned-staging-report",
   "qa:desktop-unsigned-staging-report",
+  "test:local-release-authority",
+  "qa:local-release-authority",
   "test:web-release",
   "qa:web-release",
   "test:release-sbom",
@@ -78,6 +80,7 @@ const releaseScriptNames = [
   "qa:sync:release-backup-restore-smoke",
   "release:desktop:build",
   "release:desktop:package",
+  "release:desktop:package:local-source",
   "release:desktop:checksums",
   "release:desktop:secret-template",
   "release:desktop:configure-secrets",
@@ -89,9 +92,14 @@ const releaseScriptNames = [
   "release:desktop:draft",
   "release:desktop:unsigned-staging-report",
   "release:dogfood-template",
+  "release:local-authority",
+  "release:local-authority:verify",
   "release:publish-preflight",
+  "release:publish-preflight:local",
   "release:provenance",
+  "release:provenance:local",
   "release:provenance:verify",
+  "release:provenance:verify:local",
   "release:rc-audit",
   "release:rc-audit:report",
   "release:verify-checksums",
@@ -147,6 +155,9 @@ function fixtureScriptValue(name, overrides = {}) {
   if (name === "release:desktop:package") {
     return "node scripts/package-desktop-release.mjs --require-platforms windows,macos,linux";
   }
+  if (name === "release:desktop:package:local-source") {
+    return "node scripts/package-desktop-release.mjs --require-platforms windows,macos,linux --source-authority local";
+  }
   if (name === "release:desktop:configure-secrets") {
     return "node scripts/configure-desktop-release-secrets.mjs";
   }
@@ -174,14 +185,35 @@ function fixtureScriptValue(name, overrides = {}) {
   if (name === "release:dogfood-template") {
     return "node scripts/verify-public-beta-dogfood-evidence.mjs --write-template reports/dogfood/public-beta/template.json";
   }
+  if (name === "test:local-release-authority") {
+    return "node --test scripts/verify-local-release-authority.test.mjs";
+  }
+  if (name === "qa:local-release-authority") {
+    return "npm run test:local-release-authority";
+  }
+  if (name === "release:local-authority") {
+    return "node scripts/generate-local-release-authority.mjs";
+  }
+  if (name === "release:local-authority:verify") {
+    return "node scripts/verify-local-release-authority.mjs";
+  }
+  if (name === "release:publish-preflight:local") {
+    return "node scripts/release-publish-preflight.mjs --release-authority local";
+  }
   if (name === "release:verify-checksums") {
     return "node scripts/verify-artifact-checksums.mjs --all-release";
   }
   if (name === "release:provenance") {
     return "node scripts/generate-release-provenance.mjs";
   }
+  if (name === "release:provenance:local") {
+    return "node scripts/generate-release-provenance.mjs --release-authority local";
+  }
   if (name === "release:provenance:verify") {
     return "node scripts/verify-release-provenance.mjs";
+  }
+  if (name === "release:provenance:verify:local") {
+    return "node scripts/verify-release-provenance.mjs --release-authority local";
   }
   if (name === "release:rc-audit") {
     return "node scripts/audit-public-beta-rc.mjs";
@@ -1285,7 +1317,7 @@ test("rejects Desktop release evidence tooling without artifact hash binding", (
   );
   assert.match(
     result.stdout,
-    /FAIL Desktop release evidence verifier can require formal workflow source provenance/,
+    /FAIL Desktop release evidence verifier can require formal Desktop source provenance/,
   );
   assert.match(
     result.stdout,

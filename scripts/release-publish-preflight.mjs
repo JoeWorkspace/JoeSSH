@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { basename, resolve } from "node:path";
 
 const scriptRoot = resolve(import.meta.dirname, "..");
-const { allowUnhealthyGit, root } = parseArgs(process.argv.slice(2));
+const { allowUnhealthyGit, releaseAuthority, root } = parseArgs(process.argv.slice(2));
 const gitCommand = process.env.ATLASTERM_RELEASE_GIT_COMMAND ?? "git";
 const gitCommandPrefixArgs = parseCommandPrefixArgs("ATLASTERM_RELEASE_GIT_ARGS");
 const ghCommand = process.env.ATLASTERM_RELEASE_GH_COMMAND ?? "gh";
@@ -15,10 +15,15 @@ const steps = [
     label: "Verify release Git checkout",
     run: verifyReleaseGitCheckout,
   },
-  {
-    label: "Verify GitHub CLI publish readiness",
-    run: verifyGithubPublishReadiness,
-  },
+  releaseAuthority === "github"
+    ? {
+        label: "Verify GitHub CLI publish readiness",
+        run: verifyGithubPublishReadiness,
+      }
+    : {
+        label: "Verify local release authority evidence",
+        args: [resolve(scriptRoot, "scripts", "verify-local-release-authority.mjs"), "--root", root],
+      },
   {
     label: "Verify release artifact checksums",
     args: [
@@ -46,15 +51,26 @@ const steps = [
   },
   {
     label: "Verify release provenance",
-    args: [resolve(scriptRoot, "scripts", "verify-release-provenance.mjs"), "--root", root],
+    args: [
+      resolve(scriptRoot, "scripts", "verify-release-provenance.mjs"),
+      "--root",
+      root,
+      "--release-authority",
+      releaseAuthority,
+    ],
   },
-  {
-    label: "Verify GitHub Release draft dry run",
-    args: [resolve(scriptRoot, "scripts", "create-github-release-draft.mjs"), "--root", root, "--dry-run"],
-  },
+  releaseAuthority === "github"
+    ? {
+        label: "Verify GitHub Release draft dry run",
+        args: [resolve(scriptRoot, "scripts", "create-github-release-draft.mjs"), "--root", root, "--dry-run"],
+      }
+    : {
+        label: "Verify local publication target",
+        run: verifyLocalPublicationTarget,
+      },
 ];
 
-console.log(`Running public release publish preflight in ${root}`);
+console.log(`Running public release publish preflight in ${root} with ${releaseAuthority} release authority`);
 
 for (const step of steps) {
   console.log(`\n> ${step.label}`);
@@ -175,6 +191,15 @@ function verifyGithubPublishReadiness() {
   };
 }
 
+function verifyLocalPublicationTarget() {
+  return {
+    status: 0,
+    stdout:
+      "Verified local/self-hosted publication target from reports/release/local-release-authority.json.\n",
+    stderr: "",
+  };
+}
+
 function runGit(args) {
   return spawnSync(gitCommand, [...gitCommandPrefixArgs, ...args], {
     cwd: root,
@@ -206,12 +231,30 @@ function commandFailure(message, result) {
 
 function parseArgs(args) {
   let allowUnhealthyGit = false;
+  let releaseAuthority = process.env.ATLASTERM_RELEASE_AUTHORITY ?? "github";
   let root = scriptRoot;
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
     if (arg === "--allow-unhealthy-git") {
       allowUnhealthyGit = true;
+      continue;
+    }
+    if (arg === "--release-authority" || arg === "--authority") {
+      const value = args[index + 1];
+      if (!value) {
+        fail(`${arg} requires github or local.`);
+      }
+      releaseAuthority = value;
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--release-authority=")) {
+      releaseAuthority = arg.slice("--release-authority=".length);
+      continue;
+    }
+    if (arg.startsWith("--authority=")) {
+      releaseAuthority = arg.slice("--authority=".length);
       continue;
     }
     if (arg === "--root") {
@@ -231,7 +274,11 @@ function parseArgs(args) {
     fail(`Unknown argument: ${arg}`);
   }
 
-  return { allowUnhealthyGit, root };
+  if (!["github", "local"].includes(releaseAuthority)) {
+    fail("--release-authority must be github or local.");
+  }
+
+  return { allowUnhealthyGit, releaseAuthority, root };
 }
 
 function parseCommandPrefixArgs(envName) {

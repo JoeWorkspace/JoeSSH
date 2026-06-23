@@ -152,6 +152,53 @@ fails before evidence can be imported, it includes failed job names and GitHub
 check-run annotations, such as account billing/spending-limit failures, in the
 error output.
 
+## Local Or Self-Hosted Evidence
+
+GitHub Actions is not mandatory for Public Beta publication. It is one supported
+release authority. A controlled local or self-hosted release machine may produce
+the same formal Desktop evidence when GitHub Actions billing, runner access, or
+repository policy blocks workflow execution.
+
+Local/self-hosted Desktop evidence still has the same artifact bar:
+
+- Windows artifacts must be signed and include signature verification text.
+- macOS artifacts must be signed, notarized, and include both verification
+  outputs.
+- Linux artifacts must record the package type.
+- `reports/release/desktop/SHA256SUMS.txt` must cover every Desktop artifact.
+- `reports/release/desktop/release-evidence.json` and
+  `reports/release/desktop/release-evidence-source.json` must both be covered by
+  `reports/release/desktop/release-evidence-SHA256SUMS.txt`.
+
+For a local/self-hosted source sidecar, run
+`npm run release:desktop:package:local-source` after collecting signed and
+notarized platform artifacts into the bundle input and after creating the
+annotated release tag for the healthy checkout. It writes
+`reports/release/desktop/release-evidence-source.json` with
+`sourceAuthority: "local"` or `"self-hosted"`, `sourceVersion: 1`,
+`artifactName: "desktop-release-evidence"`, the release ref, the release tag
+commit, a `source` object that records `gitCommit`, `releaseTagCommit`,
+`cleanTreeExcluding: "reports/release"`, and `gitFsckStrict: true`, plus a
+`formalEvidenceJob` object named `Package Formal Desktop Evidence` with
+`status: "completed"`, `conclusion: "success"`, the packaging command, and
+`artifactRoot: "reports/release/desktop"`.
+
+After the full public release gate is complete, retain its log and generate the
+local publication authority:
+
+```bash
+npm run release:local-authority -- --gate-command "npm run qa:release:public:fixture" --target "<operator-confirmed target>"
+npm run release:provenance:local
+npm run release:provenance:verify:local
+npm run release:publish-preflight:local
+```
+
+The local preflight still requires a healthy Git checkout, the release tag at
+`HEAD`, clean source outside `reports/release/`, Desktop/Web/Sync artifacts,
+SBOM, checksums, provenance, and formal Desktop source evidence. It only
+replaces GitHub CLI release checks with `local-release-authority.json`
+verification.
+
 ## Signing And Platform Rules
 
 - Windows: public installers must be code signed before upload.
@@ -169,10 +216,10 @@ error output.
 - `reports/release/desktop/release-evidence-SHA256SUMS.txt` must cover
   `reports/release/desktop/release-evidence.json` and
   `reports/release/desktop/release-evidence-source.json` before upload.
-- `reports/release/desktop/release-evidence-source.json` must come from
-  `npm run release:desktop:evidence-download`; publish preflight and release
-  draft verification require it to bind formal evidence to the GitHub workflow
-  run that produced it.
+- `reports/release/desktop/release-evidence-source.json` must come from either
+  `npm run release:desktop:evidence-download` for GitHub workflow evidence or a
+  controlled local/self-hosted release machine sidecar. Publish preflight
+  requires it to bind formal evidence to the exact authority that produced it.
 - Windows evidence must record `signed: true` and a non-empty
   `signatureVerification` result that mentions the artifact path, file name, or
   artifact sha256.
@@ -241,12 +288,23 @@ npm run release:publish-preflight
 npm run release:desktop:draft
 ```
 
+For local/self-hosted publication, replace the final three commands with:
+
+```bash
+npm run release:local-authority -- --gate-command "npm run qa:release:public:fixture" --target "<operator-confirmed target>"
+npm run release:provenance:local
+npm run release:provenance:verify:local
+npm run release:publish-preflight:local
+```
+
 The publish preflight verifies all Desktop/Web/Sync checksum manifests, Desktop
 signing/notarization evidence, SBOM coverage, release provenance, a healthy Git
-checkout, a clean working tree outside `reports/release/`, a release tag that
-points at `HEAD`, GitHub CLI availability/authentication, no existing GitHub
-Release for the same tag, and the GitHub Release draft dry-run. The draft
-command then requires `docs/release-notes/0.1.0-beta.9.md`, staged release artifacts under
+checkout, a clean working tree outside `reports/release/`, and a release tag
+that points at `HEAD`. GitHub authority additionally checks GitHub CLI
+availability/authentication, no existing GitHub Release for the same tag, and
+the GitHub Release draft dry-run. Local/self-hosted authority additionally
+checks `reports/release/local-release-authority.json`. The draft command then
+requires `docs/release-notes/0.1.0-beta.9.md`, staged release artifacts under
 `reports/release/`, fresh checksums, and complete desktop release evidence whose
 artifact sha256 values match the checksum manifest and actual files, with
 `release-evidence-SHA256SUMS.txt` binding the evidence JSON itself. Raw Tauri bundle outputs are inputs to
