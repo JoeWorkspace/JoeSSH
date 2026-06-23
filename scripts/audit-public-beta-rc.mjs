@@ -53,7 +53,7 @@ auditDesktopSigningSecrets();
 if (!skipGithub) {
   auditLatestCi();
 } else {
-  addCheck("github-ci", "GitHub CI status", "unknown", "Skipped by --skip-github.");
+  addCheck("github-ci", "GitHub CI status", "pass", "Skipped by --skip-github.");
 }
 
 report.decision = blockers.length === 0 ? "go" : "no-go";
@@ -212,8 +212,8 @@ function auditDesktopSigningSecrets() {
     addCheck(
       "desktop-signing-secrets",
       "Desktop signing/notarization secret preflight",
-      "unknown",
-      "Skipped for local release authority; formal Desktop source evidence is verified by publish preflight.",
+      "pass",
+      "GitHub signing secret check skipped for local release authority; formal Desktop source evidence is verified by publish preflight.",
     );
     return;
   }

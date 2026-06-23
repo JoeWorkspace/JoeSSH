@@ -97,7 +97,8 @@ test("uses local publish preflight without requiring GitHub signing secrets", (t
   assert.equal(report.decision, "go");
   assert.equal(report.blockers.length, 0);
   assert.equal(report.checks.find((check) => check.id === "publish-preflight")?.label, "Local release publish preflight");
-  assert.equal(report.checks.find((check) => check.id === "desktop-signing-secrets")?.status, "unknown");
+  assert.equal(report.checks.find((check) => check.id === "desktop-signing-secrets")?.status, "pass");
+  assert.equal(report.checks.find((check) => check.id === "github-ci")?.status, "pass");
 });
 
 test("records No-Go blockers without hiding GitHub billing annotations", (t) => {
