@@ -21,7 +21,7 @@ git rev-parse --is-inside-work-tree
 git fsck --strict
 ```
 
-For `0.1.0-beta.9`, the first public release target remains Desktop, Web Admin,
+For `0.1.0-beta.10`, the first public release target remains Desktop, Web Admin,
 and the self-hosted Sync Service. Mobile device smoke stays a strict-release
 route, not a blocker for the first Public Beta.
 
@@ -76,7 +76,7 @@ route, not a blocker for the first Public Beta.
 
    ```bash
    git status --short -- . ':(exclude)reports/release'
-   git tag -a v0.1.0-beta.9 -m "JoeSSH 0.1.0-beta.9"
+   git tag -a v0.1.0-beta.10 -m "JoeSSH 0.1.0-beta.10"
    npm run release:provenance
    npm run release:provenance:verify
    npm run release:publish-preflight
@@ -108,7 +108,7 @@ Keep these outputs with the release handoff notes:
 - `node scripts/check-public-release-readiness.mjs` result without
   `--allow-unhealthy-git`.
 - For GitHub publication: `gh --version`, `gh auth status`, and the
-  `gh release view v0.1.0-beta.9` not-found check from
+  `gh release view v0.1.0-beta.10` not-found check from
   `npm run release:publish-preflight`.
 - For local/self-hosted publication:
   `reports/release/local-release-authority.json`,

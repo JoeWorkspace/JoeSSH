@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-beta.10] - 2026-06-23
+
+### Added
+- Local release authority evidence and verification for Public Beta candidates
+  that do not require GitHub to be the release authority.
+- Local release provenance and publish preflight paths that bind local authority
+  manifests, Desktop source sidecars, checksums, release notes, and the release
+  tag to the current Git checkout.
+
+### Changed
+- Rolled the Public Beta candidate forward from `0.1.0-beta.9` to
+  `0.1.0-beta.10` without moving the existing beta9 tag.
+- Public Beta documentation now treats GitHub-hosted release publishing as an
+  optional distribution path, while local/self-hosted evidence can be the source
+  of truth for RC audits.
+
 ## [0.1.0-beta.9] - 2026-06-23
 
 ### Added
