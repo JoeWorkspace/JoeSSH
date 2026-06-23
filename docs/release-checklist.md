@@ -91,8 +91,13 @@ native apps stay in preflight/device-smoke validation until a later beta.
   `Package Formal Desktop Evidence` job.
 - If GitHub Actions is unavailable or intentionally not the release authority,
   generate formal Desktop evidence on a controlled local/self-hosted release
-  machine with `npm run release:desktop:package:local-source`. The source
-  sidecar must set `sourceAuthority` to `local` or `self-hosted`, bind
+  machine with
+  `npm run release:desktop:formal-artifacts:import -- --input-dir <signed-artifact-dir> --source-authority local`.
+  The input directory must contain signed Windows artifacts with
+  `windows-signature-verification.txt`, signed/notarized macOS artifacts with
+  `macos-signature-verification.txt` and
+  `macos-notarization-verification.txt`, and at least one Linux package. The
+  source sidecar must set `sourceAuthority` to `local` or `self-hosted`, bind
   `releaseTagCommit` to the same commit used by `release:provenance`, record
   `source.gitFsckStrict: true`, and record the local
   `Package Formal Desktop Evidence` job command and artifact root. This keeps
@@ -100,10 +105,10 @@ native apps stay in preflight/device-smoke validation until a later beta.
 - Create the annotated release tag only after source QA is green. For GitHub
   workflow evidence, release artifacts may already be staged before tagging. For
   local/self-hosted Desktop source evidence, create the tag before
-  `npm run release:desktop:package:local-source` so the sidecar can bind
-  `releaseTagCommit` to the tagged checkout. `reports/release/` is generated
-  release evidence and is allowed to be present while the source tree outside
-  that directory remains clean.
+  `npm run release:desktop:formal-artifacts:import -- --input-dir <signed-artifact-dir> --source-authority local`
+  so the sidecar can bind `releaseTagCommit` to the tagged checkout.
+  `reports/release/` is generated release evidence and is allowed to be present
+  while the source tree outside that directory remains clean.
 - Choose one publication authority before provenance:
   - GitHub Release authority: use the default `npm run release:provenance`,
     `npm run release:provenance:verify`, and

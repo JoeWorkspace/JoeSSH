@@ -40,6 +40,8 @@ const releaseScriptNames = [
   "test:desktop-real-ssh-smoke-fixture",
   "test:desktop-release-package",
   "qa:desktop-release-package",
+  "test:desktop-formal-artifact-import",
+  "qa:desktop-formal-artifact-import",
   "test:desktop-release-evidence",
   "qa:desktop-release-evidence",
   "test:desktop-release-secrets",
@@ -81,6 +83,7 @@ const releaseScriptNames = [
   "release:desktop:build",
   "release:desktop:package",
   "release:desktop:package:local-source",
+  "release:desktop:formal-artifacts:import",
   "release:desktop:checksums",
   "release:desktop:secret-template",
   "release:desktop:configure-secrets",
@@ -135,7 +138,7 @@ function fixtureScriptValue(name, overrides = {}) {
     return "npm run test:desktop-unsigned-staging-report";
   }
   if (name === "qa") {
-    return "npm run lint && npm run qa:desktop-release-diagnostics && npm run qa:desktop-release-parity && npm run qa:lighthouse-audit && npm run qa:e2e:fresh";
+    return "npm run lint && npm run qa:desktop-formal-artifact-import && npm run qa:desktop-release-diagnostics && npm run qa:desktop-release-parity && npm run qa:lighthouse-audit && npm run qa:e2e:fresh";
   }
   if (name === "qa:desktop:real-ssh-smoke:required") {
     return "node scripts/require-real-ssh-smoke-env.mjs && npm run qa:desktop:real-ssh-smoke";
@@ -289,6 +292,9 @@ function createFixture(t, overrides = {}) {
     "scripts/package-desktop-release.mjs":
       "artifactSha256 sha256: artifactSha256 Desktop bundle source contains artifact(s) that do not include releaseVersion basename(artifact.path) validateSignatureEvidence(sourceArtifacts) Windows Desktop artifacts require --windows-signature-verification mkdirSync(outputDir\n",
     "scripts/package-desktop-release.test.mjs": "",
+    "scripts/import-desktop-formal-artifacts.mjs":
+      "release:desktop:verify-evidence --require-source-authority windows-signature-verification.txt macos-notarization-verification.txt Desktop formal artifact input contains file(s) that do not include\n",
+    "scripts/import-desktop-formal-artifacts.test.mjs": "",
     "scripts/configure-desktop-release-secrets.mjs":
       'ATLASTERM_WINDOWS_CERTIFICATE_FILE ATLASTERM_APPLE_CERTIFICATE_FILE --write-template reports/handoff/desktop secret-input-template.env "secret", "set" --body-file desktop-release-evidence-preflight.mjs\n',
     "scripts/configure-desktop-release-secrets.test.mjs": "",
@@ -485,6 +491,7 @@ function ciFixture() {
   return [
     "npm run qa:artifact-checksums",
     "npm run qa:desktop-release-package",
+    "npm run qa:desktop-formal-artifact-import",
     "npm run qa:desktop-release-evidence",
     "npm run qa:desktop-release-secrets",
     "npm run qa:desktop-release-diagnostics",
@@ -823,6 +830,8 @@ test("rejects Desktop checksum scripts that bypass release evidence packaging", 
             "qa:tauri",
             "test:desktop-release-package",
             "qa:desktop-release-package",
+            "test:desktop-formal-artifact-import",
+            "qa:desktop-formal-artifact-import",
             "test:desktop-release-evidence",
             "qa:desktop-release-evidence",
             "test:web-release",
@@ -845,6 +854,8 @@ test("rejects Desktop checksum scripts that bypass release evidence packaging", 
             "qa:sync:release-backup-restore-smoke",
             "release:desktop:build",
             "release:desktop:package",
+            "release:desktop:package:local-source",
+            "release:desktop:formal-artifacts:import",
             "release:desktop:checksums",
             "release:desktop:verify-evidence",
             "release:desktop:draft",
@@ -902,6 +913,8 @@ test("rejects release checksum gates that do not discover all staged manifests",
             "qa:tauri",
             "test:desktop-release-package",
             "qa:desktop-release-package",
+            "test:desktop-formal-artifact-import",
+            "qa:desktop-formal-artifact-import",
             "test:desktop-release-evidence",
             "qa:desktop-release-evidence",
             "test:web-release",
@@ -924,6 +937,8 @@ test("rejects release checksum gates that do not discover all staged manifests",
             "qa:sync:release-backup-restore-smoke",
             "release:desktop:build",
             "release:desktop:package",
+            "release:desktop:package:local-source",
+            "release:desktop:formal-artifacts:import",
             "release:desktop:checksums",
             "release:desktop:verify-evidence",
             "release:desktop:draft",

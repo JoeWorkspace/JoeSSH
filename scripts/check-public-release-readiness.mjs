@@ -149,6 +149,8 @@ function checkPackageScripts() {
     "test:desktop-real-ssh-smoke-fixture",
     "test:desktop-release-package",
     "qa:desktop-release-package",
+    "test:desktop-formal-artifact-import",
+    "qa:desktop-formal-artifact-import",
     "test:desktop-release-evidence",
     "qa:desktop-release-evidence",
     "test:desktop-release-secrets",
@@ -190,6 +192,7 @@ function checkPackageScripts() {
     "release:desktop:build",
     "release:desktop:package",
     "release:desktop:package:local-source",
+    "release:desktop:formal-artifacts:import",
     "release:desktop:checksums",
     "release:desktop:secret-template",
     "release:desktop:configure-secrets",
@@ -421,6 +424,11 @@ function checkPackageScripts() {
     rootQaScript,
   );
   passIf(
+    rootQaScript.includes("qa:desktop-formal-artifact-import"),
+    "Root QA runs Desktop formal artifact import tests",
+    rootQaScript,
+  );
+  passIf(
     rootQaScript.includes("qa:e2e:fresh"),
     "Root QA runs E2E on fresh local ports",
     rootQaScript,
@@ -453,6 +461,7 @@ function checkCiPublicReleaseWiring() {
   const requiredSnippets = [
     "npm run qa:artifact-checksums",
     "npm run qa:desktop-release-package",
+    "npm run qa:desktop-formal-artifact-import",
     "npm run qa:desktop-release-evidence",
     "npm run qa:desktop-release-secrets",
     "npm run qa:desktop-release-diagnostics",
@@ -508,6 +517,8 @@ function checkReleaseToolingFiles() {
   for (const relativePath of [
     "scripts/package-desktop-release.mjs",
     "scripts/package-desktop-release.test.mjs",
+    "scripts/import-desktop-formal-artifacts.mjs",
+    "scripts/import-desktop-formal-artifacts.test.mjs",
     "scripts/configure-desktop-release-secrets.mjs",
     "scripts/configure-desktop-release-secrets.test.mjs",
     "scripts/diagnose-desktop-release-evidence.mjs",

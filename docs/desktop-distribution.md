@@ -170,10 +170,28 @@ Local/self-hosted Desktop evidence still has the same artifact bar:
   `reports/release/desktop/release-evidence-source.json` must both be covered by
   `reports/release/desktop/release-evidence-SHA256SUMS.txt`.
 
-For a local/self-hosted source sidecar, run
-`npm run release:desktop:package:local-source` after collecting signed and
-notarized platform artifacts into the bundle input and after creating the
-annotated release tag for the healthy checkout. It writes
+For a local/self-hosted source sidecar, create the annotated release tag for the
+healthy checkout, then collect signed and notarized platform artifacts into one
+input directory:
+
+- `JoeSSH_<version>_*.exe`, `.msi`, or `.msix` for Windows.
+- `JoeSSH_<version>_*.dmg`, `.pkg`, or `.app.tar.gz` for macOS.
+- `JoeSSH_<version>_*.AppImage`, `.deb`, or `.rpm` for Linux.
+- `windows-signature-verification.txt` for Windows signature verification.
+- `macos-signature-verification.txt` for macOS code-sign verification.
+- `macos-notarization-verification.txt` for macOS notarization verification.
+
+Then import the directory through the formal evidence wrapper:
+
+```bash
+npm run release:desktop:formal-artifacts:import -- --input-dir <signed-artifact-dir> --source-authority local
+```
+
+Use `--source-authority self-hosted` when the directory was produced by a
+controlled self-hosted release runner. The wrapper rejects stale artifact
+versions, missing required platforms, missing proof files, and then runs
+`release:desktop:verify-evidence` in formal local/self-hosted source mode. It
+writes
 `reports/release/desktop/release-evidence-source.json` with
 `sourceAuthority: "local"` or `"self-hosted"`, `sourceVersion: 1`,
 `artifactName: "desktop-release-evidence"`, the release ref, the release tag
