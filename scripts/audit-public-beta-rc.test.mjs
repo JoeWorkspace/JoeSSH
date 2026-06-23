@@ -35,6 +35,7 @@ function createFixture(t, options = {}) {
     gitClean: true,
     head: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     publishPreflightOk: true,
+    publicBetaDogfoodOk: true,
     tag: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     ...options,
   };
@@ -107,6 +108,7 @@ test("records No-Go blockers without hiding GitHub billing annotations", (t) => 
     desktopSecretsOk: false,
     dogfoodPassed: false,
     publishPreflightOk: false,
+    publicBetaDogfoodOk: false,
     removeDesktopEvidence: true,
     tag: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
   });
@@ -118,8 +120,23 @@ test("records No-Go blockers without hiding GitHub billing annotations", (t) => 
   assert.equal(report.decision, "no-go");
   assert.match(JSON.stringify(report), /spending limit needs to be increased/);
   assert(report.blockers.some((blocker) => blocker.id === "release-tag"));
+  assert(report.blockers.some((blocker) => blocker.id === "public-beta-dogfood"));
   assert(report.blockers.some((blocker) => blocker.id === "desktop-signing-secrets"));
   assert(report.blockers.some((blocker) => blocker.id === "github-ci"));
+});
+
+test("rejects stale Public Beta operator dogfood evidence", (t) => {
+  const { fakePath, root, statePath } = createFixture(t, {
+    publicBetaDogfoodOk: false,
+  });
+
+  const result = runAudit(root, fakePath, statePath, ["--skip-github"]);
+
+  assert.equal(result.status, 0);
+  const report = JSON.parse(readFileSync(join(root, "reports/release/public-beta-rc-audit.json"), "utf8"));
+  const blocker = report.blockers.find((entry) => entry.id === "public-beta-dogfood");
+  assert(blocker);
+  assert.match(blocker.detail, /version must be 0\.1\.0-beta\.1/);
 });
 
 test("rejects checksum manifest entries outside the release root", (t) => {
@@ -219,6 +236,11 @@ if (tool === "npm") {
   if (is("run", "release:desktop:configure-secrets", "--", "--verify-only")) {
     if (state.desktopSecretsOk) process.exit(0);
     console.error("Missing GitHub Actions secret(s) required for formal Desktop evidence");
+    process.exit(1);
+  }
+  if (is("run", "qa:public-beta-dogfood")) {
+    if (state.publicBetaDogfoodOk) process.exit(0);
+    console.error("FAIL version must be 0.1.0-beta.1");
     process.exit(1);
   }
   console.error("unexpected npm args " + args.join(" "));

@@ -48,6 +48,7 @@ auditGit();
 auditReleaseManifests();
 auditDesktopArtifactVersions();
 auditDesktopDogfood();
+auditPublicBetaDogfood();
 auditPublishPreflight();
 auditDesktopSigningSecrets();
 if (!skipGithub) {
@@ -192,6 +193,17 @@ function auditDesktopDogfood() {
       ? `${evidence.fixture} ${evidence.auth} finished ${evidence.finishedAt}`
       : `Dogfood evidence missing/failed${missing.length > 0 ? `; missing checks: ${missing.join(", ")}` : ""}.`,
     !passed,
+  );
+}
+
+function auditPublicBetaDogfood() {
+  const result = runNpm(["run", "qa:public-beta-dogfood"]);
+  addCheck(
+    "public-beta-dogfood",
+    "Public Beta operator dogfood evidence",
+    result.status === 0 ? "pass" : "fail",
+    result.status === 0 ? "passed" : tail(commandDiagnostic(result)).join("\n"),
+    result.status !== 0,
   );
 }
 
