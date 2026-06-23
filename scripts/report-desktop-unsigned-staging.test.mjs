@@ -74,9 +74,21 @@ test("rejects missing staging artifacts", () => {
   assert.match(result.stderr, /No Desktop staging artifacts found/);
 });
 
-function fixtureRoot() {
+test("rejects staging artifacts from a different package version", () => {
+  const root = fixtureRoot({ version: "0.1.0-beta.10" });
+  const bundleDir = join(root, "apps", "desktop", "src-tauri", "target", "release", "bundle", "nsis");
+  mkdirSync(bundleDir, { recursive: true });
+  writeFileSync(join(bundleDir, "JoeSSH_0.1.0-beta.9_x64-setup.exe"), "stale unsigned installer");
+
+  const result = run(["--root", root]);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /do not include package version 0\.1\.0-beta\.10/);
+});
+
+function fixtureRoot(options = {}) {
   const root = mkdtempSync(join(tmpdir(), "joessh-unsigned-staging-"));
-  writeFileSync(join(root, "package.json"), JSON.stringify({ version: "0.1.0-beta.9" }));
+  writeFileSync(join(root, "package.json"), JSON.stringify({ version: options.version ?? "0.1.0-beta.9" }));
   return root;
 }
 

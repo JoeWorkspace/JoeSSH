@@ -35,6 +35,15 @@ if (artifacts.length === 0) {
   fail(`No Desktop staging artifacts found in ${displayPath(bundleDir)}.`);
 }
 
+const staleArtifacts = artifacts.filter(({ path }) => !basename(path).includes(packageJson.version));
+if (staleArtifacts.length > 0) {
+  fail(
+    `Desktop staging artifact(s) do not include package version ${packageJson.version}: ${staleArtifacts
+      .map(({ path }) => toReleasePath(path))
+      .join(", ")}`,
+  );
+}
+
 const report = {
   schemaVersion: 1,
   generatedAt: new Date().toISOString(),
