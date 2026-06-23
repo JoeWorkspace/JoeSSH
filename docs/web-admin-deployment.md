@@ -120,6 +120,16 @@ available. The deployed CSP must allow the configured admin snapshot origin in
 - Immutable hashed assets can be cached long-term.
 - To rollback, redeploy the previous `dist` artifact and its matching
   `_headers`, then verify SRI and the admin snapshot live path.
+- Before Public Beta publication, rehearse rollback from the staged current
+  Web Admin zip to the previous release zip and its checksum manifest:
+
+  ```bash
+  npm run release:web-admin-rollback-smoke -- --previous-root <previous-release-root> --previous reports/release/web/joessh-web-admin-<previous-version>.zip
+  ```
+
+  This writes `reports/release/web/rollback-smoke.json` and
+  `reports/release/web/rollback-smoke-SHA256SUMS.txt` after verifying both
+  bundles keep the deployment headers, manifest, and packaged asset contract.
 - Do not expose Web Admin against a Sync Service that lacks
   `ATLASTERM_SYNC_ADMIN_TOKEN` or equivalent edge authorization.
 - Keep `deploy/web-admin/node-admin-snapshot-proxy.mjs` on loopback unless an

@@ -175,6 +175,7 @@ function checkPackageScripts() {
     "test:release-rc-audit",
     "test:release-readiness",
     "test:web-admin-bundle-token-scan",
+    "test:web-admin-rollback-smoke",
     "test:mobile-public-env",
     "test:sync-release-package",
     "test:sync-release-evidence",
@@ -185,6 +186,7 @@ function checkPackageScripts() {
     "qa:release-rc-audit",
     "qa:release-readiness",
     "qa:web-admin-bundle-token-scan",
+    "qa:web-admin-rollback-smoke",
     "qa:mobile-public-env",
     "qa:sync-release-package",
     "qa:sync-release-evidence",
@@ -219,6 +221,7 @@ function checkPackageScripts() {
     "release:sbom:verify",
     "release:sync",
     "release:web",
+    "release:web-admin-rollback-smoke",
   ]) {
     passIf(
       typeof packageJson.scripts?.[scriptName] === "string",
@@ -429,6 +432,11 @@ function checkPackageScripts() {
     rootQaScript,
   );
   passIf(
+    rootQaScript.includes("qa:web-admin-rollback-smoke"),
+    "Root QA runs Web Admin rollback smoke tests",
+    rootQaScript,
+  );
+  passIf(
     rootQaScript.includes("qa:e2e:fresh"),
     "Root QA runs E2E on fresh local ports",
     rootQaScript,
@@ -471,6 +479,7 @@ function checkCiPublicReleaseWiring() {
     "npm run qa:sync-release-package",
     "npm run qa:sync-release-evidence",
     "npm run qa:web-release",
+    "npm run qa:web-admin-rollback-smoke",
     "npm run qa:release-sbom",
     "npm run qa:release-draft",
     "npm run qa:release-publish-preflight",
@@ -549,6 +558,8 @@ function checkReleaseToolingFiles() {
     "scripts/verify-web-release-package.test.mjs",
     "scripts/check-web-admin-bundle-token-scan.mjs",
     "scripts/check-web-admin-bundle-token-scan.test.mjs",
+    "scripts/smoke-web-admin-rollback.mjs",
+    "scripts/smoke-web-admin-rollback.test.mjs",
     "scripts/check-mobile-public-env.mjs",
     "scripts/check-mobile-public-env.test.mjs",
     "scripts/lighthouse-audit.mjs",
@@ -576,6 +587,8 @@ function checkReleaseToolingFiles() {
 
   const desktopPackager =
     readTextIfExists("scripts/package-desktop-release.mjs") ?? "";
+  const desktopFormalArtifactImporter =
+    readTextIfExists("scripts/import-desktop-formal-artifacts.mjs") ?? "";
   const dogfoodVerifier =
     readTextIfExists("scripts/verify-public-beta-dogfood-evidence.mjs") ?? "";
   const unsignedStagingReporter =
@@ -612,6 +625,12 @@ function checkReleaseToolingFiles() {
       desktopPackager.indexOf("validateSignatureEvidence(sourceArtifacts)") <
         desktopPackager.indexOf("mkdirSync(outputDir"),
     "Desktop release packager validates signing evidence before staging artifacts",
+  );
+  passIf(
+    desktopFormalArtifactImporter.includes("--input-dir must be outside the release workspace") &&
+      desktopFormalArtifactImporter.includes("source tree is clean") &&
+      desktopFormalArtifactImporter.includes("release upload tools cannot pick up staging-only files"),
+    "Desktop formal artifact importer rejects source-tree staging directories",
   );
 
   const desktopEvidenceVerifier =

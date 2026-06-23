@@ -172,7 +172,7 @@ Local/self-hosted Desktop evidence still has the same artifact bar:
 
 For a local/self-hosted source sidecar, create the annotated release tag for the
 healthy checkout, then collect signed and notarized platform artifacts into one
-input directory:
+input directory outside the release workspace:
 
 - `JoeSSH_<version>_*.exe`, `.msi`, or `.msix` for Windows.
 - `JoeSSH_<version>_*.dmg`, `.pkg`, or `.app.tar.gz` for macOS.
@@ -188,10 +188,10 @@ npm run release:desktop:formal-artifacts:import -- --input-dir <signed-artifact-
 ```
 
 Use `--source-authority self-hosted` when the directory was produced by a
-controlled self-hosted release runner. The wrapper rejects stale artifact
-versions, missing required platforms, missing proof files, and then runs
-`release:desktop:verify-evidence` in formal local/self-hosted source mode. It
-writes
+controlled self-hosted release runner. The wrapper rejects input directories
+inside the release workspace, stale artifact versions, missing required
+platforms, and missing proof files, and then runs `release:desktop:verify-evidence`
+in formal local/self-hosted source mode. It writes
 `reports/release/desktop/release-evidence-source.json` with
 `sourceAuthority: "local"` or `"self-hosted"`, `sourceVersion: 1`,
 `artifactName: "desktop-release-evidence"`, the release ref, the release tag

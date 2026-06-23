@@ -24,13 +24,29 @@ function createFixture(t, options = {}) {
 
   const evidence = {
     artifact: "sync-backup-restore-smoke",
+    assertions: [
+      "seeded two devices and one sync change",
+      "copied an operator ledger backup",
+      "corrupted the primary JSON ledger",
+      "restored the operator backup as the service .bak ledger",
+      "verified startup recovery from backup metrics",
+      "verified admin snapshot, pull, and post-recovery write path",
+    ],
     binary: `reports/release/sync/${releaseBinaryName}`,
     binaryKind: "packaged-release",
     binaryManifest: "reports/release/sync/SHA256SUMS.txt",
     binarySha256: sha256("sync release binary"),
+    devices: ["device-a", "device-b"],
     evidenceVersion: 1,
     platform: process.platform,
-    recovery: { rtoMs: 123 },
+    operatorBackupSha256: sha256("operator backup"),
+    recovery: {
+      rpo: "all mutations durably persisted before the operator backup copy",
+      rtoMs: 123,
+      scenario: "primary ledger corrupted; operator backup restored as ledger.bak before service restart",
+    },
+    restoredChanges: ["change-a", "change-b"],
+    timestamp: "2026-06-22T00:00:00.000Z",
     version: "0.1.0-beta.1",
     ...options.evidence,
   };
@@ -117,4 +133,41 @@ test("rejects backup/restore evidence with a stale checksum manifest", (t) => {
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /evidence checksum manifest hash mismatch/);
+});
+
+test("rejects backup/restore evidence without recovery semantics", (t) => {
+  const result = runVerifier(
+    createFixture(t, {
+      evidence: {
+        assertions: ["seeded two devices and one sync change"],
+        devices: ["device-a"],
+        recovery: {
+          rtoMs: 0,
+          scenario: "primary ledger corrupted",
+        },
+        restoredChanges: ["change-a"],
+      },
+    }),
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /assertions missing/);
+  assert.match(result.stderr, /devices must include at least two device ids/);
+  assert.match(result.stderr, /restoredChanges must include at least two restored change ids/);
+  assert.match(result.stderr, /recovery.rpo must describe/);
+  assert.match(result.stderr, /recovery.scenario must mention the operator backup rollback path/);
+  assert.match(result.stderr, /recovery.rtoMs must be a positive number/);
+});
+
+test("rejects backup/restore evidence from a different release version", (t) => {
+  const result = runVerifier(
+    createFixture(t, {
+      evidence: {
+        version: "0.1.0-beta.0",
+      },
+    }),
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /version must be 0\.1\.0-beta\.1/);
 });

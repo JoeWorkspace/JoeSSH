@@ -93,9 +93,9 @@ native apps stay in preflight/device-smoke validation until a later beta.
   generate formal Desktop evidence on a controlled local/self-hosted release
   machine with
   `npm run release:desktop:formal-artifacts:import -- --input-dir <signed-artifact-dir> --source-authority local`.
-  The input directory must contain signed Windows artifacts with
-  `windows-signature-verification.txt`, signed/notarized macOS artifacts with
-  `macos-signature-verification.txt` and
+  The input directory must be outside the release workspace and must contain
+  signed Windows artifacts with `windows-signature-verification.txt`,
+  signed/notarized macOS artifacts with `macos-signature-verification.txt` and
   `macos-notarization-verification.txt`, and at least one Linux package. The
   source sidecar must set `sourceAuthority` to `local` or `self-hosted`, bind
   `releaseTagCommit` to the same commit used by `release:provenance`, record
@@ -287,6 +287,10 @@ native apps stay in preflight/device-smoke validation until a later beta.
   must pass before copying or exposing any files from `reports/release/`. The
   local authority evidence must identify the operator-confirmed target and prove
   the public release gate passed from the same healthy tagged checkout.
+- Rehearse Web Admin rollback with
+  `npm run release:web-admin-rollback-smoke -- --previous-root <previous-release-root> --previous reports/release/web/joessh-web-admin-<previous-version>.zip`
+  so `reports/release/web/rollback-smoke.json` records the current package, the
+  previous package, their checksums, and the deployment-header verification.
 - For local/self-hosted RC judgment, run
   `npm run release:rc-audit:report -- --release-authority local --skip-github`
   so the audit uses local publish preflight and does not turn GitHub CI billing

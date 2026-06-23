@@ -25,6 +25,7 @@ const inputDir = options.inputDir;
 if (!existsSync(inputDir) || !statSync(inputDir).isDirectory()) {
   fail(`--input-dir must point to a directory: ${displayPath(inputDir)}`);
 }
+validateInputDirectoryLocation(inputDir);
 
 const inputFiles = collectFiles(inputDir);
 const sourceArtifacts = inputFiles
@@ -192,6 +193,14 @@ function validateRequiredPlatforms(artifacts, requiredPlatforms) {
   const missingPlatforms = requiredPlatforms.filter((platform) => !platforms.has(platform));
   if (missingPlatforms.length > 0) {
     fail(`Desktop formal artifact input is missing required platform(s): ${missingPlatforms.join(", ")}`);
+  }
+}
+
+function validateInputDirectoryLocation(path) {
+  if (isInsidePath(path, options.root)) {
+    fail(
+      "--input-dir must be outside the release workspace so Desktop source evidence can prove the source tree is clean and release upload tools cannot pick up staging-only files.",
+    );
   }
 }
 
@@ -392,6 +401,11 @@ function displayPath(path) {
     return relativePath.replace(/\\/g, "/") || basename(path);
   }
   return path;
+}
+
+function isInsidePath(path, parent) {
+  const relativePath = relative(parent, path);
+  return relativePath === "" || (!relativePath.startsWith("..") && !isAbsolute(relativePath));
 }
 
 function fail(message) {

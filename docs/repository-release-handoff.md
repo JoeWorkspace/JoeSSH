@@ -58,18 +58,33 @@ route, not a blocker for the first Public Beta.
 5. Build release artifacts in the healthy checkout or release machine:
 
    ```bash
-   npm run release:desktop:build
-   npm run release:desktop:package
    npm run release:web
    npm run release:sync
    npm run release:sbom
    npm run release:sbom:verify
-   npm run release:verify-checksums
    ```
 
-   `release:desktop:package` is the final Desktop aggregation step for the
-   GitHub workflow path. When GitHub Actions is unavailable or intentionally
-   not the release authority, import the signed artifact directory instead:
+   For the GitHub workflow path, collect the signed Windows, notarized macOS,
+   and Linux package artifacts from the formal workflow, then run:
+
+   ```bash
+   npm run release:desktop:package
+   ```
+
+   For a local/self-hosted authority, keep the signed artifact directory outside
+   the release workspace and do not import it until after the release tag points
+   at `HEAD`.
+
+6. Tag only after source QA is green and the healthy checkout is clean outside
+   generated release artifacts:
+
+   ```bash
+   git status --short -- . ':(exclude)reports/release'
+   git tag -a v0.1.0-beta.10 -m "JoeSSH 0.1.0-beta.10"
+   ```
+
+   For a local/self-hosted authority, import the external signed artifact
+   directory after the tag is created:
 
    ```bash
    npm run release:desktop:formal-artifacts:import -- --input-dir <signed-artifact-dir> --source-authority local
@@ -78,12 +93,10 @@ route, not a blocker for the first Public Beta.
    The import command stages Desktop artifacts, writes formal source evidence,
    and verifies the evidence against the tagged healthy checkout.
 
-6. Tag only after source QA is green, the release evidence is complete, and the
-   healthy checkout is clean outside generated release artifacts:
+7. Generate provenance, run publish preflight, and draft or stage publication:
 
    ```bash
-   git status --short -- . ':(exclude)reports/release'
-   git tag -a v0.1.0-beta.10 -m "JoeSSH 0.1.0-beta.10"
+   npm run release:verify-checksums
    npm run release:provenance
    npm run release:provenance:verify
    npm run release:publish-preflight

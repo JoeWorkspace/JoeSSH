@@ -40,6 +40,7 @@ jobs:
       - run: npm run qa:sync-release-package
       - run: npm run qa:sync-release-evidence
       - run: npm run qa:web-release
+      - run: npm run qa:web-admin-rollback-smoke
       - run: npm run qa:release-sbom
       - run: npm run qa:release-draft
       - run: npm run qa:release-publish-preflight

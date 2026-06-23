@@ -46,9 +46,11 @@ const report = {
 
 auditGit();
 auditReleaseManifests();
+auditWebAdminRollback();
 auditDesktopArtifactVersions();
 auditDesktopDogfood();
 auditPublicBetaDogfood();
+auditLocalReleaseAuthority();
 auditPublishPreflight();
 auditDesktopSigningSecrets();
 if (!skipGithub) {
@@ -120,6 +122,22 @@ function auditReleaseManifests() {
     ["release-web", "Web Admin release checksum manifest", "reports/release/web/SHA256SUMS.txt", true],
     ["release-sync", "Sync release checksum manifest", "reports/release/sync/SHA256SUMS.txt", true],
     ["release-sbom", "SBOM checksum manifest", "reports/release/SBOM-SHA256SUMS.txt", true],
+    [
+      "release-provenance",
+      "Release provenance checksum manifest",
+      "reports/release/release-provenance-SHA256SUMS.txt",
+      true,
+    ],
+    ...(releaseAuthority === "local"
+      ? [
+          [
+            "local-release-authority",
+            "Local release authority checksum manifest",
+            "reports/release/local-release-authority-SHA256SUMS.txt",
+            true,
+          ],
+        ]
+      : []),
     ["release-desktop", "Desktop signed release checksum manifest", "reports/release/desktop/SHA256SUMS.txt", true],
     [
       "release-desktop-evidence",
@@ -164,6 +182,59 @@ function auditDesktopArtifactVersions() {
   );
 }
 
+function auditWebAdminRollback() {
+  const checksumPath = "reports/release/web/rollback-smoke-SHA256SUMS.txt";
+  const evidencePath = "reports/release/web/rollback-smoke.json";
+  const checksum = verifyChecksumManifest(checksumPath);
+  if (!checksum.ok) {
+    addCheck("web-admin-rollback-checksum", "Web Admin rollback evidence checksum", "fail", checksum.detail, true);
+    return;
+  }
+  addCheck("web-admin-rollback-checksum", "Web Admin rollback evidence checksum", "pass", checksum.detail);
+
+  const evidence = readJsonIfExists(evidencePath);
+  const requiredAssertions = [
+    "verified current Web Admin release package",
+    "verified previous Web Admin rollback package",
+    "verified rollback package keeps deployment headers and manifest",
+    "verified rollback package is a different release bundle",
+  ];
+  const missingAssertions = requiredAssertions.filter((assertion) => !evidence?.assertions?.includes(assertion));
+  const currentArtifact = `reports/release/web/joessh-web-admin-${packageJson.version}.zip`;
+  const failures = [];
+  if (evidence?.artifact !== "web-admin-rollback-smoke") {
+    failures.push("artifact must be web-admin-rollback-smoke");
+  }
+  if (evidence?.evidenceVersion !== 1) {
+    failures.push("evidenceVersion must be 1");
+  }
+  if (evidence?.version !== packageJson.version) {
+    failures.push(`version must be ${packageJson.version}`);
+  }
+  if (evidence?.current?.version !== packageJson.version || evidence?.current?.artifact !== currentArtifact) {
+    failures.push(`current artifact must be ${currentArtifact}`);
+  }
+  if (!evidence?.previous?.version || evidence.previous.version === packageJson.version) {
+    failures.push("previous version must exist and differ from the current release");
+  }
+  if (evidence?.current?.sha256 === evidence?.previous?.sha256) {
+    failures.push("current and previous Web Admin rollback bundles must have different sha256 values");
+  }
+  if (missingAssertions.length > 0) {
+    failures.push(`missing assertions: ${missingAssertions.join(", ")}`);
+  }
+
+  addCheck(
+    "web-admin-rollback",
+    "Web Admin rollback rehearsal evidence",
+    failures.length === 0 ? "pass" : "fail",
+    failures.length === 0
+      ? `${evidence.previous.version} -> ${packageJson.version}`
+      : failures.join("; "),
+    failures.length > 0,
+  );
+}
+
 function auditDesktopDogfood() {
   const evidencePath = "reports/smoke/desktop/real-ssh-smoke.json";
   const checksumPath = "reports/smoke/desktop/real-ssh-smoke-SHA256SUMS.txt";
@@ -201,6 +272,27 @@ function auditPublicBetaDogfood() {
   addCheck(
     "public-beta-dogfood",
     "Public Beta operator dogfood evidence",
+    result.status === 0 ? "pass" : "fail",
+    result.status === 0 ? "passed" : tail(commandDiagnostic(result)).join("\n"),
+    result.status !== 0,
+  );
+}
+
+function auditLocalReleaseAuthority() {
+  if (releaseAuthority !== "local") {
+    addCheck(
+      "local-release-authority-verify",
+      "Local release authority evidence verification",
+      "pass",
+      "Not required for GitHub release authority.",
+    );
+    return;
+  }
+
+  const result = runNpm(["run", "release:local-authority:verify"]);
+  addCheck(
+    "local-release-authority-verify",
+    "Local release authority evidence verification",
     result.status === 0 ? "pass" : "fail",
     result.status === 0 ? "passed" : tail(commandDiagnostic(result)).join("\n"),
     result.status !== 0,

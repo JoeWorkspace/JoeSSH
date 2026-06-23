@@ -15,11 +15,24 @@ function createFixture(t, options = {}) {
 
   writeFile(root, "package.json", JSON.stringify({ version: "0.1.0-beta.1" }));
   writeArtifactWithManifest(root, "reports/release/web/joessh-web-admin-0.1.0-beta.1.zip", "web", "reports/release/web/SHA256SUMS.txt");
+  writeWebRollback(root);
   writeArtifactWithManifest(root, "reports/release/sync/joessh-sync-0.1.0-beta.1-win32-x64.exe", "sync", "reports/release/sync/SHA256SUMS.txt");
   writeArtifactWithManifest(root, "reports/release/npm-web-sbom.cdx.json", "web-sbom", "reports/release/SBOM-SHA256SUMS.txt");
   appendManifest(root, "reports/release/SBOM-SHA256SUMS.txt", "reports/release/npm-desktop-sbom.cdx.json", "desktop-sbom");
   appendManifest(root, "reports/release/SBOM-SHA256SUMS.txt", "reports/release/cargo-metadata.json", "cargo");
   appendManifest(root, "reports/release/SBOM-SHA256SUMS.txt", "reports/release/tauri-cargo-metadata.json", "tauri");
+  writeArtifactWithManifest(
+    root,
+    "reports/release/release-provenance.json",
+    "provenance",
+    "reports/release/release-provenance-SHA256SUMS.txt",
+  );
+  writeArtifactWithManifest(
+    root,
+    "reports/release/local-release-authority.json",
+    "local authority",
+    "reports/release/local-release-authority-SHA256SUMS.txt",
+  );
   writeArtifactWithManifest(
     root,
     "reports/release/desktop/JoeSSH_0.1.0-beta.1_x64-setup.exe",
@@ -34,6 +47,7 @@ function createFixture(t, options = {}) {
     desktopSecretsOk: true,
     gitClean: true,
     head: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    localAuthorityOk: true,
     publishPreflightOk: true,
     publicBetaDogfoodOk: true,
     tag: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -98,6 +112,8 @@ test("uses local publish preflight without requiring GitHub signing secrets", (t
   assert.equal(report.decision, "go");
   assert.equal(report.blockers.length, 0);
   assert.equal(report.checks.find((check) => check.id === "publish-preflight")?.label, "Local release publish preflight");
+  assert.equal(report.checks.find((check) => check.id === "local-release-authority")?.status, "pass");
+  assert.equal(report.checks.find((check) => check.id === "local-release-authority-verify")?.status, "pass");
   assert.equal(report.checks.find((check) => check.id === "desktop-signing-secrets")?.status, "pass");
   assert.equal(report.checks.find((check) => check.id === "github-ci")?.status, "pass");
 });
@@ -137,6 +153,61 @@ test("rejects stale Public Beta operator dogfood evidence", (t) => {
   const blocker = report.blockers.find((entry) => entry.id === "public-beta-dogfood");
   assert(blocker);
   assert.match(blocker.detail, /version must be 0\.1\.0-beta\.1/);
+});
+
+test("rejects missing release provenance before publish preflight can hide it", (t) => {
+  const { fakePath, root, statePath } = createFixture(t);
+  rmSync(join(root, "reports", "release", "release-provenance-SHA256SUMS.txt"));
+
+  const result = runAudit(root, fakePath, statePath, ["--skip-github"]);
+
+  assert.equal(result.status, 0);
+  const report = JSON.parse(readFileSync(join(root, "reports/release/public-beta-rc-audit.json"), "utf8"));
+  const blocker = report.blockers.find((entry) => entry.id === "release-provenance");
+  assert(blocker);
+  assert.match(blocker.detail, /release-provenance-SHA256SUMS\.txt is missing/);
+});
+
+test("rejects missing Web Admin rollback evidence", (t) => {
+  const { fakePath, root, statePath } = createFixture(t);
+  rmSync(join(root, "reports", "release", "web", "rollback-smoke-SHA256SUMS.txt"));
+
+  const result = runAudit(root, fakePath, statePath, ["--skip-github"]);
+
+  assert.equal(result.status, 0);
+  const report = JSON.parse(readFileSync(join(root, "reports/release/public-beta-rc-audit.json"), "utf8"));
+  const blocker = report.blockers.find((entry) => entry.id === "web-admin-rollback-checksum");
+  assert(blocker);
+  assert.match(blocker.detail, /rollback-smoke-SHA256SUMS\.txt is missing/);
+});
+
+test("rejects stale Web Admin rollback evidence", (t) => {
+  const { fakePath, root, statePath } = createFixture(t);
+  writeWebRollback(root, {
+    version: "0.1.0-beta.0",
+  });
+
+  const result = runAudit(root, fakePath, statePath, ["--skip-github"]);
+
+  assert.equal(result.status, 0);
+  const report = JSON.parse(readFileSync(join(root, "reports/release/public-beta-rc-audit.json"), "utf8"));
+  const blocker = report.blockers.find((entry) => entry.id === "web-admin-rollback");
+  assert(blocker);
+  assert.match(blocker.detail, /version must be 0\.1\.0-beta\.1/);
+});
+
+test("rejects stale local release authority before publish preflight can hide it", (t) => {
+  const { fakePath, root, statePath } = createFixture(t, {
+    localAuthorityOk: false,
+  });
+
+  const result = runAudit(root, fakePath, statePath, ["--release-authority", "local", "--skip-github"]);
+
+  assert.equal(result.status, 0);
+  const report = JSON.parse(readFileSync(join(root, "reports/release/public-beta-rc-audit.json"), "utf8"));
+  const blocker = report.blockers.find((entry) => entry.id === "local-release-authority-verify");
+  assert(blocker);
+  assert.match(blocker.detail, /Local release authority verification failed/);
 });
 
 test("rejects checksum manifest entries outside the release root", (t) => {
@@ -183,6 +254,38 @@ function writeDogfood(root, { passed }) {
   const path = "reports/smoke/desktop/real-ssh-smoke.json";
   writeFile(root, path, JSON.stringify(evidence));
   writeFile(root, "reports/smoke/desktop/real-ssh-smoke-SHA256SUMS.txt", `${sha256Content(JSON.stringify(evidence))}  ${path}\n`);
+}
+
+function writeWebRollback(root, overrides = {}) {
+  const evidence = {
+    artifact: "web-admin-rollback-smoke",
+    assertions: [
+      "verified current Web Admin release package",
+      "verified previous Web Admin rollback package",
+      "verified rollback package keeps deployment headers and manifest",
+      "verified rollback package is a different release bundle",
+    ],
+    current: {
+      artifact: "reports/release/web/joessh-web-admin-0.1.0-beta.1.zip",
+      sha256: sha256Content("web"),
+      version: "0.1.0-beta.1",
+    },
+    evidenceVersion: 1,
+    previous: {
+      artifact: "reports/release/web/joessh-web-admin-0.1.0-beta.0.zip",
+      sha256: sha256Content("previous web"),
+      version: "0.1.0-beta.0",
+    },
+    version: "0.1.0-beta.1",
+    ...overrides,
+  };
+  const evidenceText = JSON.stringify(evidence);
+  writeFile(root, "reports/release/web/rollback-smoke.json", evidenceText);
+  writeFile(
+    root,
+    "reports/release/web/rollback-smoke-SHA256SUMS.txt",
+    `${sha256Content(evidenceText)}  reports/release/web/rollback-smoke.json\n`,
+  );
 }
 
 function writeArtifactWithManifest(root, artifactPath, content, manifestPath) {
@@ -236,6 +339,11 @@ if (tool === "npm") {
   if (is("run", "release:desktop:configure-secrets", "--", "--verify-only")) {
     if (state.desktopSecretsOk) process.exit(0);
     console.error("Missing GitHub Actions secret(s) required for formal Desktop evidence");
+    process.exit(1);
+  }
+  if (is("run", "release:local-authority:verify")) {
+    if (state.localAuthorityOk) process.exit(0);
+    console.error("Local release authority verification failed: source.gitCommit does not match current HEAD");
     process.exit(1);
   }
   if (is("run", "qa:public-beta-dogfood")) {

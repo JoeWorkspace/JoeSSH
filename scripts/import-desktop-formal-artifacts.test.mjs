@@ -27,14 +27,18 @@ function readReleaseFile(root, relativePath) {
   return readFileSync(join(root, ...relativePath.split("/")), "utf8");
 }
 
-function createSignedArtifactInput(root) {
-  writeFile(root, "signed/JoeSSH_0.1.0-beta.1_x64-setup.exe", "windows");
-  writeFile(root, "signed/JoeSSH_0.1.0-beta.1_aarch64.dmg", "macos");
-  writeFile(root, "signed/JoeSSH_0.1.0-beta.1_amd64.AppImage", "linux");
-  writeFile(root, "signed/windows-signature-verification.txt", "signtool verify JoeSSH_0.1.0-beta.1_x64-setup.exe passed");
-  writeFile(root, "signed/macos-signature-verification.txt", "codesign --verify JoeSSH_0.1.0-beta.1_aarch64.dmg passed");
-  writeFile(root, "signed/macos-notarization-verification.txt", "spctl --assess JoeSSH_0.1.0-beta.1_aarch64.dmg accepted");
-  return join(root, "signed");
+function createSignedArtifactInput(t) {
+  const inputDir = mkdtempSync(join(tmpdir(), "desktop-formal-signed-input-"));
+  t.after(() => {
+    rmSync(inputDir, { force: true, recursive: true });
+  });
+  writeFile(inputDir, "JoeSSH_0.1.0-beta.1_x64-setup.exe", "windows");
+  writeFile(inputDir, "JoeSSH_0.1.0-beta.1_aarch64.dmg", "macos");
+  writeFile(inputDir, "JoeSSH_0.1.0-beta.1_amd64.AppImage", "linux");
+  writeFile(inputDir, "windows-signature-verification.txt", "signtool verify JoeSSH_0.1.0-beta.1_x64-setup.exe passed");
+  writeFile(inputDir, "macos-signature-verification.txt", "codesign --verify JoeSSH_0.1.0-beta.1_aarch64.dmg passed");
+  writeFile(inputDir, "macos-notarization-verification.txt", "spctl --assess JoeSSH_0.1.0-beta.1_aarch64.dmg accepted");
+  return inputDir;
 }
 
 function runImporter(root, inputDir, extraArgs = [], env = {}) {
@@ -111,7 +115,7 @@ process.exit(2);
 
 test("imports signed Desktop formal artifacts and verifies local source evidence", (t) => {
   const root = createFixture(t);
-  const inputDir = createSignedArtifactInput(root);
+  const inputDir = createSignedArtifactInput(t);
 
   const result = runImporter(root, inputDir, [], createFakeGitCommands(root));
 
@@ -140,7 +144,7 @@ test("imports signed Desktop formal artifacts and verifies local source evidence
 
 test("imports self-hosted Desktop formal artifacts with self-hosted source authority", (t) => {
   const root = createFixture(t);
-  const inputDir = createSignedArtifactInput(root);
+  const inputDir = createSignedArtifactInput(t);
 
   const result = runImporter(
     root,
@@ -157,7 +161,7 @@ test("imports self-hosted Desktop formal artifacts with self-hosted source autho
 
 test("rejects macOS artifacts without notarization proof", (t) => {
   const root = createFixture(t);
-  const inputDir = createSignedArtifactInput(root);
+  const inputDir = createSignedArtifactInput(t);
   rmSync(join(inputDir, "macos-notarization-verification.txt"));
 
   const result = runImporter(root, inputDir, [], createFakeGitCommands(root));
@@ -169,8 +173,8 @@ test("rejects macOS artifacts without notarization proof", (t) => {
 
 test("rejects stale Desktop formal artifacts before packaging", (t) => {
   const root = createFixture(t);
-  const inputDir = createSignedArtifactInput(root);
-  writeFile(root, "signed/JoeSSH_0.1.0-beta.0_amd64.deb", "old linux");
+  const inputDir = createSignedArtifactInput(t);
+  writeFile(inputDir, "JoeSSH_0.1.0-beta.0_amd64.deb", "old linux");
 
   const result = runImporter(root, inputDir, [], createFakeGitCommands(root));
 
@@ -182,7 +186,7 @@ test("rejects stale Desktop formal artifacts before packaging", (t) => {
 
 test("accepts explicit UTF-16LE proof files", (t) => {
   const root = createFixture(t);
-  const inputDir = createSignedArtifactInput(root);
+  const inputDir = createSignedArtifactInput(t);
   writeFileSync(
     join(inputDir, "windows-signature-verification.txt"),
     Buffer.from("\uFEFFsigntool verify JoeSSH_0.1.0-beta.1_x64-setup.exe passed", "utf16le"),
@@ -193,4 +197,20 @@ test("accepts explicit UTF-16LE proof files", (t) => {
   assert.equal(result.status, 0, result.stdout + result.stderr);
   const evidence = JSON.parse(readReleaseFile(root, "reports/release/desktop/release-evidence.json"));
   assert.match(evidence.artifacts.find((artifact) => artifact.platform === "windows").signatureVerification, /signtool/);
+});
+
+test("rejects input directories inside the release workspace before packaging", (t) => {
+  const root = createFixture(t);
+  writeFile(root, "signed/JoeSSH_0.1.0-beta.1_x64-setup.exe", "windows");
+  writeFile(root, "signed/JoeSSH_0.1.0-beta.1_aarch64.dmg", "macos");
+  writeFile(root, "signed/JoeSSH_0.1.0-beta.1_amd64.AppImage", "linux");
+  writeFile(root, "signed/windows-signature-verification.txt", "signtool verify JoeSSH_0.1.0-beta.1_x64-setup.exe passed");
+  writeFile(root, "signed/macos-signature-verification.txt", "codesign --verify JoeSSH_0.1.0-beta.1_aarch64.dmg passed");
+  writeFile(root, "signed/macos-notarization-verification.txt", "spctl --assess JoeSSH_0.1.0-beta.1_aarch64.dmg accepted");
+
+  const result = runImporter(root, join(root, "signed"), [], createFakeGitCommands(root));
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /--input-dir must be outside the release workspace/);
+  assert.equal(existsSync(join(root, "reports", "release", "desktop", "release-evidence.json")), false);
 });

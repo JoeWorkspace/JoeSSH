@@ -113,6 +113,19 @@ test("rejects expected artifact paths when the file is absent", () => {
   assert.match(failure.stderr, /artifacts.webRelease file is missing/);
 });
 
+test("rejects task evidence that is not bound to required evidence files", () => {
+  const tasks = completeTasks();
+  tasks.find((task) => task.id === "sync-backup-restore-rollback").evidence = ["operator says rollback passed"];
+  const { path, root } = writeEvidence({ tasks });
+  const failure = runFailure(path, root);
+
+  assert.equal(failure.status, 1);
+  assert.match(
+    failure.stderr,
+    /task sync-backup-restore-rollback must include evidence path reports\/release\/sync\/backup-restore-smoke\.json/,
+  );
+});
+
 function writeEvidence(overrides = {}, options = {}) {
   return writeEvidenceWithOptions(overrides, options);
 }
@@ -149,6 +162,11 @@ function createReleaseRoot(options = {}) {
       writeFile(root, path, `${path} evidence`);
     }
   }
+  for (const path of requiredTaskEvidencePaths()) {
+    if (!options.omitArtifacts?.includes(path)) {
+      writeFile(root, path, `${path} evidence`);
+    }
+  }
   return root;
 }
 
@@ -165,9 +183,38 @@ function completeTasks() {
   return requiredTaskIds.map((id) => ({
     id,
     status: "passed",
-    evidence: [`${id} completed with redacted notes`],
+    evidence: taskEvidence(id),
     notes: "",
   }));
+}
+
+function taskEvidence(id) {
+  return {
+    "desktop-install-launch": ["reports/handoff/desktop/unsigned-staging-report.json"],
+    "desktop-connection-host-key": ["reports/smoke/desktop/real-ssh-smoke.json"],
+    "desktop-command-safety": ["apps/desktop/src/safety.test.ts"],
+    "desktop-forwarding": ["reports/smoke/desktop/real-ssh-smoke.json"],
+    "desktop-pty-session": ["reports/smoke/desktop/real-ssh-smoke.json"],
+    "desktop-sftp-transfer": ["reports/smoke/desktop/real-ssh-smoke.json"],
+    "release-evidence-review": [
+      "reports/release/public-beta-rc-audit.json",
+      "reports/handoff/desktop/formal-evidence-unblock-report.json",
+      "reports/release/web/rollback-smoke.json",
+    ],
+    "sync-backup-restore-rollback": [
+      "reports/release/sync/backup-restore-smoke.json",
+      "reports/release/web/rollback-smoke.json",
+    ],
+    "sync-device-flow": ["reports/release/sync/backup-restore-smoke.json"],
+    "web-admin-live-sync": [
+      `reports/release/web/joessh-web-admin-${version}.zip`,
+      "reports/release/web/rollback-smoke.json",
+    ],
+  }[id] ?? [`${id} completed with redacted notes`];
+}
+
+function requiredTaskEvidencePaths() {
+  return [...new Set(requiredTaskIds.flatMap((id) => taskEvidence(id)))];
 }
 
 function runFailure(path, root) {

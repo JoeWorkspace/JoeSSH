@@ -66,6 +66,7 @@ const releaseScriptNames = [
   "test:release-rc-audit",
   "test:release-readiness",
   "test:web-admin-bundle-token-scan",
+  "test:web-admin-rollback-smoke",
   "test:mobile-public-env",
   "test:sync-release-package",
   "test:sync-release-evidence",
@@ -76,6 +77,7 @@ const releaseScriptNames = [
   "qa:release-rc-audit",
   "qa:release-readiness",
   "qa:web-admin-bundle-token-scan",
+  "qa:web-admin-rollback-smoke",
   "qa:mobile-public-env",
   "qa:sync-release-package",
   "qa:sync-release-evidence",
@@ -110,6 +112,7 @@ const releaseScriptNames = [
   "release:sbom:verify",
   "release:sync",
   "release:web",
+  "release:web-admin-rollback-smoke",
 ];
 
 function fixtureScriptValue(name, overrides = {}) {
@@ -138,7 +141,7 @@ function fixtureScriptValue(name, overrides = {}) {
     return "npm run test:desktop-unsigned-staging-report";
   }
   if (name === "qa") {
-    return "npm run lint && npm run qa:desktop-formal-artifact-import && npm run qa:desktop-release-diagnostics && npm run qa:desktop-release-parity && npm run qa:lighthouse-audit && npm run qa:e2e:fresh";
+    return "npm run lint && npm run qa:desktop-formal-artifact-import && npm run qa:desktop-release-diagnostics && npm run qa:desktop-release-parity && npm run qa:web-admin-rollback-smoke && npm run qa:lighthouse-audit && npm run qa:e2e:fresh";
   }
   if (name === "qa:desktop:real-ssh-smoke:required") {
     return "node scripts/require-real-ssh-smoke-env.mjs && npm run qa:desktop:real-ssh-smoke";
@@ -293,7 +296,7 @@ function createFixture(t, overrides = {}) {
       "artifactSha256 sha256: artifactSha256 Desktop bundle source contains artifact(s) that do not include releaseVersion basename(artifact.path) validateSignatureEvidence(sourceArtifacts) Windows Desktop artifacts require --windows-signature-verification mkdirSync(outputDir\n",
     "scripts/package-desktop-release.test.mjs": "",
     "scripts/import-desktop-formal-artifacts.mjs":
-      "release:desktop:verify-evidence --require-source-authority windows-signature-verification.txt macos-notarization-verification.txt Desktop formal artifact input contains file(s) that do not include\n",
+      "release:desktop:verify-evidence --require-source-authority windows-signature-verification.txt macos-notarization-verification.txt Desktop formal artifact input contains file(s) that do not include --input-dir must be outside the release workspace source tree is clean release upload tools cannot pick up staging-only files\n",
     "scripts/import-desktop-formal-artifacts.test.mjs": "",
     "scripts/configure-desktop-release-secrets.mjs":
       'ATLASTERM_WINDOWS_CERTIFICATE_FILE ATLASTERM_APPLE_CERTIFICATE_FILE --write-template reports/handoff/desktop secret-input-template.env "secret", "set" --body-file desktop-release-evidence-preflight.mjs\n',
@@ -317,6 +320,9 @@ function createFixture(t, overrides = {}) {
     "scripts/check-web-admin-bundle-token-scan.mjs":
       "ATLASTERM_[A-Z0-9_]*TOKEN bearer token literal high-entropy credential literal\n",
     "scripts/check-web-admin-bundle-token-scan.test.mjs": "",
+    "scripts/smoke-web-admin-rollback.mjs":
+      "web-admin-rollback-smoke verified current Web Admin release package verified previous Web Admin rollback package rollback-smoke-SHA256SUMS.txt\n",
+    "scripts/smoke-web-admin-rollback.test.mjs": "",
     "scripts/check-mobile-public-env.mjs":
       "EXPO_PUBLIC_ATLASTERM_SYNC_AUTH_TOKEN Public Beta mobile release builds embedded in the app bundle\n",
     "scripts/check-mobile-public-env.test.mjs": "",
@@ -501,6 +507,7 @@ function ciFixture() {
     "npm run qa:sync-release-package",
     "npm run qa:sync-release-evidence",
     "npm run qa:web-release",
+    "npm run qa:web-admin-rollback-smoke",
     "npm run qa:release-sbom",
     "npm run qa:release-draft",
     "npm run qa:release-publish-preflight",
@@ -841,6 +848,7 @@ test("rejects Desktop checksum scripts that bypass release evidence packaging", 
             "test:release-provenance",
             "test:release-readiness",
             "test:web-admin-bundle-token-scan",
+            "test:web-admin-rollback-smoke",
             "test:sync-release-package",
             "test:sync-release-evidence",
             "test:web-release-verify",
@@ -849,6 +857,7 @@ test("rejects Desktop checksum scripts that bypass release evidence packaging", 
             "qa:release-provenance",
             "qa:release-readiness",
             "qa:web-admin-bundle-token-scan",
+            "qa:web-admin-rollback-smoke",
             "qa:sync-release-package",
             "qa:sync-release-evidence",
             "qa:sync:release-backup-restore-smoke",
@@ -867,6 +876,7 @@ test("rejects Desktop checksum scripts that bypass release evidence packaging", 
             "release:sbom:verify",
             "release:sync",
             "release:web",
+            "release:web-admin-rollback-smoke",
           ].map((name) => [
             name,
             fixtureScriptValue(name, {
@@ -924,6 +934,7 @@ test("rejects release checksum gates that do not discover all staged manifests",
             "test:release-provenance",
             "test:release-readiness",
             "test:web-admin-bundle-token-scan",
+            "test:web-admin-rollback-smoke",
             "test:sync-release-package",
             "test:sync-release-evidence",
             "test:web-release-verify",
@@ -932,6 +943,7 @@ test("rejects release checksum gates that do not discover all staged manifests",
             "qa:release-provenance",
             "qa:release-readiness",
             "qa:web-admin-bundle-token-scan",
+            "qa:web-admin-rollback-smoke",
             "qa:sync-release-package",
             "qa:sync-release-evidence",
             "qa:sync:release-backup-restore-smoke",
@@ -950,6 +962,7 @@ test("rejects release checksum gates that do not discover all staged manifests",
             "release:sbom:verify",
             "release:sync",
             "release:web",
+            "release:web-admin-rollback-smoke",
           ].map((name) => [
             name,
             fixtureScriptValue(name, {

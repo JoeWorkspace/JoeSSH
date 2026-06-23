@@ -11,6 +11,25 @@ const expectedArtifacts = {
   syncRelease: `reports/release/sync/joessh-sync-${expectedVersion}-win32-x64.exe`,
   rcAudit: "reports/release/public-beta-rc-audit.json",
 };
+const requiredTaskEvidencePaths = {
+  "desktop-install-launch": ["reports/handoff/desktop/unsigned-staging-report.json"],
+  "desktop-connection-host-key": [expectedArtifacts.desktopSmoke],
+  "desktop-command-safety": ["apps/desktop/src/safety.test.ts"],
+  "desktop-forwarding": [expectedArtifacts.desktopSmoke],
+  "desktop-pty-session": [expectedArtifacts.desktopSmoke],
+  "desktop-sftp-transfer": [expectedArtifacts.desktopSmoke],
+  "release-evidence-review": [
+    expectedArtifacts.rcAudit,
+    "reports/handoff/desktop/formal-evidence-unblock-report.json",
+    "reports/release/web/rollback-smoke.json",
+  ],
+  "sync-backup-restore-rollback": [
+    "reports/release/sync/backup-restore-smoke.json",
+    "reports/release/web/rollback-smoke.json",
+  ],
+  "sync-device-flow": ["reports/release/sync/backup-restore-smoke.json"],
+  "web-admin-live-sync": [expectedArtifacts.webRelease, "reports/release/web/rollback-smoke.json"],
+};
 
 const requiredTasks = [
   "desktop-install-launch",
@@ -150,6 +169,7 @@ function validateEvidence(evidence) {
       } else if (!task.evidence.every(nonEmptyString)) {
         failures.push(`task ${id} evidence entries must be non-empty strings`);
       }
+      validateRequiredTaskEvidence(id, task, failures);
     }
   }
 
@@ -175,6 +195,21 @@ function validateEvidence(evidence) {
   }
 
   return failures;
+}
+
+function validateRequiredTaskEvidence(id, task, failures) {
+  const requiredPaths = requiredTaskEvidencePaths[id] ?? [];
+  const evidenceEntries = new Set((task.evidence ?? []).map((entry) => normalizePath(entry)));
+  for (const requiredPath of requiredPaths) {
+    if (!evidenceEntries.has(requiredPath)) {
+      failures.push(`task ${id} must include evidence path ${requiredPath}`);
+      continue;
+    }
+    const artifactFailure = validateRelativeFilePath(`task ${id} evidence ${requiredPath}`, requiredPath);
+    if (artifactFailure) {
+      failures.push(artifactFailure);
+    }
+  }
 }
 
 function readJson(path) {
