@@ -171,6 +171,24 @@ test("generates and self-verifies custom local release authority paths", (t) => 
   assert.equal(verified.status, 0, verified.stdout + verified.stderr);
 });
 
+test("generates local release authority evidence for the local public release gate", (t) => {
+  const root = createFixture(t, {
+    logText: [
+      "> atlasterm@0.1.0-beta.1 qa:release:public:local",
+      "> npm run qa:release:public:local",
+      "Public Beta release readiness checks passed.",
+      "",
+    ].join("\n"),
+  });
+  const env = createFakeGitCommands(root);
+
+  const generated = runGenerator(root, env, ["--gate-command", "npm run qa:release:public:local"]);
+
+  assert.equal(generated.status, 0, generated.stdout + generated.stderr);
+  const evidence = JSON.parse(readFile(root, "reports/release/local-release-authority.json"));
+  assert.equal(evidence.releaseGate.command, "npm run qa:release:public:local");
+});
+
 test("rejects local release authority generation without a release readiness success marker", (t) => {
   const root = createFixture(t, {
     logText: "> npm run qa:release:public\nrelease failed before readiness\n",

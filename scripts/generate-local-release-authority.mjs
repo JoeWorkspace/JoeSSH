@@ -284,8 +284,13 @@ function parseArgs(args) {
   if (!["local", "self-hosted"].includes(authority)) {
     fail("--release-authority must be local or self-hosted.");
   }
-  if (!["npm run qa:release:public", "npm run qa:release:public:fixture"].includes(gateCommand)) {
-    fail("--gate-command must be npm run qa:release:public or npm run qa:release:public:fixture.");
+  const allowedGateCommands = [
+    "npm run qa:release:public",
+    "npm run qa:release:public:fixture",
+    "npm run qa:release:public:local",
+  ];
+  if (!allowedGateCommands.includes(gateCommand)) {
+    fail(`--gate-command must be one of: ${allowedGateCommands.join(", ")}.`);
   }
   if (operator.trim() === "") {
     fail("--operator must be non-empty.");

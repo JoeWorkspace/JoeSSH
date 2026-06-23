@@ -149,8 +149,13 @@ function validateReleaseGate() {
     errors.push("releaseGate must be a JSON object");
     return;
   }
-  if (!["npm run qa:release:public", "npm run qa:release:public:fixture"].includes(gate.command)) {
-    errors.push("releaseGate.command must be npm run qa:release:public or npm run qa:release:public:fixture");
+  const allowedGateCommands = [
+    "npm run qa:release:public",
+    "npm run qa:release:public:fixture",
+    "npm run qa:release:public:local",
+  ];
+  if (!allowedGateCommands.includes(gate.command)) {
+    errors.push(`releaseGate.command must be one of: ${allowedGateCommands.join(", ")}`);
   }
   if (gate.status !== "passed") {
     errors.push("releaseGate.status must be passed");
