@@ -4,8 +4,16 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { basename, isAbsolute, relative, resolve } from "node:path";
 
 const defaultRoot = resolve(import.meta.dirname, "..");
-const { evidenceChecksumPath, evidencePath, manifestPath, requireCurrentGitSource, requireSource, root, sourcePath } =
-  parseArgs(process.argv.slice(2));
+const {
+  evidenceChecksumPath,
+  evidencePath,
+  manifestPath,
+  requireCurrentGitSource,
+  requiredSourceAuthority,
+  requireSource,
+  root,
+  sourcePath,
+} = parseArgs(process.argv.slice(2));
 const gitCommand = process.env.ATLASTERM_RELEASE_GIT_COMMAND ?? "git";
 const gitCommandPrefixArgs = parseCommandPrefixArgs("ATLASTERM_RELEASE_GIT_ARGS");
 const errors = [];
@@ -163,6 +171,9 @@ function validateEvidenceSource(source) {
   }
 
   const sourceAuthority = source.sourceAuthority ?? "github";
+  if (requiredSourceAuthority && sourceAuthority !== requiredSourceAuthority) {
+    errors.push(`desktop evidence source sidecar sourceAuthority must be ${requiredSourceAuthority}`);
+  }
   if (source.sourceVersion !== 1) {
     errors.push("desktop evidence source sidecar sourceVersion must be 1");
   }
@@ -531,6 +542,7 @@ function parseArgs(args) {
   let evidencePath = "reports/release/desktop/release-evidence.json";
   let evidenceChecksumPath = "reports/release/desktop/release-evidence-SHA256SUMS.txt";
   let requireCurrentGitSource = false;
+  let requiredSourceAuthority = "";
   let requireSource = false;
   let sourcePath = "reports/release/desktop/release-evidence-source.json";
 
@@ -584,6 +596,19 @@ function parseArgs(args) {
       requireCurrentGitSource = true;
       continue;
     }
+    if (arg === "--require-source-authority") {
+      const value = args[index + 1];
+      if (!value) {
+        fail("--require-source-authority requires a value.");
+      }
+      requiredSourceAuthority = value;
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--require-source-authority=")) {
+      requiredSourceAuthority = arg.slice("--require-source-authority=".length);
+      continue;
+    }
     if (arg === "--source") {
       const value = args[index + 1];
       if (!value) {
@@ -601,7 +626,24 @@ function parseArgs(args) {
     fail(`Unknown argument: ${arg}`);
   }
 
-  return { evidenceChecksumPath, evidencePath, manifestPath, requireCurrentGitSource, requireSource, root, sourcePath };
+  requiredSourceAuthority = requiredSourceAuthority.trim();
+  if (requiredSourceAuthority && !["github", "local", "self-hosted"].includes(requiredSourceAuthority)) {
+    fail("--require-source-authority must be github, local, or self-hosted.");
+  }
+  if (requiredSourceAuthority) {
+    requireSource = true;
+  }
+
+  return {
+    evidenceChecksumPath,
+    evidencePath,
+    manifestPath,
+    requireCurrentGitSource,
+    requiredSourceAuthority,
+    requireSource,
+    root,
+    sourcePath,
+  };
 }
 
 function parseCommandPrefixArgs(envName) {

@@ -389,6 +389,34 @@ test("reports unpublished release refs separately from local tag state", (t) => 
   assert.ok(report.blockers.some((blocker) => blocker.id === "release-remote-ref"));
 });
 
+test("local authority diagnostics skip GitHub-only blockers", (t) => {
+  const { env, root } = createFixture(t, {
+    ciRuns: [],
+    desktopRuns: [],
+    ghAuthFails: true,
+    remoteRefs: {},
+    secrets: [],
+  });
+
+  const result = runDiagnostics(root, ["--no-fail", "--release-authority", "local", "--skip-github"], env);
+
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  const report = readReport(root);
+  assert.equal(report.releaseAuthority, "local");
+  assert.equal(report.git.remoteReleaseRef.status, "skipped");
+  assert.equal(report.github.skipped, true);
+  assert.deepEqual(report.requiredGitHubSecrets, []);
+  assert.ok(report.blockers.some((blocker) => blocker.id === "release-desktop"));
+  assert.equal(report.blockers.some((blocker) => blocker.id === "release-remote-ref"), false);
+  assert.equal(report.blockers.some((blocker) => blocker.id === "desktop-signing-secrets"), false);
+  assert.equal(report.blockers.some((blocker) => blocker.id === "github-ci"), false);
+  assert.ok(
+    report.unblockSteps.some((step) =>
+      step.includes("npm run release:desktop:package:local-source"),
+    ),
+  );
+});
+
 test("flags staged Desktop artifacts that do not match the package version", (t) => {
   const { env, root } = createFixture(t, { completeDesktopEvidence: true });
   writeFile(root, "reports/release/desktop/JoeSSH_0.1.0-beta.0_x64-setup.exe", "old installer");

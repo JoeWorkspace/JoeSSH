@@ -49,6 +49,7 @@ const steps = [
       root,
       "--require-source",
       "--require-current-git-source",
+      ...(releaseAuthority === "github" ? [] : ["--require-source-authority", releaseAuthority]),
     ],
   },
   {

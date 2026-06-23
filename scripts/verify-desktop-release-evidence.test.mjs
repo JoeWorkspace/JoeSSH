@@ -219,6 +219,16 @@ test("accepts formal desktop evidence with a local source sidecar", (t) => {
   assert.match(result.stdout, /Desktop release evidence verified for 3 artifact/);
 });
 
+test("requires a specific desktop evidence source authority when requested", (t) => {
+  const root = createFixture(t);
+  writeEvidenceSource(root);
+
+  const result = runChecker(root, ["--require-source-authority", "local"]);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /sourceAuthority must be local/);
+});
+
 test("accepts formal desktop evidence when source sidecar matches current Git", (t) => {
   const root = createFixture(t);
   writeEvidenceSource(root, localEvidenceSourceOverride());

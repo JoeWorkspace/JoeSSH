@@ -608,6 +608,18 @@ test("local publish preflight rejects missing local release authority evidence",
   assert.match(result.stderr, /Public release publish preflight failed: Verify local release authority evidence/);
 });
 
+test("local publish preflight rejects GitHub desktop evidence source sidecars", (t) => {
+  const root = createReleaseFixture(t);
+  writeLocalReleaseAuthorityFixture(root);
+  writeReleaseProvenanceFixture(root, { releaseAuthority: "local" });
+
+  const result = runPreflight(root, createFakeGitCommands(root), ["--release-authority", "local"]);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /sourceAuthority must be local/);
+  assert.match(result.stderr, /Public release publish preflight failed: Verify Desktop signing\/distribution evidence/);
+});
+
 test("publish preflight rejects missing Git checkout metadata", (t) => {
   const result = runPreflightWithoutFakeGit(createReleaseFixture(t));
 

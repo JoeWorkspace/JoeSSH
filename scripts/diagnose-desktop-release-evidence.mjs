@@ -15,8 +15,10 @@ const {
   noFail,
   outputPath,
   ref,
+  releaseAuthority,
   repo: explicitRepo,
   root,
+  skipGithub,
   workflow,
 } = parseArgs(process.argv.slice(2));
 const gitCommand = process.env.ATLASTERM_RELEASE_GIT_COMMAND ?? "git";
@@ -30,7 +32,8 @@ const powershellCommandPrefixArgs = parseCommandPrefixArgs(
 );
 const packageJson = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
 const releaseRef = ref ?? `v${packageJson.version}`;
-const repo = explicitRepo ?? resolveRepoFromOrigin();
+const includeGitHubDiagnostics = releaseAuthority === "github" && !skipGithub;
+const repo = explicitRepo ?? (includeGitHubDiagnostics ? resolveRepoFromOrigin() : resolveRepositoryLabel());
 const desktopReleaseDir = resolve(root, "reports", "release", "desktop");
 const requiredSecretGroups = [
   {
@@ -73,7 +76,15 @@ if (report.blockers.length > 0 && !noFail) {
 function buildReport() {
   const git = inspectGit();
   const desktop = inspectDesktopReleaseFiles();
-  const github = inspectGitHub(git.head);
+  const github = includeGitHubDiagnostics
+    ? inspectGitHub(git.head)
+    : {
+        blockers: [],
+        summary: {
+          reason: "GitHub diagnostics skipped for local/self-hosted release authority.",
+          skipped: true,
+        },
+      };
   const blockers = [
     ...git.blockers,
     ...desktop.blockers,
@@ -82,6 +93,7 @@ function buildReport() {
 
   return {
     generatedAt: new Date().toISOString(),
+    releaseAuthority,
     repository: repo,
     version: packageJson.version,
     releaseRef,
@@ -93,7 +105,7 @@ function buildReport() {
     },
     decision: blockers.length === 0 ? "go" : "no-go",
     blockers,
-    requiredGitHubSecrets: requiredSecretGroups.flatMap((group) => group.names),
+    requiredGitHubSecrets: includeGitHubDiagnostics ? requiredSecretGroups.flatMap((group) => group.names) : [],
     localEvidence: desktop.localEvidence,
     github: github.summary,
     unblockSteps: buildUnblockSteps(blockers),
@@ -140,7 +152,15 @@ function inspectGit() {
     });
   }
 
-  const remoteReleaseRef = inspectRemoteReleaseRef(head);
+  const remoteReleaseRef = includeGitHubDiagnostics
+    ? inspectRemoteReleaseRef(head)
+    : {
+        blockers: [],
+        summary: {
+          reason: "Remote release ref publication is not required for local/self-hosted authority diagnostics.",
+          status: "skipped",
+        },
+      };
   blockers.push(...remoteReleaseRef.blockers);
 
   return {
@@ -678,9 +698,15 @@ function buildUnblockSteps(blockers) {
     ids.has("desktop-formal-workflow-run") ||
     ids.has("release-desktop-evidence-verify")
   ) {
-    steps.push(
-      `Run npm run release:desktop:evidence-workflow -- --repo ${repo} --ref ${releaseRef}, wait for success, then import it with npm run release:desktop:evidence-download -- --repo ${repo} --run-id <run-id>.`,
-    );
+    if (includeGitHubDiagnostics) {
+      steps.push(
+        `Run npm run release:desktop:evidence-workflow -- --repo ${repo} --ref ${releaseRef}, wait for success, then import it with npm run release:desktop:evidence-download -- --repo ${repo} --run-id <run-id>.`,
+      );
+    } else {
+      steps.push(
+        "Collect signed Windows, signed/notarized macOS, and Linux Desktop artifacts into the bundle input, then run npm run release:desktop:package:local-source.",
+      );
+    }
   }
   steps.push(
     "After Desktop formal evidence imports, rerun release:provenance, release:provenance:verify, release:publish-preflight, and release:rc-audit:report.",
@@ -815,6 +841,14 @@ function resolveRepoFromOrigin() {
   return validateRepo(`${match.groups.owner}/${match.groups.repo}`);
 }
 
+function resolveRepositoryLabel() {
+  const origin = runGit(["remote", "get-url", "origin"]);
+  if (origin.status === 0 && origin.stdout.trim() !== "") {
+    return origin.stdout.trim();
+  }
+  return "local-release-workspace";
+}
+
 function runGit(args) {
   return runCommand(gitCommand, [...gitCommandPrefixArgs, ...args]);
 }
@@ -857,14 +891,20 @@ function parseArgs(args) {
   let noFail = false;
   let outputPath = null;
   let ref = null;
+  let releaseAuthority = process.env.ATLASTERM_RELEASE_AUTHORITY ?? "github";
   let repo = null;
   let root = scriptRoot;
+  let skipGithub = false;
   let workflow = "desktop-release-artifacts.yml";
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
     if (arg === "--no-fail") {
       noFail = true;
+      continue;
+    }
+    if (arg === "--skip-github") {
+      skipGithub = true;
       continue;
     }
     if (arg === "--output") {
@@ -883,6 +923,19 @@ function parseArgs(args) {
     }
     if (arg.startsWith("--ref=")) {
       ref = arg.slice("--ref=".length);
+      continue;
+    }
+    if (arg === "--release-authority" || arg === "--authority") {
+      releaseAuthority = readValue(args, index, arg);
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--release-authority=")) {
+      releaseAuthority = arg.slice("--release-authority=".length);
+      continue;
+    }
+    if (arg.startsWith("--authority=")) {
+      releaseAuthority = arg.slice("--authority=".length);
       continue;
     }
     if (arg === "--repo") {
@@ -916,12 +969,22 @@ function parseArgs(args) {
     fail(`Unknown argument: ${arg}`);
   }
 
+  releaseAuthority = releaseAuthority.trim();
+  if (!["github", "local", "self-hosted"].includes(releaseAuthority)) {
+    fail("--release-authority must be github, local, or self-hosted.");
+  }
+  if (releaseAuthority !== "github") {
+    skipGithub = true;
+  }
+
   return {
     noFail,
     outputPath: resolve(root, outputPath ?? "reports/handoff/desktop/formal-evidence-unblock-report.json"),
     ref,
+    releaseAuthority,
     repo,
     root,
+    skipGithub,
     workflow,
   };
 }
