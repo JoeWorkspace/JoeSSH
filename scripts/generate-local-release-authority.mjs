@@ -126,7 +126,7 @@ function verifyReleaseGateLog() {
   if (!existsSync(path) || !statSync(path).isFile()) {
     fail(`Release gate log is required: ${toReleasePath(path)}`);
   }
-  const text = readFileSync(path, "utf8");
+  const text = readTextFile(path);
   if (!text.includes("qa:release:public")) {
     fail("Release gate log must include the public release gate command.");
   }
@@ -167,6 +167,17 @@ function runGit(args, message) {
 
 function sha256File(path) {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
+}
+
+function readTextFile(path) {
+  const bytes = readFileSync(path);
+  if (bytes.length >= 2 && bytes[0] === 0xff && bytes[1] === 0xfe) {
+    return bytes.subarray(2).toString("utf16le");
+  }
+  if (bytes.subarray(0, Math.min(bytes.length, 256)).includes(0)) {
+    return bytes.toString("utf16le").replace(/^\uFEFF/, "");
+  }
+  return bytes.toString("utf8").replace(/^\uFEFF/, "");
 }
 
 function toReleasePath(path) {

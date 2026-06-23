@@ -189,6 +189,19 @@ test("generates local release authority evidence for the local public release ga
   assert.equal(evidence.releaseGate.command, "npm run qa:release:public:local");
 });
 
+test("accepts UTF-16LE PowerShell release gate logs", (t) => {
+  const root = createFixture(t);
+  const env = createFakeGitCommands(root);
+  const logPath = join(root, "reports", "release", "local-release-authority", "qa-release-public.log");
+  writeFileSync(logPath, Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(releaseGateLog(), "utf16le")]));
+
+  const generated = runGenerator(root, env);
+
+  assert.equal(generated.status, 0, generated.stdout + generated.stderr);
+  const verified = runVerifier(root, env);
+  assert.equal(verified.status, 0, verified.stdout + verified.stderr);
+});
+
 test("rejects local release authority generation without a release readiness success marker", (t) => {
   const root = createFixture(t, {
     logText: "> npm run qa:release:public\nrelease failed before readiness\n",

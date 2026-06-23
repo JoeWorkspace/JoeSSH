@@ -173,7 +173,7 @@ function validateReleaseGate() {
   } else if (sha256File(logPath) !== gate.logSha256) {
     errors.push(`releaseGate.logSha256 does not match ${gate.logPath}`);
   }
-  const logText = readFileSync(logPath, "utf8");
+  const logText = readTextFile(logPath);
   if (!logText.includes("qa:release:public")) {
     errors.push("releaseGate log must include the public release gate command");
   }
@@ -262,6 +262,17 @@ function isSha256(value) {
 
 function sha256File(path) {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
+}
+
+function readTextFile(path) {
+  const bytes = readFileSync(path);
+  if (bytes.length >= 2 && bytes[0] === 0xff && bytes[1] === 0xfe) {
+    return bytes.subarray(2).toString("utf16le");
+  }
+  if (bytes.subarray(0, Math.min(bytes.length, 256)).includes(0)) {
+    return bytes.toString("utf16le").replace(/^\uFEFF/, "");
+  }
+  return bytes.toString("utf8").replace(/^\uFEFF/, "");
 }
 
 function readJson(path) {
