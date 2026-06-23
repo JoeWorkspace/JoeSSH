@@ -199,6 +199,7 @@ function checkPackageScripts() {
     "release:desktop:secret-template",
     "release:desktop:configure-secrets",
     "release:desktop:evidence-diagnostics",
+    "release:desktop:evidence-diagnostics:local",
     "release:desktop:verify-evidence",
     "release:desktop:evidence-download",
     "release:desktop:evidence-preflight",

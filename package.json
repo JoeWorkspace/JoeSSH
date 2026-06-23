@@ -141,6 +141,7 @@
     "release:desktop:secret-template": "node scripts/configure-desktop-release-secrets.mjs --write-template",
     "release:desktop:configure-secrets": "node scripts/configure-desktop-release-secrets.mjs",
     "release:desktop:evidence-diagnostics": "node scripts/diagnose-desktop-release-evidence.mjs --no-fail",
+    "release:desktop:evidence-diagnostics:local": "node scripts/diagnose-desktop-release-evidence.mjs --no-fail --release-authority local --skip-github",
     "release:desktop:verify-evidence": "node scripts/verify-desktop-release-evidence.mjs",
     "release:desktop:evidence-download": "node scripts/download-desktop-release-evidence.mjs",
     "release:desktop:evidence-preflight": "node scripts/desktop-release-evidence-preflight.mjs",

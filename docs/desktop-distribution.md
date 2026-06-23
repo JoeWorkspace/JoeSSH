@@ -159,6 +159,14 @@ release authority. A controlled local or self-hosted release machine may produce
 the same formal Desktop evidence when GitHub Actions billing, runner access, or
 repository policy blocks workflow execution.
 
+For this path, use the local diagnostics alias so the report focuses on missing
+Desktop artifacts and local source evidence instead of GitHub remote refs,
+secrets, or workflow runs:
+
+```bash
+npm run release:desktop:evidence-diagnostics:local
+```
+
 Local/self-hosted Desktop evidence still has the same artifact bar:
 
 - Windows artifacts must be signed and include signature verification text.

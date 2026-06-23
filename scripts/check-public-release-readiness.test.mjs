@@ -90,6 +90,7 @@ const releaseScriptNames = [
   "release:desktop:secret-template",
   "release:desktop:configure-secrets",
   "release:desktop:evidence-diagnostics",
+  "release:desktop:evidence-diagnostics:local",
   "release:desktop:verify-evidence",
   "release:desktop:evidence-download",
   "release:desktop:evidence-preflight",
@@ -169,6 +170,9 @@ function fixtureScriptValue(name, overrides = {}) {
   }
   if (name === "release:desktop:evidence-diagnostics") {
     return "node scripts/diagnose-desktop-release-evidence.mjs --no-fail";
+  }
+  if (name === "release:desktop:evidence-diagnostics:local") {
+    return "node scripts/diagnose-desktop-release-evidence.mjs --no-fail --release-authority local --skip-github";
   }
   if (name === "test:desktop-release-parity") {
     return "node --test scripts/check-desktop-release-evidence-parity.test.mjs";
