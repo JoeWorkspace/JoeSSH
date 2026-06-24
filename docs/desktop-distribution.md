@@ -230,8 +230,7 @@ artifacts, proof files, missing platforms, stale versions, and proof text that
 does not bind to both an artifact file name and SHA256 or does not show a
 successful verification.
 
-After the full public release gate is complete, retain its log and generate the
-local publication authority:
+Generate the local publication authority with an allowed public release gate:
 
 ```bash
 npm run release:local-authority -- --gate-command "npm run qa:release:public:fixture" --target "<operator-confirmed target>"
@@ -240,6 +239,11 @@ npm run release:provenance:verify:local
 npm run release:publish-preflight:local
 npm run release:rc-audit:report -- --release-authority local --skip-github
 ```
+
+`npm run release:local-authority` runs the selected gate and writes
+`reports/release/local-release-authority/qa-release-public.log`. If the full
+gate already ran under an external runner and the log is already in that exact
+path, add `--reuse-gate-log` to wrap it without rerunning.
 
 The local preflight still requires a healthy Git checkout, the release tag at
 `HEAD`, clean source outside `reports/release/`, Desktop/Web/Sync artifacts,

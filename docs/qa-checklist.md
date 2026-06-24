@@ -269,8 +269,10 @@
   set, and staged artifact hashes into
   `reports/release/release-provenance.json`. Local/self-hosted publication uses
   `npm run release:local-authority`, `npm run release:provenance:local`, and
-  `npm run release:provenance:verify:local` so the release gate log and
-  operator-confirmed publication target are part of provenance.
+  `npm run release:provenance:verify:local` so the command-run release gate log
+  and operator-confirmed publication target are part of provenance. Use
+  `--reuse-gate-log` only when the gate log was captured externally in
+  `reports/release/local-release-authority/qa-release-public.log`.
 - Local/self-hosted RC audits use
   `npm run release:rc-audit:report -- --release-authority local --skip-github`
   so GitHub CI or billing state is recorded separately from local publication

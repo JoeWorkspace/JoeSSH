@@ -144,15 +144,17 @@ preflight/device-smoke validation until a later beta.
   - GitHub Release authority: use the default `npm run release:provenance`,
     `npm run release:provenance:verify`, and
     `npm run release:publish-preflight`.
-  - Local/self-hosted authority: retain the full public release gate log under
-    `reports/release/local-release-authority/qa-release-public.log`, then run
+  - Local/self-hosted authority: run
     `npm run release:local-authority -- --gate-command "npm run qa:release:public:fixture" --target "<operator-confirmed target>"`,
     `npm run release:provenance:local`,
     `npm run release:provenance:verify:local`, and
     `npm run release:publish-preflight:local`. Use
     `npm run release:rc-audit:report -- --release-authority local --skip-github`
     for the final local RC audit when GitHub CI is not the publication
-    authority.
+    authority. The local authority command executes the allowed public release
+    gate and writes `reports/release/local-release-authority/qa-release-public.log`;
+    only use `--reuse-gate-log` when the gate was captured externally in that
+    exact path.
   - Local/self-hosted `web-sync-only` authority: generate Desktop exclusion
     evidence with `npm run release:desktop:exclude-public`, then use the
     `:web-sync-only` provenance and publish-preflight scripts. This profile is

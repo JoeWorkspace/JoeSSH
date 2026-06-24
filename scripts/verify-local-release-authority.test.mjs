@@ -87,7 +87,61 @@ process.exit(2);
   };
 }
 
+function createFakeNpmCommand(root) {
+  const binDir = join(root, "fake-npm-bin");
+  mkdirSync(binDir, { recursive: true });
+  const npmScriptPath = join(binDir, "npm.js");
+  const output = [
+    "atlasterm qa:release:public:fixture",
+    "npm run qa:release:public",
+    "Public Beta release readiness checks passed.",
+    "",
+  ].join("\n");
+  writeFileSync(
+    npmScriptPath,
+    `
+const args = process.argv.slice(2);
+if (args.join(" ") !== "run qa:release:public:fixture") {
+  console.error("unexpected npm args: " + args.join(" "));
+  process.exit(2);
+}
+process.stdout.write(${JSON.stringify(output)});
+`,
+    "utf8",
+  );
+  return {
+    ATLASTERM_RELEASE_NPM_ARGS: JSON.stringify([npmScriptPath]),
+    ATLASTERM_RELEASE_NPM_COMMAND: process.execPath,
+  };
+}
+
 function runGenerator(root, env = createFakeGitCommands(root), extraArgs = []) {
+  return spawnSync(
+    process.execPath,
+    [
+      GENERATOR_PATH,
+      "--root",
+      root,
+      "--gate-command",
+      "npm run qa:release:public:fixture",
+      "--operator",
+      "release-operator",
+      "--target",
+      "self-hosted download bucket",
+      "--reuse-gate-log",
+      ...extraArgs,
+    ],
+    {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        ...env,
+      },
+    },
+  );
+}
+
+function runGeneratorWithFreshGate(root, env = createFakeGitCommands(root), extraArgs = []) {
   return spawnSync(
     process.execPath,
     [
@@ -147,6 +201,21 @@ test("generates and verifies local release authority evidence", (t) => {
 
   const verified = runVerifier(root, env);
   assert.equal(verified.status, 0, verified.stdout + verified.stderr);
+});
+
+test("runs the local release gate by default before generating authority evidence", (t) => {
+  const root = createFixture(t, { logText: "stale log\n" });
+  const env = { ...createFakeGitCommands(root), ...createFakeNpmCommand(root) };
+
+  const generated = runGeneratorWithFreshGate(root, env);
+
+  assert.equal(generated.status, 0, generated.stdout + generated.stderr);
+  const log = readFile(root, "reports/release/local-release-authority/qa-release-public.log");
+  assert.match(log, /^\$ npm run qa:release:public:fixture/m);
+  assert.match(log, /Public Beta release readiness checks passed\./);
+  assert.doesNotMatch(log, /stale log/);
+  const evidence = JSON.parse(readFile(root, "reports/release/local-release-authority.json"));
+  assert.equal(evidence.releaseGate.logSha256, sha256(log));
 });
 
 test("generates and self-verifies custom local release authority paths", (t) => {

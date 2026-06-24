@@ -118,9 +118,8 @@ route, not a blocker for the first Public Beta.
    npm run release:desktop:draft
    ```
 
-   For a local/self-hosted publication authority, retain the full public gate
-   log under `reports/release/local-release-authority/qa-release-public.log`,
-   replace the provenance and preflight commands with:
+   For a local/self-hosted publication authority, replace the provenance and
+   preflight commands with:
 
    ```bash
    npm run release:local-authority -- --gate-command "npm run qa:release:public:fixture" --target "<operator-confirmed target>"
@@ -129,6 +128,11 @@ route, not a blocker for the first Public Beta.
    npm run release:publish-preflight:local
    npm run release:rc-audit:report -- --release-authority local --skip-github
    ```
+
+   `npm run release:local-authority` executes the selected public release gate
+   and writes `reports/release/local-release-authority/qa-release-public.log`.
+   Only add `--reuse-gate-log` when that exact log was captured externally and
+   must be wrapped after the fact.
 
    If the release scope is Web Admin + Sync only, first generate explicit
    Desktop exclusion evidence and use the `web-sync-only` variants:

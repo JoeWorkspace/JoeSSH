@@ -14,6 +14,7 @@ const {
   gateLogPath,
   operator,
   publicationTarget,
+  reuseGateLog,
   root,
   runnerType,
 } = parseArgs(process.argv.slice(2));
@@ -21,9 +22,12 @@ const packageJson = readJson("package.json");
 const releaseTag = `v${packageJson.version}`;
 const gitCommand = process.env.ATLASTERM_RELEASE_GIT_COMMAND ?? "git";
 const gitCommandPrefixArgs = parseCommandPrefixArgs("ATLASTERM_RELEASE_GIT_ARGS");
+const npmCommand = process.env.ATLASTERM_RELEASE_NPM_COMMAND ?? (process.platform === "win32" ? "npm.cmd" : "npm");
+const npmCommandPrefixArgs = parseCommandPrefixArgs("ATLASTERM_RELEASE_NPM_ARGS");
 
+verifyReleaseGitCheckout();
+const gate = reuseGateLog ? verifyReleaseGateLog() : runReleaseGate();
 const git = verifyReleaseGitCheckout();
-const gate = verifyReleaseGateLog();
 const evidence = {
   authority,
   authorityVersion: 1,
@@ -36,7 +40,7 @@ const evidence = {
   },
   releaseGate: {
     command: gateCommand,
-    completedAt: new Date().toISOString(),
+    completedAt: gate.completedAt,
     logPath: toReleasePath(gate.path),
     logSha256: gate.sha256,
     status: "passed",
@@ -118,7 +122,7 @@ function verifyReleaseGitCheckout() {
   return { head, repository, tagCommit };
 }
 
-function verifyReleaseGateLog() {
+function verifyReleaseGateLog(completedAt = new Date().toISOString()) {
   if (!isSafeRelativePath(gateLogPath)) {
     fail("Release gate log path must be a safe relative path inside the release workspace.");
   }
@@ -133,7 +137,48 @@ function verifyReleaseGateLog() {
   if (!text.includes("Public Beta release readiness checks passed")) {
     fail("Release gate log must include the release readiness success marker.");
   }
-  return { path, sha256: sha256File(path) };
+  return { completedAt, path, sha256: sha256File(path) };
+}
+
+function runReleaseGate() {
+  const startedAt = new Date().toISOString();
+  const gateArgs = createGateCommandArgs(gateCommand);
+  const path = resolve(root, gateLogPath);
+  mkdirSync(dirname(path), { recursive: true });
+  const result = spawnSync(gateArgs.command, gateArgs.args, {
+    cwd: root,
+    encoding: "utf8",
+    maxBuffer: 100 * 1024 * 1024,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  const completedAt = new Date().toISOString();
+  const output = [
+    `$ ${gateCommand}`,
+    `startedAt=${startedAt}`,
+    result.stdout ?? "",
+    result.stderr ?? "",
+    `completedAt=${completedAt}`,
+    `exitCode=${result.status ?? "signal:" + result.signal}`,
+    "",
+  ].join("\n");
+  writeFileSync(path, output);
+  if (result.status !== 0) {
+    fail(`Release gate command failed; see ${toReleasePath(path)}.`);
+  }
+  return verifyReleaseGateLog(completedAt);
+}
+
+function createGateCommandArgs(command) {
+  if (command === "npm run qa:release:public") {
+    return { args: [...npmCommandPrefixArgs, "run", "qa:release:public"], command: npmCommand };
+  }
+  if (command === "npm run qa:release:public:fixture") {
+    return { args: [...npmCommandPrefixArgs, "run", "qa:release:public:fixture"], command: npmCommand };
+  }
+  if (command === "npm run qa:release:public:local") {
+    return { args: [...npmCommandPrefixArgs, "run", "qa:release:public:local"], command: npmCommand };
+  }
+  fail(`Unsupported release gate command: ${command}`);
 }
 
 function isSafeRelativePath(value) {
@@ -199,6 +244,7 @@ function parseArgs(args) {
     "release-operator";
   let publicationTarget =
     process.env.ATLASTERM_RELEASE_PUBLICATION_TARGET ?? "operator-confirmed local/self-hosted distribution target";
+  let reuseGateLog = false;
   let root = defaultRoot;
   let runnerType = process.env.ATLASTERM_RELEASE_RUNNER_TYPE ?? "local-release-machine";
 
@@ -271,6 +317,10 @@ function parseArgs(args) {
       runnerType = arg.slice("--runner-type=".length);
       continue;
     }
+    if (arg === "--reuse-gate-log") {
+      reuseGateLog = true;
+      continue;
+    }
     if (arg === "--output") {
       evidencePath = readValue(args, index, arg);
       index += 1;
@@ -322,6 +372,7 @@ function parseArgs(args) {
     gateLogPath,
     operator,
     publicationTarget,
+    reuseGateLog,
     root,
     runnerType,
   };
