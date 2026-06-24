@@ -22,8 +22,7 @@ const packageJson = readJson("package.json");
 const releaseTag = `v${packageJson.version}`;
 const gitCommand = process.env.ATLASTERM_RELEASE_GIT_COMMAND ?? "git";
 const gitCommandPrefixArgs = parseCommandPrefixArgs("ATLASTERM_RELEASE_GIT_ARGS");
-const npmCommand = process.env.ATLASTERM_RELEASE_NPM_COMMAND ?? (process.platform === "win32" ? "npm.cmd" : "npm");
-const npmCommandPrefixArgs = parseCommandPrefixArgs("ATLASTERM_RELEASE_NPM_ARGS");
+const npmRuntime = createNpmRuntime();
 
 verifyReleaseGitCheckout();
 const gate = reuseGateLog ? verifyReleaseGateLog() : runReleaseGate();
@@ -155,6 +154,7 @@ function runReleaseGate() {
   const output = [
     `$ ${gateCommand}`,
     `startedAt=${startedAt}`,
+    result.error ? `spawnError=${result.error.message}` : "",
     result.stdout ?? "",
     result.stderr ?? "",
     `completedAt=${completedAt}`,
@@ -170,15 +170,34 @@ function runReleaseGate() {
 
 function createGateCommandArgs(command) {
   if (command === "npm run qa:release:public") {
-    return { args: [...npmCommandPrefixArgs, "run", "qa:release:public"], command: npmCommand };
+    return { args: [...npmRuntime.prefixArgs, "run", "qa:release:public"], command: npmRuntime.command };
   }
   if (command === "npm run qa:release:public:fixture") {
-    return { args: [...npmCommandPrefixArgs, "run", "qa:release:public:fixture"], command: npmCommand };
+    return { args: [...npmRuntime.prefixArgs, "run", "qa:release:public:fixture"], command: npmRuntime.command };
   }
   if (command === "npm run qa:release:public:local") {
-    return { args: [...npmCommandPrefixArgs, "run", "qa:release:public:local"], command: npmCommand };
+    return { args: [...npmRuntime.prefixArgs, "run", "qa:release:public:local"], command: npmRuntime.command };
   }
   fail(`Unsupported release gate command: ${command}`);
+}
+
+function createNpmRuntime() {
+  if (process.env.ATLASTERM_RELEASE_NPM_COMMAND) {
+    return {
+      command: process.env.ATLASTERM_RELEASE_NPM_COMMAND,
+      prefixArgs: parseCommandPrefixArgs("ATLASTERM_RELEASE_NPM_ARGS"),
+    };
+  }
+  if (process.env.npm_execpath) {
+    return {
+      command: process.execPath,
+      prefixArgs: [process.env.npm_execpath],
+    };
+  }
+  return {
+    command: process.platform === "win32" ? "npm.cmd" : "npm",
+    prefixArgs: [],
+  };
 }
 
 function isSafeRelativePath(value) {
