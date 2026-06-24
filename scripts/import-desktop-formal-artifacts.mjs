@@ -234,6 +234,7 @@ function validateExternalManifest(inputFiles, artifacts, gitSource) {
     "desktop-formal-artifact-manifest.json",
   ], "Desktop formal artifact manifest");
   const manifest = readJsonFile(manifestPath, "Desktop formal artifact manifest");
+  const request = readCurrentFormalArtifactRequest(gitSource);
   const blockers = [];
   const source = manifest.source;
 
@@ -245,6 +246,10 @@ function validateExternalManifest(inputFiles, artifacts, gitSource) {
   }
   if (typeof manifest.requestId !== "string" || manifest.requestId.trim() === "") {
     blockers.push("requestId must be a non-empty string");
+  } else if (manifest.requestId !== request.requestId) {
+    blockers.push(
+      `requestId must match the current Desktop formal artifact request ${request.requestId}`,
+    );
   }
   if (manifest.product !== "JoeSSH") {
     blockers.push("product must be JoeSSH");
@@ -309,6 +314,81 @@ function validateExternalManifest(inputFiles, artifacts, gitSource) {
       repository: source.repository,
     },
   };
+}
+
+function readCurrentFormalArtifactRequest(gitSource) {
+  const currentRequestPath = resolve(options.root, "reports", "handoff", "desktop", "formal-artifact-request.json");
+  const currentRequestChecksumPath = resolve(
+    options.root,
+    "reports",
+    "handoff",
+    "desktop",
+    "formal-artifact-request-SHA256SUMS.txt",
+  );
+  if (!existsSync(currentRequestPath) || !statSync(currentRequestPath).isFile()) {
+    fail(
+      "Current Desktop formal artifact request is required before importing formal artifacts. Run npm run release:desktop:formal-artifacts:request -- --source-authority local.",
+    );
+  }
+  if (!existsSync(currentRequestChecksumPath) || !statSync(currentRequestChecksumPath).isFile()) {
+    fail("Current Desktop formal artifact request checksum manifest is required before importing formal artifacts.");
+  }
+  const requestChecksumLines = readFileSync(currentRequestChecksumPath, "utf8")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const expectedRequestPath = "reports/handoff/desktop/formal-artifact-request.json";
+  const requestEntry = requestChecksumLines.find((line) => line.endsWith(`  ${expectedRequestPath}`));
+  if (!requestEntry) {
+    fail(`Current Desktop formal artifact request checksum manifest must list ${expectedRequestPath}.`);
+  }
+  const [requestHash] = requestEntry.split(/\s+/);
+  if (requestHash !== sha256File(currentRequestPath)) {
+    fail("Current Desktop formal artifact request checksum does not match formal-artifact-request.json.");
+  }
+
+  const request = readJsonFile(currentRequestPath, "Current Desktop formal artifact request");
+  const blockers = [];
+  if (request.kind !== "joessh-desktop-formal-artifact-request") {
+    blockers.push("request.kind must be joessh-desktop-formal-artifact-request");
+  }
+  if (request.version !== releaseVersion) {
+    blockers.push(`request.version must be ${releaseVersion}`);
+  }
+  if (request.releaseTag !== releaseTag) {
+    blockers.push(`request.releaseTag must be ${releaseTag}`);
+  }
+  if (request.sourceAuthority !== options.sourceAuthority) {
+    blockers.push(`request.sourceAuthority must be ${options.sourceAuthority}`);
+  }
+  if (request.source?.repository !== gitSource.repository) {
+    blockers.push("request.source.repository must match the current release checkout origin");
+  }
+  if (request.source?.gitCommit !== gitSource.head) {
+    blockers.push("request.source.gitCommit must match current HEAD");
+  }
+  if (request.source?.releaseTagCommit !== gitSource.tagCommit) {
+    blockers.push(`request.source.releaseTagCommit must match ${releaseTag}`);
+  }
+  if (request.source?.gitFsckStrict !== true) {
+    blockers.push("request.source.gitFsckStrict must be true");
+  }
+  const requestedPlatforms = Array.isArray(request.requiredPlatforms) ? request.requiredPlatforms : [];
+  const missingRequestedPlatforms = options.requiredPlatforms.filter(
+    (platform) => !requestedPlatforms.includes(platform),
+  );
+  if (missingRequestedPlatforms.length > 0) {
+    blockers.push(
+      `request.requiredPlatforms must include ${missingRequestedPlatforms.join(", ")}`,
+    );
+  }
+  if (typeof request.requestId !== "string" || request.requestId.trim() === "") {
+    blockers.push("request.requestId must be a non-empty string");
+  }
+  if (blockers.length > 0) {
+    fail(`Current Desktop formal artifact request failed validation:\n- ${blockers.join("\n- ")}`);
+  }
+  return request;
 }
 
 function validateExternalManifestArtifacts(blockers, manifestArtifacts, artifacts) {

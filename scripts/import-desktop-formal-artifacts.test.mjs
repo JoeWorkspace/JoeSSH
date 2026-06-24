@@ -15,6 +15,7 @@ function createFixture(t) {
     rmSync(root, { force: true, recursive: true });
   });
   writeFile(root, "package.json", `${JSON.stringify({ version: "0.1.0-beta.1" })}\n`);
+  writeCurrentRequest(root);
   return root;
 }
 
@@ -26,6 +27,43 @@ function writeFile(root, relativePath, content, encoding = "utf8") {
 
 function readReleaseFile(root, relativePath) {
   return readFileSync(join(root, ...relativePath.split("/")), "utf8");
+}
+
+function writeCurrentRequest(root, options = {}) {
+  const request = JSON.stringify(
+    {
+      artifactContract: {},
+      kind: "joessh-desktop-formal-artifact-request",
+      product: "JoeSSH",
+      releaseTag: "v0.1.0-beta.1",
+      requestId: options.requestId ?? "desktop-formal-test",
+      requestVersion: 1,
+      requiredPlatforms: options.requiredPlatforms ?? ["windows", "macos", "linux"],
+      source: {
+        gitCommit: options.gitCommit ?? "abc123",
+        gitFsckStrict: true,
+        releaseTagCommit: options.releaseTagCommit ?? "abc123",
+        repository: "https://github.com/joessh/joessh.git",
+      },
+      sourceAuthority: options.sourceAuthority ?? "local",
+      version: "0.1.0-beta.1",
+    },
+    null,
+    2,
+  );
+  writeFile(root, "reports/handoff/desktop/formal-artifact-request.json", `${request}\n`);
+  writeFile(
+    root,
+    "reports/handoff/desktop/formal-artifact-request-SHA256SUMS.txt",
+    `${sha256(`${request}\n`)}  reports/handoff/desktop/formal-artifact-request.json\n`,
+  );
+}
+
+function rewriteInputManifest(inputDir, mutate) {
+  const manifestPath = join(inputDir, "desktop-formal-artifact-manifest.json");
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+  mutate(manifest);
+  writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
 }
 
 function createSignedArtifactInput(t, options = {}) {
@@ -207,6 +245,7 @@ test("imports signed Desktop formal artifacts and verifies local source evidence
 
 test("imports self-hosted Desktop formal artifacts with self-hosted source authority", (t) => {
   const root = createFixture(t);
+  writeCurrentRequest(root, { sourceAuthority: "self-hosted" });
   const inputDir = createSignedArtifactInput(t, { sourceAuthority: "self-hosted" });
 
   const result = runImporter(
@@ -256,6 +295,32 @@ test("rejects external Desktop formal artifacts without a returned manifest", (t
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /Desktop formal artifact manifest is required/);
+  assert.equal(existsSync(join(root, "reports", "release", "desktop", "release-evidence.json")), false);
+});
+
+test("rejects external Desktop formal artifacts returned for a stale request", (t) => {
+  const root = createFixture(t);
+  const inputDir = createSignedArtifactInput(t);
+  rewriteInputManifest(inputDir, (manifest) => {
+    manifest.requestId = "desktop-formal-stale";
+  });
+
+  const result = runImporter(root, inputDir, ["--preflight-only"], createFakeGitCommands(root));
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /requestId must match the current Desktop formal artifact request desktop-formal-test/);
+  assert.equal(existsSync(join(root, "reports", "release", "desktop", "release-evidence.json")), false);
+});
+
+test("rejects external Desktop formal artifacts when the current request is missing", (t) => {
+  const root = createFixture(t);
+  const inputDir = createSignedArtifactInput(t);
+  rmSync(join(root, "reports", "handoff", "desktop", "formal-artifact-request.json"));
+
+  const result = runImporter(root, inputDir, ["--preflight-only"], createFakeGitCommands(root));
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Current Desktop formal artifact request is required/);
   assert.equal(existsSync(join(root, "reports", "release", "desktop", "release-evidence.json")), false);
 });
 

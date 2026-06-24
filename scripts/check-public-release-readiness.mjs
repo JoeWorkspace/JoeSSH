@@ -769,6 +769,13 @@ function checkReleaseToolingFiles() {
       desktopFormalArtifactImporter.includes("proof must mention both the artifact file name and SHA256"),
     "Desktop formal artifact importer requires manifest-bound external artifacts",
   );
+  passIf(
+    desktopFormalArtifactImporter.includes("formal-artifact-request.json") &&
+      desktopFormalArtifactImporter.includes("formal-artifact-request-SHA256SUMS.txt") &&
+      desktopFormalArtifactImporter.includes("requestId must match the current Desktop formal artifact request") &&
+      desktopFormalArtifactImporter.includes("request.source.gitCommit must match current HEAD"),
+    "Desktop formal artifact importer binds returned artifacts to the current handoff request",
+  );
 
   const desktopEvidenceVerifier =
     readTextIfExists("scripts/verify-desktop-release-evidence.mjs") ?? "";
