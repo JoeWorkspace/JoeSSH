@@ -91,6 +91,7 @@ route, not a blocker for the first Public Beta.
 
    ```bash
    npm run release:desktop:formal-artifacts:request -- --source-authority local
+   npm run release:desktop:formal-artifacts:kit -- --source-authority local
    npm run release:desktop:formal-artifacts:manifest -- --input-dir <signed-artifact-dir> --source-authority local
    npm run release:desktop:formal-artifacts:intake -- --input-dir <signed-artifact-dir> --source-authority local
    npm run release:desktop:formal-artifacts:preflight -- --input-dir <signed-artifact-dir> --source-authority local
@@ -105,7 +106,8 @@ route, not a blocker for the first Public Beta.
    The request command writes
    `reports/handoff/desktop/formal-artifact-request.json` and
    `formal-artifact-request-SHA256SUMS.txt` so the external signing directory
-   uses the same proof filenames, generated
+   can receive the checksum-covered
+   `desktop-formal-artifact-handoff-kit-<version>.zip` and use the same proof filenames, generated
    `desktop-formal-artifact-manifest.json`, artifact SHA256 bindings, and
    platform contract as the importer. Windows and macOS proof text must mention
    both the artifact file name and SHA256.

@@ -153,6 +153,8 @@ function checkPackageScripts() {
     "qa:desktop-release-package",
     "test:desktop-formal-artifact-import",
     "qa:desktop-formal-artifact-import",
+    "test:desktop-formal-artifact-kit",
+    "qa:desktop-formal-artifact-kit",
     "test:desktop-formal-artifact-manifest",
     "qa:desktop-formal-artifact-manifest",
     "test:desktop-formal-artifact-request",
@@ -205,6 +207,7 @@ function checkPackageScripts() {
     "release:desktop:package",
     "release:desktop:package:local-source",
     "release:desktop:formal-artifacts:import",
+    "release:desktop:formal-artifacts:kit",
     "release:desktop:formal-artifacts:manifest",
     "release:desktop:formal-artifacts:request",
     "release:desktop:formal-artifacts:intake",
@@ -486,6 +489,11 @@ function checkPackageScripts() {
     rootQaScript,
   );
   passIf(
+    rootQaScript.includes("qa:desktop-formal-artifact-kit"),
+    "Root QA runs Desktop formal artifact handoff kit tests",
+    rootQaScript,
+  );
+  passIf(
     rootQaScript.includes("qa:desktop-formal-artifact-manifest"),
     "Root QA runs Desktop formal artifact manifest tests",
     rootQaScript,
@@ -607,6 +615,8 @@ function checkReleaseToolingFiles() {
     "scripts/package-desktop-release.test.mjs",
     "scripts/import-desktop-formal-artifacts.mjs",
     "scripts/import-desktop-formal-artifacts.test.mjs",
+    "scripts/prepare-desktop-formal-artifact-kit.mjs",
+    "scripts/prepare-desktop-formal-artifact-kit.test.mjs",
     "scripts/prepare-desktop-formal-artifact-manifest.mjs",
     "scripts/prepare-desktop-formal-artifact-manifest.test.mjs",
     "scripts/prepare-desktop-formal-artifact-request.mjs",
@@ -678,6 +688,8 @@ function checkReleaseToolingFiles() {
     readTextIfExists("scripts/package-desktop-release.mjs") ?? "";
   const desktopFormalArtifactImporter =
     readTextIfExists("scripts/import-desktop-formal-artifacts.mjs") ?? "";
+  const desktopFormalArtifactKit =
+    readTextIfExists("scripts/prepare-desktop-formal-artifact-kit.mjs") ?? "";
   const desktopFormalArtifactManifest =
     readTextIfExists("scripts/prepare-desktop-formal-artifact-manifest.mjs") ??
     "";
@@ -772,9 +784,24 @@ function checkReleaseToolingFiles() {
       desktopFormalArtifactRequest.includes("mustMentionAll") &&
       desktopFormalArtifactRequest.includes("windows-signature-verification.txt") &&
       desktopFormalArtifactRequest.includes("macos-notarization-verification.txt") &&
+      desktopFormalArtifactRequest.includes("release:desktop:formal-artifacts:kit") &&
       desktopFormalArtifactRequest.includes("release:desktop:formal-artifacts:manifest") &&
       desktopFormalArtifactRequest.includes("release:desktop:formal-artifacts:intake"),
     "Desktop formal artifact request generator writes checksum-covered handoff contract",
+  );
+  passIf(
+    desktopFormalArtifactKit.includes("desktop-formal-artifact-handoff-kit") &&
+      desktopFormalArtifactKit.includes("formal-artifact-request.json") &&
+      desktopFormalArtifactKit.includes("formal-artifact-request-SHA256SUMS.txt") &&
+      desktopFormalArtifactKit.includes("requestId") &&
+      desktopFormalArtifactKit.includes("source.gitCommit") &&
+      desktopFormalArtifactKit.includes("source.releaseTagCommit") &&
+      desktopFormalArtifactKit.includes("request.commands.manifest") &&
+      desktopFormalArtifactKit.includes("request.commands.intake") &&
+      desktopFormalArtifactKit.includes("request.commands.preflight") &&
+      desktopFormalArtifactKit.includes("request.commands.import") &&
+      desktopFormalArtifactKit.includes("Proof text must mention both the artifact file name and the artifact SHA256"),
+    "Desktop formal artifact handoff kit binds request evidence and operator commands for external signing",
   );
   passIf(
     desktopFormalArtifactManifest.includes("desktop-formal-artifact-manifest.json") &&

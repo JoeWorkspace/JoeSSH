@@ -137,6 +137,7 @@ function createRequestId(git) {
 function createCommands(authority) {
   const input = "<signed-artifact-dir>";
   return {
+    kit: `npm run release:desktop:formal-artifacts:kit -- --source-authority ${authority}`,
     manifest: `npm run release:desktop:formal-artifacts:manifest -- --input-dir ${input} --source-authority ${authority}`,
     intake: `npm run release:desktop:formal-artifacts:intake -- --input-dir ${input} --source-authority ${authority}`,
     preflight: `npm run release:desktop:formal-artifacts:preflight -- --input-dir ${input} --source-authority ${authority}`,
