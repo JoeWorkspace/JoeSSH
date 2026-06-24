@@ -265,6 +265,7 @@ function createRequiredChecksumManifests() {
       : ["reports/release/desktop-exclusion-SHA256SUMS.txt"]),
     "reports/release/sync/SHA256SUMS.txt",
     "reports/release/sync/backup-restore-smoke-SHA256SUMS.txt",
+    "reports/release/web/rollback-smoke-SHA256SUMS.txt",
     "reports/release/web/SHA256SUMS.txt",
     ...(releaseAuthority === "local" ? ["reports/release/local-release-authority-SHA256SUMS.txt"] : []),
   ];
@@ -289,6 +290,7 @@ function collectReleaseChecksumManifests() {
     .filter((path) => path.endsWith("SHA256SUMS.txt"))
     .map((path) => toReleasePath(path))
     .filter((path) => path !== toReleasePath(checksumPath))
+    .filter((path) => path !== "reports/release/public-beta-rc-audit-SHA256SUMS.txt")
     .sort();
 }
 

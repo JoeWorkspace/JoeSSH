@@ -48,6 +48,14 @@ function createReleaseFixture(t) {
 
   writeWebDistFixture(root);
   runWebPackager(root);
+  const webRollbackEvidence = JSON.stringify({
+    artifact: "web-admin-rollback-smoke",
+    version: "0.1.0-beta.1",
+  });
+  writeFile(root, "reports/release/web/rollback-smoke.json", `${webRollbackEvidence}\n`);
+  writeManifest(root, "reports/release/web/rollback-smoke-SHA256SUMS.txt", [
+    [`${webRollbackEvidence}\n`, "reports/release/web/rollback-smoke.json"],
+  ]);
   writeFile(root, "reports/release/sync/joessh-sync-0.1.0-beta.1-linux-x64", "sync binary");
   writeManifest(root, "reports/release/desktop/SHA256SUMS.txt", desktopArtifacts);
   writeManifest(root, "reports/release/sync/SHA256SUMS.txt", [
@@ -345,6 +353,7 @@ function writeReleaseProvenanceFixture(root, options = {}) {
     "reports/release/sync/backup-restore-smoke-SHA256SUMS.txt",
     "reports/release/web/SHA256SUMS.txt",
     ...(options.releaseAuthority === "local" ? ["reports/release/local-release-authority-SHA256SUMS.txt"] : []),
+    "reports/release/web/rollback-smoke-SHA256SUMS.txt",
   ];
   const provenance = JSON.stringify(
     {

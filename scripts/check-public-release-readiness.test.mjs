@@ -426,9 +426,9 @@ function createFixture(t, overrides = {}) {
     "scripts/verify-release-sbom.mjs": "",
     "scripts/verify-release-sbom.test.mjs": "",
     "scripts/generate-release-provenance.mjs":
-      'gitFsckStrict ["remote", "get-url", "origin"] release-provenance-SHA256SUMS.txt checksumManifests requiredChecksumManifests reports/release/desktop/release-evidence-SHA256SUMS.txt release-evidence-source.json verify-desktop-release-evidence.mjs --require-source reports/release/sync/backup-restore-smoke-SHA256SUMS.txt releaseProfile reports/release/desktop-exclusion-SHA256SUMS.txt verify-desktop-public-exclusion.mjs\n',
+      'gitFsckStrict ["remote", "get-url", "origin"] release-provenance-SHA256SUMS.txt checksumManifests requiredChecksumManifests reports/release/desktop/release-evidence-SHA256SUMS.txt release-evidence-source.json verify-desktop-release-evidence.mjs --require-source reports/release/sync/backup-restore-smoke-SHA256SUMS.txt reports/release/web/rollback-smoke-SHA256SUMS.txt releaseProfile reports/release/desktop-exclusion-SHA256SUMS.txt verify-desktop-public-exclusion.mjs\n',
     "scripts/verify-release-provenance.mjs":
-      "source.repository git fsck --strict release notes hash mismatch artifact hash mismatch requiredChecksumManifests release-evidence-source.json verify-desktop-release-evidence.mjs --require-source unexpected Public Beta checksum manifest is staged releaseProfile must be reports/release/desktop-exclusion-SHA256SUMS.txt verify-desktop-public-exclusion.mjs\n",
+      "source.repository git fsck --strict release notes hash mismatch artifact hash mismatch requiredChecksumManifests release-evidence-source.json verify-desktop-release-evidence.mjs --require-source reports/release/web/rollback-smoke-SHA256SUMS.txt unexpected Public Beta checksum manifest is staged releaseProfile must be reports/release/desktop-exclusion-SHA256SUMS.txt verify-desktop-public-exclusion.mjs\n",
     "scripts/verify-release-provenance.test.mjs": "",
     "scripts/audit-public-beta-rc.mjs":
       'public-beta-rc-audit.json desktop-signing-secrets desktop-dogfood release-desktop-stale-artifacts publish-preflight github-ci check-runs/${checkRunId}/annotations release-desktop-exclusion must not stage public Desktop artifacts releaseProfile\n',

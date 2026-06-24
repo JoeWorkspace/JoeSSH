@@ -994,6 +994,9 @@ function checkReleaseToolingFiles() {
       releaseProvenanceGenerator.includes("verify-desktop-release-evidence.mjs --require-source") &&
       releaseProvenanceGenerator.includes(
         "reports/release/sync/backup-restore-smoke-SHA256SUMS.txt",
+      ) &&
+      releaseProvenanceGenerator.includes(
+        "reports/release/web/rollback-smoke-SHA256SUMS.txt",
       ),
     "Release provenance generator binds Git, lockfiles, manifests, and provenance checksum evidence",
   );
@@ -1008,6 +1011,7 @@ function checkReleaseToolingFiles() {
       releaseProvenanceVerifier.includes("requiredChecksumManifests") &&
       releaseProvenanceVerifier.includes("release-evidence-source.json") &&
       releaseProvenanceVerifier.includes("verify-desktop-release-evidence.mjs --require-source") &&
+      releaseProvenanceVerifier.includes("reports/release/web/rollback-smoke-SHA256SUMS.txt") &&
       releaseProvenanceVerifier.includes(
         "unexpected Public Beta checksum manifest is staged",
       ),

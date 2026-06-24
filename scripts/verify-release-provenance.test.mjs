@@ -37,6 +37,11 @@ function createFixture(t) {
     writeFile(root, path, content);
   }
   writeFile(root, "reports/release/web/joessh-web-admin-0.1.0-beta.1.zip", "web bundle");
+  const webRollbackEvidence = JSON.stringify({
+    artifact: "web-admin-rollback-smoke",
+    version: "0.1.0-beta.1",
+  });
+  writeFile(root, "reports/release/web/rollback-smoke.json", webRollbackEvidence);
   writeFile(root, "reports/release/sync/joessh-sync-0.1.0-beta.1-linux-x64", "sync binary");
   const desktopEvidence = JSON.stringify({
     artifacts: desktopArtifacts.map(([content, path]) => ({
@@ -61,6 +66,9 @@ function createFixture(t) {
   ]);
   writeManifest(root, "reports/release/web/SHA256SUMS.txt", [
     ["web bundle", "reports/release/web/joessh-web-admin-0.1.0-beta.1.zip"],
+  ]);
+  writeManifest(root, "reports/release/web/rollback-smoke-SHA256SUMS.txt", [
+    [webRollbackEvidence, "reports/release/web/rollback-smoke.json"],
   ]);
   writeManifest(root, "reports/release/sync/SHA256SUMS.txt", [
     ["sync binary", "reports/release/sync/joessh-sync-0.1.0-beta.1-linux-x64"],
@@ -357,6 +365,7 @@ test("generates and verifies release provenance for staged release artifacts", (
       "reports/release/sync/SHA256SUMS.txt",
       "reports/release/sync/backup-restore-smoke-SHA256SUMS.txt",
       "reports/release/web/SHA256SUMS.txt",
+      "reports/release/web/rollback-smoke-SHA256SUMS.txt",
     ],
   );
   assert.equal(provenance.toolchain.tauri.npmCli, "2.11.3");
@@ -419,6 +428,7 @@ test("generates and verifies web-sync-only release provenance without Desktop fo
       "reports/release/sync/SHA256SUMS.txt",
       "reports/release/sync/backup-restore-smoke-SHA256SUMS.txt",
       "reports/release/web/SHA256SUMS.txt",
+      "reports/release/web/rollback-smoke-SHA256SUMS.txt",
     ],
   );
   assert(provenance.verifiers.includes("verify-desktop-public-exclusion.mjs"));
