@@ -4,8 +4,12 @@ This checklist defines the public beta bar for `0.1.0-beta.10`. The default
 `full` release profile includes Desktop, Web Admin, and the self-hosted Sync
 Service. The explicit `web-sync-only` release profile publishes Web Admin and
 Sync while excluding public Desktop downloads; Desktop remains covered by
-internal dogfood and unsigned staging evidence only. Mobile native apps stay in
-preflight/device-smoke validation until a later beta.
+internal dogfood and unsigned staging evidence only. The
+`desktop-local-unsigned` profile is local authority only: Web Admin, Sync, SBOM,
+provenance, and publish-preflight evidence can be generated locally while the
+unsigned Desktop build stays in handoff evidence, without GitHub publication or
+Desktop signing. Mobile native apps stay in preflight/device-smoke validation
+until a later beta.
 
 ## Required Before Publishing
 
@@ -54,20 +58,24 @@ preflight/device-smoke validation until a later beta.
 - Run `npm run qa:sync:release-backup-restore-smoke` before publish preflight
   so the staged Sync release binary has backup/restore evidence recording its
   path, sha256, and checksum manifest.
-- Run `npm run release:desktop:package` after collecting signed Tauri bundle
+- For the `full` profile or any public Desktop download, run
+  `npm run release:desktop:package` after collecting signed Tauri bundle
   artifacts so Desktop artifacts are staged under `reports/release/desktop/`
   with `SHA256SUMS.txt`, `release-evidence.json`, and
   `release-evidence-SHA256SUMS.txt`. The public release wrapper requires
   Windows, macOS, and Linux artifacts by default; aggregate platform build
-  outputs first, then run the package step once.
+  outputs first, then run the package step once. Do not run this step for
+  `desktop-local-unsigned`; that profile keeps Desktop builds in handoff
+  evidence only.
 - Run `npm run release:verify-checksums` before drafting the GitHub Release so
   stale or incomplete checksum manifests fail before upload. The command
   discovers every staged `reports/release/**/SHA256SUMS.txt` manifest, including
   evidence and smoke-test manifests added after the core Desktop/Web/Sync/SBOM
   outputs.
-- Run `npm run release:desktop:verify-evidence` before drafting the GitHub
-  Release so unsigned Windows artifacts, unnotarized macOS artifacts, missing
-  Linux package evidence, or artifacts absent from
+- For the `full` profile or any public Desktop download, run
+  `npm run release:desktop:verify-evidence` before drafting the GitHub Release
+  so unsigned Windows artifacts, unnotarized macOS artifacts, missing Linux
+  package evidence, or artifacts absent from
   `reports/release/desktop/release-evidence.json` fail before upload.
   This verifier also recomputes each artifact hash from disk and requires the
   evidence artifact sha256 to match the manifest hash in
@@ -102,7 +110,9 @@ preflight/device-smoke validation until a later beta.
   `npm run release:desktop:formal-artifacts:intake -- --input-dir <signed-artifact-dir> --source-authority local`,
   `npm run release:desktop:formal-artifacts:preflight -- --input-dir <signed-artifact-dir> --source-authority local`
   and then
-  `npm run release:desktop:formal-artifacts:import -- --input-dir <signed-artifact-dir> --source-authority local`.
+  `npm run release:desktop:formal-artifacts:import -- --input-dir <signed-artifact-dir> --source-authority local`,
+  followed by
+  `npm run release:desktop:verify-evidence -- --require-source --require-current-git-source --require-source-authority local`.
   The input directory must be outside the release workspace and must contain
   signed Windows artifacts with `windows-signature-verification.txt`,
   signed/notarized macOS artifacts with `macos-signature-verification.txt` and
@@ -138,6 +148,19 @@ preflight/device-smoke validation until a later beta.
   evidence. If any Desktop artifact is staged under `reports/release/desktop/`,
   the `web-sync-only` profile is No-Go and the full signed Desktop evidence gate
   applies.
+- If this candidate is local unsigned Desktop beta staging, use only the
+  `desktop-local-unsigned` local authority profile. Run
+  `npm run qa:release:public:desktop-local-unsigned:local`,
+  `npm run release:desktop:unsigned-staging-report`,
+  `npm run release:desktop:unsigned-staging:verify`,
+  `npm run release:local-authority -- --release-profile desktop-local-unsigned --gate-command "npm run qa:release:public:desktop-local-unsigned:local" --target "<operator-confirmed local target>"`,
+  `npm run release:provenance:local:desktop-local-unsigned`,
+  `npm run release:provenance:verify:local:desktop-local-unsigned`,
+  `npm run release:publish-preflight:local:desktop-local-unsigned`, and
+  `npm run release:rc-audit:report:desktop-local-unsigned`. Keep
+  `reports/handoff/desktop/unsigned-staging-report.json` and
+  `reports/handoff/desktop/unsigned-staging-report-SHA256SUMS.txt` out of
+  `reports/release/desktop/`; they are not public release artifacts.
 - Create the annotated release tag only after source QA is green. For GitHub
   workflow evidence, release artifacts may already be staged before tagging. For
   local/self-hosted Desktop source evidence, create the tag before
@@ -148,7 +171,9 @@ preflight/device-smoke validation until a later beta.
   `npm run release:desktop:formal-artifacts:intake -- --input-dir <signed-artifact-dir> --source-authority local`,
   `npm run release:desktop:formal-artifacts:preflight -- --input-dir <signed-artifact-dir> --source-authority local`
   and
-  `npm run release:desktop:formal-artifacts:import -- --input-dir <signed-artifact-dir> --source-authority local`
+  `npm run release:desktop:formal-artifacts:import -- --input-dir <signed-artifact-dir> --source-authority local`,
+  then
+  `npm run release:desktop:verify-evidence -- --require-source --require-current-git-source --require-source-authority local`
   so the sidecar can bind `releaseTagCommit` to the tagged checkout.
   `reports/release/` is generated release evidence and is allowed to be present
   while the source tree outside that directory remains clean.
@@ -164,14 +189,22 @@ preflight/device-smoke validation until a later beta.
     `npm run release:rc-audit:report -- --release-authority local --skip-github`
     for the final local RC audit when GitHub CI is not the publication
     authority. The local authority command executes the allowed public release
-    gate and writes `reports/release/local-release-authority/qa-release-public.log`;
-    only use `--reuse-gate-log` when the gate was captured externally in that
-    exact path.
+    gate and writes profile-bound evidence and logs such as
+    `reports/release/local-release-authority.full.json`,
+    `reports/release/local-release-authority.full-SHA256SUMS.txt`, and
+    `reports/release/local-release-authority/qa-release-public.full.log`;
+    only use `--gate-log <path> --reuse-gate-log` when the gate was captured
+    externally and must be wrapped after the fact.
   - Local/self-hosted `web-sync-only` authority: generate Desktop exclusion
     evidence with `npm run release:desktop:exclude-public`, run
     `npm run release:local-authority -- --gate-command "npm run qa:release:public:web-sync-only:local" --target "<operator-confirmed target>"`,
     then use the `:web-sync-only` provenance and publish-preflight scripts.
     This profile is only valid when no public Desktop artifacts are staged.
+  - Local `desktop-local-unsigned` authority: record and verify
+    `reports/handoff/desktop/unsigned-staging-report.json`, run
+    `npm run release:local-authority -- --release-profile desktop-local-unsigned --gate-command "npm run qa:release:public:desktop-local-unsigned:local" --target "<operator-confirmed local target>"`,
+    then use the `:desktop-local-unsigned` provenance and publish-preflight
+    scripts. This profile is not valid for GitHub publication.
 - Run `npm run release:provenance` after the annotated tag exists and staged
   Desktop, Web Admin, Sync, SBOM, and evidence manifests are complete. It writes
   `reports/release/release-provenance.json` plus
@@ -180,11 +213,15 @@ preflight/device-smoke validation until a later beta.
   toolchain versions, and the fixed Public Beta checksum manifest set: SBOM,
   Desktop artifacts, Desktop evidence, Sync binary, Sync backup/restore
   evidence, and Web Admin package. Local/self-hosted authority mode additionally
-  binds `reports/release/local-release-authority-SHA256SUMS.txt`. The Desktop
-  evidence manifest must include
-  `reports/release/desktop/release-evidence-source.json` before provenance is
-  generated. Do not generate provenance from a damaged `.git` planning
-  workspace.
+  binds the profile-bound local authority manifest, for example
+  `reports/release/local-release-authority.full-SHA256SUMS.txt`. The legacy
+  `reports/release/local-release-authority-SHA256SUMS.txt` alias is kept for old
+  handoffs but is not the profile-specific source of truth. The `full`
+  profile Desktop evidence manifest must include
+  `reports/release/desktop/release-evidence-source.json`; `web-sync-only` uses
+  `reports/release/desktop-exclusion-SHA256SUMS.txt`; `desktop-local-unsigned`
+  uses `reports/handoff/desktop/unsigned-staging-report-SHA256SUMS.txt`. Do not
+  generate provenance from a damaged `.git` planning workspace.
 - Run `npm run release:provenance:verify` before drafting so stale provenance,
   changed lockfiles, changed release notes, stale manifests, changed artifacts,
   or tag drift fail before upload.
@@ -199,7 +236,11 @@ preflight/device-smoke validation until a later beta.
   `npm run release:publish-preflight:local`; it replaces GitHub CLI and draft
   checks with `reports/release/local-release-authority.json` verification while
   keeping the same checksum, Desktop, Web, Sync, SBOM, provenance, and healthy
-  Git gates. The draft dry-run
+  Git gates. For `desktop-local-unsigned`, run
+  `npm run release:publish-preflight:local:desktop-local-unsigned`; it verifies
+  the unsigned Desktop handoff checksum and rejects Desktop artifacts under
+  `reports/release/desktop/` while keeping Web, Sync, SBOM, provenance, and
+  local authority checks. The draft dry-run
   rejects any staged file that would be uploaded from `reports/release/` unless that file is
   listed in a `SHA256SUMS.txt` manifest; checksum manifests themselves are the
   only upload files exempt from checksum coverage. Raw Tauri bundle outputs must
@@ -222,16 +263,23 @@ preflight/device-smoke validation until a later beta.
 - Windows public downloads must be signed before upload.
 - macOS public downloads must be notarized before upload.
 - Linux downloads must include at least one AppImage, deb, or rpm artifact.
-- `reports/release/desktop/SHA256SUMS.txt` must include every uploaded desktop
+- The `full` profile still requires real signed Desktop artifacts. The
+  `desktop-local-unsigned` profile has no Desktop signing requirement only
+  because no Desktop artifact is public and none may be staged under
+  `reports/release/desktop/`.
+- For `full` or any public Desktop download,
+  `reports/release/desktop/SHA256SUMS.txt` must include every uploaded desktop
   artifact.
-- `reports/release/desktop/release-evidence.json` must include every uploaded
+- For `full` or any public Desktop download,
+  `reports/release/desktop/release-evidence.json` must include every uploaded
   desktop artifact and record Windows signing, macOS signing/notarization, and
   Linux package-type evidence.
-- Each Desktop evidence entry must record the artifact sha256. The value must
-  match both the manifest hash and the actual file hash, and Windows/macOS
+- Each public Desktop evidence entry must record the artifact sha256. The value
+  must match both the manifest hash and the actual file hash, and Windows/macOS
   signing or notarization text must mention the artifact path, file name, or
   artifact sha256.
-- `reports/release/desktop/release-evidence-SHA256SUMS.txt` must cover the
+- For `full` or any public Desktop download,
+  `reports/release/desktop/release-evidence-SHA256SUMS.txt` must cover the
   release evidence file itself and
   `reports/release/desktop/release-evidence-source.json`.
 - Install on a clean machine and verify Connect, unknown-host fingerprint
@@ -337,6 +385,10 @@ preflight/device-smoke validation until a later beta.
   must pass before copying or exposing any files from `reports/release/`. The
   local authority evidence must identify the operator-confirmed target and prove
   the public release gate passed from the same healthy tagged checkout.
+- For local unsigned Desktop staging,
+  `npm run release:publish-preflight:local:desktop-local-unsigned` must pass
+  before exposing Web/Sync local evidence. Do not expose the unsigned Desktop
+  build as a public release artifact.
 - Rehearse Web Admin rollback with
   `npm run release:web-admin-rollback-smoke -- --previous-root <previous-release-root> --previous reports/release/web/joessh-web-admin-<previous-version>.zip`
   so `reports/release/web/rollback-smoke.json` records the current package, the
@@ -344,7 +396,9 @@ preflight/device-smoke validation until a later beta.
 - For local/self-hosted RC judgment, run
   `npm run release:rc-audit:report -- --release-authority local --skip-github`
   so the audit uses local publish preflight and does not turn GitHub CI billing
-  state into a local publication blocker.
+  state into a local publication blocker. RC audit reports are profile-specific,
+  such as `reports/release/public-beta-rc-audit.local.full.json` or
+  `reports/release/public-beta-rc-audit.local.desktop-local-unsigned.json`.
 - The draft script also supports `--dry-run` for release-machine preflight and
   CI fixture tests; dry-run still verifies required manifests and hashes without
   requiring GitHub CLI access.

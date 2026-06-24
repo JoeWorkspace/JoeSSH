@@ -341,10 +341,17 @@ function writeManifest(root, relativePath, entries) {
 }
 
 function writeReleaseProvenanceFixture(root, options = {}) {
+  const releaseProfile = options.releaseProfile ?? "full";
+  const localAuthorityManifest =
+    options.releaseAuthority === "local"
+      ? [`reports/release/local-release-authority.${releaseProfile}-SHA256SUMS.txt`]
+      : [];
   const manifestPaths = [
     "reports/release/SBOM-SHA256SUMS.txt",
-    ...(options.releaseProfile === "web-sync-only"
+    ...(releaseProfile === "web-sync-only"
       ? ["reports/release/desktop-exclusion-SHA256SUMS.txt"]
+      : releaseProfile === "desktop-local-unsigned"
+        ? ["reports/handoff/desktop/unsigned-staging-report-SHA256SUMS.txt"]
       : [
           "reports/release/desktop/SHA256SUMS.txt",
           "reports/release/desktop/release-evidence-SHA256SUMS.txt",
@@ -352,7 +359,7 @@ function writeReleaseProvenanceFixture(root, options = {}) {
     "reports/release/sync/SHA256SUMS.txt",
     "reports/release/sync/backup-restore-smoke-SHA256SUMS.txt",
     "reports/release/web/SHA256SUMS.txt",
-    ...(options.releaseAuthority === "local" ? ["reports/release/local-release-authority-SHA256SUMS.txt"] : []),
+    ...localAuthorityManifest,
     "reports/release/web/rollback-smoke-SHA256SUMS.txt",
   ];
   const provenance = JSON.stringify(
@@ -371,7 +378,7 @@ function writeReleaseProvenanceFixture(root, options = {}) {
       product: "JoeSSH",
       provenanceVersion: 1,
       releaseAuthority: options.releaseAuthority ?? "github",
-      releaseProfile: options.releaseProfile ?? "full",
+      releaseProfile,
       releaseNotes: {
         path: "docs/release-notes/0.1.0-beta.1.md",
         sha256: sha256(readFile(root, "docs/release-notes/0.1.0-beta.1.md")),
@@ -399,8 +406,10 @@ function writeReleaseProvenanceFixture(root, options = {}) {
         "verify-artifact-checksums.mjs --all-release",
         "verify-web-release-package.mjs",
         "verify-sync-release-evidence.mjs",
-        options.releaseProfile === "web-sync-only"
+        releaseProfile === "web-sync-only"
           ? "verify-desktop-public-exclusion.mjs"
+          : releaseProfile === "desktop-local-unsigned"
+            ? "verify-desktop-unsigned-staging.mjs"
           : "verify-desktop-release-evidence.mjs --require-source",
         ...(options.releaseAuthority === "local" ? ["verify-local-release-authority.mjs"] : []),
         "verify-release-sbom.mjs",
@@ -451,6 +460,50 @@ function writeDesktopExclusionFixture(root) {
   ]);
 }
 
+function writeDesktopUnsignedStagingFixture(root) {
+  const artifactPath = "apps/desktop/src-tauri/target/release/bundle/nsis/JoeSSH_0.1.0-beta.1_x64-setup.exe";
+  const artifactContent = "unsigned desktop installer";
+  writeFile(root, artifactPath, artifactContent);
+  const report = JSON.stringify(
+    {
+      schemaVersion: 1,
+      generatedAt: "2026-06-21T00:00:00.000Z",
+      version: "0.1.0-beta.1",
+      decision: "internal-staging-only",
+      publicReleaseEvidence: false,
+      boundary:
+        "Unsigned Desktop staging reports are for internal dogfood and handoff only. They must not be copied into reports/release or used as signed Desktop formal release evidence.",
+      git: {
+        head: "abc123",
+        statusShort: [],
+        tagsAtHead: ["v0.1.0-beta.1"],
+      },
+      bundleDir: "apps/desktop/src-tauri/target/release/bundle",
+      artifacts: [
+        {
+          path: artifactPath,
+          fileName: "JoeSSH_0.1.0-beta.1_x64-setup.exe",
+          platform: "windows",
+          packageType: null,
+          sizeBytes: artifactContent.length,
+          sha256: sha256(artifactContent),
+          versionMatchesPackage: true,
+          authenticode: {
+            status: "NotSigned",
+            statusMessage: "No signature",
+          },
+        },
+      ],
+    },
+    null,
+    2,
+  );
+  writeFile(root, "reports/handoff/desktop/unsigned-staging-report.json", `${report}\n`);
+  writeManifest(root, "reports/handoff/desktop/unsigned-staging-report-SHA256SUMS.txt", [
+    [`${report}\n`, "reports/handoff/desktop/unsigned-staging-report.json"],
+  ]);
+}
+
 function parseManifest(root, relativePath) {
   return readFile(root, relativePath)
     .split(/\r?\n/)
@@ -476,11 +529,14 @@ function cargoLockFixture(packages) {
     .join("\n");
 }
 
-function writeLocalReleaseAuthorityFixture(root) {
+function writeLocalReleaseAuthorityFixture(root, options = {}) {
+  const releaseProfile = options.releaseProfile ?? "full";
+  const command = options.gateCommand ?? "npm run qa:release:public:fixture";
   const logPath = "reports/release/local-release-authority/qa-release-public.log";
   const logText = [
-    "> atlasterm@0.1.0-beta.1 qa:release:public:fixture",
-    "> npm run qa:release:public",
+    `> atlasterm@0.1.0-beta.1 ${command.replace("npm run ", "")}`,
+    `> ${command}`,
+    ...(command === "npm run qa:release:public:fixture" ? ["> npm run qa:release:public"] : []),
     "Public Beta release readiness checks passed.",
     "",
   ].join("\n");
@@ -497,12 +553,13 @@ function writeLocalReleaseAuthorityFixture(root) {
         target: "self-hosted download bucket",
       },
       releaseGate: {
-        command: "npm run qa:release:public:fixture",
+        command,
         completedAt: "2026-06-21T00:00:00.000Z",
         logPath,
         logSha256: sha256(logText),
         status: "passed",
       },
+      releaseProfile,
       releaseTag: "v0.1.0-beta.1",
       runner: {
         os: "linux",
@@ -520,6 +577,10 @@ function writeLocalReleaseAuthorityFixture(root) {
     null,
     2,
   );
+  const profilePath = `reports/release/local-release-authority.${releaseProfile}.json`;
+  const profileManifest = `reports/release/local-release-authority.${releaseProfile}-SHA256SUMS.txt`;
+  writeFile(root, profilePath, `${evidence}\n`);
+  writeManifest(root, profileManifest, [[`${evidence}\n`, profilePath]]);
   writeFile(root, "reports/release/local-release-authority.json", `${evidence}\n`);
   writeManifest(root, "reports/release/local-release-authority-SHA256SUMS.txt", [
     [`${evidence}\n`, "reports/release/local-release-authority.json"],
@@ -552,6 +613,7 @@ function createFakeGitCommands(root, options = {}) {
     releaseViewUnknownFails: false,
     tagCommit: "abc123",
     tagMissing: false,
+    tagsAtHead: "v0.1.0-beta.1",
     ...options,
   };
   const fakeGitPath = join(binDir, "git.js");
@@ -584,6 +646,10 @@ if (key === "rev-parse --verify v0.1.0-beta.1^{}") {
   process.exit(0);
 }
 if (key === "fsck --strict") {
+  process.exit(0);
+}
+if (key === "tag --points-at HEAD") {
+  console.log(state.tagsAtHead);
   process.exit(0);
 }
 if (key === "remote get-url origin") {
@@ -709,7 +775,10 @@ test("publish preflight can use local web-sync-only release profile without Desk
   const root = createReleaseFixture(t);
   rmSync(join(root, "reports", "release", "desktop"), { recursive: true, force: true });
   writeDesktopExclusionFixture(root);
-  writeLocalReleaseAuthorityFixture(root);
+  writeLocalReleaseAuthorityFixture(root, {
+    gateCommand: "npm run qa:release:public:web-sync-only:local",
+    releaseProfile: "web-sync-only",
+  });
   writeReleaseProvenanceFixture(root, {
     releaseAuthority: "local",
     releaseProfile: "web-sync-only",
@@ -730,11 +799,42 @@ test("publish preflight can use local web-sync-only release profile without Desk
   assert.match(result.stdout, /Public release publish preflight passed/);
 });
 
+test("publish preflight can use local desktop-local-unsigned release profile with unsigned staging evidence", (t) => {
+  const root = createReleaseFixture(t);
+  rmSync(join(root, "reports", "release", "desktop"), { recursive: true, force: true });
+  writeDesktopUnsignedStagingFixture(root);
+  writeLocalReleaseAuthorityFixture(root, {
+    gateCommand: "npm run qa:release:public:desktop-local-unsigned:local",
+    releaseProfile: "desktop-local-unsigned",
+  });
+  writeReleaseProvenanceFixture(root, {
+    releaseAuthority: "local",
+    releaseProfile: "desktop-local-unsigned",
+  });
+
+  const result = runPreflight(root, createFakeGitCommands(root, { ghAuthFails: true }), [
+    "--release-authority",
+    "local",
+    "--release-profile",
+    "desktop-local-unsigned",
+  ]);
+
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /with local release authority and desktop-local-unsigned release profile/);
+  assert.match(result.stdout, /Verify Desktop local unsigned staging evidence/);
+  assert.match(result.stdout, /Unsigned Desktop staging evidence verified for v0\.1\.0-beta\.1/);
+  assert.doesNotMatch(result.stdout + result.stderr, /Verify Desktop signing\/distribution evidence/);
+  assert.match(result.stdout, /Public release publish preflight passed/);
+});
+
 test("web-sync-only publish preflight rejects staged Desktop artifacts", (t) => {
   const root = createReleaseFixture(t);
   rmSync(join(root, "reports", "release", "desktop"), { recursive: true, force: true });
   writeDesktopExclusionFixture(root);
-  writeLocalReleaseAuthorityFixture(root);
+  writeLocalReleaseAuthorityFixture(root, {
+    gateCommand: "npm run qa:release:public:web-sync-only:local",
+    releaseProfile: "web-sync-only",
+  });
   writeReleaseProvenanceFixture(root, {
     releaseAuthority: "local",
     releaseProfile: "web-sync-only",

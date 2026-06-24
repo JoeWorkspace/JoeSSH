@@ -150,6 +150,7 @@ test("writes checksum-covered Desktop formal artifact request from a clean relea
   assert.match(request.commands.manifest, /release:desktop:formal-artifacts:manifest/);
   assert.match(request.commands.intake, /release:desktop:formal-artifacts:intake/);
   assert.match(request.commands.import, /--source-authority local/);
+  assert.match(request.commands.verify, /--require-source-authority local/);
   assert.match(request.clearsRcBlockers.join("\n"), /release-evidence-SHA256SUMS\.txt/);
 
   assert.equal(

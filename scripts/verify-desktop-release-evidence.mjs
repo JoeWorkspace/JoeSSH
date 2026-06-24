@@ -590,7 +590,7 @@ function requireNonEmptyString(label, artifact, field) {
 function requireEvidenceBinding(label, artifact, field) {
   const value = typeof artifact[field] === "string" ? artifact[field] : "";
   const artifactName = basename(artifact.path);
-  if (requiredSourceAuthority) {
+  if (["local", "self-hosted"].includes(requiredSourceAuthority)) {
     if (!value.includes(artifactName) || !value.includes(artifact.sha256)) {
       errors.push(`${label}.${field} must mention both the artifact file name and artifact sha256`);
     }

@@ -54,7 +54,7 @@ function writeCurrentRequest(root, options = {}) {
       kitVerify: "npm run release:desktop:formal-artifacts:kit:verify -- --source-authority local",
       manifest: "npm run release:desktop:formal-artifacts:manifest -- --input-dir <signed-artifact-dir> --source-authority local",
       preflight: "npm run release:desktop:formal-artifacts:preflight -- --input-dir <signed-artifact-dir> --source-authority local",
-      verify: "npm run release:desktop:verify-evidence -- --require-source --require-current-git-source",
+      verify: "npm run release:desktop:verify-evidence -- --require-source --require-current-git-source --require-source-authority local",
     },
     inputDirectory: {
       fileNameMustInclude: "0.1.0-beta.1",
@@ -241,6 +241,17 @@ test("rejects a handoff kit that no longer matches the current request", (t) => 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /Embedded formal-artifact-request\.json does not match the current request/);
   assert.match(result.stderr, /handoff kit requestId must match the current request/);
+});
+
+test("rejects a handoff kit with stale embedded optional context", (t) => {
+  const root = createFixture(t);
+  const env = generateKit(root);
+  writeFile(root, "reports/handoff/desktop/unsigned-staging-report.json", '{"publicReleaseEvidence":false,"updated":true}\n');
+
+  const result = runVerifier(root, [], env);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /context\/unsigned-staging-report\.json does not match the current reports\/handoff\/desktop\/unsigned-staging-report\.json/);
 });
 
 test("rejects a handoff kit when current HEAD no longer matches the request", (t) => {

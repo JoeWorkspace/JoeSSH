@@ -124,6 +124,7 @@ function checkPackageScripts() {
     "qa:release:public:fixture",
     "qa:release:public:local",
     "qa:release:public:web-sync-only:local",
+    "qa:release:public:desktop-local-unsigned:local",
     "qa:prod-audit",
     "qa:lighthouse",
     "test:lighthouse-audit",
@@ -179,6 +180,8 @@ function checkPackageScripts() {
     "qa:desktop-public-exclusion",
     "test:desktop-unsigned-staging-report",
     "qa:desktop-unsigned-staging-report",
+    "test:desktop-unsigned-staging-verify",
+    "qa:desktop-unsigned-staging-verify",
     "test:local-release-authority",
     "qa:local-release-authority",
     "test:web-release",
@@ -227,6 +230,7 @@ function checkPackageScripts() {
     "release:desktop:draft",
     "release:desktop:exclude-public",
     "release:desktop:unsigned-staging-report",
+    "release:desktop:unsigned-staging:verify",
     "release:dogfood-template",
     "release:local-authority",
     "release:local-authority:verify",
@@ -234,17 +238,21 @@ function checkPackageScripts() {
     "release:publish-preflight:web-sync-only",
     "release:publish-preflight:local",
     "release:publish-preflight:local:web-sync-only",
+    "release:publish-preflight:local:desktop-local-unsigned",
     "release:provenance",
     "release:provenance:web-sync-only",
     "release:provenance:local",
     "release:provenance:local:web-sync-only",
+    "release:provenance:local:desktop-local-unsigned",
     "release:provenance:verify",
     "release:provenance:verify:web-sync-only",
     "release:provenance:verify:local",
     "release:provenance:verify:local:web-sync-only",
+    "release:provenance:verify:local:desktop-local-unsigned",
     "release:rc-audit",
     "release:rc-audit:report",
     "release:rc-audit:report:web-sync-only",
+    "release:rc-audit:report:desktop-local-unsigned",
     "release:verify-checksums",
     "release:sbom",
     "release:sbom:verify",
@@ -450,6 +458,34 @@ function checkPackageScripts() {
     publicReleaseWebSyncOnlyLocalScript,
   );
 
+  const publicReleaseDesktopLocalUnsignedScript =
+    packageJson.scripts?.["qa:release:public:desktop-local-unsigned:local"] ?? "";
+  passIf(
+    publicReleaseDesktopLocalUnsignedScript.includes("qa:desktop:real-ssh-smoke:required") &&
+      publicReleaseDesktopLocalUnsignedScript.includes("release:desktop:build") &&
+      publicReleaseDesktopLocalUnsignedScript.includes("release:desktop:unsigned-staging-report") &&
+      publicReleaseDesktopLocalUnsignedScript.includes("release:desktop:unsigned-staging:verify"),
+    "Desktop local unsigned public release QA records and verifies unsigned Desktop staging evidence",
+    publicReleaseDesktopLocalUnsignedScript,
+  );
+  passIf(
+    publicReleaseDesktopLocalUnsignedScript.includes("qa:mobile-public-env"),
+    "Desktop local unsigned public release QA rejects mobile public bearer-token env",
+    publicReleaseDesktopLocalUnsignedScript,
+  );
+  passIf(
+    publicReleaseDesktopLocalUnsignedScript.includes("qa:lighthouse") &&
+      publicReleaseDesktopLocalUnsignedScript.includes("qa:web-admin-bundle-token-scan") &&
+      publicReleaseDesktopLocalUnsignedScript.includes("qa:web-admin-sync-topology-release-smoke"),
+    "Desktop local unsigned public release QA covers Web Admin release gates",
+    publicReleaseDesktopLocalUnsignedScript,
+  );
+  passIf(
+    hasFinalSyncReleaseEvidenceVerification(publicReleaseDesktopLocalUnsignedScript),
+    "Desktop local unsigned public release QA verifies Sync packaged release evidence after local Sync smokes",
+    publicReleaseDesktopLocalUnsignedScript,
+  );
+
   const mobilePublicEnvScript =
     packageJson.scripts?.["qa:mobile-public-env"] ?? "";
   passIf(
@@ -519,6 +555,11 @@ function checkPackageScripts() {
   passIf(
     rootQaScript.includes("qa:desktop-public-exclusion"),
     "Root QA runs Desktop public exclusion tests",
+    rootQaScript,
+  );
+  passIf(
+    rootQaScript.includes("qa:desktop-unsigned-staging-verify"),
+    "Root QA runs Desktop unsigned staging verification tests",
     rootQaScript,
   );
   passIf(
@@ -653,6 +694,8 @@ function checkReleaseToolingFiles() {
     "scripts/verify-desktop-public-exclusion.test.mjs",
     "scripts/report-desktop-unsigned-staging.mjs",
     "scripts/report-desktop-unsigned-staging.test.mjs",
+    "scripts/verify-desktop-unsigned-staging.mjs",
+    "scripts/verify-desktop-unsigned-staging.test.mjs",
     "scripts/desktop-release-evidence-preflight.mjs",
     "scripts/desktop-release-evidence-preflight.test.mjs",
     "scripts/require-real-ssh-smoke-env.mjs",
@@ -716,24 +759,43 @@ function checkReleaseToolingFiles() {
     readTextIfExists("scripts/verify-public-beta-dogfood-evidence.mjs") ?? "";
   const unsignedStagingReporter =
     readTextIfExists("scripts/report-desktop-unsigned-staging.mjs") ?? "";
+  const unsignedStagingVerifier =
+    readTextIfExists("scripts/verify-desktop-unsigned-staging.mjs") ?? "";
   const desktopPublicExclusion =
     readTextIfExists("scripts/verify-desktop-public-exclusion.mjs") ?? "";
   const rustAdvisoryAudit =
     readTextIfExists("scripts/run-rust-advisory-audit.mjs") ?? "";
   passIf(
-    dogfoodVerifier.includes("desktop-install-launch") &&
+      dogfoodVerifier.includes("desktop-install-launch") &&
       dogfoodVerifier.includes("sync-backup-restore-rollback") &&
+      dogfoodVerifier.includes("release-evidence-review") &&
+      dogfoodVerifier.includes("public-beta-rc-audit.${releaseAuthority}.${releaseProfile}.json") &&
+      dogfoodVerifier.includes("latest.${args.releaseAuthority}.${args.releaseProfile}.json") &&
+      dogfoodVerifier.includes("releaseAuthority must be") &&
+      dogfoodVerifier.includes("releaseProfile must be") &&
+      dogfoodVerifier.includes("gitCommit must match current HEAD") &&
+      dogfoodVerifier.includes("releaseTagCommit must match") &&
       dogfoodVerifier.includes("open P0") &&
       dogfoodVerifier.includes("open P1"),
-    "Public Beta dogfood verifier covers top operator tasks and P0/P1 blockers",
+    "Public Beta dogfood verifier covers top operator tasks, profile-bound evidence, profile-bound RC audit evidence, Git source binding, and P0/P1 blockers",
   );
   passIf(
     unsignedStagingReporter.includes("publicReleaseEvidence: false") &&
       unsignedStagingReporter.includes("reports/release") &&
       unsignedStagingReporter.includes("authenticode") &&
       unsignedStagingReporter.includes("sha256File(path)") &&
-      unsignedStagingReporter.includes("versionMatchesPackage"),
+      unsignedStagingReporter.includes("versionMatchesPackage") &&
+      unsignedStagingReporter.includes("unsigned-staging-report-SHA256SUMS.txt"),
     "Desktop unsigned staging reporter records handoff evidence without weakening release artifacts",
+  );
+  passIf(
+    unsignedStagingVerifier.includes("publicReleaseEvidence must be false") &&
+      unsignedStagingVerifier.includes("must not stage public Desktop artifacts") &&
+      unsignedStagingVerifier.includes('name.startsWith("joessh_")') &&
+      unsignedStagingVerifier.includes("git.tagsAtHead must include") &&
+      unsignedStagingVerifier.includes("sha256File(artifactPath)") &&
+      unsignedStagingVerifier.includes("unsigned Desktop staging checksum manifest hash mismatch"),
+    "Desktop unsigned staging verifier binds local-only boundary, Git tag, artifact hashes, and no-public-Desktop release artifacts",
   );
   passIf(
     desktopPublicExclusion.includes("desktop-exclusion.json") &&
@@ -801,7 +863,8 @@ function checkReleaseToolingFiles() {
       desktopFormalArtifactRequest.includes("release:desktop:formal-artifacts:kit") &&
       desktopFormalArtifactRequest.includes("release:desktop:formal-artifacts:kit:verify") &&
       desktopFormalArtifactRequest.includes("release:desktop:formal-artifacts:manifest") &&
-      desktopFormalArtifactRequest.includes("release:desktop:formal-artifacts:intake"),
+      desktopFormalArtifactRequest.includes("release:desktop:formal-artifacts:intake") &&
+      desktopFormalArtifactRequest.includes("--require-source-authority"),
     "Desktop formal artifact request generator writes checksum-covered handoff contract",
   );
   passIf(
@@ -830,6 +893,9 @@ function checkReleaseToolingFiles() {
       desktopFormalArtifactKitVerifier.includes("request.commands.kitVerify") &&
       desktopFormalArtifactKitVerifier.includes("commands/windows-powershell.ps1") &&
       desktopFormalArtifactKitVerifier.includes("checksum does not match") &&
+      desktopFormalArtifactKitVerifier.includes("verifyOptionalContextFiles") &&
+      desktopFormalArtifactKitVerifier.includes("context/${basename(path)}") &&
+      desktopFormalArtifactKitVerifier.includes("does not match the current") &&
       desktopFormalArtifactKitVerifier.includes("sha256File(options.kitPath)") &&
       desktopFormalArtifactKitVerifier.includes("git fsck --strict must pass"),
     "Desktop formal artifact handoff kit verifier binds kit checksum, embedded request, source, and operator commands",
@@ -921,6 +987,23 @@ function checkReleaseToolingFiles() {
   const profilePublishPreflight =
     readTextIfExists("scripts/release-publish-preflight.mjs") ?? "";
   const profileRcAudit = readTextIfExists("scripts/audit-public-beta-rc.mjs") ?? "";
+  const localAuthorityGenerator =
+    readTextIfExists("scripts/generate-local-release-authority.mjs") ?? "";
+  const localAuthorityVerifier =
+    readTextIfExists("scripts/verify-local-release-authority.mjs") ?? "";
+  const localAuthorityTests =
+    readTextIfExists("scripts/verify-local-release-authority.test.mjs") ?? "";
+  passIf(
+    localAuthorityGenerator.includes("local-release-authority.${profile}.json") &&
+      localAuthorityGenerator.includes("qa-release-public.${profile}.log") &&
+      localAuthorityGenerator.includes("Updated legacy local release authority alias") &&
+      localAuthorityVerifier.includes("local-release-authority.${profile}.json") &&
+      localAuthorityVerifier.includes('releaseProfile !== "full"') &&
+      localAuthorityVerifier.includes("local-release-authority.json") &&
+      localAuthorityTests.includes("keeps profile-bound authority evidence usable when the legacy alias is overwritten") &&
+      localAuthorityTests.includes("rejects legacy local authority fallback for non-full release profiles"),
+    "Local release authority evidence is profile-bound with a legacy compatibility alias only for full release fallback",
+  );
   passIf(
     profileReleaseProvenanceGenerator.includes("releaseProfile") &&
       profileReleaseProvenanceGenerator.includes("reports/release/desktop-exclusion-SHA256SUMS.txt") &&
@@ -930,6 +1013,15 @@ function checkReleaseToolingFiles() {
       profileRcAudit.includes("release-desktop-exclusion") &&
       profileRcAudit.includes("must not stage public Desktop artifacts"),
     "Web/Sync-only release profile requires Desktop exclusion evidence instead of weakening Desktop signing gates",
+  );
+  passIf(
+    profileReleaseProvenanceGenerator.includes("reports/handoff/desktop/unsigned-staging-report-SHA256SUMS.txt") &&
+      profileReleaseProvenanceGenerator.includes("verify-desktop-unsigned-staging.mjs") &&
+      profileReleaseProvenanceVerifier.includes("reports/handoff/desktop/unsigned-staging-report.json") &&
+      profilePublishPreflight.includes("Verify Desktop local unsigned staging evidence") &&
+      profileRcAudit.includes("desktop-unsigned-staging") &&
+      profileRcAudit.includes("release profile must not stage public Desktop artifacts"),
+    "Desktop local unsigned release profile requires local-only unsigned staging evidence without weakening signed Desktop gates",
   );
 
   const desktopEvidencePreflight =
@@ -1042,12 +1134,22 @@ function checkReleaseToolingFiles() {
       ),
     "GitHub Release draft uploads only staged reports/release artifacts",
   );
+  passIf(
+    releaseDraft.includes("isForbiddenReleaseUpload") &&
+      releaseDraft.includes("isUnsignedStagingFile") &&
+      releaseDraft.includes("classifyDesktopArtifact") &&
+      releaseDraft.includes('name.startsWith("joessh_")') &&
+      releaseDraft.includes('!artifact.startsWith(desktopReleaseDir)'),
+    "GitHub Release draft rejects unsigned staging evidence and misplaced Desktop artifacts from reports/release",
+  );
 
   const rcAuditGate = readTextIfExists("scripts/audit-public-beta-rc.mjs") ?? "";
   passIf(
-    rcAuditGate.includes("public-beta-rc-audit.json") &&
+    rcAuditGate.includes("public-beta-rc-audit.${releaseAuthority}.${releaseProfile}.json") &&
       rcAuditGate.includes("desktop-signing-secrets") &&
       rcAuditGate.includes("desktop-dogfood") &&
+      rcAuditGate.includes("qa:public-beta-dogfood") &&
+      rcAuditGate.includes("--release-profile") &&
       rcAuditGate.includes("release-desktop-stale-artifacts") &&
       rcAuditGate.includes("publish-preflight") &&
       rcAuditGate.includes("github-ci") &&
@@ -1155,6 +1257,15 @@ function checkReleaseToolingFiles() {
         "non-dry-run rejects release provenance from a different Git source",
       ),
     "GitHub Release draft verifies release provenance against current Git outside dry-run",
+  );
+  passIf(
+    releaseDraftProvenance.includes("verify-desktop-release-evidence.mjs") &&
+      releaseDraftProvenance.includes("--require-source") &&
+      releaseDraftProvenance.includes("--require-current-git-source") &&
+      releaseDraftProvenance.includes("--require-source-authority") &&
+      releaseDraftProvenance.includes('"github"') &&
+      releaseDraftTests.includes("dry run rejects non-GitHub Desktop release evidence source authority"),
+    "GitHub Release draft requires current GitHub Desktop formal source evidence before upload",
   );
 
   const webBundleTokenScan =

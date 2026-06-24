@@ -87,13 +87,22 @@ function runAudit(root, fakePath, statePath, extraArgs = []) {
   );
 }
 
+function readAuditReport(root, releaseAuthority = "github", releaseProfile = "full") {
+  return JSON.parse(
+    readFileSync(
+      join(root, "reports", "release", `public-beta-rc-audit.${releaseAuthority}.${releaseProfile}.json`),
+      "utf8",
+    ),
+  );
+}
+
 test("writes a Go audit report when release evidence and gates pass", (t) => {
   const { fakePath, root, statePath } = createFixture(t);
   const result = runAudit(root, fakePath, statePath);
 
   assert.equal(result.status, 0);
   assert.match(result.stdout, /GO \(0 blockers\)/);
-  const report = JSON.parse(readFileSync(join(root, "reports/release/public-beta-rc-audit.json"), "utf8"));
+  const report = readAuditReport(root);
   assert.equal(report.decision, "go");
   assert.equal(report.blockers.length, 0);
 });
@@ -107,7 +116,7 @@ test("uses local publish preflight without requiring GitHub signing secrets", (t
 
   assert.equal(result.status, 0);
   assert.match(result.stdout, /GO \(0 blockers\)/);
-  const report = JSON.parse(readFileSync(join(root, "reports/release/public-beta-rc-audit.json"), "utf8"));
+  const report = readAuditReport(root, "local");
   assert.equal(report.releaseAuthority, "local");
   assert.equal(report.decision, "go");
   assert.equal(report.blockers.length, 0);
@@ -124,6 +133,7 @@ test("uses web-sync-only profile without requiring Desktop signing evidence", (t
     removeDesktopEvidence: true,
   });
   writeDesktopExclusion(root);
+  writeProfileLocalAuthority(root, "web-sync-only");
 
   const result = runAudit(root, fakePath, statePath, [
     "--release-authority",
@@ -135,7 +145,7 @@ test("uses web-sync-only profile without requiring Desktop signing evidence", (t
 
   assert.equal(result.status, 0);
   assert.match(result.stdout, /GO \(0 blockers\)/);
-  const report = JSON.parse(readFileSync(join(root, "reports/release/public-beta-rc-audit.json"), "utf8"));
+  const report = readAuditReport(root, "local", "web-sync-only");
   assert.equal(report.releaseProfile, "web-sync-only");
   assert.equal(report.decision, "go");
   assert.equal(report.blockers.length, 0);
@@ -149,6 +159,7 @@ test("web-sync-only profile rejects staged Desktop release artifacts", (t) => {
     removeDesktopEvidence: true,
   });
   writeDesktopExclusion(root);
+  writeProfileLocalAuthority(root, "web-sync-only");
   writeArtifactWithManifest(
     root,
     "reports/release/desktop/JoeSSH_0.1.0-beta.1_x64-setup.exe",
@@ -165,7 +176,7 @@ test("web-sync-only profile rejects staged Desktop release artifacts", (t) => {
   ]);
 
   assert.equal(result.status, 0);
-  const report = JSON.parse(readFileSync(join(root, "reports/release/public-beta-rc-audit.json"), "utf8"));
+  const report = readAuditReport(root, "local", "web-sync-only");
   const blocker = report.blockers.find((entry) => entry.id === "release-desktop-stale-artifacts");
   assert(blocker);
   assert.match(blocker.detail, /must not stage public Desktop artifacts/);
@@ -185,7 +196,7 @@ test("records No-Go blockers without hiding GitHub billing annotations", (t) => 
 
   assert.equal(result.status, 0);
   assert.match(result.stdout, /NO-GO/);
-  const report = JSON.parse(readFileSync(join(root, "reports/release/public-beta-rc-audit.json"), "utf8"));
+  const report = readAuditReport(root);
   assert.equal(report.decision, "no-go");
   assert.match(JSON.stringify(report), /spending limit needs to be increased/);
   assert(report.blockers.some((blocker) => blocker.id === "release-tag"));
@@ -202,7 +213,7 @@ test("rejects stale Public Beta operator dogfood evidence", (t) => {
   const result = runAudit(root, fakePath, statePath, ["--skip-github"]);
 
   assert.equal(result.status, 0);
-  const report = JSON.parse(readFileSync(join(root, "reports/release/public-beta-rc-audit.json"), "utf8"));
+  const report = readAuditReport(root);
   const blocker = report.blockers.find((entry) => entry.id === "public-beta-dogfood");
   assert(blocker);
   assert.match(blocker.detail, /version must be 0\.1\.0-beta\.1/);
@@ -215,7 +226,7 @@ test("rejects missing release provenance before publish preflight can hide it", 
   const result = runAudit(root, fakePath, statePath, ["--skip-github"]);
 
   assert.equal(result.status, 0);
-  const report = JSON.parse(readFileSync(join(root, "reports/release/public-beta-rc-audit.json"), "utf8"));
+  const report = readAuditReport(root);
   const blocker = report.blockers.find((entry) => entry.id === "release-provenance");
   assert(blocker);
   assert.match(blocker.detail, /release-provenance-SHA256SUMS\.txt is missing/);
@@ -228,7 +239,7 @@ test("rejects missing Web Admin rollback evidence", (t) => {
   const result = runAudit(root, fakePath, statePath, ["--skip-github"]);
 
   assert.equal(result.status, 0);
-  const report = JSON.parse(readFileSync(join(root, "reports/release/public-beta-rc-audit.json"), "utf8"));
+  const report = readAuditReport(root);
   const blocker = report.blockers.find((entry) => entry.id === "web-admin-rollback-checksum");
   assert(blocker);
   assert.match(blocker.detail, /rollback-smoke-SHA256SUMS\.txt is missing/);
@@ -243,7 +254,7 @@ test("rejects stale Web Admin rollback evidence", (t) => {
   const result = runAudit(root, fakePath, statePath, ["--skip-github"]);
 
   assert.equal(result.status, 0);
-  const report = JSON.parse(readFileSync(join(root, "reports/release/public-beta-rc-audit.json"), "utf8"));
+  const report = readAuditReport(root);
   const blocker = report.blockers.find((entry) => entry.id === "web-admin-rollback");
   assert(blocker);
   assert.match(blocker.detail, /version must be 0\.1\.0-beta\.1/);
@@ -257,7 +268,7 @@ test("rejects stale local release authority before publish preflight can hide it
   const result = runAudit(root, fakePath, statePath, ["--release-authority", "local", "--skip-github"]);
 
   assert.equal(result.status, 0);
-  const report = JSON.parse(readFileSync(join(root, "reports/release/public-beta-rc-audit.json"), "utf8"));
+  const report = readAuditReport(root, "local");
   const blocker = report.blockers.find((entry) => entry.id === "local-release-authority-verify");
   assert(blocker);
   assert.match(blocker.detail, /Local release authority verification failed/);
@@ -269,7 +280,7 @@ test("rejects checksum manifest entries outside the release root", (t) => {
   const result = runAudit(root, fakePath, statePath, ["--skip-github"]);
 
   assert.equal(result.status, 0);
-  const report = JSON.parse(readFileSync(join(root, "reports/release/public-beta-rc-audit.json"), "utf8"));
+  const report = readAuditReport(root);
   const blocker = report.blockers.find((entry) => entry.id === "release-web");
   assert(blocker);
   assert.match(blocker.detail, /escapes the release root/);
@@ -282,7 +293,7 @@ test("flags staged Desktop artifacts that do not match the package version", (t)
   const result = runAudit(root, fakePath, statePath);
 
   assert.equal(result.status, 0);
-  const report = JSON.parse(readFileSync(join(root, "reports/release/public-beta-rc-audit.json"), "utf8"));
+  const report = readAuditReport(root);
   const blocker = report.blockers.find((entry) => entry.id === "release-desktop-stale-artifacts");
   assert(blocker);
   assert.match(blocker.detail, /0\.1\.0-beta\.1/);
@@ -371,6 +382,15 @@ function writeDesktopExclusion(root) {
   );
 }
 
+function writeProfileLocalAuthority(root, releaseProfile) {
+  writeArtifactWithManifest(
+    root,
+    `reports/release/local-release-authority.${releaseProfile}.json`,
+    `local authority ${releaseProfile}`,
+    `reports/release/local-release-authority.${releaseProfile}-SHA256SUMS.txt`,
+  );
+}
+
 function appendManifest(root, manifestPath, artifactPath, content) {
   writeFile(root, artifactPath, content);
   const path = join(root, ...manifestPath.split("/"));
@@ -424,17 +444,22 @@ if (tool === "git") {
     console.error("Desktop public exclusion verification failed.");
     process.exit(1);
   }
+  if (is("run", "release:publish-preflight:local:desktop-local-unsigned")) {
+    if (state.publishPreflightOk) process.exit(0);
+    console.error("Unsigned Desktop staging verification failed.");
+    process.exit(1);
+  }
   if (is("run", "release:desktop:configure-secrets", "--", "--verify-only")) {
     if (state.desktopSecretsOk) process.exit(0);
     console.error("Missing GitHub Actions secret(s) required for formal Desktop evidence");
     process.exit(1);
   }
-  if (is("run", "release:local-authority:verify")) {
+  if (args[0] === "run" && args[1] === "release:local-authority:verify") {
     if (state.localAuthorityOk) process.exit(0);
     console.error("Local release authority verification failed: source.gitCommit does not match current HEAD");
     process.exit(1);
   }
-  if (is("run", "qa:public-beta-dogfood")) {
+  if (args[0] === "run" && args[1] === "qa:public-beta-dogfood") {
     if (state.publicBetaDogfoodOk) process.exit(0);
     console.error("FAIL version must be 0.1.0-beta.1");
     process.exit(1);

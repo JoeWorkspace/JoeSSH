@@ -22,7 +22,13 @@ const steps = [
       }
     : {
         label: "Verify local release authority evidence",
-        args: [resolve(scriptRoot, "scripts", "verify-local-release-authority.mjs"), "--root", root],
+        args: [
+          resolve(scriptRoot, "scripts", "verify-local-release-authority.mjs"),
+          "--root",
+          root,
+          "--release-profile",
+          releaseProfile,
+        ],
       },
   {
     label: "Verify release artifact checksums",
@@ -41,26 +47,7 @@ const steps = [
     label: "Verify Sync release evidence",
     args: [resolve(scriptRoot, "scripts", "verify-sync-release-evidence.mjs"), "--root", root],
   },
-  releaseProfile === "full"
-    ? {
-        label: "Verify Desktop signing/distribution evidence",
-        args: [
-          resolve(scriptRoot, "scripts", "verify-desktop-release-evidence.mjs"),
-          "--root",
-          root,
-          "--require-source",
-          "--require-current-git-source",
-          ...(releaseAuthority === "github" ? [] : ["--require-source-authority", releaseAuthority]),
-        ],
-      }
-    : {
-        label: "Verify Desktop public exclusion evidence",
-        args: [
-          resolve(scriptRoot, "scripts", "verify-desktop-public-exclusion.mjs"),
-          "--root",
-          root,
-        ],
-      },
+  createDesktopProfileStep(),
   {
     label: "Verify release SBOM",
     args: [resolve(scriptRoot, "scripts", "verify-release-sbom.mjs"), "--root", root],
@@ -212,10 +199,10 @@ function verifyGithubPublishReadiness() {
 }
 
 function verifyLocalPublicationTarget() {
+  const authorityPath = `reports/release/local-release-authority.${releaseProfile}.json`;
   return {
     status: 0,
-    stdout:
-      "Verified local/self-hosted publication target from reports/release/local-release-authority.json.\n",
+    stdout: `Verified local/self-hosted publication target from ${authorityPath}.\n`,
     stderr: "",
   };
 }
@@ -281,7 +268,7 @@ function parseArgs(args) {
     if (arg === "--release-profile" || arg === "--profile") {
       const value = args[index + 1];
       if (!value) {
-        fail(`${arg} requires full or web-sync-only.`);
+        fail(`${arg} requires full, web-sync-only, or desktop-local-unsigned.`);
       }
       releaseProfile = normalizeReleaseProfile(value);
       index += 1;
@@ -316,8 +303,47 @@ function parseArgs(args) {
     fail("--release-authority must be github or local.");
   }
   releaseProfile = normalizeReleaseProfile(releaseProfile);
+  if (releaseProfile === "desktop-local-unsigned" && releaseAuthority !== "local") {
+    fail("--release-profile desktop-local-unsigned requires --release-authority local.");
+  }
 
   return { allowUnhealthyGit, releaseAuthority, releaseProfile, root };
+}
+
+function createDesktopProfileStep() {
+  if (releaseProfile === "full") {
+    return {
+      label: "Verify Desktop signing/distribution evidence",
+      args: [
+        resolve(scriptRoot, "scripts", "verify-desktop-release-evidence.mjs"),
+        "--root",
+        root,
+        "--require-source",
+        "--require-current-git-source",
+        ...(releaseAuthority === "github" ? [] : ["--require-source-authority", releaseAuthority]),
+      ],
+    };
+  }
+
+  if (releaseProfile === "desktop-local-unsigned") {
+    return {
+      label: "Verify Desktop local unsigned staging evidence",
+      args: [
+        resolve(scriptRoot, "scripts", "verify-desktop-unsigned-staging.mjs"),
+        "--root",
+        root,
+      ],
+    };
+  }
+
+  return {
+    label: "Verify Desktop public exclusion evidence",
+    args: [
+      resolve(scriptRoot, "scripts", "verify-desktop-public-exclusion.mjs"),
+      "--root",
+      root,
+    ],
+  };
 }
 
 function normalizeReleaseProfile(value) {
@@ -327,7 +353,10 @@ function normalizeReleaseProfile(value) {
   if (value === "web-sync-only" || value === "no-public-desktop-downloads") {
     return "web-sync-only";
   }
-  fail("--release-profile must be full or web-sync-only.");
+  if (value === "desktop-local-unsigned" || value === "local-unsigned-desktop") {
+    return "desktop-local-unsigned";
+  }
+  fail("--release-profile must be full, web-sync-only, or desktop-local-unsigned.");
 }
 
 function parseCommandPrefixArgs(envName) {

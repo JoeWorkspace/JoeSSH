@@ -188,6 +188,7 @@ test("generates and verifies local release authority evidence", (t) => {
   const evidence = JSON.parse(readFile(root, "reports/release/local-release-authority.json"));
   assert.equal(evidence.authorityVersion, 1);
   assert.equal(evidence.authority, "local");
+  assert.equal(evidence.releaseProfile, "full");
   assert.equal(evidence.releaseTag, "v0.1.0-beta.1");
   assert.equal(evidence.releaseGate.command, "npm run qa:release:public:fixture");
   assert.equal(evidence.releaseGate.logSha256, sha256(releaseGateLog()));
@@ -197,6 +198,10 @@ test("generates and verifies local release authority evidence", (t) => {
   assert.match(
     readFile(root, "reports/release/local-release-authority-SHA256SUMS.txt"),
     /^([a-f0-9]{64}) {2}reports\/release\/local-release-authority\.json\n$/,
+  );
+  assert.match(
+    readFile(root, "reports/release/local-release-authority.full-SHA256SUMS.txt"),
+    /^([a-f0-9]{64}) {2}reports\/release\/local-release-authority\.full\.json\n$/,
   );
 
   const verified = runVerifier(root, env);
@@ -210,7 +215,7 @@ test("runs the local release gate by default before generating authority evidenc
   const generated = runGeneratorWithFreshGate(root, env);
 
   assert.equal(generated.status, 0, generated.stdout + generated.stderr);
-  const log = readFile(root, "reports/release/local-release-authority/qa-release-public.log");
+  const log = readFile(root, "reports/release/local-release-authority/qa-release-public.full.log");
   assert.match(log, /^\$ npm run qa:release:public:fixture/m);
   assert.match(log, /Public Beta release readiness checks passed\./);
   assert.doesNotMatch(log, /stale log/);
@@ -272,13 +277,110 @@ test("generates local release authority evidence for the web sync only public re
   const generated = runGenerator(root, env, [
     "--gate-command",
     "npm run qa:release:public:web-sync-only:local",
+    "--release-profile",
+    "web-sync-only",
   ]);
 
   assert.equal(generated.status, 0, generated.stdout + generated.stderr);
   const evidence = JSON.parse(readFile(root, "reports/release/local-release-authority.json"));
   assert.equal(evidence.releaseGate.command, "npm run qa:release:public:web-sync-only:local");
-  const verified = runVerifier(root, env);
+  assert.equal(evidence.releaseProfile, "web-sync-only");
+  const verified = runVerifier(root, env, ["--release-profile", "web-sync-only"]);
   assert.equal(verified.status, 0, verified.stdout + verified.stderr);
+});
+
+test("generates local release authority evidence for the desktop local unsigned public release gate", (t) => {
+  const root = createFixture(t, {
+    logText: [
+      "> atlasterm@0.1.0-beta.1 qa:release:public:desktop-local-unsigned:local",
+      "> npm run qa:release:public:desktop-local-unsigned:local",
+      "Public Beta release readiness checks passed.",
+      "",
+    ].join("\n"),
+  });
+  const env = createFakeGitCommands(root);
+
+  const generated = runGenerator(root, env, [
+    "--gate-command",
+    "npm run qa:release:public:desktop-local-unsigned:local",
+    "--release-profile",
+    "desktop-local-unsigned",
+  ]);
+
+  assert.equal(generated.status, 0, generated.stdout + generated.stderr);
+  const evidence = JSON.parse(readFile(root, "reports/release/local-release-authority.json"));
+  assert.equal(evidence.releaseGate.command, "npm run qa:release:public:desktop-local-unsigned:local");
+  assert.equal(evidence.releaseProfile, "desktop-local-unsigned");
+  const verified = runVerifier(root, env, ["--release-profile", "desktop-local-unsigned"]);
+  assert.equal(verified.status, 0, verified.stdout + verified.stderr);
+});
+
+test("keeps profile-bound authority evidence usable when the legacy alias is overwritten", (t) => {
+  const root = createFixture(t);
+  const env = createFakeGitCommands(root);
+  const fullGateLog = "reports/release/local-release-authority/qa-release-public.full.log";
+  const unsignedGateLog = "reports/release/local-release-authority/qa-release-public.desktop-local-unsigned.log";
+
+  writeFile(root, fullGateLog, releaseGateLog());
+  const full = runGenerator(root, env, ["--gate-log", fullGateLog]);
+  assert.equal(full.status, 0, full.stdout + full.stderr);
+  const fullEvidence = JSON.parse(readFile(root, "reports/release/local-release-authority.full.json"));
+  assert.equal(fullEvidence.releaseProfile, "full");
+
+  writeFile(
+    root,
+    unsignedGateLog,
+    [
+      "> atlasterm@0.1.0-beta.1 qa:release:public:desktop-local-unsigned:local",
+      "> npm run qa:release:public:desktop-local-unsigned:local",
+      "Public Beta release readiness checks passed.",
+      "",
+    ].join("\n"),
+  );
+  const unsigned = runGenerator(root, env, [
+    "--gate-log",
+    unsignedGateLog,
+    "--gate-command",
+    "npm run qa:release:public:desktop-local-unsigned:local",
+    "--release-profile",
+    "desktop-local-unsigned",
+  ]);
+  assert.equal(unsigned.status, 0, unsigned.stdout + unsigned.stderr);
+
+  const verifiedFull = runVerifier(root, env, ["--release-profile", "full"]);
+  assert.equal(verifiedFull.status, 0, verifiedFull.stdout + verifiedFull.stderr);
+  const verifiedUnsigned = runVerifier(root, env, ["--release-profile", "desktop-local-unsigned"]);
+  assert.equal(verifiedUnsigned.status, 0, verifiedUnsigned.stdout + verifiedUnsigned.stderr);
+
+  const legacyEvidence = JSON.parse(readFile(root, "reports/release/local-release-authority.json"));
+  assert.equal(legacyEvidence.releaseProfile, "desktop-local-unsigned");
+});
+
+test("rejects legacy local authority fallback for non-full release profiles", (t) => {
+  const root = createFixture(t, {
+    logText: [
+      "> atlasterm@0.1.0-beta.1 qa:release:public:desktop-local-unsigned:local",
+      "> npm run qa:release:public:desktop-local-unsigned:local",
+      "Public Beta release readiness checks passed.",
+      "",
+    ].join("\n"),
+  });
+  const env = createFakeGitCommands(root);
+  const generated = runGenerator(root, env, [
+    "--gate-command",
+    "npm run qa:release:public:desktop-local-unsigned:local",
+    "--release-profile",
+    "desktop-local-unsigned",
+  ]);
+  assert.equal(generated.status, 0, generated.stdout + generated.stderr);
+
+  rmSync(join(root, "reports", "release", "local-release-authority.desktop-local-unsigned.json"));
+  rmSync(join(root, "reports", "release", "local-release-authority.desktop-local-unsigned-SHA256SUMS.txt"));
+
+  const verified = runVerifier(root, env, ["--release-profile", "desktop-local-unsigned"]);
+
+  assert.equal(verified.status, 1);
+  assert.match(verified.stderr, /Missing local release authority evidence: reports\/release\/local-release-authority\.desktop-local-unsigned\.json/);
 });
 
 test("accepts UTF-16LE PowerShell release gate logs", (t) => {

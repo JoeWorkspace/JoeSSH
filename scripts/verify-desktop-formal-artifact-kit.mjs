@@ -152,6 +152,7 @@ function verifyEmbeddedKitManifest(entries, gitSource, request) {
   }
   verifyIncludedFile(kit, options.requestPath);
   verifyIncludedFile(kit, options.requestChecksumPath);
+  verifyOptionalContextFiles(entries, kit);
 }
 
 function verifyOperatorCommandFiles(entries, request) {
@@ -200,6 +201,29 @@ function verifyIncludedFile(kit, path) {
   if (entry.sizeBytes !== statSync(path).size) {
     errors.push(`handoff kit includedFiles size mismatch for ${releasePath}`);
   }
+}
+
+function verifyOptionalContextFiles(entries, kit) {
+  for (const path of collectOptionalHandoffFilePaths()) {
+    verifyIncludedFile(kit, path);
+    const entryName = `context/${basename(path)}`;
+    const embeddedText = entries.get(entryName);
+    if (embeddedText === undefined) {
+      errors.push(`Desktop formal artifact handoff kit is missing ${entryName}`);
+      continue;
+    }
+    if (embeddedText !== readFileSync(path, "utf8")) {
+      errors.push(`${entryName} does not match the current ${toReleasePath(path)}.`);
+    }
+  }
+}
+
+function collectOptionalHandoffFilePaths() {
+  return [
+    resolve(options.root, "reports", "handoff", "desktop", "formal-evidence-unblock-report.json"),
+    resolve(options.root, "reports", "handoff", "desktop", "formal-artifact-input-report.json"),
+    resolve(options.root, "reports", "handoff", "desktop", "unsigned-staging-report.json"),
+  ].filter((path) => existsSync(path) && statSync(path).isFile());
 }
 
 function verifyArrayIncludes(label, actual, expectedValues) {

@@ -9,7 +9,9 @@ runner records that the build is unsigned and keeps it out of public release
 artifacts. Public publishing through either GitHub Releases or a local/self-hosted
 authority still requires signed Windows artifacts, signed and notarized macOS
 artifacts, Linux package evidence, checksums, SBOM, provenance, and the matching
-publish preflight.
+publish preflight. The `desktop-local-unsigned` profile is the local-authority
+exception for beta staging: it does not require GitHub or Desktop signing, but
+it also cannot publish Desktop artifacts.
 
 For unsigned Desktop staging, record the handoff boundary before dogfood:
 
@@ -18,8 +20,11 @@ npm run release:desktop:unsigned-staging-report
 ```
 
 This writes `reports/handoff/desktop/unsigned-staging-report.json` with the
-artifact path, SHA256, Git ref, and Windows Authenticode status. The report is
-internal handoff evidence only and must not be copied into `reports/release`.
+artifact path, SHA256, Git ref, and Windows Authenticode status, plus
+`reports/handoff/desktop/unsigned-staging-report-SHA256SUMS.txt`. The report and
+checksum are internal handoff evidence only, must not be copied into
+`reports/release/desktop/`, and must not be attached as public release
+artifacts.
 
 ## Evidence File
 
@@ -35,11 +40,29 @@ Fill the generated JSON and save the completed run as:
 reports/dogfood/public-beta/latest.json
 ```
 
+When the verifier runs inside a Git checkout, `gitCommit` must match `HEAD` and
+`releaseTagCommit` must match the `v0.1.0-beta.10` tag. Refresh these fields
+after every commit or tag move before generating release authority, provenance,
+or RC audit evidence.
+
 Verify it with:
 
 ```powershell
 npm run qa:public-beta-dogfood
 ```
+
+For `desktop-local-unsigned` dogfood, pass the matching authority/profile to the
+template and verifier so the expected RC audit path is
+`reports/release/public-beta-rc-audit.local.desktop-local-unsigned.json`:
+
+```powershell
+npm run release:dogfood-template -- --release-authority local --release-profile desktop-local-unsigned
+npm run qa:public-beta-dogfood -- --release-authority local --release-profile desktop-local-unsigned
+```
+
+Store profile-specific completed evidence as
+`reports/dogfood/public-beta/latest.local.desktop-local-unsigned.json` so it
+cannot be confused with the default full profile evidence.
 
 Do not paste SSH hosts, usernames, commands containing secrets, file names that
 identify customer data, private keys, tokens, terminal output, or screenshots
@@ -78,7 +101,9 @@ with secrets into the evidence file.
 10. `release-evidence-review`
     Review Web, Sync, SBOM, checksum, RC audit, and No-Go issue evidence. Confirm
     no P0/P1 finding remains open and no unsigned Desktop artifact is treated as
-    public release evidence.
+    public release evidence. For local unsigned Desktop staging, use the
+    profile-specific RC audit report
+    `reports/release/public-beta-rc-audit.local.desktop-local-unsigned.json`.
 
 ## Severity Rules
 

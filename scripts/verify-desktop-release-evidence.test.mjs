@@ -277,6 +277,33 @@ test("requires a specific desktop evidence source authority when requested", (t)
   assert.match(result.stderr, /sourceAuthority must be local/);
 });
 
+test("accepts GitHub source authority without requiring proof text to repeat artifact sha256", (t) => {
+  const root = createFixture(t);
+  const evidence = completeEvidence();
+  evidence[0].signatureVerification = `signtool verify /pa ${FIXTURE_ARTIFACTS[0][0]} passed`;
+  evidence[1].signatureVerification = `codesign --verify ${FIXTURE_ARTIFACTS[1][0]} passed`;
+  evidence[1].notarizationVerification = `spctl --assess ${FIXTURE_ARTIFACTS[1][0]} accepted`;
+  writeEvidence(root, evidence);
+  writeEvidenceSource(root);
+
+  const result = runChecker(root, ["--require-source-authority", "github"]);
+
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+});
+
+test("local source authority requires proof text to repeat artifact sha256", (t) => {
+  const root = createFixture(t);
+  const evidence = completeEvidence();
+  evidence[0].signatureVerification = `signtool verify /pa ${FIXTURE_ARTIFACTS[0][0]} passed`;
+  writeEvidence(root, evidence);
+  writeEvidenceSource(root, localEvidenceSourceOverride());
+
+  const result = runChecker(root, ["--require-source-authority", "local"]);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /signatureVerification must mention both the artifact file name and artifact sha256/);
+});
+
 test("accepts formal desktop evidence when source sidecar matches current Git", (t) => {
   const root = createFixture(t);
   writeEvidenceSource(root, localEvidenceSourceOverride());

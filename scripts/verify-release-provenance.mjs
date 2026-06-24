@@ -257,6 +257,8 @@ function validateVerifiers() {
     "verify-sync-release-evidence.mjs",
     releaseProfile === "full"
       ? "verify-desktop-release-evidence.mjs --require-source"
+      : releaseProfile === "desktop-local-unsigned"
+        ? "verify-desktop-unsigned-staging.mjs"
       : "verify-desktop-public-exclusion.mjs",
     ...(releaseAuthority === "local" ? ["verify-local-release-authority.mjs"] : []),
     "verify-release-sbom.mjs",
@@ -434,6 +436,20 @@ function validateChecksumManifests() {
         "release provenance must include reports/release/desktop/release-evidence-source.json in the Desktop evidence checksum manifest",
       );
     }
+  } else if (releaseProfile === "desktop-local-unsigned") {
+    const unsignedStagingManifest = manifestEntries.get(
+      "reports/handoff/desktop/unsigned-staging-report-SHA256SUMS.txt",
+    );
+    const hasUnsignedStagingReport = unsignedStagingManifest?.entries?.some(
+      (entry) =>
+        isRecord(entry) &&
+        entry.path === "reports/handoff/desktop/unsigned-staging-report.json",
+    );
+    if (!hasUnsignedStagingReport) {
+      errors.push(
+        "release provenance must include reports/handoff/desktop/unsigned-staging-report.json in the Desktop local unsigned staging checksum manifest",
+      );
+    }
   } else {
     const desktopExclusionManifest = manifestEntries.get(
       "reports/release/desktop-exclusion-SHA256SUMS.txt",
@@ -523,7 +539,13 @@ function validateLocalReleaseAuthority() {
   if (releaseAuthority !== "local") {
     return;
   }
-  const args = [resolve(defaultRoot, "scripts", "verify-local-release-authority.mjs"), "--root", root];
+  const args = [
+    resolve(defaultRoot, "scripts", "verify-local-release-authority.mjs"),
+    "--root",
+    root,
+    "--release-profile",
+    releaseProfile,
+  ];
   if (skipCurrentGitCheck) {
     args.push("--skip-current-git-check");
   }
@@ -585,12 +607,26 @@ function collectTauriVersions() {
 }
 
 function collectReleaseChecksumManifests() {
-  return collectFiles(resolve(root, "reports", "release"))
+  const releaseManifests = collectFiles(resolve(root, "reports", "release"))
     .filter((path) => path.endsWith("SHA256SUMS.txt"))
     .map((path) => toReleasePath(path))
     .filter((path) => path !== toReleasePath(checksumPath))
-    .filter((path) => path !== "reports/release/public-beta-rc-audit-SHA256SUMS.txt")
+    .filter((path) => !/^reports\/release\/public-beta-rc-audit(?:\.[^.]+)*-SHA256SUMS\.txt$/.test(path))
+    .filter((path) => !isLegacyLocalAuthorityAlias(path))
     .sort();
+  const requiredExternalManifests = requiredChecksumManifests
+    .filter((path) => !path.startsWith("reports/release/"))
+    .filter((path) => existsSync(resolve(root, path)));
+  return [...new Set([...releaseManifests, ...requiredExternalManifests])].sort();
+}
+
+function isLegacyLocalAuthorityAlias(path) {
+  return (
+    path === "reports/release/local-release-authority-SHA256SUMS.txt" &&
+    requiredChecksumManifests.some((manifest) =>
+      /^reports\/release\/local-release-authority\.[^.]+-SHA256SUMS\.txt$/.test(manifest),
+    )
+  );
 }
 
 function createRequiredChecksumManifests() {
@@ -601,13 +637,26 @@ function createRequiredChecksumManifests() {
           "reports/release/desktop/SHA256SUMS.txt",
           "reports/release/desktop/release-evidence-SHA256SUMS.txt",
         ]
+      : releaseProfile === "desktop-local-unsigned"
+        ? ["reports/handoff/desktop/unsigned-staging-report-SHA256SUMS.txt"]
       : ["reports/release/desktop-exclusion-SHA256SUMS.txt"]),
     "reports/release/sync/SHA256SUMS.txt",
     "reports/release/sync/backup-restore-smoke-SHA256SUMS.txt",
     "reports/release/web/rollback-smoke-SHA256SUMS.txt",
     "reports/release/web/SHA256SUMS.txt",
-    ...(releaseAuthority === "local" ? ["reports/release/local-release-authority-SHA256SUMS.txt"] : []),
+    ...(releaseAuthority === "local" ? [localReleaseAuthorityChecksumManifestPath()] : []),
   ];
+}
+
+function localReleaseAuthorityChecksumManifestPath() {
+  const profilePath = `reports/release/local-release-authority.${releaseProfile}-SHA256SUMS.txt`;
+  if (releaseProfile !== "full") {
+    return profilePath;
+  }
+  if (existsSync(resolve(root, profilePath))) {
+    return profilePath;
+  }
+  return "reports/release/local-release-authority-SHA256SUMS.txt";
 }
 
 function parseChecksumManifest(manifestPath) {
@@ -789,7 +838,7 @@ function parseArgs(args) {
     if (arg === "--release-profile" || arg === "--profile") {
       const value = args[index + 1];
       if (!value) {
-        fail(`${arg} requires full or web-sync-only.`);
+        fail(`${arg} requires full, web-sync-only, or desktop-local-unsigned.`);
       }
       releaseProfile = normalizeReleaseProfile(value);
       index += 1;
@@ -850,6 +899,9 @@ function parseArgs(args) {
     fail("--release-authority must be github or local.");
   }
   releaseProfile = normalizeReleaseProfile(releaseProfile);
+  if (releaseProfile === "desktop-local-unsigned" && releaseAuthority !== "local") {
+    fail("--release-profile desktop-local-unsigned requires --release-authority local.");
+  }
 
   return {
     checksumPath: resolve(
@@ -874,7 +926,10 @@ function normalizeReleaseProfile(value) {
   if (value === "web-sync-only" || value === "no-public-desktop-downloads") {
     return "web-sync-only";
   }
-  fail("--release-profile must be full or web-sync-only.");
+  if (value === "desktop-local-unsigned" || value === "local-unsigned-desktop") {
+    return "desktop-local-unsigned";
+  }
+  fail("--release-profile must be full, web-sync-only, or desktop-local-unsigned.");
 }
 
 function parseCommandPrefixArgs(envName) {

@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Local release provenance and publish preflight paths that bind local authority
   manifests, Desktop source sidecars, checksums, release notes, and the release
   tag to the current Git checkout.
+- `desktop-local-unsigned` local-authority-only profile for unsigned Desktop
+  beta staging, with the staging report and checksum kept under
+  `reports/handoff/desktop/` instead of public release artifacts.
 
 ### Changed
 - Rolled the Public Beta candidate forward from `0.1.0-beta.9` to
@@ -22,6 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Public Beta documentation now treats GitHub-hosted release publishing as an
   optional distribution path, while local/self-hosted evidence can be the source
   of truth for RC audits.
+- RC audit reports are now profile-specific, such as
+  `reports/release/public-beta-rc-audit.local.desktop-local-unsigned.json`;
+  the `full` profile still requires real signed Desktop artifacts.
 
 ## [0.1.0-beta.9] - 2026-06-23
 

@@ -13,6 +13,7 @@ import { basename, dirname, isAbsolute, join, relative, resolve } from "node:pat
 const defaultRoot = resolve(import.meta.dirname, "..");
 const {
   bundleDir,
+  checksumPath,
   outputPath,
   root,
 } = parseArgs(process.argv.slice(2));
@@ -22,7 +23,12 @@ const powershellCommand = process.env.ATLASTERM_RELEASE_POWERSHELL_COMMAND ?? "p
 const powershellCommandPrefixArgs = parseCommandPrefixArgs("ATLASTERM_RELEASE_POWERSHELL_ARGS");
 const packageJson = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
 
-if (!isInsideRoot(outputPath) || isInsideReleaseReports(outputPath)) {
+if (
+  !isInsideRoot(outputPath) ||
+  !isInsideRoot(checksumPath) ||
+  isInsideReleaseReports(outputPath) ||
+  isInsideReleaseReports(checksumPath)
+) {
   fail("Unsigned Desktop staging reports must stay inside the release root and outside reports/release.");
 }
 
@@ -68,7 +74,10 @@ const report = {
 
 mkdirSync(dirname(outputPath), { recursive: true });
 writeFileSync(outputPath, `${JSON.stringify(report, null, 2)}\n`);
+mkdirSync(dirname(checksumPath), { recursive: true });
+writeFileSync(checksumPath, `${sha256File(outputPath)}  ${toReleasePath(outputPath)}\n`);
 console.log(`Wrote unsigned Desktop staging report to ${toReleasePath(outputPath)}.`);
+console.log(`Wrote unsigned Desktop staging checksum to ${toReleasePath(checksumPath)}.`);
 
 function inspectGit() {
   return {
@@ -181,6 +190,7 @@ function parseArgs(args) {
   let root = defaultRoot;
   let bundlePath = "apps/desktop/src-tauri/target/release/bundle";
   let output = "reports/handoff/desktop/unsigned-staging-report.json";
+  let checksum = "reports/handoff/desktop/unsigned-staging-report-SHA256SUMS.txt";
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
@@ -211,11 +221,21 @@ function parseArgs(args) {
       output = arg.slice("--output=".length);
       continue;
     }
+    if (arg === "--checksum") {
+      checksum = readValue(args, index, arg);
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--checksum=")) {
+      checksum = arg.slice("--checksum=".length);
+      continue;
+    }
     fail(`Unknown argument: ${arg}`);
   }
 
   return {
     bundleDir: resolve(root, bundlePath),
+    checksumPath: resolve(root, checksum),
     outputPath: resolve(root, output),
     root,
   };

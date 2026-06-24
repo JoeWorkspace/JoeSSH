@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -36,8 +36,11 @@ console.log(JSON.stringify({ Status: "NotSigned", StatusMessage: "No signature" 
 
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /reports\/handoff\/desktop\/unsigned-staging-report\.json/);
+  assert.match(result.stdout, /reports\/handoff\/desktop\/unsigned-staging-report-SHA256SUMS\.txt/);
 
-  const report = JSON.parse(readFileSync(join(root, "reports", "handoff", "desktop", "unsigned-staging-report.json"), "utf8"));
+  const reportPath = join(root, "reports", "handoff", "desktop", "unsigned-staging-report.json");
+  const checksumPath = join(root, "reports", "handoff", "desktop", "unsigned-staging-report-SHA256SUMS.txt");
+  const report = JSON.parse(readFileSync(reportPath, "utf8"));
   assert.equal(report.version, "0.1.0-beta.9");
   assert.equal(report.publicReleaseEvidence, false);
   assert.equal(report.decision, "internal-staging-only");
@@ -47,6 +50,11 @@ console.log(JSON.stringify({ Status: "NotSigned", StatusMessage: "No signature" 
   assert.equal(report.artifacts[0].path, "apps/desktop/src-tauri/target/release/bundle/nsis/JoeSSH_0.1.0-beta.9_x64-setup.exe");
   assert.equal(report.artifacts[0].authenticode.status, "NotSigned");
   assert.equal(report.artifacts[0].sha256, sha256("unsigned installer"));
+  assert.equal(existsSync(checksumPath), true);
+  assert.equal(
+    readFileSync(checksumPath, "utf8"),
+    `${sha256(readFileSync(reportPath))}  reports/handoff/desktop/unsigned-staging-report.json\n`,
+  );
 });
 
 test("rejects outputs under reports/release", () => {
@@ -60,6 +68,23 @@ test("rejects outputs under reports/release", () => {
     root,
     "--output",
     "reports/release/desktop/unsigned-staging-report.json",
+  ]);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /outside reports\/release/);
+});
+
+test("rejects checksums under reports/release", () => {
+  const root = fixtureRoot();
+  const bundleDir = join(root, "apps", "desktop", "src-tauri", "target", "release", "bundle", "nsis");
+  mkdirSync(bundleDir, { recursive: true });
+  writeFileSync(join(bundleDir, "JoeSSH_0.1.0-beta.9_x64-setup.exe"), "unsigned installer");
+
+  const result = run([
+    "--root",
+    root,
+    "--checksum",
+    "reports/release/desktop/unsigned-staging-report-SHA256SUMS.txt",
   ]);
 
   assert.equal(result.status, 1);

@@ -631,6 +631,36 @@ test("dry run rejects local-only handoff files in the release upload tree", (t) 
   assert.match(result.stderr, /reports\/release\/desktop\/formal-evidence-unblock-report\.json/);
 });
 
+test("dry run rejects checksum-covered unsigned staging files in the release upload tree", (t) => {
+  const root = createReleaseFixture(t);
+  const report = '{"publicReleaseEvidence":false}\n';
+  writeFile(root, "reports/release/web/unsigned-staging-report.json", report);
+  writeManifest(root, "reports/release/web/unsigned-staging-report-SHA256SUMS.txt", [
+    [report, "reports/release/web/unsigned-staging-report.json"],
+  ]);
+
+  const result = runDraft(root);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Local-only handoff file\(s\) must not be uploaded/);
+  assert.match(result.stderr, /reports\/release\/web\/unsigned-staging-report\.json/);
+  assert.match(result.stderr, /reports\/release\/web\/unsigned-staging-report-SHA256SUMS\.txt/);
+});
+
+test("dry run rejects checksum-covered Desktop installers outside reports/release/desktop", (t) => {
+  const root = createReleaseFixture(t);
+  writeFile(root, "reports/release/web/JoeSSH_0.1.0-beta.1_x64-setup.exe", "misplaced desktop installer");
+  writeManifest(root, "reports/release/web/misplaced-desktop-SHA256SUMS.txt", [
+    ["misplaced desktop installer", "reports/release/web/JoeSSH_0.1.0-beta.1_x64-setup.exe"],
+  ]);
+
+  const result = runDraft(root);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Local-only handoff file\(s\) must not be uploaded/);
+  assert.match(result.stderr, /reports\/release\/web\/JoeSSH_0\.1\.0-beta\.1_x64-setup\.exe/);
+});
+
 test("dry run uploads only staged reports release artifacts", (t) => {
   const root = createReleaseFixture(t);
   writeFile(
@@ -668,4 +698,21 @@ test("dry run rejects desktop release evidence without workflow source provenanc
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /missing desktop evidence source sidecar/);
+});
+
+test("dry run rejects non-GitHub Desktop release evidence source authority", (t) => {
+  const root = createReleaseFixture(t);
+  const source = JSON.parse(readFile(root, "reports/release/desktop/release-evidence-source.json"));
+  source.sourceAuthority = "local";
+  const sourceText = `${JSON.stringify(source, null, 2)}\n`;
+  writeFile(root, "reports/release/desktop/release-evidence-source.json", sourceText);
+  writeManifest(root, "reports/release/desktop/release-evidence-SHA256SUMS.txt", [
+    [readFile(root, "reports/release/desktop/release-evidence.json"), "reports/release/desktop/release-evidence.json"],
+    [sourceText, "reports/release/desktop/release-evidence-source.json"],
+  ]);
+
+  const result = runDraft(root);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /sourceAuthority must be github/);
 });

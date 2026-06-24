@@ -203,6 +203,7 @@ npm run release:desktop:formal-artifacts:manifest -- --input-dir <signed-artifac
 npm run release:desktop:formal-artifacts:intake -- --input-dir <signed-artifact-dir> --source-authority local
 npm run release:desktop:formal-artifacts:preflight -- --input-dir <signed-artifact-dir> --source-authority local
 npm run release:desktop:formal-artifacts:import -- --input-dir <signed-artifact-dir> --source-authority local
+npm run release:desktop:verify-evidence -- --require-source --require-current-git-source --require-source-authority local
 ```
 
 The request command writes
@@ -224,7 +225,11 @@ Use `--source-authority self-hosted` when the directory was produced by a
 controlled self-hosted release runner. The wrapper rejects input directories
 inside the release workspace, stale artifact versions, missing required
 platforms, and missing proof files, and then runs `release:desktop:verify-evidence`
-in formal local/self-hosted source mode. It writes
+in formal local/self-hosted source mode. After import, rerun
+`npm run release:desktop:verify-evidence -- --require-source
+--require-current-git-source --require-source-authority local` or use
+`self-hosted` for that authority so the staged evidence is bound to the current
+tagged checkout and the authority that produced it. It writes
 `reports/release/desktop/release-evidence-source.json` with
 `sourceAuthority: "local"` or `"self-hosted"`, `sourceVersion: 1`,
 `artifactName: "desktop-release-evidence"`, the release ref, the release tag
@@ -252,15 +257,49 @@ npm run release:rc-audit:report -- --release-authority local --skip-github
 ```
 
 `npm run release:local-authority` runs the selected gate and writes
-`reports/release/local-release-authority/qa-release-public.log`. If the full
-gate already ran under an external runner and the log is already in that exact
-path, add `--reuse-gate-log` to wrap it without rerunning.
+profile-bound authority evidence and gate logs, for example
+`reports/release/local-release-authority.full.json`,
+`reports/release/local-release-authority.full-SHA256SUMS.txt`, and
+`reports/release/local-release-authority/qa-release-public.full.log`. It also
+updates the legacy `reports/release/local-release-authority.json` alias for old
+handoffs, but verifiers prefer the profile-bound file. If a gate already ran
+under an external runner, add `--gate-log <path> --reuse-gate-log` to wrap that
+specific log without rerunning.
 
 The local preflight still requires a healthy Git checkout, the release tag at
 `HEAD`, clean source outside `reports/release/`, Desktop/Web/Sync artifacts,
 SBOM, checksums, provenance, and formal Desktop source evidence. It only
-replaces GitHub CLI release checks with `local-release-authority.json`
+replaces GitHub CLI release checks with profile-bound local authority
 verification.
+
+### Desktop Local Unsigned Profile
+
+`desktop-local-unsigned` is local authority only. It is for local Desktop beta
+staging and dogfood when Desktop signing is unavailable; it does not require
+GitHub, does not require Desktop signing, and must not create public Desktop
+release artifacts.
+
+```bash
+npm run release:desktop:build
+npm run release:desktop:unsigned-staging-report
+npm run release:desktop:unsigned-staging:verify
+npm run release:local-authority -- --release-profile desktop-local-unsigned --gate-command "npm run qa:release:public:desktop-local-unsigned:local" --target "<operator-confirmed local target>"
+npm run release:provenance:local:desktop-local-unsigned
+npm run release:provenance:verify:local:desktop-local-unsigned
+npm run release:publish-preflight:local:desktop-local-unsigned
+npm run release:rc-audit:report:desktop-local-unsigned
+```
+
+The unsigned Desktop staging report and checksum live only in
+`reports/handoff/desktop/unsigned-staging-report.json` and
+`reports/handoff/desktop/unsigned-staging-report-SHA256SUMS.txt`. Do not copy
+them, or the unsigned Desktop build they describe, into
+`reports/release/desktop/`, and do not attach them as public release artifacts.
+Web Admin, Sync, SBOM, local authority, provenance, and publish-preflight
+evidence still may be generated locally; the Desktop side of provenance binds
+the handoff checksum instead of formal signed Desktop release evidence. The RC
+audit report is profile-specific, for example
+`reports/release/public-beta-rc-audit.local.desktop-local-unsigned.json`.
 
 ### Web/Sync-only Public Beta Profile
 
@@ -293,6 +332,9 @@ formal signed Desktop evidence gate.
   notarization record is part of release evidence.
 - Linux: publish at least one AppImage, deb, or rpm artifact and document runtime
   dependencies in release notes.
+- The `full` profile still requires real signed Desktop artifacts and formal
+  Desktop evidence. `desktop-local-unsigned` is only allowed because its Desktop
+  build stays in local handoff evidence and is not a public release artifact.
 - Every uploaded desktop artifact must appear in
   `reports/release/desktop/SHA256SUMS.txt`.
 - Every uploaded desktop artifact must also appear in
@@ -377,7 +419,8 @@ npm run release:publish-preflight
 npm run release:desktop:draft
 ```
 
-For local/self-hosted publication, replace the final three commands with:
+For local/self-hosted full-profile publication with formal Desktop evidence,
+replace the final three commands with:
 
 ```bash
 npm run release:local-authority -- --gate-command "npm run qa:release:public:fixture" --target "<operator-confirmed target>"
@@ -388,12 +431,17 @@ npm run release:rc-audit:report -- --release-authority local --skip-github
 ```
 
 The publish preflight verifies all Desktop/Web/Sync checksum manifests, Desktop
-signing/notarization evidence, SBOM coverage, release provenance, a healthy Git
-checkout, a clean working tree outside `reports/release/`, and a release tag
-that points at `HEAD`. GitHub authority additionally checks GitHub CLI
-availability/authentication, no existing GitHub Release for the same tag, and
-the GitHub Release draft dry-run. Local/self-hosted authority additionally
-checks `reports/release/local-release-authority.json`. The draft command then
+signing/notarization evidence for `full`, SBOM coverage, release provenance, a
+healthy Git checkout, a clean working tree outside `reports/release/`, and a
+release tag that points at `HEAD`. GitHub authority additionally checks GitHub
+CLI availability/authentication, no existing GitHub Release for the same tag,
+and the GitHub Release draft dry-run. Local/self-hosted authority additionally
+checks `reports/release/local-release-authority.<profile>.json` with the legacy
+`reports/release/local-release-authority.json` alias kept only for old handoffs. For
+`desktop-local-unsigned`, use the earlier
+`release:publish-preflight:local:desktop-local-unsigned` command set instead of
+GitHub draft creation; unsigned Desktop builds must stay outside
+`reports/release/`. The draft command then
 requires `docs/release-notes/0.1.0-beta.10.md`, staged release artifacts under
 `reports/release/`, fresh checksums, and complete desktop release evidence whose
 artifact sha256 values match the checksum manifest and actual files, with

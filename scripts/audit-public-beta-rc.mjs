@@ -135,7 +135,7 @@ function auditReleaseManifests() {
           [
             "local-release-authority",
             "Local release authority checksum manifest",
-            "reports/release/local-release-authority-SHA256SUMS.txt",
+            localReleaseAuthorityChecksumManifestPath(),
             true,
           ],
         ]
@@ -155,6 +155,15 @@ function auditReleaseManifests() {
             true,
           ],
         ]
+      : releaseProfile === "desktop-local-unsigned"
+        ? [
+            [
+              "desktop-unsigned-staging",
+              "Desktop local unsigned staging checksum manifest",
+              "reports/handoff/desktop/unsigned-staging-report-SHA256SUMS.txt",
+              true,
+            ],
+          ]
       : [
           [
             "release-desktop-exclusion",
@@ -183,7 +192,7 @@ function auditDesktopArtifactVersions() {
       "pass",
       releaseProfile === "full"
         ? "No staged Desktop artifacts found; checksum manifest gates cover required artifacts."
-        : "No public Desktop artifacts staged for the web-sync-only release profile.",
+        : `No public Desktop artifacts staged for the ${releaseProfile} release profile.`,
     );
     return;
   }
@@ -192,7 +201,7 @@ function auditDesktopArtifactVersions() {
       "release-desktop-stale-artifacts",
       "Desktop staged artifact versions",
       "fail",
-      `web-sync-only release profile must not stage public Desktop artifacts: ${artifacts.join(", ")}.`,
+      `${releaseProfile} release profile must not stage public Desktop artifacts: ${artifacts.join(", ")}.`,
       true,
     );
     return;
@@ -298,7 +307,15 @@ function auditDesktopDogfood() {
 }
 
 function auditPublicBetaDogfood() {
-  const result = runNpm(["run", "qa:public-beta-dogfood"]);
+  const result = runNpm([
+    "run",
+    "qa:public-beta-dogfood",
+    "--",
+    "--release-authority",
+    releaseAuthority,
+    "--release-profile",
+    releaseProfile,
+  ]);
   addCheck(
     "public-beta-dogfood",
     "Public Beta operator dogfood evidence",
@@ -319,7 +336,7 @@ function auditLocalReleaseAuthority() {
     return;
   }
 
-  const result = runNpm(["run", "release:local-authority:verify"]);
+  const result = runNpm(["run", "release:local-authority:verify", "--", "--release-profile", releaseProfile]);
   addCheck(
     "local-release-authority-verify",
     "Local release authority evidence verification",
@@ -329,15 +346,19 @@ function auditLocalReleaseAuthority() {
   );
 }
 
+function localReleaseAuthorityChecksumManifestPath() {
+  const profilePath = `reports/release/local-release-authority.${releaseProfile}-SHA256SUMS.txt`;
+  if (releaseProfile !== "full") {
+    return profilePath;
+  }
+  if (existsSync(resolve(root, profilePath))) {
+    return profilePath;
+  }
+  return "reports/release/local-release-authority-SHA256SUMS.txt";
+}
+
 function auditPublishPreflight() {
-  const scriptName =
-    releaseProfile === "web-sync-only"
-      ? releaseAuthority === "local"
-        ? "release:publish-preflight:local:web-sync-only"
-        : "release:publish-preflight:web-sync-only"
-      : releaseAuthority === "local"
-        ? "release:publish-preflight:local"
-        : "release:publish-preflight";
+  const scriptName = publishPreflightScriptName();
   const result = runNpm(["run", scriptName]);
   addCheck(
     "publish-preflight",
@@ -354,7 +375,9 @@ function auditDesktopSigningSecrets() {
       "desktop-signing-secrets",
       "Desktop signing/notarization secret preflight",
       "pass",
-      "Not required for web-sync-only release profile; no public Desktop downloads are included.",
+      releaseProfile === "desktop-local-unsigned"
+        ? "Not required for desktop-local-unsigned release profile; Desktop is local unsigned staging only."
+        : "Not required for web-sync-only release profile; no public Desktop downloads are included.",
     );
     return;
   }
@@ -712,7 +735,7 @@ function parseArgs(args) {
     fail(`Unknown argument: ${arg}`);
   }
 
-  outputPath ??= resolve(root, "reports", "release", "public-beta-rc-audit.json");
+  outputPath ??= resolve(root, "reports", "release", `public-beta-rc-audit.${releaseAuthority}.${releaseProfile}.json`);
   if (!isInsideRoot(outputPath, root)) {
     fail("--output must stay inside --root.");
   }
@@ -720,8 +743,23 @@ function parseArgs(args) {
     fail("--release-authority must be github or local.");
   }
   releaseProfile = normalizeReleaseProfile(releaseProfile);
+  if (releaseProfile === "desktop-local-unsigned" && releaseAuthority !== "local") {
+    fail("--release-profile desktop-local-unsigned requires --release-authority local.");
+  }
 
   return { noFail, outputPath, releaseAuthority, releaseProfile, repo, root, skipGithub };
+}
+
+function publishPreflightScriptName() {
+  if (releaseProfile === "web-sync-only") {
+    return releaseAuthority === "local"
+      ? "release:publish-preflight:local:web-sync-only"
+      : "release:publish-preflight:web-sync-only";
+  }
+  if (releaseProfile === "desktop-local-unsigned") {
+    return "release:publish-preflight:local:desktop-local-unsigned";
+  }
+  return releaseAuthority === "local" ? "release:publish-preflight:local" : "release:publish-preflight";
 }
 
 function normalizeReleaseProfile(value) {
@@ -731,7 +769,10 @@ function normalizeReleaseProfile(value) {
   if (value === "web-sync-only" || value === "no-public-desktop-downloads") {
     return "web-sync-only";
   }
-  fail("--release-profile must be full or web-sync-only.");
+  if (value === "desktop-local-unsigned" || value === "local-unsigned-desktop") {
+    return "desktop-local-unsigned";
+  }
+  fail("--release-profile must be full, web-sync-only, or desktop-local-unsigned.");
 }
 
 function readValue(args, index, arg) {

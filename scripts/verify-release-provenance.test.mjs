@@ -241,11 +241,14 @@ function runGenerator(root, env = createFakeCommands(root), extraArgs = []) {
   });
 }
 
-function writeLocalReleaseAuthorityFixture(root) {
+function writeLocalReleaseAuthorityFixture(root, options = {}) {
+  const releaseProfile = options.releaseProfile ?? "full";
+  const command = options.gateCommand ?? "npm run qa:release:public:fixture";
   const logPath = "reports/release/local-release-authority/qa-release-public.log";
   const logText = [
-    "> atlasterm@0.1.0-beta.1 qa:release:public:fixture",
-    "> npm run qa:release:public",
+    `> atlasterm@0.1.0-beta.1 ${command.replace("npm run ", "")}`,
+    `> ${command}`,
+    ...(command === "npm run qa:release:public:fixture" ? ["> npm run qa:release:public"] : []),
     "Public Beta release readiness checks passed.",
     "",
   ].join("\n");
@@ -262,12 +265,13 @@ function writeLocalReleaseAuthorityFixture(root) {
         target: "self-hosted download bucket",
       },
       releaseGate: {
-        command: "npm run qa:release:public:fixture",
+        command,
         completedAt: "2026-06-21T00:00:00.000Z",
         logPath,
         logSha256: sha256(logText),
         status: "passed",
       },
+      releaseProfile,
       releaseTag: "v0.1.0-beta.1",
       runner: {
         os: "linux",
@@ -285,6 +289,10 @@ function writeLocalReleaseAuthorityFixture(root) {
     null,
     2,
   );
+  const profilePath = `reports/release/local-release-authority.${releaseProfile}.json`;
+  const profileManifest = `reports/release/local-release-authority.${releaseProfile}-SHA256SUMS.txt`;
+  writeFile(root, profilePath, `${evidence}\n`);
+  writeManifest(root, profileManifest, [[`${evidence}\n`, profilePath]]);
   writeFile(root, "reports/release/local-release-authority.json", `${evidence}\n`);
   writeManifest(root, "reports/release/local-release-authority-SHA256SUMS.txt", [
     [`${evidence}\n`, "reports/release/local-release-authority.json"],
@@ -322,6 +330,50 @@ function writeDesktopExclusionFixture(root) {
   writeFile(root, "reports/release/desktop-exclusion.json", `${evidence}\n`);
   writeManifest(root, "reports/release/desktop-exclusion-SHA256SUMS.txt", [
     [`${evidence}\n`, "reports/release/desktop-exclusion.json"],
+  ]);
+}
+
+function writeDesktopUnsignedStagingFixture(root) {
+  const artifactPath = "apps/desktop/src-tauri/target/release/bundle/nsis/JoeSSH_0.1.0-beta.1_x64-setup.exe";
+  const artifactContent = "unsigned desktop installer";
+  writeFile(root, artifactPath, artifactContent);
+  const report = JSON.stringify(
+    {
+      schemaVersion: 1,
+      generatedAt: "2026-06-21T00:00:00.000Z",
+      version: "0.1.0-beta.1",
+      decision: "internal-staging-only",
+      publicReleaseEvidence: false,
+      boundary:
+        "Unsigned Desktop staging reports are for internal dogfood and handoff only. They must not be copied into reports/release or used as signed Desktop formal release evidence.",
+      git: {
+        head: "abc123",
+        statusShort: [],
+        tagsAtHead: ["v0.1.0-beta.1"],
+      },
+      bundleDir: "apps/desktop/src-tauri/target/release/bundle",
+      artifacts: [
+        {
+          path: artifactPath,
+          fileName: "JoeSSH_0.1.0-beta.1_x64-setup.exe",
+          platform: "windows",
+          packageType: null,
+          sizeBytes: artifactContent.length,
+          sha256: sha256(artifactContent),
+          versionMatchesPackage: true,
+          authenticode: {
+            status: "NotSigned",
+            statusMessage: "No signature",
+          },
+        },
+      ],
+    },
+    null,
+    2,
+  );
+  writeFile(root, "reports/handoff/desktop/unsigned-staging-report.json", `${report}\n`);
+  writeManifest(root, "reports/handoff/desktop/unsigned-staging-report-SHA256SUMS.txt", [
+    [`${report}\n`, "reports/handoff/desktop/unsigned-staging-report.json"],
   ]);
 }
 
@@ -392,7 +444,7 @@ test("generates and verifies release provenance with local release authority", (
   assert.equal(provenance.releaseAuthority, "local");
   assert(
     provenance.checksumManifests.some(
-      (entry) => entry.path === "reports/release/local-release-authority-SHA256SUMS.txt",
+      (entry) => entry.path === "reports/release/local-release-authority.full-SHA256SUMS.txt",
     ),
   );
   assert(provenance.verifiers.includes("verify-local-release-authority.mjs"));
@@ -406,7 +458,10 @@ test("generates and verifies web-sync-only release provenance without Desktop fo
   const env = createFakeCommands(root);
   rmSync(join(root, "reports", "release", "desktop"), { recursive: true, force: true });
   writeDesktopExclusionFixture(root);
-  writeLocalReleaseAuthorityFixture(root);
+  writeLocalReleaseAuthorityFixture(root, {
+    gateCommand: "npm run qa:release:public:web-sync-only:local",
+    releaseProfile: "web-sync-only",
+  });
 
   const generated = runGenerator(root, env, [
     "--release-authority",
@@ -424,7 +479,7 @@ test("generates and verifies web-sync-only release provenance without Desktop fo
     [
       "reports/release/SBOM-SHA256SUMS.txt",
       "reports/release/desktop-exclusion-SHA256SUMS.txt",
-      "reports/release/local-release-authority-SHA256SUMS.txt",
+      "reports/release/local-release-authority.web-sync-only-SHA256SUMS.txt",
       "reports/release/sync/SHA256SUMS.txt",
       "reports/release/sync/backup-restore-smoke-SHA256SUMS.txt",
       "reports/release/web/SHA256SUMS.txt",
@@ -439,6 +494,51 @@ test("generates and verifies web-sync-only release provenance without Desktop fo
     "local",
     "--release-profile",
     "web-sync-only",
+  ]);
+  assert.equal(verified.status, 0, verified.stdout + verified.stderr);
+});
+
+test("generates and verifies desktop-local-unsigned release provenance without Desktop formal artifacts", (t) => {
+  const root = createFixture(t);
+  const env = createFakeCommands(root);
+  rmSync(join(root, "reports", "release", "desktop"), { recursive: true, force: true });
+  writeDesktopUnsignedStagingFixture(root);
+  writeLocalReleaseAuthorityFixture(root, {
+    gateCommand: "npm run qa:release:public:desktop-local-unsigned:local",
+    releaseProfile: "desktop-local-unsigned",
+  });
+
+  const generated = runGenerator(root, env, [
+    "--release-authority",
+    "local",
+    "--release-profile",
+    "desktop-local-unsigned",
+  ]);
+
+  assert.equal(generated.status, 0, generated.stdout + generated.stderr);
+  const provenance = JSON.parse(readFile(root, "reports/release/release-provenance.json"));
+  assert.equal(provenance.releaseAuthority, "local");
+  assert.equal(provenance.releaseProfile, "desktop-local-unsigned");
+  assert.deepEqual(
+    provenance.checksumManifests.map((entry) => entry.path).sort(),
+    [
+      "reports/handoff/desktop/unsigned-staging-report-SHA256SUMS.txt",
+      "reports/release/SBOM-SHA256SUMS.txt",
+      "reports/release/local-release-authority.desktop-local-unsigned-SHA256SUMS.txt",
+      "reports/release/sync/SHA256SUMS.txt",
+      "reports/release/sync/backup-restore-smoke-SHA256SUMS.txt",
+      "reports/release/web/SHA256SUMS.txt",
+      "reports/release/web/rollback-smoke-SHA256SUMS.txt",
+    ],
+  );
+  assert(provenance.verifiers.includes("verify-desktop-unsigned-staging.mjs"));
+  assert(!provenance.verifiers.includes("verify-desktop-release-evidence.mjs --require-source"));
+
+  const verified = runVerifier(root, env, [
+    "--release-authority",
+    "local",
+    "--release-profile",
+    "desktop-local-unsigned",
   ]);
   assert.equal(verified.status, 0, verified.stdout + verified.stderr);
 });

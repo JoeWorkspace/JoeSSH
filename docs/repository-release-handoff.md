@@ -97,10 +97,13 @@ route, not a blocker for the first Public Beta.
    npm run release:desktop:formal-artifacts:intake -- --input-dir <signed-artifact-dir> --source-authority local
    npm run release:desktop:formal-artifacts:preflight -- --input-dir <signed-artifact-dir> --source-authority local
    npm run release:desktop:formal-artifacts:import -- --input-dir <signed-artifact-dir> --source-authority local
+   npm run release:desktop:verify-evidence -- --require-source --require-current-git-source --require-source-authority local
    ```
 
    The import command stages Desktop artifacts, writes formal source evidence,
-   and verifies the evidence against the tagged healthy checkout.
+   and verifies the evidence against the tagged healthy checkout. The explicit
+   verify command repeats the source-authority and current-Git checks after the
+   import has written `reports/release/desktop/`.
    The intake command writes
    `reports/handoff/desktop/formal-artifact-input-report.json` and its checksum
    manifest without copying artifacts into `reports/release/desktop`.
@@ -138,9 +141,14 @@ route, not a blocker for the first Public Beta.
    ```
 
    `npm run release:local-authority` executes the selected public release gate
-   and writes `reports/release/local-release-authority/qa-release-public.log`.
-   Only add `--reuse-gate-log` when that exact log was captured externally and
-   must be wrapped after the fact.
+   and writes profile-bound authority evidence and logs, for example
+   `reports/release/local-release-authority.full.json`,
+   `reports/release/local-release-authority.full-SHA256SUMS.txt`, and
+   `reports/release/local-release-authority/qa-release-public.full.log`. It also
+   updates the legacy `reports/release/local-release-authority.json` alias for
+   older handoffs, but verifiers prefer the profile-bound file. Only add
+   `--gate-log <path> --reuse-gate-log` when that exact log was captured
+   externally and must be wrapped after the fact.
 
    If the release scope is Web Admin + Sync only, first generate explicit
    Desktop exclusion evidence and use the `web-sync-only` variants:
@@ -159,6 +167,30 @@ route, not a blocker for the first Public Beta.
    `reports/release/desktop/` contains no Desktop artifacts; unsigned Desktop
    staging remains handoff-only evidence.
 
+   If the scope is local unsigned Desktop beta staging, use the
+   `desktop-local-unsigned` profile. It is local authority only, requires no
+   GitHub release or Desktop signing, and keeps the Desktop staging report and
+   checksum under `reports/handoff/desktop/`:
+
+   ```bash
+   npm run release:desktop:build
+   npm run release:desktop:unsigned-staging-report
+   npm run release:desktop:unsigned-staging:verify
+   npm run release:local-authority -- --release-profile desktop-local-unsigned --gate-command "npm run qa:release:public:desktop-local-unsigned:local" --target "<operator-confirmed local target>"
+   npm run release:provenance:local:desktop-local-unsigned
+   npm run release:provenance:verify:local:desktop-local-unsigned
+   npm run release:publish-preflight:local:desktop-local-unsigned
+   npm run release:rc-audit:report:desktop-local-unsigned
+   ```
+
+   This profile must not place Desktop artifacts, unsigned staging reports, or
+   unsigned staging checksums under `reports/release/desktop/`. Web Admin, Sync,
+   SBOM, local authority, provenance, and publish-preflight evidence still
+   remain local release evidence under `reports/release/`; the Desktop evidence
+   input is `reports/handoff/desktop/unsigned-staging-report-SHA256SUMS.txt`.
+   The RC audit output is profile-specific, for example
+   `reports/release/public-beta-rc-audit.local.desktop-local-unsigned.json`.
+
 ## Acceptance Evidence
 
 Keep these outputs with the release handoff notes:
@@ -171,14 +203,16 @@ Keep these outputs with the release handoff notes:
   the local OpenSSH dogfood fixture to supply `JOESSH_REAL_SSH_*` evidence.
 - `npm run qa:release:public:web-sync-only:local` result when the release scope
   intentionally excludes public Desktop downloads.
+- `npm run qa:release:public:desktop-local-unsigned:local` result when the
+  release scope is local unsigned Desktop beta staging.
 - `node scripts/check-public-release-readiness.mjs` result without
   `--allow-unhealthy-git`.
 - For GitHub publication: `gh --version`, `gh auth status`, and the
   `gh release view v0.1.0-beta.10` not-found check from
   `npm run release:publish-preflight`.
 - For local/self-hosted publication:
-  `reports/release/local-release-authority.json`,
-  `reports/release/local-release-authority-SHA256SUMS.txt`, and
+  `reports/release/local-release-authority.<profile>.json`,
+  `reports/release/local-release-authority.<profile>-SHA256SUMS.txt`, and
   `npm run release:publish-preflight:local` plus
   `npm run release:rc-audit:report -- --release-authority local --skip-github`
   output.
@@ -188,10 +222,16 @@ Keep these outputs with the release handoff notes:
   `npm run release:publish-preflight:local:web-sync-only`, and
   `npm run release:rc-audit:report -- --release-authority local --release-profile web-sync-only --skip-github`
   output.
+- For `desktop-local-unsigned` local authority:
+  `reports/handoff/desktop/unsigned-staging-report.json`,
+  `reports/handoff/desktop/unsigned-staging-report-SHA256SUMS.txt`,
+  `npm run release:publish-preflight:local:desktop-local-unsigned`, and
+  `reports/release/public-beta-rc-audit.local.desktop-local-unsigned.json`.
 - `reports/release/**/SHA256SUMS.txt`.
-- `reports/release/desktop/release-evidence.json`.
-- `reports/release/desktop/release-evidence-source.json`.
-- `reports/release/desktop/release-evidence-SHA256SUMS.txt`.
+- For the `full` profile or any public Desktop download:
+  `reports/release/desktop/release-evidence.json`,
+  `reports/release/desktop/release-evidence-source.json`, and
+  `reports/release/desktop/release-evidence-SHA256SUMS.txt`.
 - `reports/handoff/desktop/formal-evidence-unblock-report.json` while the
   candidate is No-Go on Desktop formal evidence. This handoff-only diagnostic
   report is not a release upload artifact.

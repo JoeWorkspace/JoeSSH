@@ -27,6 +27,7 @@ const localOnlyReleaseFiles = [
   "reports/release/desktop/formal-evidence-unblock-report.json",
   "reports/release/desktop/secret-input-template.env",
 ];
+const desktopReleaseDir = "reports/release/desktop/";
 
 if (!dryRun) {
   assertReleaseMachineReady();
@@ -39,12 +40,12 @@ if (artifacts.length === 0) {
   process.exit(1);
 }
 
-const localOnlyArtifacts = artifacts.filter((artifact) => localOnlyReleaseFiles.includes(artifact));
+const localOnlyArtifacts = artifacts.filter((artifact) => isForbiddenReleaseUpload(artifact));
 if (localOnlyArtifacts.length > 0) {
   console.error(
     `Local-only handoff file(s) must not be uploaded from reports/release:\n- ${localOnlyArtifacts.join(
       "\n- ",
-    )}\nMove diagnostics and signing-secret templates under reports/handoff before drafting a release.`,
+    )}\nMove diagnostics, unsigned staging evidence, signing-secret templates, and non-public Desktop artifacts under reports/handoff before drafting a release.`,
   );
   process.exit(1);
 }
@@ -68,7 +69,15 @@ if (!webManifestArtifacts.includes(expectedWebArtifact)) {
 
 const desktopEvidenceVerification = spawnSync(
   process.execPath,
-  [resolve(scriptRoot, "scripts", "verify-desktop-release-evidence.mjs"), "--root", root, "--require-source"],
+  [
+    resolve(scriptRoot, "scripts", "verify-desktop-release-evidence.mjs"),
+    "--root",
+    root,
+    "--require-source",
+    "--require-current-git-source",
+    "--require-source-authority",
+    "github",
+  ],
   {
     cwd: scriptRoot,
     encoding: "utf8",
@@ -139,6 +148,39 @@ function collectReleaseArtifacts() {
   return collectFiles(resolve(root, "reports", "release"))
     .filter((file) => !file.endsWith(".map"))
     .map((file) => toReleasePath(file));
+}
+
+function isForbiddenReleaseUpload(artifact) {
+  if (localOnlyReleaseFiles.includes(artifact)) {
+    return true;
+  }
+  if (isUnsignedStagingFile(artifact)) {
+    return true;
+  }
+  return classifyDesktopArtifact(artifact) !== null && !artifact.startsWith(desktopReleaseDir);
+}
+
+function isUnsignedStagingFile(artifact) {
+  const name = basename(artifact).toLowerCase();
+  return name.includes("unsigned-staging");
+}
+
+function classifyDesktopArtifact(path) {
+  const name = basename(path).toLowerCase();
+  if (!name.startsWith("joessh_")) {
+    return null;
+  }
+  const lower = path.toLowerCase();
+  if (/\.(exe|msi|msix)$/.test(lower)) {
+    return { platform: "windows" };
+  }
+  if (lower.endsWith(".dmg") || lower.endsWith(".pkg") || lower.endsWith(".app.tar.gz")) {
+    return { platform: "macos" };
+  }
+  if (lower.endsWith(".appimage") || lower.endsWith(".deb") || lower.endsWith(".rpm")) {
+    return { platform: "linux" };
+  }
+  return null;
 }
 
 function collectChecksumManifests() {

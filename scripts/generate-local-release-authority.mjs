@@ -14,6 +14,8 @@ const {
   gateLogPath,
   operator,
   publicationTarget,
+  releaseProfile,
+  legacyAlias,
   reuseGateLog,
   root,
   runnerType,
@@ -44,6 +46,7 @@ const evidence = {
     logSha256: gate.sha256,
     status: "passed",
   },
+  releaseProfile,
   releaseTag,
   runner: {
     os: `${platform()} ${release()} ${arch()}`,
@@ -59,10 +62,20 @@ const evidence = {
   version: packageJson.version,
 };
 
+const evidenceText = `${JSON.stringify(evidence, null, 2)}\n`;
 mkdirSync(dirname(evidencePath), { recursive: true });
-writeFileSync(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`);
+writeFileSync(evidencePath, evidenceText);
 mkdirSync(dirname(checksumPath), { recursive: true });
 writeFileSync(checksumPath, `${sha256File(evidencePath)}  ${toReleasePath(evidencePath)}\n`);
+if (legacyAlias) {
+  mkdirSync(dirname(legacyAlias.evidencePath), { recursive: true });
+  writeFileSync(legacyAlias.evidencePath, evidenceText);
+  mkdirSync(dirname(legacyAlias.checksumPath), { recursive: true });
+  writeFileSync(
+    legacyAlias.checksumPath,
+    `${sha256File(legacyAlias.evidencePath)}  ${toReleasePath(legacyAlias.evidencePath)}\n`,
+  );
+}
 
 const verified = spawnSync(
   process.execPath,
@@ -74,6 +87,8 @@ const verified = spawnSync(
     evidencePath,
     "--checksum",
     checksumPath,
+    "--release-profile",
+    releaseProfile,
   ],
   {
     cwd: root,
@@ -88,6 +103,9 @@ if (verified.status !== 0) {
 
 console.log(`Wrote local release authority evidence to ${toReleasePath(evidencePath)}`);
 console.log(`Wrote local release authority checksum to ${toReleasePath(checksumPath)}`);
+if (legacyAlias) {
+  console.log(`Updated legacy local release authority alias at ${toReleasePath(legacyAlias.evidencePath)}`);
+}
 if (verified.stdout) {
   process.stdout.write(verified.stdout);
 }
@@ -184,6 +202,12 @@ function createGateCommandArgs(command) {
       command: npmRuntime.command,
     };
   }
+  if (command === "npm run qa:release:public:desktop-local-unsigned:local") {
+    return {
+      args: [...npmRuntime.prefixArgs, "run", "qa:release:public:desktop-local-unsigned:local"],
+      command: npmRuntime.command,
+    };
+  }
   fail(`Unsupported release gate command: ${command}`);
 }
 
@@ -260,7 +284,7 @@ function parseArgs(args) {
   const duplicateCheck = "operator-confirmed-no-existing-release-for-tag";
   let evidencePath = null;
   let gateCommand = process.env.ATLASTERM_RELEASE_GATE_COMMAND ?? "npm run qa:release:public";
-  let gateLogPath = process.env.ATLASTERM_RELEASE_GATE_LOG ?? "reports/release/local-release-authority/qa-release-public.log";
+  let gateLogPath = process.env.ATLASTERM_RELEASE_GATE_LOG ?? null;
   let operator =
     process.env.ATLASTERM_RELEASE_OPERATOR ??
     process.env.GIT_AUTHOR_NAME ??
@@ -269,6 +293,7 @@ function parseArgs(args) {
     "release-operator";
   let publicationTarget =
     process.env.ATLASTERM_RELEASE_PUBLICATION_TARGET ?? "operator-confirmed local/self-hosted distribution target";
+  let releaseProfile = process.env.ATLASTERM_RELEASE_PROFILE ?? "full";
   let reuseGateLog = false;
   let root = defaultRoot;
   let runnerType = process.env.ATLASTERM_RELEASE_RUNNER_TYPE ?? "local-release-machine";
@@ -304,6 +329,19 @@ function parseArgs(args) {
     }
     if (arg.startsWith("--gate-command=")) {
       gateCommand = arg.slice("--gate-command=".length);
+      continue;
+    }
+    if (arg === "--release-profile" || arg === "--profile") {
+      releaseProfile = normalizeReleaseProfile(readValue(args, index, arg));
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--release-profile=")) {
+      releaseProfile = normalizeReleaseProfile(arg.slice("--release-profile=".length));
+      continue;
+    }
+    if (arg.startsWith("--profile=")) {
+      releaseProfile = normalizeReleaseProfile(arg.slice("--profile=".length));
       continue;
     }
     if (arg === "--gate-log") {
@@ -370,12 +408,8 @@ function parseArgs(args) {
   if (!["local", "self-hosted"].includes(authority)) {
     fail("--release-authority must be local or self-hosted.");
   }
-  const allowedGateCommands = [
-    "npm run qa:release:public",
-    "npm run qa:release:public:fixture",
-    "npm run qa:release:public:local",
-    "npm run qa:release:public:web-sync-only:local",
-  ];
+  releaseProfile = normalizeReleaseProfile(releaseProfile);
+  const allowedGateCommands = allowedGateCommandsForProfile(releaseProfile);
   if (!allowedGateCommands.includes(gateCommand)) {
     fail(`--gate-command must be one of: ${allowedGateCommands.join(", ")}.`);
   }
@@ -388,20 +422,88 @@ function parseArgs(args) {
   if (runnerType.trim() === "") {
     fail("--runner-type must be non-empty.");
   }
+  const usesDefaultEvidencePath = evidencePath === null;
+  const usesDefaultChecksumPath = checksumPath === null;
+  const profileEvidencePath = localAuthorityEvidencePathForProfile(releaseProfile);
+  const profileChecksumPath = localAuthorityChecksumPathForProfile(releaseProfile);
+  const profileGateLogPath = localAuthorityGateLogPathForProfile(releaseProfile);
+  const legacyGateLogPath = "reports/release/local-release-authority/qa-release-public.log";
+  if (gateLogPath === null) {
+    gateLogPath = profileGateLogPath;
+    if (
+      reuseGateLog &&
+      !existsSync(resolve(root, profileGateLogPath)) &&
+      existsSync(resolve(root, legacyGateLogPath))
+    ) {
+      gateLogPath = legacyGateLogPath;
+    }
+  }
+  const legacyEvidencePath = "reports/release/local-release-authority.json";
+  const legacyChecksumPath = "reports/release/local-release-authority-SHA256SUMS.txt";
+  const resolvedEvidencePath = resolve(root, evidencePath ?? profileEvidencePath);
+  const resolvedChecksumPath = resolve(root, checksumPath ?? profileChecksumPath);
+  const legacyAlias =
+    usesDefaultEvidencePath && usesDefaultChecksumPath
+      ? {
+          checksumPath: resolve(root, legacyChecksumPath),
+          evidencePath: resolve(root, legacyEvidencePath),
+        }
+      : null;
 
   return {
     authority,
-    checksumPath: resolve(root, checksumPath ?? "reports/release/local-release-authority-SHA256SUMS.txt"),
+    checksumPath: resolvedChecksumPath,
     duplicateCheck,
-    evidencePath: resolve(root, evidencePath ?? "reports/release/local-release-authority.json"),
+    evidencePath: resolvedEvidencePath,
     gateCommand,
     gateLogPath,
+    legacyAlias,
     operator,
     publicationTarget,
+    releaseProfile,
     reuseGateLog,
     root,
     runnerType,
   };
+}
+
+function allowedGateCommandsForProfile(profile) {
+  if (profile === "web-sync-only") {
+    return ["npm run qa:release:public:web-sync-only:local"];
+  }
+  if (profile === "desktop-local-unsigned") {
+    return ["npm run qa:release:public:desktop-local-unsigned:local"];
+  }
+  return [
+    "npm run qa:release:public",
+    "npm run qa:release:public:fixture",
+    "npm run qa:release:public:local",
+  ];
+}
+
+function localAuthorityEvidencePathForProfile(profile) {
+  return `reports/release/local-release-authority.${profile}.json`;
+}
+
+function localAuthorityChecksumPathForProfile(profile) {
+  return `reports/release/local-release-authority.${profile}-SHA256SUMS.txt`;
+}
+
+function localAuthorityGateLogPathForProfile(profile) {
+  return `reports/release/local-release-authority/qa-release-public.${profile}.log`;
+}
+
+function normalizeReleaseProfile(value) {
+  if (value === "full") {
+    return "full";
+  }
+  if (value === "web-sync-only" || value === "no-public-desktop-downloads") {
+    return "web-sync-only";
+  }
+  if (value === "desktop-local-unsigned" || value === "local-unsigned-desktop") {
+    return "desktop-local-unsigned";
+  }
+  fail("--release-profile must be full, web-sync-only, or desktop-local-unsigned.");
 }
 
 function readValue(args, index, arg) {

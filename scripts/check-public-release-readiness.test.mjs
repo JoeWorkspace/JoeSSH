@@ -15,6 +15,7 @@ const releaseScriptNames = [
   "qa:release:public:fixture",
   "qa:release:public:local",
   "qa:release:public:web-sync-only:local",
+  "qa:release:public:desktop-local-unsigned:local",
   "qa:prod-audit",
   "qa:lighthouse",
   "test:lighthouse-audit",
@@ -70,6 +71,8 @@ const releaseScriptNames = [
   "qa:desktop-public-exclusion",
   "test:desktop-unsigned-staging-report",
   "qa:desktop-unsigned-staging-report",
+  "test:desktop-unsigned-staging-verify",
+  "qa:desktop-unsigned-staging-verify",
   "test:local-release-authority",
   "qa:local-release-authority",
   "test:web-release",
@@ -118,6 +121,7 @@ const releaseScriptNames = [
   "release:desktop:draft",
   "release:desktop:exclude-public",
   "release:desktop:unsigned-staging-report",
+  "release:desktop:unsigned-staging:verify",
   "release:dogfood-template",
   "release:local-authority",
   "release:local-authority:verify",
@@ -125,17 +129,21 @@ const releaseScriptNames = [
   "release:publish-preflight:web-sync-only",
   "release:publish-preflight:local",
   "release:publish-preflight:local:web-sync-only",
+  "release:publish-preflight:local:desktop-local-unsigned",
   "release:provenance",
   "release:provenance:web-sync-only",
   "release:provenance:local",
   "release:provenance:local:web-sync-only",
+  "release:provenance:local:desktop-local-unsigned",
   "release:provenance:verify",
   "release:provenance:verify:web-sync-only",
   "release:provenance:verify:local",
   "release:provenance:verify:local:web-sync-only",
+  "release:provenance:verify:local:desktop-local-unsigned",
   "release:rc-audit",
   "release:rc-audit:report",
   "release:rc-audit:report:web-sync-only",
+  "release:rc-audit:report:desktop-local-unsigned",
   "release:verify-checksums",
   "release:sbom",
   "release:sbom:verify",
@@ -172,6 +180,12 @@ function fixtureScriptValue(name, overrides = {}) {
   if (name === "qa:desktop-unsigned-staging-report") {
     return "npm run test:desktop-unsigned-staging-report";
   }
+  if (name === "test:desktop-unsigned-staging-verify") {
+    return "node --test scripts/verify-desktop-unsigned-staging.test.mjs";
+  }
+  if (name === "qa:desktop-unsigned-staging-verify") {
+    return "npm run test:desktop-unsigned-staging-verify";
+  }
   if (name === "test:desktop-public-exclusion") {
     return "node --test scripts/verify-desktop-public-exclusion.test.mjs";
   }
@@ -179,7 +193,7 @@ function fixtureScriptValue(name, overrides = {}) {
     return "npm run test:desktop-public-exclusion";
   }
   if (name === "qa") {
-    return "npm run lint && npm run qa:desktop-formal-artifact-import && npm run qa:desktop-formal-artifact-kit && npm run qa:desktop-formal-artifact-kit-verify && npm run qa:desktop-formal-artifact-manifest && npm run qa:desktop-formal-artifact-request && npm run qa:desktop-formal-artifact-intake && npm run qa:desktop-public-exclusion && npm run qa:desktop-release-diagnostics && npm run qa:desktop-release-parity && npm run qa:web-admin-rollback-smoke && npm run test:rust-advisory-audit && npm run qa:lighthouse-audit && npm run qa:e2e:fresh";
+    return "npm run lint && npm run qa:desktop-formal-artifact-import && npm run qa:desktop-formal-artifact-kit && npm run qa:desktop-formal-artifact-kit-verify && npm run qa:desktop-formal-artifact-manifest && npm run qa:desktop-formal-artifact-request && npm run qa:desktop-formal-artifact-intake && npm run qa:desktop-public-exclusion && npm run qa:desktop-unsigned-staging-verify && npm run qa:desktop-release-diagnostics && npm run qa:desktop-release-parity && npm run qa:web-admin-rollback-smoke && npm run test:rust-advisory-audit && npm run qa:lighthouse-audit && npm run qa:e2e:fresh";
   }
   if (name === "qa:desktop:real-ssh-smoke:required") {
     return "node scripts/require-real-ssh-smoke-env.mjs && npm run qa:desktop:real-ssh-smoke";
@@ -277,6 +291,9 @@ function fixtureScriptValue(name, overrides = {}) {
   if (name === "release:desktop:unsigned-staging-report") {
     return "node scripts/report-desktop-unsigned-staging.mjs";
   }
+  if (name === "release:desktop:unsigned-staging:verify") {
+    return "node scripts/verify-desktop-unsigned-staging.mjs";
+  }
   if (name === "release:desktop:exclude-public") {
     return "node scripts/verify-desktop-public-exclusion.mjs --write";
   }
@@ -298,6 +315,9 @@ function fixtureScriptValue(name, overrides = {}) {
   if (name === "qa:release:public:web-sync-only:local") {
     return "npm run qa:release && npm run qa:mobile-public-env && npm run qa:rust && npm run qa:rust-advisory && npm run qa:prod-audit && npm run release:desktop:exclude-public && npm run release:sbom && npm run release:sbom:verify && npm run qa:lighthouse && npm run qa:web-admin-proxy-smoke && npm run qa:web-admin-bundle-token-scan && npm run qa:web-admin-sync-topology-release-smoke && npm run qa:sync:self-hosted-smoke && npm run qa:sync:release-smoke && npm run qa:sync:release-backup-restore-smoke && npm run qa:sync:config-guard-smoke && npm run qa:sync:backup-restore-smoke && node scripts/verify-sync-release-evidence.mjs && npm run qa:e2e:web-real-sync:fresh && npm run qa:e2e:visual:fresh && node scripts/check-public-release-readiness.mjs";
   }
+  if (name === "qa:release:public:desktop-local-unsigned:local") {
+    return "npm run qa:release && npm run qa:mobile-public-env && npm run qa:rust && npm run qa:desktop:real-ssh-smoke:required && npm run qa:rust-advisory && npm run qa:tauri && npm run release:desktop:build && npm run release:desktop:unsigned-staging-report && npm run release:desktop:unsigned-staging:verify && npm run qa:prod-audit && npm run release:sbom && npm run release:sbom:verify && npm run qa:lighthouse && npm run qa:web-admin-proxy-smoke && npm run qa:web-admin-bundle-token-scan && npm run qa:web-admin-sync-topology-release-smoke && npm run qa:sync:self-hosted-smoke && npm run qa:sync:release-smoke && npm run qa:sync:release-backup-restore-smoke && npm run qa:sync:config-guard-smoke && npm run qa:sync:backup-restore-smoke && node scripts/verify-sync-release-evidence.mjs && npm run qa:e2e:web-real-sync:fresh && npm run qa:e2e:visual:fresh && node scripts/check-public-release-readiness.mjs";
+  }
   if (name === "release:publish-preflight:local") {
     return "node scripts/release-publish-preflight.mjs --release-authority local";
   }
@@ -306,6 +326,9 @@ function fixtureScriptValue(name, overrides = {}) {
   }
   if (name === "release:publish-preflight:local:web-sync-only") {
     return "node scripts/release-publish-preflight.mjs --release-authority local --release-profile web-sync-only";
+  }
+  if (name === "release:publish-preflight:local:desktop-local-unsigned") {
+    return "node scripts/release-publish-preflight.mjs --release-authority local --release-profile desktop-local-unsigned";
   }
   if (name === "release:verify-checksums") {
     return "node scripts/verify-artifact-checksums.mjs --all-release";
@@ -322,6 +345,9 @@ function fixtureScriptValue(name, overrides = {}) {
   if (name === "release:provenance:local:web-sync-only") {
     return "node scripts/generate-release-provenance.mjs --release-authority local --release-profile web-sync-only";
   }
+  if (name === "release:provenance:local:desktop-local-unsigned") {
+    return "node scripts/generate-release-provenance.mjs --release-authority local --release-profile desktop-local-unsigned";
+  }
   if (name === "release:provenance:verify") {
     return "node scripts/verify-release-provenance.mjs";
   }
@@ -334,6 +360,9 @@ function fixtureScriptValue(name, overrides = {}) {
   if (name === "release:provenance:verify:local:web-sync-only") {
     return "node scripts/verify-release-provenance.mjs --release-authority local --release-profile web-sync-only";
   }
+  if (name === "release:provenance:verify:local:desktop-local-unsigned") {
+    return "node scripts/verify-release-provenance.mjs --release-authority local --release-profile desktop-local-unsigned";
+  }
   if (name === "release:rc-audit") {
     return "node scripts/audit-public-beta-rc.mjs";
   }
@@ -342,6 +371,9 @@ function fixtureScriptValue(name, overrides = {}) {
   }
   if (name === "release:rc-audit:report:web-sync-only") {
     return "node scripts/audit-public-beta-rc.mjs --no-fail --release-profile web-sync-only";
+  }
+  if (name === "release:rc-audit:report:desktop-local-unsigned") {
+    return "node scripts/audit-public-beta-rc.mjs --no-fail --release-authority local --release-profile desktop-local-unsigned --skip-github";
   }
   return "echo ok";
 }
@@ -402,12 +434,21 @@ function createFixture(t, overrides = {}) {
     "scripts/run-real-ssh-smoke-fixture.mjs":
       'reports", "smoke", "desktop", "real-ssh-smoke.json JOESSH_REAL_SSH_PRIVATE_KEY_PATH qa:desktop:real-ssh-smoke:required local forwarding start/traffic/shutdown\n',
     "scripts/run-real-ssh-smoke-fixture.test.mjs": "",
+    "scripts/generate-local-release-authority.mjs":
+      "local-release-authority.${profile}.json qa-release-public.${profile}.log Updated legacy local release authority alias\n",
+    "scripts/verify-local-release-authority.mjs":
+      'local-release-authority.${profile}.json releaseProfile !== "full" local-release-authority.json\n',
+    "scripts/verify-local-release-authority.test.mjs":
+      "keeps profile-bound authority evidence usable when the legacy alias is overwritten rejects legacy local authority fallback for non-full release profiles\n",
     "scripts/verify-public-beta-dogfood-evidence.mjs":
-      "desktop-install-launch desktop-connection-host-key desktop-pty-session desktop-command-safety desktop-sftp-transfer desktop-forwarding web-admin-live-sync sync-device-flow sync-backup-restore-rollback release-evidence-review open P0 open P1\n",
+      "desktop-install-launch desktop-connection-host-key desktop-pty-session desktop-command-safety desktop-sftp-transfer desktop-forwarding web-admin-live-sync sync-device-flow sync-backup-restore-rollback release-evidence-review public-beta-rc-audit.${releaseAuthority}.${releaseProfile}.json latest.${args.releaseAuthority}.${args.releaseProfile}.json releaseAuthority must be releaseProfile must be gitCommit must match current HEAD releaseTagCommit must match open P0 open P1\n",
     "scripts/verify-public-beta-dogfood-evidence.test.mjs": "",
     "scripts/report-desktop-unsigned-staging.mjs":
-      "publicReleaseEvidence: false reports/release authenticode sha256File(path) versionMatchesPackage\n",
+      "publicReleaseEvidence: false reports/release authenticode sha256File(path) versionMatchesPackage unsigned-staging-report-SHA256SUMS.txt\n",
     "scripts/report-desktop-unsigned-staging.test.mjs": "",
+    "scripts/verify-desktop-unsigned-staging.mjs":
+      'publicReleaseEvidence must be false desktop-local-unsigned release profile must not stage public Desktop artifacts name.startsWith("joessh_") git.tagsAtHead must include sha256File(artifactPath) unsigned Desktop staging checksum manifest hash mismatch\n',
+    "scripts/verify-desktop-unsigned-staging.test.mjs": "",
     "scripts/verify-desktop-public-exclusion.mjs":
       'desktop-exclusion.json publicDesktopDownloads: false releaseProfile: "web-sync-only" No public Desktop downloads are allowed signed Desktop formal evidence remains required\n',
     "scripts/verify-desktop-public-exclusion.test.mjs": "",
@@ -421,13 +462,13 @@ function createFixture(t, overrides = {}) {
       "desktop-formal-artifact-handoff-kit formal-artifact-request.json formal-artifact-request-SHA256SUMS.txt requestId request.source.gitCommit must match current HEAD request.source.releaseTagCommit must match request.commands.kitVerify request.commands.manifest request.commands.intake request.commands.preflight request.commands.import Proof text must mention both the artifact file name and the artifact SHA256\n",
     "scripts/prepare-desktop-formal-artifact-kit.test.mjs": "",
     "scripts/verify-desktop-formal-artifact-kit.mjs":
-      "desktop-formal-artifact-handoff-kit formal-artifact-request.json formal-artifact-request-SHA256SUMS.txt Embedded formal-artifact-request.json does not match the current request requestId source.gitCommit source.releaseTagCommit request.commands.kitVerify commands/windows-powershell.ps1 checksum does not match sha256File(options.kitPath) git fsck --strict must pass\n",
+      "desktop-formal-artifact-handoff-kit formal-artifact-request.json formal-artifact-request-SHA256SUMS.txt Embedded formal-artifact-request.json does not match the current request requestId source.gitCommit source.releaseTagCommit request.commands.kitVerify commands/windows-powershell.ps1 checksum does not match verifyOptionalContextFiles context/${basename(path)} does not match the current sha256File(options.kitPath) git fsck --strict must pass\n",
     "scripts/verify-desktop-formal-artifact-kit.test.mjs": "",
     "scripts/prepare-desktop-formal-artifact-manifest.mjs":
       "desktop-formal-artifact-manifest.json formal-artifact-request.json formal-artifact-request-SHA256SUMS.txt requestId request.source.gitCommit must match current HEAD request.source.releaseTagCommit must match sha256: sha256File sizeBytes: statSync --input-dir must be outside the release workspace source tree is clean release upload tools cannot pick up staging-only files\n",
     "scripts/prepare-desktop-formal-artifact-manifest.test.mjs": "",
     "scripts/prepare-desktop-formal-artifact-request.mjs":
-      "formal-artifact-request.json formal-artifact-request-SHA256SUMS.txt desktop-formal-artifact-manifest.json mustMentionAll windows-signature-verification.txt macos-notarization-verification.txt release:desktop:formal-artifacts:kit release:desktop:formal-artifacts:kit:verify release:desktop:formal-artifacts:manifest release:desktop:formal-artifacts:intake\n",
+      "formal-artifact-request.json formal-artifact-request-SHA256SUMS.txt desktop-formal-artifact-manifest.json mustMentionAll windows-signature-verification.txt macos-notarization-verification.txt release:desktop:formal-artifacts:kit release:desktop:formal-artifacts:kit:verify release:desktop:formal-artifacts:manifest release:desktop:formal-artifacts:intake --require-source-authority\n",
     "scripts/prepare-desktop-formal-artifact-request.test.mjs": "",
     "scripts/diagnose-desktop-formal-artifact-input.mjs":
       "formal-artifact-input-report.json formal-artifact-input-report-SHA256SUMS.txt desktop-formal-artifact-manifest.json runImporterPreflight proof must show a successful verification proof must mention both the artifact file name and SHA256\n",
@@ -475,20 +516,20 @@ function createFixture(t, overrides = {}) {
     "scripts/verify-release-sbom.mjs": "",
     "scripts/verify-release-sbom.test.mjs": "",
     "scripts/generate-release-provenance.mjs":
-      'gitFsckStrict ["remote", "get-url", "origin"] release-provenance-SHA256SUMS.txt checksumManifests requiredChecksumManifests reports/release/desktop/release-evidence-SHA256SUMS.txt release-evidence-source.json verify-desktop-release-evidence.mjs --require-source reports/release/sync/backup-restore-smoke-SHA256SUMS.txt reports/release/web/rollback-smoke-SHA256SUMS.txt releaseProfile reports/release/desktop-exclusion-SHA256SUMS.txt verify-desktop-public-exclusion.mjs\n',
+      'gitFsckStrict ["remote", "get-url", "origin"] release-provenance-SHA256SUMS.txt checksumManifests requiredChecksumManifests reports/release/desktop/release-evidence-SHA256SUMS.txt release-evidence-source.json verify-desktop-release-evidence.mjs --require-source reports/release/sync/backup-restore-smoke-SHA256SUMS.txt reports/release/web/rollback-smoke-SHA256SUMS.txt releaseProfile reports/release/desktop-exclusion-SHA256SUMS.txt verify-desktop-public-exclusion.mjs reports/handoff/desktop/unsigned-staging-report-SHA256SUMS.txt verify-desktop-unsigned-staging.mjs desktop-local-unsigned\n',
     "scripts/verify-release-provenance.mjs":
-      "source.repository git fsck --strict release notes hash mismatch artifact hash mismatch requiredChecksumManifests release-evidence-source.json verify-desktop-release-evidence.mjs --require-source reports/release/web/rollback-smoke-SHA256SUMS.txt unexpected Public Beta checksum manifest is staged releaseProfile must be reports/release/desktop-exclusion-SHA256SUMS.txt verify-desktop-public-exclusion.mjs\n",
+      "source.repository git fsck --strict release notes hash mismatch artifact hash mismatch requiredChecksumManifests release-evidence-source.json verify-desktop-release-evidence.mjs --require-source reports/release/web/rollback-smoke-SHA256SUMS.txt unexpected Public Beta checksum manifest is staged releaseProfile must be reports/release/desktop-exclusion-SHA256SUMS.txt verify-desktop-public-exclusion.mjs reports/handoff/desktop/unsigned-staging-report-SHA256SUMS.txt reports/handoff/desktop/unsigned-staging-report.json verify-desktop-unsigned-staging.mjs desktop-local-unsigned\n",
     "scripts/verify-release-provenance.test.mjs": "",
     "scripts/audit-public-beta-rc.mjs":
-      'public-beta-rc-audit.json desktop-signing-secrets desktop-dogfood release-desktop-stale-artifacts publish-preflight github-ci check-runs/${checkRunId}/annotations release-desktop-exclusion must not stage public Desktop artifacts releaseProfile\n',
+      'public-beta-rc-audit.${releaseAuthority}.${releaseProfile}.json desktop-signing-secrets desktop-dogfood qa:public-beta-dogfood --release-profile release-desktop-stale-artifacts publish-preflight github-ci check-runs/${checkRunId}/annotations release-desktop-exclusion must not stage public Desktop artifacts releaseProfile desktop-unsigned-staging desktop-local-unsigned release profile must not stage public Desktop artifacts\n',
     "scripts/audit-public-beta-rc.test.mjs": "",
     "scripts/release-publish-preflight.mjs":
-      'Verify release Git checkout rev-parse --porcelain=v1 :(exclude)reports/release must point at HEAD for publish preflight verify-web-release-package.mjs verify-sync-release-evidence.mjs verify-desktop-release-evidence.mjs --require-source verify-artifact-checksums.mjs --all-release verify-release-provenance.mjs Verify GitHub CLI publish readiness ATLASTERM_RELEASE_GH_COMMAND auth", "status release", "view", releaseTag already exists; refusing to publish a duplicate release Verify Desktop public exclusion evidence --release-profile web-sync-only\n',
+      'Verify release Git checkout rev-parse --porcelain=v1 :(exclude)reports/release must point at HEAD for publish preflight verify-web-release-package.mjs verify-sync-release-evidence.mjs verify-desktop-release-evidence.mjs --require-source verify-artifact-checksums.mjs --all-release verify-release-provenance.mjs Verify GitHub CLI publish readiness ATLASTERM_RELEASE_GH_COMMAND auth", "status release", "view", releaseTag already exists; refusing to publish a duplicate release Verify Desktop public exclusion evidence Verify Desktop local unsigned staging evidence --release-profile web-sync-only desktop-local-unsigned\n',
     "scripts/release-publish-preflight.test.mjs": "",
     "scripts/create-github-release-draft.mjs":
-      'collectFiles(resolve(root, "reports", "release"))\nprovenanceVerificationArgs\nif (dryRun)\nprovenanceVerificationArgs.push("--skip-current-git-check")\n',
+      'collectFiles(resolve(root, "reports", "release"))\nisForbiddenReleaseUpload\nisUnsignedStagingFile\nclassifyDesktopArtifact\nname.startsWith("joessh_")\n!artifact.startsWith(desktopReleaseDir)\nprovenanceVerificationArgs\nif (dryRun)\nprovenanceVerificationArgs.push("--skip-current-git-check")\nverify-desktop-release-evidence.mjs\n--require-source\n--require-current-git-source\n--require-source-authority\n"github"\n',
     "scripts/create-github-release-draft.test.mjs":
-      "non-dry-run rejects release provenance from a different Git source\n",
+      "non-dry-run rejects release provenance from a different Git source\ndry run rejects non-GitHub Desktop release evidence source authority\n",
     "apps/desktop/src-tauri/capabilities/main.json": JSON.stringify({
       identifier: "main",
       local: true,
@@ -1537,6 +1578,21 @@ test("rejects release draft tooling that uploads raw Tauri bundle artifacts", (t
   assert.match(
     result.stdout,
     /FAIL GitHub Release draft uploads only staged reports\/release artifacts/,
+  );
+});
+
+test("rejects release draft tooling without local-only Desktop upload guards", (t) => {
+  const result = runChecker(
+    createFixture(t, {
+      "scripts/create-github-release-draft.mjs":
+        'collectFiles(resolve(root, "reports", "release"))\nprovenanceVerificationArgs\nif (dryRun)\nprovenanceVerificationArgs.push("--skip-current-git-check")\n',
+    }),
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stdout,
+    /FAIL GitHub Release draft rejects unsigned staging evidence and misplaced Desktop artifacts from reports\/release/,
   );
 });
 
