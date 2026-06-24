@@ -15,7 +15,36 @@ function createFixture(t) {
     rmSync(root, { force: true, recursive: true });
   });
   writeFile(root, "package.json", `${JSON.stringify({ version: "0.1.0-beta.1" })}\n`);
+  writeCurrentRequest(root);
   return root;
+}
+
+function writeCurrentRequest(root) {
+  const request = JSON.stringify(
+    {
+      kind: "joessh-desktop-formal-artifact-request",
+      releaseTag: "v0.1.0-beta.1",
+      requestId: "desktop-formal-test",
+      requestVersion: 1,
+      requiredPlatforms: ["windows", "macos", "linux"],
+      source: {
+        gitCommit: "abc123",
+        gitFsckStrict: true,
+        releaseTagCommit: "abc123",
+        repository: "https://github.com/joessh/joessh.git",
+      },
+      sourceAuthority: "local",
+      version: "0.1.0-beta.1",
+    },
+    null,
+    2,
+  );
+  writeFile(root, "reports/handoff/desktop/formal-artifact-request.json", `${request}\n`);
+  writeFile(
+    root,
+    "reports/handoff/desktop/formal-artifact-request-SHA256SUMS.txt",
+    `${sha256(`${request}\n`)}  reports/handoff/desktop/formal-artifact-request.json\n`,
+  );
 }
 
 function createInput(t) {
