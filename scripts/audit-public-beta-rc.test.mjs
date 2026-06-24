@@ -118,6 +118,59 @@ test("uses local publish preflight without requiring GitHub signing secrets", (t
   assert.equal(report.checks.find((check) => check.id === "github-ci")?.status, "pass");
 });
 
+test("uses web-sync-only profile without requiring Desktop signing evidence", (t) => {
+  const { fakePath, root, statePath } = createFixture(t, {
+    desktopSecretsOk: false,
+    removeDesktopEvidence: true,
+  });
+  writeDesktopExclusion(root);
+
+  const result = runAudit(root, fakePath, statePath, [
+    "--release-authority",
+    "local",
+    "--release-profile",
+    "web-sync-only",
+    "--skip-github",
+  ]);
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /GO \(0 blockers\)/);
+  const report = JSON.parse(readFileSync(join(root, "reports/release/public-beta-rc-audit.json"), "utf8"));
+  assert.equal(report.releaseProfile, "web-sync-only");
+  assert.equal(report.decision, "go");
+  assert.equal(report.blockers.length, 0);
+  assert.equal(report.checks.find((check) => check.id === "release-desktop-exclusion")?.status, "pass");
+  assert.equal(report.checks.find((check) => check.id === "desktop-signing-secrets")?.status, "pass");
+  assert(!report.checks.some((check) => check.id === "release-desktop"));
+});
+
+test("web-sync-only profile rejects staged Desktop release artifacts", (t) => {
+  const { fakePath, root, statePath } = createFixture(t, {
+    removeDesktopEvidence: true,
+  });
+  writeDesktopExclusion(root);
+  writeArtifactWithManifest(
+    root,
+    "reports/release/desktop/JoeSSH_0.1.0-beta.1_x64-setup.exe",
+    "desktop",
+    "reports/release/desktop/SHA256SUMS.txt",
+  );
+
+  const result = runAudit(root, fakePath, statePath, [
+    "--release-authority",
+    "local",
+    "--release-profile",
+    "web-sync-only",
+    "--skip-github",
+  ]);
+
+  assert.equal(result.status, 0);
+  const report = JSON.parse(readFileSync(join(root, "reports/release/public-beta-rc-audit.json"), "utf8"));
+  const blocker = report.blockers.find((entry) => entry.id === "release-desktop-stale-artifacts");
+  assert(blocker);
+  assert.match(blocker.detail, /must not stage public Desktop artifacts/);
+});
+
 test("records No-Go blockers without hiding GitHub billing annotations", (t) => {
   const { fakePath, root, statePath } = createFixture(t, {
     ciConclusion: "failure",
@@ -293,6 +346,31 @@ function writeArtifactWithManifest(root, artifactPath, content, manifestPath) {
   writeFile(root, manifestPath, `${sha256Content(content)}  ${artifactPath}\n`);
 }
 
+function writeDesktopExclusion(root) {
+  const evidence = JSON.stringify({
+    artifact: "desktop-public-exclusion",
+    assertions: [
+      "no public Desktop downloads are included in this release profile",
+      "reports/release/desktop contains no Desktop release artifacts",
+      "signed Desktop formal evidence remains required if Desktop downloads are published",
+    ],
+    desktopReleaseDir: "reports/release/desktop",
+    evidenceVersion: 1,
+    generatedAt: "2026-06-21T00:00:00.000Z",
+    product: "JoeSSH",
+    publicDesktopDownloads: false,
+    releaseProfile: "web-sync-only",
+    releaseTag: "v0.1.0-beta.1",
+    version: "0.1.0-beta.1",
+  });
+  writeFile(root, "reports/release/desktop-exclusion.json", evidence);
+  writeFile(
+    root,
+    "reports/release/desktop-exclusion-SHA256SUMS.txt",
+    `${sha256Content(evidence)}  reports/release/desktop-exclusion.json\n`,
+  );
+}
+
 function appendManifest(root, manifestPath, artifactPath, content) {
   writeFile(root, artifactPath, content);
   const path = join(root, ...manifestPath.split("/"));
@@ -325,15 +403,25 @@ if (tool === "git") {
   else { console.error("unexpected git args " + args.join(" ")); process.exit(2); }
   process.exit(0);
 }
-if (tool === "npm") {
+  if (tool === "npm") {
   if (is("run", "release:publish-preflight")) {
     if (state.publishPreflightOk) process.exit(0);
     console.error("Release tag v0.1.0-beta.1 must point at HEAD for publish preflight.");
     process.exit(1);
   }
+  if (is("run", "release:publish-preflight:web-sync-only")) {
+    if (state.publishPreflightOk) process.exit(0);
+    console.error("Desktop public exclusion verification failed.");
+    process.exit(1);
+  }
   if (is("run", "release:publish-preflight:local")) {
     if (state.publishPreflightOk) process.exit(0);
     console.error("Local release authority verification failed.");
+    process.exit(1);
+  }
+  if (is("run", "release:publish-preflight:local:web-sync-only")) {
+    if (state.publishPreflightOk) process.exit(0);
+    console.error("Desktop public exclusion verification failed.");
     process.exit(1);
   }
   if (is("run", "release:desktop:configure-secrets", "--", "--verify-only")) {

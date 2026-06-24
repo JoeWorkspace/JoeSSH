@@ -335,8 +335,12 @@ function writeManifest(root, relativePath, entries) {
 function writeReleaseProvenanceFixture(root, options = {}) {
   const manifestPaths = [
     "reports/release/SBOM-SHA256SUMS.txt",
-    "reports/release/desktop/SHA256SUMS.txt",
-    "reports/release/desktop/release-evidence-SHA256SUMS.txt",
+    ...(options.releaseProfile === "web-sync-only"
+      ? ["reports/release/desktop-exclusion-SHA256SUMS.txt"]
+      : [
+          "reports/release/desktop/SHA256SUMS.txt",
+          "reports/release/desktop/release-evidence-SHA256SUMS.txt",
+        ]),
     "reports/release/sync/SHA256SUMS.txt",
     "reports/release/sync/backup-restore-smoke-SHA256SUMS.txt",
     "reports/release/web/SHA256SUMS.txt",
@@ -358,6 +362,7 @@ function writeReleaseProvenanceFixture(root, options = {}) {
       product: "JoeSSH",
       provenanceVersion: 1,
       releaseAuthority: options.releaseAuthority ?? "github",
+      releaseProfile: options.releaseProfile ?? "full",
       releaseNotes: {
         path: "docs/release-notes/0.1.0-beta.1.md",
         sha256: sha256(readFile(root, "docs/release-notes/0.1.0-beta.1.md")),
@@ -385,7 +390,9 @@ function writeReleaseProvenanceFixture(root, options = {}) {
         "verify-artifact-checksums.mjs --all-release",
         "verify-web-release-package.mjs",
         "verify-sync-release-evidence.mjs",
-        "verify-desktop-release-evidence.mjs --require-source",
+        options.releaseProfile === "web-sync-only"
+          ? "verify-desktop-public-exclusion.mjs"
+          : "verify-desktop-release-evidence.mjs --require-source",
         ...(options.releaseAuthority === "local" ? ["verify-local-release-authority.mjs"] : []),
         "verify-release-sbom.mjs",
         "verify-release-provenance.mjs",
@@ -398,6 +405,40 @@ function writeReleaseProvenanceFixture(root, options = {}) {
   writeFile(root, "reports/release/release-provenance.json", `${provenance}\n`);
   writeManifest(root, "reports/release/release-provenance-SHA256SUMS.txt", [
     [`${provenance}\n`, "reports/release/release-provenance.json"],
+  ]);
+}
+
+function writeDesktopExclusionFixture(root) {
+  const evidence = JSON.stringify(
+    {
+      artifact: "desktop-public-exclusion",
+      assertions: [
+        "no public Desktop downloads are included in this release profile",
+        "reports/release/desktop contains no Desktop release artifacts",
+        "signed Desktop formal evidence remains required if Desktop downloads are published",
+      ],
+      desktopReleaseDir: "reports/release/desktop",
+      evidenceVersion: 1,
+      generatedAt: "2026-06-21T00:00:00.000Z",
+      product: "JoeSSH",
+      publicDesktopDownloads: false,
+      releaseProfile: "web-sync-only",
+      releaseTag: "v0.1.0-beta.1",
+      source: {
+        cleanTreeExcluding: "reports/release",
+        gitCommit: "abc123",
+        gitFsckStrict: true,
+        releaseTagCommit: "abc123",
+        repository: "https://github.com/joessh/joessh.git",
+      },
+      version: "0.1.0-beta.1",
+    },
+    null,
+    2,
+  );
+  writeFile(root, "reports/release/desktop-exclusion.json", `${evidence}\n`);
+  writeManifest(root, "reports/release/desktop-exclusion-SHA256SUMS.txt", [
+    [`${evidence}\n`, "reports/release/desktop-exclusion.json"],
   ]);
 }
 
@@ -653,6 +694,54 @@ test("publish preflight can use local release authority without GitHub release c
   assert.doesNotMatch(result.stdout + result.stderr, /GitHub Release draft dry run/);
   assert.match(result.stdout, /Verify local publication target/);
   assert.match(result.stdout, /Public release publish preflight passed/);
+});
+
+test("publish preflight can use local web-sync-only release profile without Desktop formal evidence", (t) => {
+  const root = createReleaseFixture(t);
+  rmSync(join(root, "reports", "release", "desktop"), { recursive: true, force: true });
+  writeDesktopExclusionFixture(root);
+  writeLocalReleaseAuthorityFixture(root);
+  writeReleaseProvenanceFixture(root, {
+    releaseAuthority: "local",
+    releaseProfile: "web-sync-only",
+  });
+
+  const result = runPreflight(root, createFakeGitCommands(root, { ghAuthFails: true }), [
+    "--release-authority",
+    "local",
+    "--release-profile",
+    "web-sync-only",
+  ]);
+
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /with local release authority and web-sync-only release profile/);
+  assert.match(result.stdout, /Verify Desktop public exclusion evidence/);
+  assert.match(result.stdout, /Desktop public exclusion verified for v0\.1\.0-beta\.1/);
+  assert.doesNotMatch(result.stdout + result.stderr, /Verify Desktop signing\/distribution evidence/);
+  assert.match(result.stdout, /Public release publish preflight passed/);
+});
+
+test("web-sync-only publish preflight rejects staged Desktop artifacts", (t) => {
+  const root = createReleaseFixture(t);
+  rmSync(join(root, "reports", "release", "desktop"), { recursive: true, force: true });
+  writeDesktopExclusionFixture(root);
+  writeLocalReleaseAuthorityFixture(root);
+  writeReleaseProvenanceFixture(root, {
+    releaseAuthority: "local",
+    releaseProfile: "web-sync-only",
+  });
+  writeFile(root, "reports/release/desktop/JoeSSH_0.1.0-beta.1_x64-setup.exe", "desktop installer");
+
+  const result = runPreflight(root, createFakeGitCommands(root), [
+    "--release-authority",
+    "local",
+    "--release-profile",
+    "web-sync-only",
+  ]);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /No public Desktop downloads are allowed/);
+  assert.match(result.stderr, /Public release publish preflight failed: Verify Desktop public exclusion evidence/);
 });
 
 test("local publish preflight rejects missing local release authority evidence", (t) => {

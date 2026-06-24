@@ -130,6 +130,23 @@ route, not a blocker for the first Public Beta.
    npm run release:rc-audit:report -- --release-authority local --skip-github
    ```
 
+   If the release scope is Web Admin + Sync only, first generate explicit
+   Desktop exclusion evidence and use the `web-sync-only` variants:
+
+   ```bash
+   npm run release:desktop:exclude-public
+   npm run release:local-authority -- --gate-command "npm run qa:release:public:fixture" --target "<operator-confirmed target>"
+   npm run release:provenance:local:web-sync-only
+   npm run release:provenance:verify:local:web-sync-only
+   npm run release:publish-preflight:local:web-sync-only
+   npm run release:rc-audit:report -- --release-authority local --release-profile web-sync-only --skip-github
+   ```
+
+   This profile writes `reports/release/desktop-exclusion.json` and
+   `reports/release/desktop-exclusion-SHA256SUMS.txt`. It is only valid when
+   `reports/release/desktop/` contains no Desktop artifacts; unsigned Desktop
+   staging remains handoff-only evidence.
+
 ## Acceptance Evidence
 
 Keep these outputs with the release handoff notes:
@@ -150,6 +167,12 @@ Keep these outputs with the release handoff notes:
   `reports/release/local-release-authority-SHA256SUMS.txt`, and
   `npm run release:publish-preflight:local` plus
   `npm run release:rc-audit:report -- --release-authority local --skip-github`
+  output.
+- For `web-sync-only` publication:
+  `reports/release/desktop-exclusion.json`,
+  `reports/release/desktop-exclusion-SHA256SUMS.txt`,
+  `npm run release:publish-preflight:local:web-sync-only`, and
+  `npm run release:rc-audit:report -- --release-authority local --release-profile web-sync-only --skip-github`
   output.
 - `reports/release/**/SHA256SUMS.txt`.
 - `reports/release/desktop/release-evidence.json`.

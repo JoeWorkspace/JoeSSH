@@ -59,6 +59,8 @@ const releaseScriptNames = [
   "qa:desktop-release-evidence-download",
   "test:desktop-release-evidence-preflight",
   "qa:desktop-release-evidence-preflight",
+  "test:desktop-public-exclusion",
+  "qa:desktop-public-exclusion",
   "test:desktop-unsigned-staging-report",
   "qa:desktop-unsigned-staging-report",
   "test:local-release-authority",
@@ -104,18 +106,26 @@ const releaseScriptNames = [
   "release:desktop:evidence-preflight",
   "release:desktop:evidence-workflow",
   "release:desktop:draft",
+  "release:desktop:exclude-public",
   "release:desktop:unsigned-staging-report",
   "release:dogfood-template",
   "release:local-authority",
   "release:local-authority:verify",
   "release:publish-preflight",
+  "release:publish-preflight:web-sync-only",
   "release:publish-preflight:local",
+  "release:publish-preflight:local:web-sync-only",
   "release:provenance",
+  "release:provenance:web-sync-only",
   "release:provenance:local",
+  "release:provenance:local:web-sync-only",
   "release:provenance:verify",
+  "release:provenance:verify:web-sync-only",
   "release:provenance:verify:local",
+  "release:provenance:verify:local:web-sync-only",
   "release:rc-audit",
   "release:rc-audit:report",
+  "release:rc-audit:report:web-sync-only",
   "release:verify-checksums",
   "release:sbom",
   "release:sbom:verify",
@@ -152,8 +162,14 @@ function fixtureScriptValue(name, overrides = {}) {
   if (name === "qa:desktop-unsigned-staging-report") {
     return "npm run test:desktop-unsigned-staging-report";
   }
+  if (name === "test:desktop-public-exclusion") {
+    return "node --test scripts/verify-desktop-public-exclusion.test.mjs";
+  }
+  if (name === "qa:desktop-public-exclusion") {
+    return "npm run test:desktop-public-exclusion";
+  }
   if (name === "qa") {
-    return "npm run lint && npm run qa:desktop-formal-artifact-import && npm run qa:desktop-formal-artifact-request && npm run qa:desktop-formal-artifact-intake && npm run qa:desktop-release-diagnostics && npm run qa:desktop-release-parity && npm run qa:web-admin-rollback-smoke && npm run test:rust-advisory-audit && npm run qa:lighthouse-audit && npm run qa:e2e:fresh";
+    return "npm run lint && npm run qa:desktop-formal-artifact-import && npm run qa:desktop-formal-artifact-request && npm run qa:desktop-formal-artifact-intake && npm run qa:desktop-public-exclusion && npm run qa:desktop-release-diagnostics && npm run qa:desktop-release-parity && npm run qa:web-admin-rollback-smoke && npm run test:rust-advisory-audit && npm run qa:lighthouse-audit && npm run qa:e2e:fresh";
   }
   if (name === "qa:desktop:real-ssh-smoke:required") {
     return "node scripts/require-real-ssh-smoke-env.mjs && npm run qa:desktop:real-ssh-smoke";
@@ -224,6 +240,9 @@ function fixtureScriptValue(name, overrides = {}) {
   if (name === "release:desktop:unsigned-staging-report") {
     return "node scripts/report-desktop-unsigned-staging.mjs";
   }
+  if (name === "release:desktop:exclude-public") {
+    return "node scripts/verify-desktop-public-exclusion.mjs --write";
+  }
   if (name === "release:dogfood-template") {
     return "node scripts/verify-public-beta-dogfood-evidence.mjs --write-template reports/dogfood/public-beta/template.json";
   }
@@ -242,26 +261,47 @@ function fixtureScriptValue(name, overrides = {}) {
   if (name === "release:publish-preflight:local") {
     return "node scripts/release-publish-preflight.mjs --release-authority local";
   }
+  if (name === "release:publish-preflight:web-sync-only") {
+    return "node scripts/release-publish-preflight.mjs --release-profile web-sync-only";
+  }
+  if (name === "release:publish-preflight:local:web-sync-only") {
+    return "node scripts/release-publish-preflight.mjs --release-authority local --release-profile web-sync-only";
+  }
   if (name === "release:verify-checksums") {
     return "node scripts/verify-artifact-checksums.mjs --all-release";
   }
   if (name === "release:provenance") {
     return "node scripts/generate-release-provenance.mjs";
   }
+  if (name === "release:provenance:web-sync-only") {
+    return "node scripts/generate-release-provenance.mjs --release-profile web-sync-only";
+  }
   if (name === "release:provenance:local") {
     return "node scripts/generate-release-provenance.mjs --release-authority local";
+  }
+  if (name === "release:provenance:local:web-sync-only") {
+    return "node scripts/generate-release-provenance.mjs --release-authority local --release-profile web-sync-only";
   }
   if (name === "release:provenance:verify") {
     return "node scripts/verify-release-provenance.mjs";
   }
+  if (name === "release:provenance:verify:web-sync-only") {
+    return "node scripts/verify-release-provenance.mjs --release-profile web-sync-only";
+  }
   if (name === "release:provenance:verify:local") {
     return "node scripts/verify-release-provenance.mjs --release-authority local";
+  }
+  if (name === "release:provenance:verify:local:web-sync-only") {
+    return "node scripts/verify-release-provenance.mjs --release-authority local --release-profile web-sync-only";
   }
   if (name === "release:rc-audit") {
     return "node scripts/audit-public-beta-rc.mjs";
   }
   if (name === "release:rc-audit:report") {
     return "node scripts/audit-public-beta-rc.mjs --no-fail";
+  }
+  if (name === "release:rc-audit:report:web-sync-only") {
+    return "node scripts/audit-public-beta-rc.mjs --no-fail --release-profile web-sync-only";
   }
   return "echo ok";
 }
@@ -328,6 +368,9 @@ function createFixture(t, overrides = {}) {
     "scripts/report-desktop-unsigned-staging.mjs":
       "publicReleaseEvidence: false reports/release authenticode sha256File(path) versionMatchesPackage\n",
     "scripts/report-desktop-unsigned-staging.test.mjs": "",
+    "scripts/verify-desktop-public-exclusion.mjs":
+      'desktop-exclusion.json publicDesktopDownloads: false releaseProfile: "web-sync-only" No public Desktop downloads are allowed signed Desktop formal evidence remains required\n',
+    "scripts/verify-desktop-public-exclusion.test.mjs": "",
     "scripts/package-desktop-release.mjs":
       "artifactSha256 sha256: artifactSha256 Desktop bundle source contains artifact(s) that do not include releaseVersion basename(artifact.path) validateSignatureEvidence(sourceArtifacts) validateSignatureEvidenceBindings(sourceArtifacts) Windows Desktop artifacts require --windows-signature-verification proof must mention the artifact file name or SHA256 proof must show a successful verification proof must not report a failed verification sha256(artifactPath) preflightOnly Desktop release package preflight passed mkdirSync(outputDir\n",
     "scripts/package-desktop-release.test.mjs": "",
@@ -383,15 +426,15 @@ function createFixture(t, overrides = {}) {
     "scripts/verify-release-sbom.mjs": "",
     "scripts/verify-release-sbom.test.mjs": "",
     "scripts/generate-release-provenance.mjs":
-      'gitFsckStrict ["remote", "get-url", "origin"] release-provenance-SHA256SUMS.txt checksumManifests requiredChecksumManifests reports/release/desktop/release-evidence-SHA256SUMS.txt release-evidence-source.json verify-desktop-release-evidence.mjs --require-source reports/release/sync/backup-restore-smoke-SHA256SUMS.txt\n',
+      'gitFsckStrict ["remote", "get-url", "origin"] release-provenance-SHA256SUMS.txt checksumManifests requiredChecksumManifests reports/release/desktop/release-evidence-SHA256SUMS.txt release-evidence-source.json verify-desktop-release-evidence.mjs --require-source reports/release/sync/backup-restore-smoke-SHA256SUMS.txt releaseProfile reports/release/desktop-exclusion-SHA256SUMS.txt verify-desktop-public-exclusion.mjs\n',
     "scripts/verify-release-provenance.mjs":
-      "source.repository git fsck --strict release notes hash mismatch artifact hash mismatch requiredChecksumManifests release-evidence-source.json verify-desktop-release-evidence.mjs --require-source unexpected Public Beta checksum manifest is staged\n",
+      "source.repository git fsck --strict release notes hash mismatch artifact hash mismatch requiredChecksumManifests release-evidence-source.json verify-desktop-release-evidence.mjs --require-source unexpected Public Beta checksum manifest is staged releaseProfile must be reports/release/desktop-exclusion-SHA256SUMS.txt verify-desktop-public-exclusion.mjs\n",
     "scripts/verify-release-provenance.test.mjs": "",
     "scripts/audit-public-beta-rc.mjs":
-      'public-beta-rc-audit.json desktop-signing-secrets desktop-dogfood release-desktop-stale-artifacts publish-preflight github-ci check-runs/${checkRunId}/annotations\n',
+      'public-beta-rc-audit.json desktop-signing-secrets desktop-dogfood release-desktop-stale-artifacts publish-preflight github-ci check-runs/${checkRunId}/annotations release-desktop-exclusion must not stage public Desktop artifacts releaseProfile\n',
     "scripts/audit-public-beta-rc.test.mjs": "",
     "scripts/release-publish-preflight.mjs":
-      'Verify release Git checkout rev-parse --porcelain=v1 :(exclude)reports/release must point at HEAD for publish preflight verify-web-release-package.mjs verify-sync-release-evidence.mjs verify-desktop-release-evidence.mjs --require-source verify-artifact-checksums.mjs --all-release verify-release-provenance.mjs Verify GitHub CLI publish readiness ATLASTERM_RELEASE_GH_COMMAND auth", "status release", "view", releaseTag already exists; refusing to publish a duplicate release\n',
+      'Verify release Git checkout rev-parse --porcelain=v1 :(exclude)reports/release must point at HEAD for publish preflight verify-web-release-package.mjs verify-sync-release-evidence.mjs verify-desktop-release-evidence.mjs --require-source verify-artifact-checksums.mjs --all-release verify-release-provenance.mjs Verify GitHub CLI publish readiness ATLASTERM_RELEASE_GH_COMMAND auth", "status release", "view", releaseTag already exists; refusing to publish a duplicate release Verify Desktop public exclusion evidence --release-profile web-sync-only\n',
     "scripts/release-publish-preflight.test.mjs": "",
     "scripts/create-github-release-draft.mjs":
       'collectFiles(resolve(root, "reports", "release"))\nprovenanceVerificationArgs\nif (dryRun)\nprovenanceVerificationArgs.push("--skip-current-git-check")\n',
@@ -449,11 +492,11 @@ function createFixture(t, overrides = {}) {
     "apps/desktop/src/usePtySession.test.ts":
       "moves to closed when the pty emits exit\nresult.current.exitCode\nforwards write and resize to the open pty\nsurfaces native PTY command blocks and clears them after a safe write\n",
     "docs/release-checklist.md":
-      "Public Beta docs/repository-release-handoff.md SBOM SHA256 SBOM-SHA256SUMS.txt release-evidence.json release-evidence-source.json release-evidence-SHA256SUMS.txt reports/handoff/desktop/formal-evidence-unblock-report.json release-provenance.json release-provenance-SHA256SUMS.txt artifact sha256 manifest hash staged cargo-audit qa:rust-advisory qa:release:public:fixture qa:lighthouse release:publish-preflight backup-restore-smoke.json qa:sync:backup-restore-smoke unknown-host fingerprint changed-host-key blocking per-host known host removal runtime telemetry rollback\n",
+      "Public Beta docs/repository-release-handoff.md SBOM SHA256 SBOM-SHA256SUMS.txt release-evidence.json release-evidence-source.json release-evidence-SHA256SUMS.txt desktop-exclusion.json web-sync-only reports/handoff/desktop/formal-evidence-unblock-report.json release-provenance.json release-provenance-SHA256SUMS.txt artifact sha256 manifest hash staged cargo-audit qa:rust-advisory qa:release:public:fixture qa:lighthouse release:publish-preflight backup-restore-smoke.json qa:sync:backup-restore-smoke unknown-host fingerprint changed-host-key blocking per-host known host removal runtime telemetry rollback\n",
     "docs/public-beta-dogfood-script.md":
       "Top 10 Tasks desktop-install-launch desktop-connection-host-key desktop-pty-session desktop-command-safety desktop-sftp-transfer desktop-forwarding web-admin-live-sync sync-device-flow sync-backup-restore-rollback release-evidence-review unsigned internal staging signed Desktop formal release evidence release:desktop:unsigned-staging-report reports/handoff/desktop/unsigned-staging-report.json qa:public-beta-dogfood reports/dogfood/public-beta/latest.json\n",
     "docs/repository-release-handoff.md":
-      `healthy Git checkout do not publish from the damaged workspace git status --short git fsck --strict git diff --binary release-provenance.json npm run qa:release:public npm run qa:release:public:fixture release-evidence-source.json reports/handoff/desktop/formal-evidence-unblock-report.json node scripts/check-public-release-readiness.mjs v${version}\n`,
+      `healthy Git checkout do not publish from the damaged workspace git status --short git fsck --strict git diff --binary release-provenance.json npm run qa:release:public npm run qa:release:public:fixture release-evidence-source.json desktop-exclusion.json web-sync-only reports/handoff/desktop/formal-evidence-unblock-report.json node scripts/check-public-release-readiness.mjs v${version}\n`,
     [`docs/release-notes/${version}.md`]:
       `JoeSSH ${version} Desktop Web Admin Sync Service SHA256 release:publish-preflight\n`,
     "docs/desktop-release-metadata.json": JSON.stringify({
@@ -471,7 +514,7 @@ function createFixture(t, overrides = {}) {
       linuxPackageTypes: ["AppImage", "deb", "rpm"],
     }),
     "docs/desktop-distribution.md":
-      "Windows sign notarization Linux release-evidence.json release-evidence-source.json release-evidence-SHA256SUMS.txt reports/handoff/desktop/formal-evidence-unblock-report.json artifact sha256 manifest hash staged desktop-release-metadata.json capabilities permissions pre-auth host-key probe known-host list/remove/clear unknown hosts require a visible fingerprint confirmation changed host keys are blocked first/last seen metadata 1 MiB 25 MiB bounded SFTP transfer\n",
+      "Windows sign notarization Linux release-evidence.json release-evidence-source.json release-evidence-SHA256SUMS.txt desktop-exclusion.json web-sync-only reports/handoff/desktop/formal-evidence-unblock-report.json artifact sha256 manifest hash staged desktop-release-metadata.json capabilities permissions pre-auth host-key probe known-host list/remove/clear unknown hosts require a visible fingerprint confirmation changed host keys are blocked first/last seen metadata 1 MiB 25 MiB bounded SFTP transfer\n",
     "docs/web-admin-deployment.md":
       "The public root path defaults to live Web Admin. _headers CSP VITE_ATLASTERM_ADMIN_SNAPSHOT_URL joessh-web-admin verify-web-release-package.mjs .well-known/security.txt node-admin-snapshot-proxy.mjs ATLASTERM_WEB_ADMIN_PROXY_ALLOW_PUBLIC_BIND ATLASTERM_WEB_ADMIN_PROXY_OPERATOR_TOKEN ATLASTERM_ADMIN_SNAPSHOT_PROXY_MAX_BYTES upstream_snapshot_too_large 1 MiB qa:web-admin-proxy-smoke qa:lighthouse qa:web-admin-sync-topology-smoke qa:web-admin-sync-topology-release-smoke ?adminSnapshot=fixture\n",
     "docs/self-hosting-sync.md":

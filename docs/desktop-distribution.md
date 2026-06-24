@@ -247,6 +247,29 @@ SBOM, checksums, provenance, and formal Desktop source evidence. It only
 replaces GitHub CLI release checks with `local-release-authority.json`
 verification.
 
+### Web/Sync-only Public Beta Profile
+
+If a Public Beta candidate intentionally excludes public Desktop downloads, use
+the explicit `web-sync-only` profile instead of weakening Desktop signing rules.
+Desktop installers may remain in internal dogfood or handoff evidence under
+`reports/handoff/desktop/`, but no Desktop artifact may be staged under
+`reports/release/desktop/`.
+
+```bash
+npm run release:desktop:exclude-public
+npm run release:provenance:local:web-sync-only
+npm run release:provenance:verify:local:web-sync-only
+npm run release:publish-preflight:local:web-sync-only
+npm run release:rc-audit:report -- --release-authority local --release-profile web-sync-only --skip-github
+```
+
+`release:desktop:exclude-public` writes
+`reports/release/desktop-exclusion.json` plus
+`reports/release/desktop-exclusion-SHA256SUMS.txt`. The verifier fails if
+`reports/release/desktop/` contains any Desktop package. If a Desktop download
+is added later, the candidate must return to the `full` profile and satisfy the
+formal signed Desktop evidence gate.
+
 ## Signing And Platform Rules
 
 - Windows: public installers must be code signed before upload.

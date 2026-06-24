@@ -283,6 +283,40 @@ function writeLocalReleaseAuthorityFixture(root) {
   ]);
 }
 
+function writeDesktopExclusionFixture(root) {
+  const evidence = JSON.stringify(
+    {
+      artifact: "desktop-public-exclusion",
+      assertions: [
+        "no public Desktop downloads are included in this release profile",
+        "reports/release/desktop contains no Desktop release artifacts",
+        "signed Desktop formal evidence remains required if Desktop downloads are published",
+      ],
+      desktopReleaseDir: "reports/release/desktop",
+      evidenceVersion: 1,
+      generatedAt: "2026-06-21T00:00:00.000Z",
+      product: "JoeSSH",
+      publicDesktopDownloads: false,
+      releaseProfile: "web-sync-only",
+      releaseTag: "v0.1.0-beta.1",
+      source: {
+        cleanTreeExcluding: "reports/release",
+        gitCommit: "abc123",
+        gitFsckStrict: true,
+        releaseTagCommit: "abc123",
+        repository: "https://github.com/joessh/joessh.git",
+      },
+      version: "0.1.0-beta.1",
+    },
+    null,
+    2,
+  );
+  writeFile(root, "reports/release/desktop-exclusion.json", `${evidence}\n`);
+  writeManifest(root, "reports/release/desktop-exclusion-SHA256SUMS.txt", [
+    [`${evidence}\n`, "reports/release/desktop-exclusion.json"],
+  ]);
+}
+
 function runVerifier(root, env = createFakeCommands(root), extraArgs = []) {
   return spawnSync(process.execPath, [VERIFIER_PATH, "--root", root, ...extraArgs], {
     encoding: "utf8",
@@ -355,6 +389,47 @@ test("generates and verifies release provenance with local release authority", (
   assert(provenance.verifiers.includes("verify-local-release-authority.mjs"));
 
   const verified = runVerifier(root, env, ["--release-authority", "local"]);
+  assert.equal(verified.status, 0, verified.stdout + verified.stderr);
+});
+
+test("generates and verifies web-sync-only release provenance without Desktop formal artifacts", (t) => {
+  const root = createFixture(t);
+  const env = createFakeCommands(root);
+  rmSync(join(root, "reports", "release", "desktop"), { recursive: true, force: true });
+  writeDesktopExclusionFixture(root);
+  writeLocalReleaseAuthorityFixture(root);
+
+  const generated = runGenerator(root, env, [
+    "--release-authority",
+    "local",
+    "--release-profile",
+    "web-sync-only",
+  ]);
+
+  assert.equal(generated.status, 0, generated.stdout + generated.stderr);
+  const provenance = JSON.parse(readFile(root, "reports/release/release-provenance.json"));
+  assert.equal(provenance.releaseAuthority, "local");
+  assert.equal(provenance.releaseProfile, "web-sync-only");
+  assert.deepEqual(
+    provenance.checksumManifests.map((entry) => entry.path).sort(),
+    [
+      "reports/release/SBOM-SHA256SUMS.txt",
+      "reports/release/desktop-exclusion-SHA256SUMS.txt",
+      "reports/release/local-release-authority-SHA256SUMS.txt",
+      "reports/release/sync/SHA256SUMS.txt",
+      "reports/release/sync/backup-restore-smoke-SHA256SUMS.txt",
+      "reports/release/web/SHA256SUMS.txt",
+    ],
+  );
+  assert(provenance.verifiers.includes("verify-desktop-public-exclusion.mjs"));
+  assert(!provenance.verifiers.includes("verify-desktop-release-evidence.mjs --require-source"));
+
+  const verified = runVerifier(root, env, [
+    "--release-authority",
+    "local",
+    "--release-profile",
+    "web-sync-only",
+  ]);
   assert.equal(verified.status, 0, verified.stdout + verified.stderr);
 });
 

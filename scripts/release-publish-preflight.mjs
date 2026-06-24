@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { basename, resolve } from "node:path";
 
 const scriptRoot = resolve(import.meta.dirname, "..");
-const { allowUnhealthyGit, releaseAuthority, root } = parseArgs(process.argv.slice(2));
+const { allowUnhealthyGit, releaseAuthority, releaseProfile, root } = parseArgs(process.argv.slice(2));
 const gitCommand = process.env.ATLASTERM_RELEASE_GIT_COMMAND ?? "git";
 const gitCommandPrefixArgs = parseCommandPrefixArgs("ATLASTERM_RELEASE_GIT_ARGS");
 const ghCommand = process.env.ATLASTERM_RELEASE_GH_COMMAND ?? "gh";
@@ -41,17 +41,26 @@ const steps = [
     label: "Verify Sync release evidence",
     args: [resolve(scriptRoot, "scripts", "verify-sync-release-evidence.mjs"), "--root", root],
   },
-  {
-    label: "Verify Desktop signing/distribution evidence",
-    args: [
-      resolve(scriptRoot, "scripts", "verify-desktop-release-evidence.mjs"),
-      "--root",
-      root,
-      "--require-source",
-      "--require-current-git-source",
-      ...(releaseAuthority === "github" ? [] : ["--require-source-authority", releaseAuthority]),
-    ],
-  },
+  releaseProfile === "full"
+    ? {
+        label: "Verify Desktop signing/distribution evidence",
+        args: [
+          resolve(scriptRoot, "scripts", "verify-desktop-release-evidence.mjs"),
+          "--root",
+          root,
+          "--require-source",
+          "--require-current-git-source",
+          ...(releaseAuthority === "github" ? [] : ["--require-source-authority", releaseAuthority]),
+        ],
+      }
+    : {
+        label: "Verify Desktop public exclusion evidence",
+        args: [
+          resolve(scriptRoot, "scripts", "verify-desktop-public-exclusion.mjs"),
+          "--root",
+          root,
+        ],
+      },
   {
     label: "Verify release SBOM",
     args: [resolve(scriptRoot, "scripts", "verify-release-sbom.mjs"), "--root", root],
@@ -64,6 +73,8 @@ const steps = [
       root,
       "--release-authority",
       releaseAuthority,
+      "--release-profile",
+      releaseProfile,
     ],
   },
   releaseAuthority === "github"
@@ -77,7 +88,9 @@ const steps = [
       },
 ];
 
-console.log(`Running public release publish preflight in ${root} with ${releaseAuthority} release authority`);
+console.log(
+  `Running public release publish preflight in ${root} with ${releaseAuthority} release authority and ${releaseProfile} release profile`,
+);
 
 for (const step of steps) {
   console.log(`\n> ${step.label}`);
@@ -239,6 +252,7 @@ function commandFailure(message, result) {
 function parseArgs(args) {
   let allowUnhealthyGit = false;
   let releaseAuthority = process.env.ATLASTERM_RELEASE_AUTHORITY ?? "github";
+  let releaseProfile = process.env.ATLASTERM_RELEASE_PROFILE ?? "full";
   let root = scriptRoot;
 
   for (let index = 0; index < args.length; index += 1) {
@@ -264,6 +278,23 @@ function parseArgs(args) {
       releaseAuthority = arg.slice("--authority=".length);
       continue;
     }
+    if (arg === "--release-profile" || arg === "--profile") {
+      const value = args[index + 1];
+      if (!value) {
+        fail(`${arg} requires full or web-sync-only.`);
+      }
+      releaseProfile = normalizeReleaseProfile(value);
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--release-profile=")) {
+      releaseProfile = normalizeReleaseProfile(arg.slice("--release-profile=".length));
+      continue;
+    }
+    if (arg.startsWith("--profile=")) {
+      releaseProfile = normalizeReleaseProfile(arg.slice("--profile=".length));
+      continue;
+    }
     if (arg === "--root") {
       const value = args[index + 1];
       if (!value) {
@@ -284,8 +315,19 @@ function parseArgs(args) {
   if (!["github", "local"].includes(releaseAuthority)) {
     fail("--release-authority must be github or local.");
   }
+  releaseProfile = normalizeReleaseProfile(releaseProfile);
 
-  return { allowUnhealthyGit, releaseAuthority, root };
+  return { allowUnhealthyGit, releaseAuthority, releaseProfile, root };
+}
+
+function normalizeReleaseProfile(value) {
+  if (value === "full") {
+    return "full";
+  }
+  if (value === "web-sync-only" || value === "no-public-desktop-downloads") {
+    return "web-sync-only";
+  }
+  fail("--release-profile must be full or web-sync-only.");
 }
 
 function parseCommandPrefixArgs(envName) {

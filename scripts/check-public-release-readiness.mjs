@@ -168,6 +168,8 @@ function checkPackageScripts() {
     "qa:desktop-release-evidence-download",
     "test:desktop-release-evidence-preflight",
     "qa:desktop-release-evidence-preflight",
+    "test:desktop-public-exclusion",
+    "qa:desktop-public-exclusion",
     "test:desktop-unsigned-staging-report",
     "qa:desktop-unsigned-staging-report",
     "test:local-release-authority",
@@ -213,18 +215,26 @@ function checkPackageScripts() {
     "release:desktop:evidence-preflight",
     "release:desktop:evidence-workflow",
     "release:desktop:draft",
+    "release:desktop:exclude-public",
     "release:desktop:unsigned-staging-report",
     "release:dogfood-template",
     "release:local-authority",
     "release:local-authority:verify",
     "release:publish-preflight",
+    "release:publish-preflight:web-sync-only",
     "release:publish-preflight:local",
+    "release:publish-preflight:local:web-sync-only",
     "release:provenance",
+    "release:provenance:web-sync-only",
     "release:provenance:local",
+    "release:provenance:local:web-sync-only",
     "release:provenance:verify",
+    "release:provenance:verify:web-sync-only",
     "release:provenance:verify:local",
+    "release:provenance:verify:local:web-sync-only",
     "release:rc-audit",
     "release:rc-audit:report",
+    "release:rc-audit:report:web-sync-only",
     "release:verify-checksums",
     "release:sbom",
     "release:sbom:verify",
@@ -451,6 +461,11 @@ function checkPackageScripts() {
     rootQaScript,
   );
   passIf(
+    rootQaScript.includes("qa:desktop-public-exclusion"),
+    "Root QA runs Desktop public exclusion tests",
+    rootQaScript,
+  );
+  passIf(
     rootQaScript.includes("test:rust-advisory-audit"),
     "Root QA runs Rust advisory audit wrapper tests",
     rootQaScript,
@@ -570,6 +585,8 @@ function checkReleaseToolingFiles() {
     "scripts/verify-desktop-release-evidence.test.mjs",
     "scripts/download-desktop-release-evidence.mjs",
     "scripts/download-desktop-release-evidence.test.mjs",
+    "scripts/verify-desktop-public-exclusion.mjs",
+    "scripts/verify-desktop-public-exclusion.test.mjs",
     "scripts/report-desktop-unsigned-staging.mjs",
     "scripts/report-desktop-unsigned-staging.test.mjs",
     "scripts/desktop-release-evidence-preflight.mjs",
@@ -628,6 +645,8 @@ function checkReleaseToolingFiles() {
     readTextIfExists("scripts/verify-public-beta-dogfood-evidence.mjs") ?? "";
   const unsignedStagingReporter =
     readTextIfExists("scripts/report-desktop-unsigned-staging.mjs") ?? "";
+  const desktopPublicExclusion =
+    readTextIfExists("scripts/verify-desktop-public-exclusion.mjs") ?? "";
   const rustAdvisoryAudit =
     readTextIfExists("scripts/run-rust-advisory-audit.mjs") ?? "";
   passIf(
@@ -644,6 +663,14 @@ function checkReleaseToolingFiles() {
       unsignedStagingReporter.includes("sha256File(path)") &&
       unsignedStagingReporter.includes("versionMatchesPackage"),
     "Desktop unsigned staging reporter records handoff evidence without weakening release artifacts",
+  );
+  passIf(
+    desktopPublicExclusion.includes("desktop-exclusion.json") &&
+      desktopPublicExclusion.includes("publicDesktopDownloads: false") &&
+      desktopPublicExclusion.includes("releaseProfile: \"web-sync-only\"") &&
+      desktopPublicExclusion.includes("No public Desktop downloads are allowed") &&
+      desktopPublicExclusion.includes("signed Desktop formal evidence remains required"),
+    "Desktop public exclusion verifier records no-download evidence without weakening formal Desktop artifacts",
   );
   passIf(
     rustAdvisoryAudit.includes("cargo audit could not fetch the RustSec advisory DB") &&
@@ -764,6 +791,24 @@ function checkReleaseToolingFiles() {
     "Desktop release evidence verifier binds signing proof text to artifact identity",
   );
 
+  const profileReleaseProvenanceGenerator =
+    readTextIfExists("scripts/generate-release-provenance.mjs") ?? "";
+  const profileReleaseProvenanceVerifier =
+    readTextIfExists("scripts/verify-release-provenance.mjs") ?? "";
+  const profilePublishPreflight =
+    readTextIfExists("scripts/release-publish-preflight.mjs") ?? "";
+  const profileRcAudit = readTextIfExists("scripts/audit-public-beta-rc.mjs") ?? "";
+  passIf(
+    profileReleaseProvenanceGenerator.includes("releaseProfile") &&
+      profileReleaseProvenanceGenerator.includes("reports/release/desktop-exclusion-SHA256SUMS.txt") &&
+      profileReleaseProvenanceGenerator.includes("verify-desktop-public-exclusion.mjs") &&
+      profileReleaseProvenanceVerifier.includes("releaseProfile must be") &&
+      profilePublishPreflight.includes("Verify Desktop public exclusion evidence") &&
+      profileRcAudit.includes("release-desktop-exclusion") &&
+      profileRcAudit.includes("must not stage public Desktop artifacts"),
+    "Web/Sync-only release profile requires Desktop exclusion evidence instead of weakening Desktop signing gates",
+  );
+
   const desktopEvidencePreflight =
     readTextIfExists("scripts/desktop-release-evidence-preflight.mjs") ?? "";
   passIf(
@@ -875,15 +920,15 @@ function checkReleaseToolingFiles() {
     "GitHub Release draft uploads only staged reports/release artifacts",
   );
 
-  const rcAudit = readTextIfExists("scripts/audit-public-beta-rc.mjs") ?? "";
+  const rcAuditGate = readTextIfExists("scripts/audit-public-beta-rc.mjs") ?? "";
   passIf(
-    rcAudit.includes("public-beta-rc-audit.json") &&
-      rcAudit.includes("desktop-signing-secrets") &&
-      rcAudit.includes("desktop-dogfood") &&
-      rcAudit.includes("release-desktop-stale-artifacts") &&
-      rcAudit.includes("publish-preflight") &&
-      rcAudit.includes("github-ci") &&
-      rcAudit.includes("check-runs/${checkRunId}/annotations"),
+    rcAuditGate.includes("public-beta-rc-audit.json") &&
+      rcAuditGate.includes("desktop-signing-secrets") &&
+      rcAuditGate.includes("desktop-dogfood") &&
+      rcAuditGate.includes("release-desktop-stale-artifacts") &&
+      rcAuditGate.includes("publish-preflight") &&
+      rcAuditGate.includes("github-ci") &&
+      rcAuditGate.includes("check-runs/${checkRunId}/annotations"),
     "Public Beta RC audit binds dogfood, signing, preflight, and CI blocker evidence",
   );
 
@@ -1685,6 +1730,8 @@ function checkReleaseDocs() {
         "release-evidence.json",
         "release-evidence-source.json",
         "release-evidence-SHA256SUMS.txt",
+        "desktop-exclusion.json",
+        "web-sync-only",
         "reports/handoff/desktop/formal-evidence-unblock-report.json",
         "release-provenance.json",
         "release-provenance-SHA256SUMS.txt",
@@ -1718,6 +1765,8 @@ function checkReleaseDocs() {
         "npm run qa:release:public",
         "npm run qa:release:public:fixture",
         "release-evidence-source.json",
+        "desktop-exclusion.json",
+        "web-sync-only",
         "reports/handoff/desktop/formal-evidence-unblock-report.json",
         "node scripts/check-public-release-readiness.mjs",
         expectedReleaseTag,
@@ -1746,6 +1795,8 @@ function checkReleaseDocs() {
         "release-evidence.json",
         "release-evidence-source.json",
         "release-evidence-SHA256SUMS.txt",
+        "desktop-exclusion.json",
+        "web-sync-only",
         "reports/handoff/desktop/formal-evidence-unblock-report.json",
         "artifact sha256",
         "manifest hash",

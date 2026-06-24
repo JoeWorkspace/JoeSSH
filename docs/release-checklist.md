@@ -1,8 +1,11 @@
 # JoeSSH Public Beta Release Checklist
 
-This checklist defines the public beta bar for `0.1.0-beta.10`. The first public
-release includes Desktop, Web Admin, and the self-hosted Sync Service. Mobile
-native apps stay in preflight/device-smoke validation until a later beta.
+This checklist defines the public beta bar for `0.1.0-beta.10`. The default
+`full` release profile includes Desktop, Web Admin, and the self-hosted Sync
+Service. The explicit `web-sync-only` release profile publishes Web Admin and
+Sync while excluding public Desktop downloads; Desktop remains covered by
+internal dogfood and unsigned staging evidence only. Mobile native apps stay in
+preflight/device-smoke validation until a later beta.
 
 ## Required Before Publishing
 
@@ -114,6 +117,18 @@ native apps stay in preflight/device-smoke validation until a later beta.
   return a directory that passes intake and import without guessing filenames.
   Windows and macOS proof text must mention both the artifact file name and
   SHA256.
+- If this candidate intentionally excludes public Desktop downloads, do not
+  copy unsigned installers into `reports/release/desktop/`. Run
+  `npm run release:desktop:exclude-public`, then use
+  `npm run release:provenance:local:web-sync-only`,
+  `npm run release:provenance:verify:local:web-sync-only`,
+  `npm run release:publish-preflight:local:web-sync-only`, and
+  `npm run release:rc-audit:report -- --release-authority local --release-profile web-sync-only --skip-github`.
+  This creates `reports/release/desktop-exclusion.json` and
+  `reports/release/desktop-exclusion-SHA256SUMS.txt` as negative release
+  evidence. If any Desktop artifact is staged under `reports/release/desktop/`,
+  the `web-sync-only` profile is No-Go and the full signed Desktop evidence gate
+  applies.
 - Create the annotated release tag only after source QA is green. For GitHub
   workflow evidence, release artifacts may already be staged before tagging. For
   local/self-hosted Desktop source evidence, create the tag before
@@ -138,6 +153,10 @@ native apps stay in preflight/device-smoke validation until a later beta.
     `npm run release:rc-audit:report -- --release-authority local --skip-github`
     for the final local RC audit when GitHub CI is not the publication
     authority.
+  - Local/self-hosted `web-sync-only` authority: generate Desktop exclusion
+    evidence with `npm run release:desktop:exclude-public`, then use the
+    `:web-sync-only` provenance and publish-preflight scripts. This profile is
+    only valid when no public Desktop artifacts are staged.
 - Run `npm run release:provenance` after the annotated tag exists and staged
   Desktop, Web Admin, Sync, SBOM, and evidence manifests are complete. It writes
   `reports/release/release-provenance.json` plus

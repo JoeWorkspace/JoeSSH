@@ -11,9 +11,14 @@ import {
 import { basename, isAbsolute, relative, resolve } from "node:path";
 
 const defaultRoot = resolve(import.meta.dirname, "..");
-const { checksumPath, notesFile, outputPath, releaseAuthority, root } = parseArgs(
-  process.argv.slice(2),
-);
+const {
+  checksumPath,
+  notesFile,
+  outputPath,
+  releaseAuthority,
+  releaseProfile,
+  root,
+} = parseArgs(process.argv.slice(2));
 const packageJson = readJson("package.json");
 const releaseTag = `v${packageJson.version}`;
 const releaseNotesPath = resolve(
@@ -42,15 +47,7 @@ const requiredLockfiles = [
   "Cargo.lock",
   "apps/desktop/src-tauri/Cargo.lock",
 ];
-const requiredChecksumManifests = [
-  "reports/release/SBOM-SHA256SUMS.txt",
-  "reports/release/desktop/SHA256SUMS.txt",
-  "reports/release/desktop/release-evidence-SHA256SUMS.txt",
-  "reports/release/sync/SHA256SUMS.txt",
-  "reports/release/sync/backup-restore-smoke-SHA256SUMS.txt",
-  "reports/release/web/SHA256SUMS.txt",
-  ...(releaseAuthority === "local" ? ["reports/release/local-release-authority-SHA256SUMS.txt"] : []),
-];
+const requiredChecksumManifests = createRequiredChecksumManifests();
 
 if (!existsSync(releaseNotesPath) || !statSync(releaseNotesPath).isFile()) {
   fail(
@@ -63,6 +60,7 @@ const provenance = {
   provenanceVersion: 1,
   product: "JoeSSH",
   releaseAuthority,
+  releaseProfile,
   version: packageJson.version,
   releaseTag,
   generatedAt: new Date().toISOString(),
@@ -80,15 +78,7 @@ const provenance = {
   toolchain: collectToolchain(),
   lockfiles: collectLockfiles(),
   checksumManifests: collectChecksumManifestEvidence(),
-  verifiers: [
-    "verify-artifact-checksums.mjs --all-release",
-    "verify-web-release-package.mjs",
-    "verify-sync-release-evidence.mjs",
-    "verify-desktop-release-evidence.mjs --require-source",
-    ...(releaseAuthority === "local" ? ["verify-local-release-authority.mjs"] : []),
-    "verify-release-sbom.mjs",
-    "verify-release-provenance.mjs",
-  ],
+  verifiers: createVerifierList(),
 };
 
 mkdirSync(resolve(outputPath, ".."), { recursive: true });
@@ -236,18 +226,62 @@ function collectChecksumManifestEvidence() {
       entries: parseChecksumManifest(fullPath),
     };
   });
-  const desktopEvidenceManifest = manifests.find(
-    (manifest) => manifest.path === "reports/release/desktop/release-evidence-SHA256SUMS.txt",
-  );
-  const hasDesktopEvidenceSource = desktopEvidenceManifest?.entries.some(
-    (entry) => entry.path === "reports/release/desktop/release-evidence-source.json",
-  );
-  if (!hasDesktopEvidenceSource) {
-    fail(
-      "Desktop formal evidence source sidecar must be covered by reports/release/desktop/release-evidence-SHA256SUMS.txt before generating release provenance.",
+  if (releaseProfile === "full") {
+    const desktopEvidenceManifest = manifests.find(
+      (manifest) => manifest.path === "reports/release/desktop/release-evidence-SHA256SUMS.txt",
     );
+    const hasDesktopEvidenceSource = desktopEvidenceManifest?.entries.some(
+      (entry) => entry.path === "reports/release/desktop/release-evidence-source.json",
+    );
+    if (!hasDesktopEvidenceSource) {
+      fail(
+        "Desktop formal evidence source sidecar must be covered by reports/release/desktop/release-evidence-SHA256SUMS.txt before generating release provenance.",
+      );
+    }
+  } else {
+    const desktopExclusionManifest = manifests.find(
+      (manifest) => manifest.path === "reports/release/desktop-exclusion-SHA256SUMS.txt",
+    );
+    const hasDesktopExclusion = desktopExclusionManifest?.entries.some(
+      (entry) => entry.path === "reports/release/desktop-exclusion.json",
+    );
+    if (!hasDesktopExclusion) {
+      fail(
+        "Desktop public exclusion evidence must be covered by reports/release/desktop-exclusion-SHA256SUMS.txt before generating web-sync-only release provenance.",
+      );
+    }
   }
   return manifests;
+}
+
+function createRequiredChecksumManifests() {
+  return [
+    "reports/release/SBOM-SHA256SUMS.txt",
+    ...(releaseProfile === "full"
+      ? [
+          "reports/release/desktop/SHA256SUMS.txt",
+          "reports/release/desktop/release-evidence-SHA256SUMS.txt",
+        ]
+      : ["reports/release/desktop-exclusion-SHA256SUMS.txt"]),
+    "reports/release/sync/SHA256SUMS.txt",
+    "reports/release/sync/backup-restore-smoke-SHA256SUMS.txt",
+    "reports/release/web/SHA256SUMS.txt",
+    ...(releaseAuthority === "local" ? ["reports/release/local-release-authority-SHA256SUMS.txt"] : []),
+  ];
+}
+
+function createVerifierList() {
+  return [
+    "verify-artifact-checksums.mjs --all-release",
+    "verify-web-release-package.mjs",
+    "verify-sync-release-evidence.mjs",
+    releaseProfile === "full"
+      ? "verify-desktop-release-evidence.mjs --require-source"
+      : "verify-desktop-public-exclusion.mjs",
+    ...(releaseAuthority === "local" ? ["verify-local-release-authority.mjs"] : []),
+    "verify-release-sbom.mjs",
+    "verify-release-provenance.mjs",
+  ];
 }
 
 function collectReleaseChecksumManifests() {
@@ -408,6 +442,7 @@ function parseArgs(args) {
   let checksumPath = null;
   let notesFile = null;
   let releaseAuthority = process.env.ATLASTERM_RELEASE_AUTHORITY ?? "github";
+  let releaseProfile = process.env.ATLASTERM_RELEASE_PROFILE ?? "full";
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
@@ -476,6 +511,23 @@ function parseArgs(args) {
       releaseAuthority = arg.slice("--authority=".length);
       continue;
     }
+    if (arg === "--release-profile" || arg === "--profile") {
+      const value = args[index + 1];
+      if (!value) {
+        fail(`${arg} requires full or web-sync-only.`);
+      }
+      releaseProfile = normalizeReleaseProfile(value);
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--release-profile=")) {
+      releaseProfile = normalizeReleaseProfile(arg.slice("--release-profile=".length));
+      continue;
+    }
+    if (arg.startsWith("--profile=")) {
+      releaseProfile = normalizeReleaseProfile(arg.slice("--profile=".length));
+      continue;
+    }
     if (arg.startsWith("--notes-file=")) {
       notesFile = arg.slice("--notes-file=".length);
       continue;
@@ -487,6 +539,7 @@ function parseArgs(args) {
   if (!["github", "local"].includes(releaseAuthority)) {
     fail("--release-authority must be github or local.");
   }
+  releaseProfile = normalizeReleaseProfile(releaseProfile);
 
   return {
     checksumPath: resolve(
@@ -499,8 +552,19 @@ function parseArgs(args) {
       outputPath ?? "reports/release/release-provenance.json",
     ),
     releaseAuthority,
+    releaseProfile,
     root,
   };
+}
+
+function normalizeReleaseProfile(value) {
+  if (value === "full") {
+    return "full";
+  }
+  if (value === "web-sync-only" || value === "no-public-desktop-downloads") {
+    return "web-sync-only";
+  }
+  fail("--release-profile must be full or web-sync-only.");
 }
 
 function parseCommandPrefixArgs(envName) {

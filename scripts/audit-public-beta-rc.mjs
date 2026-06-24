@@ -16,6 +16,7 @@ const {
   outputPath,
   repo: explicitRepo,
   releaseAuthority,
+  releaseProfile,
   root,
   skipGithub,
 } = parseArgs(process.argv.slice(2));
@@ -38,6 +39,7 @@ const report = {
   decision: "no-go",
   generatedAt: new Date().toISOString(),
   releaseAuthority,
+  releaseProfile,
   releaseTag,
   repository: repo,
   root,
@@ -138,13 +140,29 @@ function auditReleaseManifests() {
           ],
         ]
       : []),
-    ["release-desktop", "Desktop signed release checksum manifest", "reports/release/desktop/SHA256SUMS.txt", true],
-    [
-      "release-desktop-evidence",
-      "Desktop signed release evidence checksum manifest",
-      "reports/release/desktop/release-evidence-SHA256SUMS.txt",
-      true,
-    ],
+    ...(releaseProfile === "full"
+      ? [
+          [
+            "release-desktop",
+            "Desktop signed release checksum manifest",
+            "reports/release/desktop/SHA256SUMS.txt",
+            true,
+          ],
+          [
+            "release-desktop-evidence",
+            "Desktop signed release evidence checksum manifest",
+            "reports/release/desktop/release-evidence-SHA256SUMS.txt",
+            true,
+          ],
+        ]
+      : [
+          [
+            "release-desktop-exclusion",
+            "Desktop public exclusion checksum manifest",
+            "reports/release/desktop-exclusion-SHA256SUMS.txt",
+            true,
+          ],
+        ]),
   ];
 
   for (const [id, label, relativePath, blocking] of manifests) {
@@ -163,7 +181,19 @@ function auditDesktopArtifactVersions() {
       "release-desktop-stale-artifacts",
       "Desktop staged artifact versions",
       "pass",
-      "No staged Desktop artifacts found; checksum manifest gates cover required artifacts.",
+      releaseProfile === "full"
+        ? "No staged Desktop artifacts found; checksum manifest gates cover required artifacts."
+        : "No public Desktop artifacts staged for the web-sync-only release profile.",
+    );
+    return;
+  }
+  if (releaseProfile !== "full") {
+    addCheck(
+      "release-desktop-stale-artifacts",
+      "Desktop staged artifact versions",
+      "fail",
+      `web-sync-only release profile must not stage public Desktop artifacts: ${artifacts.join(", ")}.`,
+      true,
     );
     return;
   }
@@ -300,7 +330,14 @@ function auditLocalReleaseAuthority() {
 }
 
 function auditPublishPreflight() {
-  const scriptName = releaseAuthority === "local" ? "release:publish-preflight:local" : "release:publish-preflight";
+  const scriptName =
+    releaseProfile === "web-sync-only"
+      ? releaseAuthority === "local"
+        ? "release:publish-preflight:local:web-sync-only"
+        : "release:publish-preflight:web-sync-only"
+      : releaseAuthority === "local"
+        ? "release:publish-preflight:local"
+        : "release:publish-preflight";
   const result = runNpm(["run", scriptName]);
   addCheck(
     "publish-preflight",
@@ -312,6 +349,15 @@ function auditPublishPreflight() {
 }
 
 function auditDesktopSigningSecrets() {
+  if (releaseProfile !== "full") {
+    addCheck(
+      "desktop-signing-secrets",
+      "Desktop signing/notarization secret preflight",
+      "pass",
+      "Not required for web-sync-only release profile; no public Desktop downloads are included.",
+    );
+    return;
+  }
   if (releaseAuthority === "local") {
     addCheck(
       "desktop-signing-secrets",
@@ -595,6 +641,7 @@ function parseArgs(args) {
   let noFail = false;
   let outputPath = null;
   let releaseAuthority = process.env.ATLASTERM_RELEASE_AUTHORITY ?? "github";
+  let releaseProfile = process.env.ATLASTERM_RELEASE_PROFILE ?? "full";
   let repo = null;
   let root = scriptRoot;
   let skipGithub = false;
@@ -620,6 +667,19 @@ function parseArgs(args) {
     }
     if (arg.startsWith("--authority=")) {
       releaseAuthority = arg.slice("--authority=".length);
+      continue;
+    }
+    if (arg === "--release-profile" || arg === "--profile") {
+      releaseProfile = normalizeReleaseProfile(readValue(args, index, arg));
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--release-profile=")) {
+      releaseProfile = normalizeReleaseProfile(arg.slice("--release-profile=".length));
+      continue;
+    }
+    if (arg.startsWith("--profile=")) {
+      releaseProfile = normalizeReleaseProfile(arg.slice("--profile=".length));
       continue;
     }
     if (arg === "--output") {
@@ -659,8 +719,19 @@ function parseArgs(args) {
   if (!["github", "local"].includes(releaseAuthority)) {
     fail("--release-authority must be github or local.");
   }
+  releaseProfile = normalizeReleaseProfile(releaseProfile);
 
-  return { noFail, outputPath, releaseAuthority, repo, root, skipGithub };
+  return { noFail, outputPath, releaseAuthority, releaseProfile, repo, root, skipGithub };
+}
+
+function normalizeReleaseProfile(value) {
+  if (value === "full") {
+    return "full";
+  }
+  if (value === "web-sync-only" || value === "no-public-desktop-downloads") {
+    return "web-sync-only";
+  }
+  fail("--release-profile must be full or web-sync-only.");
 }
 
 function readValue(args, index, arg) {
