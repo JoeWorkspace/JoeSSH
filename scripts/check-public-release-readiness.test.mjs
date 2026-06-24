@@ -43,6 +43,8 @@ const releaseScriptNames = [
   "qa:desktop-release-package",
   "test:desktop-formal-artifact-import",
   "qa:desktop-formal-artifact-import",
+  "test:desktop-formal-artifact-intake",
+  "qa:desktop-formal-artifact-intake",
   "test:desktop-release-evidence",
   "qa:desktop-release-evidence",
   "test:desktop-release-secrets",
@@ -87,6 +89,7 @@ const releaseScriptNames = [
   "release:desktop:package",
   "release:desktop:package:local-source",
   "release:desktop:formal-artifacts:import",
+  "release:desktop:formal-artifacts:intake",
   "release:desktop:formal-artifacts:preflight",
   "release:desktop:checksums",
   "release:desktop:secret-template",
@@ -147,7 +150,7 @@ function fixtureScriptValue(name, overrides = {}) {
     return "npm run test:desktop-unsigned-staging-report";
   }
   if (name === "qa") {
-    return "npm run lint && npm run qa:desktop-formal-artifact-import && npm run qa:desktop-release-diagnostics && npm run qa:desktop-release-parity && npm run qa:web-admin-rollback-smoke && npm run test:rust-advisory-audit && npm run qa:lighthouse-audit && npm run qa:e2e:fresh";
+    return "npm run lint && npm run qa:desktop-formal-artifact-import && npm run qa:desktop-formal-artifact-intake && npm run qa:desktop-release-diagnostics && npm run qa:desktop-release-parity && npm run qa:web-admin-rollback-smoke && npm run test:rust-advisory-audit && npm run qa:lighthouse-audit && npm run qa:e2e:fresh";
   }
   if (name === "qa:desktop:real-ssh-smoke:required") {
     return "node scripts/require-real-ssh-smoke-env.mjs && npm run qa:desktop:real-ssh-smoke";
@@ -172,6 +175,15 @@ function fixtureScriptValue(name, overrides = {}) {
   }
   if (name === "release:desktop:formal-artifacts:preflight") {
     return "node scripts/import-desktop-formal-artifacts.mjs --preflight-only";
+  }
+  if (name === "release:desktop:formal-artifacts:intake") {
+    return "node scripts/diagnose-desktop-formal-artifact-input.mjs --no-fail";
+  }
+  if (name === "test:desktop-formal-artifact-intake") {
+    return "node --test scripts/diagnose-desktop-formal-artifact-input.test.mjs";
+  }
+  if (name === "qa:desktop-formal-artifact-intake") {
+    return "npm run test:desktop-formal-artifact-intake";
   }
   if (name === "release:desktop:configure-secrets") {
     return "node scripts/configure-desktop-release-secrets.mjs";
@@ -310,6 +322,9 @@ function createFixture(t, overrides = {}) {
     "scripts/import-desktop-formal-artifacts.mjs":
       "release:desktop:verify-evidence --require-source-authority --preflight-only windows-signature-verification.txt macos-notarization-verification.txt Desktop formal artifact input contains file(s) that do not include --input-dir must be outside the release workspace source tree is clean release upload tools cannot pick up staging-only files\n",
     "scripts/import-desktop-formal-artifacts.test.mjs": "",
+    "scripts/diagnose-desktop-formal-artifact-input.mjs":
+      "formal-artifact-input-report.json formal-artifact-input-report-SHA256SUMS.txt runImporterPreflight proof must show a successful verification\n",
+    "scripts/diagnose-desktop-formal-artifact-input.test.mjs": "",
     "scripts/configure-desktop-release-secrets.mjs":
       'ATLASTERM_WINDOWS_CERTIFICATE_FILE ATLASTERM_APPLE_CERTIFICATE_FILE --write-template reports/handoff/desktop secret-input-template.env "secret", "set" --body-file desktop-release-evidence-preflight.mjs\n',
     "scripts/configure-desktop-release-secrets.test.mjs": "",

@@ -88,12 +88,16 @@ route, not a blocker for the first Public Beta.
    proof files or platform artifacts are caught before staging release evidence:
 
    ```bash
+   npm run release:desktop:formal-artifacts:intake -- --input-dir <signed-artifact-dir> --source-authority local
    npm run release:desktop:formal-artifacts:preflight -- --input-dir <signed-artifact-dir> --source-authority local
    npm run release:desktop:formal-artifacts:import -- --input-dir <signed-artifact-dir> --source-authority local
    ```
 
    The import command stages Desktop artifacts, writes formal source evidence,
    and verifies the evidence against the tagged healthy checkout.
+   The intake command writes
+   `reports/handoff/desktop/formal-artifact-input-report.json` and its checksum
+   manifest without copying artifacts into `reports/release/desktop`.
 
 7. Generate provenance, run publish preflight, and draft or stage publication:
 

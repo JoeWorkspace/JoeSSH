@@ -152,6 +152,8 @@ function checkPackageScripts() {
     "qa:desktop-release-package",
     "test:desktop-formal-artifact-import",
     "qa:desktop-formal-artifact-import",
+    "test:desktop-formal-artifact-intake",
+    "qa:desktop-formal-artifact-intake",
     "test:desktop-release-evidence",
     "qa:desktop-release-evidence",
     "test:desktop-release-secrets",
@@ -196,6 +198,7 @@ function checkPackageScripts() {
     "release:desktop:package",
     "release:desktop:package:local-source",
     "release:desktop:formal-artifacts:import",
+    "release:desktop:formal-artifacts:intake",
     "release:desktop:formal-artifacts:preflight",
     "release:desktop:checksums",
     "release:desktop:secret-template",
@@ -435,6 +438,11 @@ function checkPackageScripts() {
     rootQaScript,
   );
   passIf(
+    rootQaScript.includes("qa:desktop-formal-artifact-intake"),
+    "Root QA runs Desktop formal artifact intake diagnostics tests",
+    rootQaScript,
+  );
+  passIf(
     rootQaScript.includes("test:rust-advisory-audit"),
     "Root QA runs Rust advisory audit wrapper tests",
     rootQaScript,
@@ -536,6 +544,8 @@ function checkReleaseToolingFiles() {
     "scripts/package-desktop-release.test.mjs",
     "scripts/import-desktop-formal-artifacts.mjs",
     "scripts/import-desktop-formal-artifacts.test.mjs",
+    "scripts/diagnose-desktop-formal-artifact-input.mjs",
+    "scripts/diagnose-desktop-formal-artifact-input.test.mjs",
     "scripts/configure-desktop-release-secrets.mjs",
     "scripts/configure-desktop-release-secrets.test.mjs",
     "scripts/diagnose-desktop-release-evidence.mjs",
@@ -599,6 +609,8 @@ function checkReleaseToolingFiles() {
     readTextIfExists("scripts/package-desktop-release.mjs") ?? "";
   const desktopFormalArtifactImporter =
     readTextIfExists("scripts/import-desktop-formal-artifacts.mjs") ?? "";
+  const desktopFormalArtifactIntake =
+    readTextIfExists("scripts/diagnose-desktop-formal-artifact-input.mjs") ?? "";
   const dogfoodVerifier =
     readTextIfExists("scripts/verify-public-beta-dogfood-evidence.mjs") ?? "";
   const unsignedStagingReporter =
@@ -658,6 +670,13 @@ function checkReleaseToolingFiles() {
       desktopPackager.includes("preflightOnly") &&
       desktopPackager.includes("Desktop release package preflight passed"),
     "Desktop formal artifact importer supports non-mutating preflight",
+  );
+  passIf(
+    desktopFormalArtifactIntake.includes("formal-artifact-input-report.json") &&
+      desktopFormalArtifactIntake.includes("formal-artifact-input-report-SHA256SUMS.txt") &&
+      desktopFormalArtifactIntake.includes("runImporterPreflight") &&
+      desktopFormalArtifactIntake.includes("proof must show a successful verification"),
+    "Desktop formal artifact intake diagnostics writes checksum-covered handoff evidence",
   );
 
   const desktopEvidenceVerifier =

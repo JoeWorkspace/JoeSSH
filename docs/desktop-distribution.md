@@ -192,6 +192,7 @@ input directory outside the release workspace:
 Then import the directory through the formal evidence wrapper:
 
 ```bash
+npm run release:desktop:formal-artifacts:intake -- --input-dir <signed-artifact-dir> --source-authority local
 npm run release:desktop:formal-artifacts:preflight -- --input-dir <signed-artifact-dir> --source-authority local
 npm run release:desktop:formal-artifacts:import -- --input-dir <signed-artifact-dir> --source-authority local
 ```
@@ -209,6 +210,12 @@ commit, a `source` object that records `gitCommit`, `releaseTagCommit`,
 `formalEvidenceJob` object named `Package Formal Desktop Evidence` with
 `status: "completed"`, `conclusion: "success"`, the packaging command, and
 `artifactRoot: "reports/release/desktop"`.
+
+The intake command is non-mutating handoff evidence. It writes
+`reports/handoff/desktop/formal-artifact-input-report.json` plus
+`formal-artifact-input-report-SHA256SUMS.txt`, listing detected platform
+artifacts, proof files, missing platforms, stale versions, and proof text that
+does not bind to an artifact or does not show a successful verification.
 
 After the full public release gate is complete, retain its log and generate the
 local publication authority:

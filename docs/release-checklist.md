@@ -92,6 +92,7 @@ native apps stay in preflight/device-smoke validation until a later beta.
 - If GitHub Actions is unavailable or intentionally not the release authority,
   generate formal Desktop evidence on a controlled local/self-hosted release
   machine with
+  `npm run release:desktop:formal-artifacts:intake -- --input-dir <signed-artifact-dir> --source-authority local`,
   `npm run release:desktop:formal-artifacts:preflight -- --input-dir <signed-artifact-dir> --source-authority local`
   and then
   `npm run release:desktop:formal-artifacts:import -- --input-dir <signed-artifact-dir> --source-authority local`.
@@ -107,6 +108,7 @@ native apps stay in preflight/device-smoke validation until a later beta.
 - Create the annotated release tag only after source QA is green. For GitHub
   workflow evidence, release artifacts may already be staged before tagging. For
   local/self-hosted Desktop source evidence, create the tag before
+  `npm run release:desktop:formal-artifacts:intake -- --input-dir <signed-artifact-dir> --source-authority local`,
   `npm run release:desktop:formal-artifacts:preflight -- --input-dir <signed-artifact-dir> --source-authority local`
   and
   `npm run release:desktop:formal-artifacts:import -- --input-dir <signed-artifact-dir> --source-authority local`
