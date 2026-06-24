@@ -669,6 +669,13 @@ function checkReleaseToolingFiles() {
     "Desktop release packager preflights signing proof identity binding",
   );
   passIf(
+    desktopPackager.includes("proof must show a successful verification") &&
+      desktopPackager.includes("proof must not report a failed verification") &&
+      desktopEvidenceVerifier.includes("must show a successful verification") &&
+      desktopEvidenceVerifier.includes("must not report a failed verification"),
+    "Desktop release evidence requires successful signing proof semantics",
+  );
+  passIf(
     desktopEvidenceVerifier.includes("sha256File(fullPath)") &&
       desktopEvidenceVerifier.includes("hash mismatch"),
     "Desktop release evidence verifier recomputes artifact hashes from disk",

@@ -268,6 +268,36 @@ test("rejects signature proof that is not bound to the artifact identity before 
   assert.equal(existsSync(join(root, "reports", "release", "desktop", "JoeSSH_0.1.0-beta.1_x64-setup.exe")), false);
 });
 
+test("rejects signature proof that reports a failed verification before writing", (t) => {
+  const root = createFixture(t);
+  writeFile(root, "apps/desktop/src-tauri/target/release/bundle/nsis/JoeSSH_0.1.0-beta.1_x64-setup.exe", "windows");
+
+  const result = runPackager(root, [
+    "--windows-signature-verification",
+    "signtool verify /pa JoeSSH_0.1.0-beta.1_x64-setup.exe failed",
+    "--preflight-only",
+  ]);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Windows signature verification proof must not report a failed verification/);
+  assert.equal(existsSync(join(root, "reports", "release", "desktop", "JoeSSH_0.1.0-beta.1_x64-setup.exe")), false);
+});
+
+test("rejects signature proof that lacks a successful verification before writing", (t) => {
+  const root = createFixture(t);
+  writeFile(root, "apps/desktop/src-tauri/target/release/bundle/nsis/JoeSSH_0.1.0-beta.1_x64-setup.exe", "windows");
+
+  const result = runPackager(root, [
+    "--windows-signature-verification",
+    "signtool verify /pa JoeSSH_0.1.0-beta.1_x64-setup.exe",
+    "--preflight-only",
+  ]);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Windows signature verification proof must show a successful verification/);
+  assert.equal(existsSync(join(root, "reports", "release", "desktop", "JoeSSH_0.1.0-beta.1_x64-setup.exe")), false);
+});
+
 test("rejects stale source artifacts before staging Desktop release files", (t) => {
   const root = createFixture(t);
   writeFile(root, "apps/desktop/src-tauri/target/release/bundle/nsis/JoeSSH_0.1.0-beta.1_x64-setup.exe", "windows");

@@ -284,7 +284,7 @@ function createFixture(t, overrides = {}) {
     ".github/workflows/dependabot-auto-merge.yml":
       "dependency-type\ndirect:development\n",
     "scripts/verify-desktop-release-evidence.mjs":
-      "sha256File(fullPath) hash mismatch artifact.sha256 sha256 must match release-evidence-SHA256SUMS.txt missing desktop evidence checksum manifest desktop evidence checksum manifest hash mismatch release-evidence-source.json --require-source workflowRun.headSha must match releaseTagCommit Package Formal Desktop Evidence must mention the artifact path, artifact file name, or artifact sha256\n",
+      "sha256File(fullPath) hash mismatch artifact.sha256 sha256 must match release-evidence-SHA256SUMS.txt missing desktop evidence checksum manifest desktop evidence checksum manifest hash mismatch release-evidence-source.json --require-source workflowRun.headSha must match releaseTagCommit Package Formal Desktop Evidence must mention the artifact path, artifact file name, or artifact sha256 must show a successful verification must not report a failed verification\n",
     "scripts/verify-desktop-release-evidence.test.mjs": "",
     "scripts/download-desktop-release-evidence.mjs":
       "Package Formal Desktop Evidence --run-id is required verify-desktop-release-evidence.mjs --require-source release-evidence-source.json workflowDatabaseId artifact.expired reports/release/desktop/ check-runs/${checkRunId}/annotations\n",
@@ -305,7 +305,7 @@ function createFixture(t, overrides = {}) {
       "publicReleaseEvidence: false reports/release authenticode sha256File(path) versionMatchesPackage\n",
     "scripts/report-desktop-unsigned-staging.test.mjs": "",
     "scripts/package-desktop-release.mjs":
-      "artifactSha256 sha256: artifactSha256 Desktop bundle source contains artifact(s) that do not include releaseVersion basename(artifact.path) validateSignatureEvidence(sourceArtifacts) validateSignatureEvidenceBindings(sourceArtifacts) Windows Desktop artifacts require --windows-signature-verification proof must mention the artifact file name or SHA256 sha256(artifactPath) preflightOnly Desktop release package preflight passed mkdirSync(outputDir\n",
+      "artifactSha256 sha256: artifactSha256 Desktop bundle source contains artifact(s) that do not include releaseVersion basename(artifact.path) validateSignatureEvidence(sourceArtifacts) validateSignatureEvidenceBindings(sourceArtifacts) Windows Desktop artifacts require --windows-signature-verification proof must mention the artifact file name or SHA256 proof must show a successful verification proof must not report a failed verification sha256(artifactPath) preflightOnly Desktop release package preflight passed mkdirSync(outputDir\n",
     "scripts/package-desktop-release.test.mjs": "",
     "scripts/import-desktop-formal-artifacts.mjs":
       "release:desktop:verify-evidence --require-source-authority --preflight-only windows-signature-verification.txt macos-notarization-verification.txt Desktop formal artifact input contains file(s) that do not include --input-dir must be outside the release workspace source tree is clean release upload tools cannot pick up staging-only files\n",

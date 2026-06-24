@@ -248,6 +248,7 @@ function validateSignatureEvidenceBindings(artifacts) {
         windowsSignatureVerification,
         artifact.path,
       );
+      requireProofSuccess("Windows signature verification", windowsSignatureVerification);
     }
     if (artifact.classification.platform === "macos") {
       requireProofBinding(
@@ -255,11 +256,13 @@ function validateSignatureEvidenceBindings(artifacts) {
         macosSignatureVerification,
         artifact.path,
       );
+      requireProofSuccess("macOS signature verification", macosSignatureVerification);
       requireProofBinding(
         "macOS notarization verification",
         macosNotarizationVerification,
         artifact.path,
       );
+      requireProofSuccess("macOS notarization verification", macosNotarizationVerification);
     }
   }
 }
@@ -270,6 +273,27 @@ function requireProofBinding(label, proofText, artifactPath) {
   if (!proofText.includes(artifactName) && !proofText.includes(artifactSha256)) {
     fail(`${label} proof must mention the artifact file name or SHA256: ${artifactName}`);
   }
+}
+
+function requireProofSuccess(label, proofText) {
+  if (proofReportsFailure(proofText)) {
+    fail(`${label} proof must not report a failed verification.`);
+  }
+  if (!proofReportsSuccess(proofText)) {
+    fail(`${label} proof must show a successful verification.`);
+  }
+}
+
+function proofReportsFailure(proofText) {
+  return /\b(fail(?:ed|ure)?|error|invalid|rejected|denied|cannot|unable)\b|\bnot\s+(?:signed|notarized|valid|accepted)\b/i.test(
+    proofText,
+  );
+}
+
+function proofReportsSuccess(proofText) {
+  return /\b(pass(?:ed|es)?|success(?:ful|fully)?|valid|verified|accepted|notarized|stapled)\b/i.test(
+    proofText,
+  );
 }
 
 function createLocalEvidenceSource() {
