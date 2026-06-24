@@ -96,6 +96,7 @@ preflight/device-smoke validation until a later beta.
   generate formal Desktop evidence on a controlled local/self-hosted release
   machine with
   `npm run release:desktop:formal-artifacts:request -- --source-authority local`,
+  `npm run release:desktop:formal-artifacts:manifest -- --input-dir <signed-artifact-dir> --source-authority local`,
   `npm run release:desktop:formal-artifacts:intake -- --input-dir <signed-artifact-dir> --source-authority local`,
   `npm run release:desktop:formal-artifacts:preflight -- --input-dir <signed-artifact-dir> --source-authority local`
   and then
@@ -114,7 +115,8 @@ preflight/device-smoke validation until a later beta.
   request command writes
   `reports/handoff/desktop/formal-artifact-request.json` and
   `formal-artifact-request-SHA256SUMS.txt` so external signing machines can
-  return a directory that passes intake and import without guessing filenames.
+  run the manifest command and return a directory that passes intake and import
+  without guessing JSON fields or filenames.
   Windows and macOS proof text must mention both the artifact file name and
   SHA256.
 - If this candidate intentionally excludes public Desktop downloads, do not
@@ -134,6 +136,7 @@ preflight/device-smoke validation until a later beta.
   workflow evidence, release artifacts may already be staged before tagging. For
   local/self-hosted Desktop source evidence, create the tag before
   `npm run release:desktop:formal-artifacts:request -- --source-authority local`,
+  `npm run release:desktop:formal-artifacts:manifest -- --input-dir <signed-artifact-dir> --source-authority local`,
   `npm run release:desktop:formal-artifacts:intake -- --input-dir <signed-artifact-dir> --source-authority local`,
   `npm run release:desktop:formal-artifacts:preflight -- --input-dir <signed-artifact-dir> --source-authority local`
   and

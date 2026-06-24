@@ -153,6 +153,8 @@ function checkPackageScripts() {
     "qa:desktop-release-package",
     "test:desktop-formal-artifact-import",
     "qa:desktop-formal-artifact-import",
+    "test:desktop-formal-artifact-manifest",
+    "qa:desktop-formal-artifact-manifest",
     "test:desktop-formal-artifact-request",
     "qa:desktop-formal-artifact-request",
     "test:desktop-formal-artifact-intake",
@@ -203,6 +205,7 @@ function checkPackageScripts() {
     "release:desktop:package",
     "release:desktop:package:local-source",
     "release:desktop:formal-artifacts:import",
+    "release:desktop:formal-artifacts:manifest",
     "release:desktop:formal-artifacts:request",
     "release:desktop:formal-artifacts:intake",
     "release:desktop:formal-artifacts:preflight",
@@ -483,6 +486,11 @@ function checkPackageScripts() {
     rootQaScript,
   );
   passIf(
+    rootQaScript.includes("qa:desktop-formal-artifact-manifest"),
+    "Root QA runs Desktop formal artifact manifest tests",
+    rootQaScript,
+  );
+  passIf(
     rootQaScript.includes("qa:desktop-formal-artifact-request"),
     "Root QA runs Desktop formal artifact request tests",
     rootQaScript,
@@ -599,6 +607,8 @@ function checkReleaseToolingFiles() {
     "scripts/package-desktop-release.test.mjs",
     "scripts/import-desktop-formal-artifacts.mjs",
     "scripts/import-desktop-formal-artifacts.test.mjs",
+    "scripts/prepare-desktop-formal-artifact-manifest.mjs",
+    "scripts/prepare-desktop-formal-artifact-manifest.test.mjs",
     "scripts/prepare-desktop-formal-artifact-request.mjs",
     "scripts/prepare-desktop-formal-artifact-request.test.mjs",
     "scripts/diagnose-desktop-formal-artifact-input.mjs",
@@ -668,6 +678,9 @@ function checkReleaseToolingFiles() {
     readTextIfExists("scripts/package-desktop-release.mjs") ?? "";
   const desktopFormalArtifactImporter =
     readTextIfExists("scripts/import-desktop-formal-artifacts.mjs") ?? "";
+  const desktopFormalArtifactManifest =
+    readTextIfExists("scripts/prepare-desktop-formal-artifact-manifest.mjs") ??
+    "";
   const desktopFormalArtifactRequest =
     readTextIfExists("scripts/prepare-desktop-formal-artifact-request.mjs") ??
     "";
@@ -759,8 +772,21 @@ function checkReleaseToolingFiles() {
       desktopFormalArtifactRequest.includes("mustMentionAll") &&
       desktopFormalArtifactRequest.includes("windows-signature-verification.txt") &&
       desktopFormalArtifactRequest.includes("macos-notarization-verification.txt") &&
+      desktopFormalArtifactRequest.includes("release:desktop:formal-artifacts:manifest") &&
       desktopFormalArtifactRequest.includes("release:desktop:formal-artifacts:intake"),
     "Desktop formal artifact request generator writes checksum-covered handoff contract",
+  );
+  passIf(
+    desktopFormalArtifactManifest.includes("desktop-formal-artifact-manifest.json") &&
+      desktopFormalArtifactManifest.includes("formal-artifact-request.json") &&
+      desktopFormalArtifactManifest.includes("formal-artifact-request-SHA256SUMS.txt") &&
+      desktopFormalArtifactManifest.includes("requestId") &&
+      desktopFormalArtifactManifest.includes("source.gitCommit") &&
+      desktopFormalArtifactManifest.includes("source.releaseTagCommit") &&
+      desktopFormalArtifactManifest.includes("sha256: sha256File") &&
+      desktopFormalArtifactManifest.includes("sizeBytes: statSync") &&
+      desktopFormalArtifactManifest.includes("--input-dir must be outside the release workspace"),
+    "Desktop formal artifact manifest generator binds returned artifacts to current source and request evidence",
   );
   passIf(
     desktopFormalArtifactImporter.includes("desktop-formal-artifact-manifest.json") &&

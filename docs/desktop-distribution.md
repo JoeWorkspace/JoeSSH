@@ -192,11 +192,12 @@ input directory outside the release workspace:
   request, release tag commit, artifact SHA256 values, and source authority.
 
 Generate a checksum-covered request before handing the job to external signing
-machines, then import the returned directory through the formal evidence
-wrapper:
+machines, generate the returned manifest in the signed artifact directory, then
+import the returned directory through the formal evidence wrapper:
 
 ```bash
 npm run release:desktop:formal-artifacts:request -- --source-authority local
+npm run release:desktop:formal-artifacts:manifest -- --input-dir <signed-artifact-dir> --source-authority local
 npm run release:desktop:formal-artifacts:intake -- --input-dir <signed-artifact-dir> --source-authority local
 npm run release:desktop:formal-artifacts:preflight -- --input-dir <signed-artifact-dir> --source-authority local
 npm run release:desktop:formal-artifacts:import -- --input-dir <signed-artifact-dir> --source-authority local
@@ -206,8 +207,11 @@ The request command writes
 `reports/handoff/desktop/formal-artifact-request.json` plus
 `formal-artifact-request-SHA256SUMS.txt`, binding the release tag, Git commit,
 required platforms, accepted artifact extensions, proof file names, proof text
-rules, returned manifest contract, and the exact intake/preflight/import
-commands.
+rules, returned manifest contract, and the exact manifest/intake/preflight/import
+commands. The manifest command hashes every Desktop artifact in
+`<signed-artifact-dir>`, binds it to the current request ID and tagged source
+commit, and refuses to overwrite an existing manifest unless `--force` is
+explicit.
 
 Use `--source-authority self-hosted` when the directory was produced by a
 controlled self-hosted release runner. The wrapper rejects input directories
