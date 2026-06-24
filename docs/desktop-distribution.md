@@ -261,6 +261,7 @@ Desktop installers may remain in internal dogfood or handoff evidence under
 
 ```bash
 npm run release:desktop:exclude-public
+npm run release:local-authority -- --gate-command "npm run qa:release:public:web-sync-only:local" --target "<operator-confirmed target>"
 npm run release:provenance:local:web-sync-only
 npm run release:provenance:verify:local:web-sync-only
 npm run release:publish-preflight:local:web-sync-only

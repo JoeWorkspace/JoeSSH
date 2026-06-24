@@ -14,6 +14,7 @@ const releaseScriptNames = [
   "qa:release:public",
   "qa:release:public:fixture",
   "qa:release:public:local",
+  "qa:release:public:web-sync-only:local",
   "qa:prod-audit",
   "qa:lighthouse",
   "test:lighthouse-audit",
@@ -257,6 +258,9 @@ function fixtureScriptValue(name, overrides = {}) {
   }
   if (name === "release:local-authority:verify") {
     return "node scripts/verify-local-release-authority.mjs";
+  }
+  if (name === "qa:release:public:web-sync-only:local") {
+    return "npm run qa:release && npm run qa:mobile-public-env && npm run qa:rust && npm run qa:rust-advisory && npm run qa:prod-audit && npm run release:desktop:exclude-public && npm run release:sbom && npm run release:sbom:verify && npm run qa:lighthouse && npm run qa:web-admin-proxy-smoke && npm run qa:web-admin-bundle-token-scan && npm run qa:web-admin-sync-topology-release-smoke && npm run qa:sync:self-hosted-smoke && npm run qa:sync:release-smoke && npm run qa:sync:release-backup-restore-smoke && npm run qa:sync:config-guard-smoke && npm run qa:sync:backup-restore-smoke && node scripts/verify-sync-release-evidence.mjs && npm run qa:e2e:web-real-sync:fresh && npm run qa:e2e:visual:fresh && node scripts/check-public-release-readiness.mjs";
   }
   if (name === "release:publish-preflight:local") {
     return "node scripts/release-publish-preflight.mjs --release-authority local";

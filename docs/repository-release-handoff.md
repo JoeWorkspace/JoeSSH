@@ -139,7 +139,7 @@ route, not a blocker for the first Public Beta.
 
    ```bash
    npm run release:desktop:exclude-public
-   npm run release:local-authority -- --gate-command "npm run qa:release:public:fixture" --target "<operator-confirmed target>"
+   npm run release:local-authority -- --gate-command "npm run qa:release:public:web-sync-only:local" --target "<operator-confirmed target>"
    npm run release:provenance:local:web-sync-only
    npm run release:provenance:verify:local:web-sync-only
    npm run release:publish-preflight:local:web-sync-only
@@ -161,6 +161,8 @@ Keep these outputs with the release handoff notes:
 - `npm run qa:release:public` result.
 - `npm run qa:release:public:fixture` result when the release machine is using
   the local OpenSSH dogfood fixture to supply `JOESSH_REAL_SSH_*` evidence.
+- `npm run qa:release:public:web-sync-only:local` result when the release scope
+  intentionally excludes public Desktop downloads.
 - `node scripts/check-public-release-readiness.mjs` result without
   `--allow-unhealthy-git`.
 - For GitHub publication: `gh --version`, `gh auth status`, and the

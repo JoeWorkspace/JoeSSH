@@ -153,6 +153,7 @@ function validateReleaseGate() {
     "npm run qa:release:public",
     "npm run qa:release:public:fixture",
     "npm run qa:release:public:local",
+    "npm run qa:release:public:web-sync-only:local",
   ];
   if (!allowedGateCommands.includes(gate.command)) {
     errors.push(`releaseGate.command must be one of: ${allowedGateCommands.join(", ")}`);

@@ -123,6 +123,7 @@ function checkPackageScripts() {
     "qa:release:public",
     "qa:release:public:fixture",
     "qa:release:public:local",
+    "qa:release:public:web-sync-only:local",
     "qa:prod-audit",
     "qa:lighthouse",
     "test:lighthouse-audit",
@@ -407,6 +408,37 @@ function checkPackageScripts() {
     hasFinalSyncReleaseEvidenceVerification(publicReleaseLocalScript),
     "Local public release QA verifies Sync packaged release evidence after local Sync smokes",
     publicReleaseLocalScript,
+  );
+
+  const publicReleaseWebSyncOnlyLocalScript =
+    packageJson.scripts?.["qa:release:public:web-sync-only:local"] ?? "";
+  passIf(
+    publicReleaseWebSyncOnlyLocalScript.includes("release:desktop:exclude-public"),
+    "Web/Sync-only public release QA records Desktop public exclusion evidence",
+    publicReleaseWebSyncOnlyLocalScript,
+  );
+  passIf(
+    !publicReleaseWebSyncOnlyLocalScript.includes("qa:desktop:real-ssh-smoke:required") &&
+      !publicReleaseWebSyncOnlyLocalScript.includes("qa:tauri"),
+    "Web/Sync-only public release QA excludes Desktop-only release gates",
+    publicReleaseWebSyncOnlyLocalScript,
+  );
+  passIf(
+    publicReleaseWebSyncOnlyLocalScript.includes("qa:mobile-public-env"),
+    "Web/Sync-only public release QA rejects mobile public bearer-token env",
+    publicReleaseWebSyncOnlyLocalScript,
+  );
+  passIf(
+    publicReleaseWebSyncOnlyLocalScript.includes("qa:lighthouse") &&
+      publicReleaseWebSyncOnlyLocalScript.includes("qa:web-admin-bundle-token-scan") &&
+      publicReleaseWebSyncOnlyLocalScript.includes("qa:web-admin-sync-topology-release-smoke"),
+    "Web/Sync-only public release QA covers Web Admin release gates",
+    publicReleaseWebSyncOnlyLocalScript,
+  );
+  passIf(
+    hasFinalSyncReleaseEvidenceVerification(publicReleaseWebSyncOnlyLocalScript),
+    "Web/Sync-only public release QA verifies Sync packaged release evidence after local Sync smokes",
+    publicReleaseWebSyncOnlyLocalScript,
   );
 
   const mobilePublicEnvScript =

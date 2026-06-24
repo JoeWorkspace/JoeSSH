@@ -120,6 +120,7 @@ preflight/device-smoke validation until a later beta.
 - If this candidate intentionally excludes public Desktop downloads, do not
   copy unsigned installers into `reports/release/desktop/`. Run
   `npm run release:desktop:exclude-public`, then use
+  `npm run release:local-authority -- --gate-command "npm run qa:release:public:web-sync-only:local" --target "<operator-confirmed target>"`,
   `npm run release:provenance:local:web-sync-only`,
   `npm run release:provenance:verify:local:web-sync-only`,
   `npm run release:publish-preflight:local:web-sync-only`, and
@@ -156,9 +157,10 @@ preflight/device-smoke validation until a later beta.
     only use `--reuse-gate-log` when the gate was captured externally in that
     exact path.
   - Local/self-hosted `web-sync-only` authority: generate Desktop exclusion
-    evidence with `npm run release:desktop:exclude-public`, then use the
-    `:web-sync-only` provenance and publish-preflight scripts. This profile is
-    only valid when no public Desktop artifacts are staged.
+    evidence with `npm run release:desktop:exclude-public`, run
+    `npm run release:local-authority -- --gate-command "npm run qa:release:public:web-sync-only:local" --target "<operator-confirmed target>"`,
+    then use the `:web-sync-only` provenance and publish-preflight scripts.
+    This profile is only valid when no public Desktop artifacts are staged.
 - Run `npm run release:provenance` after the annotated tag exists and staged
   Desktop, Web Admin, Sync, SBOM, and evidence manifests are complete. It writes
   `reports/release/release-provenance.json` plus

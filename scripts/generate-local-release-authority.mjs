@@ -178,6 +178,12 @@ function createGateCommandArgs(command) {
   if (command === "npm run qa:release:public:local") {
     return { args: [...npmRuntime.prefixArgs, "run", "qa:release:public:local"], command: npmRuntime.command };
   }
+  if (command === "npm run qa:release:public:web-sync-only:local") {
+    return {
+      args: [...npmRuntime.prefixArgs, "run", "qa:release:public:web-sync-only:local"],
+      command: npmRuntime.command,
+    };
+  }
   fail(`Unsupported release gate command: ${command}`);
 }
 
@@ -368,6 +374,7 @@ function parseArgs(args) {
     "npm run qa:release:public",
     "npm run qa:release:public:fixture",
     "npm run qa:release:public:local",
+    "npm run qa:release:public:web-sync-only:local",
   ];
   if (!allowedGateCommands.includes(gateCommand)) {
     fail(`--gate-command must be one of: ${allowedGateCommands.join(", ")}.`);

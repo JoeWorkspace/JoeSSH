@@ -258,6 +258,29 @@ test("generates local release authority evidence for the local public release ga
   assert.equal(evidence.releaseGate.command, "npm run qa:release:public:local");
 });
 
+test("generates local release authority evidence for the web sync only public release gate", (t) => {
+  const root = createFixture(t, {
+    logText: [
+      "> atlasterm@0.1.0-beta.1 qa:release:public:web-sync-only:local",
+      "> npm run qa:release:public:web-sync-only:local",
+      "Public Beta release readiness checks passed.",
+      "",
+    ].join("\n"),
+  });
+  const env = createFakeGitCommands(root);
+
+  const generated = runGenerator(root, env, [
+    "--gate-command",
+    "npm run qa:release:public:web-sync-only:local",
+  ]);
+
+  assert.equal(generated.status, 0, generated.stdout + generated.stderr);
+  const evidence = JSON.parse(readFile(root, "reports/release/local-release-authority.json"));
+  assert.equal(evidence.releaseGate.command, "npm run qa:release:public:web-sync-only:local");
+  const verified = runVerifier(root, env);
+  assert.equal(verified.status, 0, verified.stdout + verified.stderr);
+});
+
 test("accepts UTF-16LE PowerShell release gate logs", (t) => {
   const root = createFixture(t);
   const env = createFakeGitCommands(root);
