@@ -17,6 +17,7 @@ const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 const sshdCommand = process.env.JOESSH_REAL_SSH_FIXTURE_SSHD ?? findCommand("sshd");
 const sshKeygenCommand = process.env.JOESSH_REAL_SSH_FIXTURE_SSH_KEYGEN ?? findCommand("ssh-keygen");
 const sftpServerCommand = process.env.JOESSH_REAL_SSH_FIXTURE_SFTP_SERVER ?? findCommand("sftp-server");
+const fixtureCommandMaxBufferBytes = 128 * 1024 * 1024;
 const outputPath = resolve(root, "reports", "smoke", "desktop", "real-ssh-smoke.json");
 const checksumPath = resolve(root, "reports", "smoke", "desktop", "real-ssh-smoke-SHA256SUMS.txt");
 const wrappedCommand = parseWrappedCommand(process.argv.slice(2));
@@ -167,6 +168,7 @@ function runFixtureCommand(fixture, commandSpec) {
     cwd: root,
     encoding: "utf8",
     env,
+    maxBuffer: fixtureCommandMaxBufferBytes,
     shell: process.platform === "win32",
     stdio: ["ignore", "pipe", "pipe"],
   });

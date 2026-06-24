@@ -13,6 +13,8 @@ test("fixture runner can wrap a release gate without replacing the dogfood smoke
   assert.match(source, /runSmoke\(fixture\)/);
   assert.match(source, /if \(exitCode === 0 && wrappedCommand\)/);
   assert.match(source, /runFixtureCommand\(fixture, wrappedCommand\)/);
+  assert.match(source, /fixtureCommandMaxBufferBytes = 128 \* 1024 \* 1024/);
+  assert.match(source, /maxBuffer: fixtureCommandMaxBufferBytes/);
   assert.match(source, /qa:desktop:real-ssh-smoke:required/);
   assert.match(source, /wrappedCommand/);
   assert.match(source, /status: result\.status === 0 \? "passed" : "failed"/);
