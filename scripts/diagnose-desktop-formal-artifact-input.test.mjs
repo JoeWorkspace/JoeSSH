@@ -23,12 +23,59 @@ function createInput(t) {
   t.after(() => {
     rmSync(inputDir, { force: true, recursive: true });
   });
-  writeFile(inputDir, "JoeSSH_0.1.0-beta.1_x64-setup.exe", "windows");
-  writeFile(inputDir, "JoeSSH_0.1.0-beta.1_aarch64.dmg", "macos");
-  writeFile(inputDir, "JoeSSH_0.1.0-beta.1_amd64.AppImage", "linux");
-  writeFile(inputDir, "windows-signature-verification.txt", "signtool verify /pa JoeSSH_0.1.0-beta.1_x64-setup.exe passed");
-  writeFile(inputDir, "macos-signature-verification.txt", "codesign --verify JoeSSH_0.1.0-beta.1_aarch64.dmg passed");
-  writeFile(inputDir, "macos-notarization-verification.txt", "spctl --assess JoeSSH_0.1.0-beta.1_aarch64.dmg accepted");
+  const artifacts = [
+    ["JoeSSH_0.1.0-beta.1_x64-setup.exe", "windows", "windows", null],
+    ["JoeSSH_0.1.0-beta.1_aarch64.dmg", "macos", "macos", null],
+    ["JoeSSH_0.1.0-beta.1_amd64.AppImage", "linux", "linux", "AppImage"],
+  ];
+  for (const [fileName, content] of artifacts) {
+    writeFile(inputDir, fileName, content);
+  }
+  writeFile(
+    inputDir,
+    "windows-signature-verification.txt",
+    `signtool verify /pa JoeSSH_0.1.0-beta.1_x64-setup.exe ${sha256("windows")} passed`,
+  );
+  writeFile(
+    inputDir,
+    "macos-signature-verification.txt",
+    `codesign --verify JoeSSH_0.1.0-beta.1_aarch64.dmg ${sha256("macos")} passed`,
+  );
+  writeFile(
+    inputDir,
+    "macos-notarization-verification.txt",
+    `spctl --assess JoeSSH_0.1.0-beta.1_aarch64.dmg ${sha256("macos")} accepted`,
+  );
+  writeFile(
+    inputDir,
+    "desktop-formal-artifact-manifest.json",
+    `${JSON.stringify(
+      {
+        artifacts: artifacts.map(([fileName, content, platform, packageType]) => ({
+          fileName,
+          packageType,
+          platform,
+          sha256: sha256(content),
+          sizeBytes: Buffer.byteLength(content),
+        })),
+        kind: "joessh-desktop-formal-artifact-manifest",
+        manifestVersion: 1,
+        product: "JoeSSH",
+        releaseTag: "v0.1.0-beta.1",
+        requestId: "desktop-formal-test",
+        source: {
+          gitCommit: "abc123",
+          gitFsckStrict: true,
+          releaseTagCommit: "abc123",
+          repository: "https://github.com/joessh/joessh.git",
+        },
+        sourceAuthority: "local",
+        version: "0.1.0-beta.1",
+      },
+      null,
+      2,
+    )}\n`,
+  );
   return inputDir;
 }
 
@@ -140,6 +187,7 @@ test("accepts a complete input directory and runs the formal preflight without i
   assert.equal(report.decision, "go");
   assert.equal(report.artifacts.length, 3);
   assert.equal(report.preflight.status, "pass");
+  assert.equal(report.manifest.status, "pass");
   assert.equal(report.proofFiles.windowsSignature.status, "pass");
   assert.equal(report.artifacts.find((artifact) => artifact.platform === "windows").sha256, sha256("windows"));
   assert.throws(() => readFileSync(join(root, "reports", "release", "desktop", "release-evidence.json")));
@@ -161,6 +209,23 @@ test("reports missing platform artifacts before preflight", (t) => {
   assert.match(
     report.blockers.find((blocker) => blocker.id === "desktop-formal-artifact-platforms").detail,
     /macos, linux/,
+  );
+});
+
+test("reports missing returned formal artifact manifest before preflight", (t) => {
+  const root = createFixture(t);
+  const inputDir = createInput(t);
+  rmSync(join(inputDir, "desktop-formal-artifact-manifest.json"));
+
+  const result = runDiagnostics(root, ["--input-dir", inputDir, "--no-fail"], createFakeGitCommands(root));
+
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  const report = readReport(root);
+  assert.equal(report.decision, "no-go");
+  assert.equal(report.preflight.attempted, false);
+  assert.match(
+    report.blockers.find((blocker) => blocker.id === "desktop-formal-artifact-manifest").detail,
+    /desktop-formal-artifact-manifest\.json is required/,
   );
 });
 

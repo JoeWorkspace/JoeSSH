@@ -43,6 +43,8 @@ const releaseScriptNames = [
   "qa:desktop-release-package",
   "test:desktop-formal-artifact-import",
   "qa:desktop-formal-artifact-import",
+  "test:desktop-formal-artifact-request",
+  "qa:desktop-formal-artifact-request",
   "test:desktop-formal-artifact-intake",
   "qa:desktop-formal-artifact-intake",
   "test:desktop-release-evidence",
@@ -89,6 +91,7 @@ const releaseScriptNames = [
   "release:desktop:package",
   "release:desktop:package:local-source",
   "release:desktop:formal-artifacts:import",
+  "release:desktop:formal-artifacts:request",
   "release:desktop:formal-artifacts:intake",
   "release:desktop:formal-artifacts:preflight",
   "release:desktop:checksums",
@@ -150,7 +153,7 @@ function fixtureScriptValue(name, overrides = {}) {
     return "npm run test:desktop-unsigned-staging-report";
   }
   if (name === "qa") {
-    return "npm run lint && npm run qa:desktop-formal-artifact-import && npm run qa:desktop-formal-artifact-intake && npm run qa:desktop-release-diagnostics && npm run qa:desktop-release-parity && npm run qa:web-admin-rollback-smoke && npm run test:rust-advisory-audit && npm run qa:lighthouse-audit && npm run qa:e2e:fresh";
+    return "npm run lint && npm run qa:desktop-formal-artifact-import && npm run qa:desktop-formal-artifact-request && npm run qa:desktop-formal-artifact-intake && npm run qa:desktop-release-diagnostics && npm run qa:desktop-release-parity && npm run qa:web-admin-rollback-smoke && npm run test:rust-advisory-audit && npm run qa:lighthouse-audit && npm run qa:e2e:fresh";
   }
   if (name === "qa:desktop:real-ssh-smoke:required") {
     return "node scripts/require-real-ssh-smoke-env.mjs && npm run qa:desktop:real-ssh-smoke";
@@ -175,6 +178,15 @@ function fixtureScriptValue(name, overrides = {}) {
   }
   if (name === "release:desktop:formal-artifacts:preflight") {
     return "node scripts/import-desktop-formal-artifacts.mjs --preflight-only";
+  }
+  if (name === "release:desktop:formal-artifacts:request") {
+    return "node scripts/prepare-desktop-formal-artifact-request.mjs";
+  }
+  if (name === "test:desktop-formal-artifact-request") {
+    return "node --test scripts/prepare-desktop-formal-artifact-request.test.mjs";
+  }
+  if (name === "qa:desktop-formal-artifact-request") {
+    return "npm run test:desktop-formal-artifact-request";
   }
   if (name === "release:desktop:formal-artifacts:intake") {
     return "node scripts/diagnose-desktop-formal-artifact-input.mjs --no-fail";
@@ -296,7 +308,7 @@ function createFixture(t, overrides = {}) {
     ".github/workflows/dependabot-auto-merge.yml":
       "dependency-type\ndirect:development\n",
     "scripts/verify-desktop-release-evidence.mjs":
-      "sha256File(fullPath) hash mismatch artifact.sha256 sha256 must match release-evidence-SHA256SUMS.txt missing desktop evidence checksum manifest desktop evidence checksum manifest hash mismatch release-evidence-source.json --require-source workflowRun.headSha must match releaseTagCommit Package Formal Desktop Evidence must mention the artifact path, artifact file name, or artifact sha256 must show a successful verification must not report a failed verification\n",
+      "sha256File(fullPath) hash mismatch artifact.sha256 sha256 must match release-evidence-SHA256SUMS.txt missing desktop evidence checksum manifest desktop evidence checksum manifest hash mismatch release-evidence-source.json --require-source workflowRun.headSha must match releaseTagCommit Package Formal Desktop Evidence formalArtifactManifest must mention the artifact path, artifact file name, or artifact sha256 must mention both the artifact file name and artifact sha256 must show a successful verification must not report a failed verification\n",
     "scripts/verify-desktop-release-evidence.test.mjs": "",
     "scripts/download-desktop-release-evidence.mjs":
       "Package Formal Desktop Evidence --run-id is required verify-desktop-release-evidence.mjs --require-source release-evidence-source.json workflowDatabaseId artifact.expired reports/release/desktop/ check-runs/${checkRunId}/annotations\n",
@@ -320,16 +332,19 @@ function createFixture(t, overrides = {}) {
       "artifactSha256 sha256: artifactSha256 Desktop bundle source contains artifact(s) that do not include releaseVersion basename(artifact.path) validateSignatureEvidence(sourceArtifacts) validateSignatureEvidenceBindings(sourceArtifacts) Windows Desktop artifacts require --windows-signature-verification proof must mention the artifact file name or SHA256 proof must show a successful verification proof must not report a failed verification sha256(artifactPath) preflightOnly Desktop release package preflight passed mkdirSync(outputDir\n",
     "scripts/package-desktop-release.test.mjs": "",
     "scripts/import-desktop-formal-artifacts.mjs":
-      "release:desktop:verify-evidence --require-source-authority --preflight-only windows-signature-verification.txt macos-notarization-verification.txt Desktop formal artifact input contains file(s) that do not include --input-dir must be outside the release workspace source tree is clean release upload tools cannot pick up staging-only files\n",
+      "release:desktop:verify-evidence --require-source-authority --preflight-only desktop-formal-artifact-manifest.json windows-signature-verification.txt macos-notarization-verification.txt Desktop formal artifact input contains file(s) that do not include --input-dir must be outside the release workspace source tree is clean release upload tools cannot pick up staging-only files source.gitCommit must match current HEAD formalArtifactManifest proof must mention both the artifact file name and SHA256\n",
     "scripts/import-desktop-formal-artifacts.test.mjs": "",
+    "scripts/prepare-desktop-formal-artifact-request.mjs":
+      "formal-artifact-request.json formal-artifact-request-SHA256SUMS.txt desktop-formal-artifact-manifest.json mustMentionAll windows-signature-verification.txt macos-notarization-verification.txt release:desktop:formal-artifacts:intake\n",
+    "scripts/prepare-desktop-formal-artifact-request.test.mjs": "",
     "scripts/diagnose-desktop-formal-artifact-input.mjs":
-      "formal-artifact-input-report.json formal-artifact-input-report-SHA256SUMS.txt runImporterPreflight proof must show a successful verification\n",
+      "formal-artifact-input-report.json formal-artifact-input-report-SHA256SUMS.txt desktop-formal-artifact-manifest.json runImporterPreflight proof must show a successful verification proof must mention both the artifact file name and SHA256\n",
     "scripts/diagnose-desktop-formal-artifact-input.test.mjs": "",
     "scripts/configure-desktop-release-secrets.mjs":
       'ATLASTERM_WINDOWS_CERTIFICATE_FILE ATLASTERM_APPLE_CERTIFICATE_FILE --write-template reports/handoff/desktop secret-input-template.env "secret", "set" --body-file desktop-release-evidence-preflight.mjs\n',
     "scripts/configure-desktop-release-secrets.test.mjs": "",
     "scripts/diagnose-desktop-release-evidence.mjs":
-      "reports/handoff/desktop formal-evidence-unblock-report.json release-evidence-source.json release-remote-ref desktop-signing-secrets release-desktop-stale-artifacts github-ci check-runs/${checkRunId}/annotations verify-desktop-release-evidence.mjs\n",
+      "reports/handoff/desktop formal-evidence-unblock-report.json release-evidence-source.json release-remote-ref desktop-signing-secrets release-desktop-stale-artifacts github-ci release:desktop:formal-artifacts:request release:desktop:formal-artifacts:intake check-runs/${checkRunId}/annotations verify-desktop-release-evidence.mjs\n",
     "scripts/diagnose-desktop-release-evidence.test.mjs": "",
     "scripts/check-desktop-release-evidence-parity.mjs":
       "desktop-release-artifacts.yml Desktop Release Artifacts Package Formal Desktop Evidence desktop-release-evidence ATLASTERM_WINDOWS_CERTIFICATE ATLASTERM_APPLE_CERTIFICATE reports/handoff/desktop/formal-evidence-unblock-report.json reports/release/desktop/release-evidence-source.json\n",

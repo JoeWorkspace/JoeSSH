@@ -44,6 +44,11 @@ if (report.blockers.length > 0 && !options.noFail) {
 function buildReport() {
   const artifacts = [];
   const blockers = [];
+  let manifest = {
+    path: null,
+    sha256: null,
+    status: "fail",
+  };
   const proofFiles = {};
   let preflight = {
     attempted: false,
@@ -133,6 +138,9 @@ function buildReport() {
     });
   }
 
+  manifest = inspectManifestFile(inputFiles, sourceArtifacts);
+  blockers.push(...manifest.blockers);
+
   if (platforms.has("windows")) {
     proofFiles.windowsSignature = inspectProofFile("Windows signature verification", inputFiles, options.windowsSignatureFile, [
       "windows-signature-verification.txt",
@@ -164,10 +172,10 @@ function buildReport() {
     }
   }
 
-  return createReport({ artifacts, blockers, preflight, proofFiles });
+  return createReport({ artifacts, blockers, manifest, preflight, proofFiles });
 }
 
-function createReport({ artifacts, blockers, preflight, proofFiles }) {
+function createReport({ artifacts, blockers, manifest = null, preflight, proofFiles }) {
   return {
     artifacts,
     blockers,
@@ -179,6 +187,7 @@ function createReport({ artifacts, blockers, preflight, proofFiles }) {
         `JoeSSH_${releaseVersion}_*.AppImage, .deb, or .rpm for Linux`,
       ],
       proofFiles: [
+        "desktop-formal-artifact-manifest.json",
         "windows-signature-verification.txt",
         "macos-signature-verification.txt",
         "macos-notarization-verification.txt",
@@ -186,6 +195,7 @@ function createReport({ artifacts, blockers, preflight, proofFiles }) {
     },
     generatedAt: new Date().toISOString(),
     inputDir: options.inputDir ? displayPath(options.inputDir) : null,
+    manifest,
     preflight,
     proofFiles: Object.fromEntries(
       Object.entries(proofFiles).map(([key, value]) => [
@@ -265,11 +275,11 @@ function inspectProofFile(label, inputFiles, configuredPath, candidateNames, art
   for (const artifact of artifacts) {
     const artifactName = basename(artifact.path);
     const artifactSha256 = sha256File(artifact.path);
-    if (!text.includes(artifactName) && !text.includes(artifactSha256)) {
+    if (!text.includes(artifactName) || !text.includes(artifactSha256)) {
       blockers.push({
         id: proofBlockerId(label),
         label,
-        detail: `${label} proof must mention the artifact file name or SHA256: ${artifactName}`,
+        detail: `${label} proof must mention both the artifact file name and SHA256: ${artifactName}`,
       });
     }
   }
@@ -280,6 +290,151 @@ function inspectProofFile(label, inputFiles, configuredPath, candidateNames, art
     sha256: sha256File(resolved.path),
     status: blockers.length === 0 ? "pass" : "fail",
   };
+}
+
+function inspectManifestFile(inputFiles, artifacts) {
+  const blockers = [];
+  const resolved = resolveProofFile(inputFiles, "", ["desktop-formal-artifact-manifest.json"]);
+  if (resolved.error) {
+    blockers.push({
+      id: "desktop-formal-artifact-manifest",
+      label: "Desktop formal artifact manifest",
+      detail: resolved.error,
+    });
+    return { blockers, path: null, sha256: null, status: "fail" };
+  }
+  if (!resolved.path) {
+    blockers.push({
+      id: "desktop-formal-artifact-manifest",
+      label: "Desktop formal artifact manifest",
+      detail: "desktop-formal-artifact-manifest.json is required.",
+    });
+    return { blockers, path: null, sha256: null, status: "fail" };
+  }
+
+  let manifest = null;
+  try {
+    manifest = JSON.parse(readTextFile(resolved.path));
+  } catch (error) {
+    blockers.push({
+      id: "desktop-formal-artifact-manifest",
+      label: "Desktop formal artifact manifest",
+      detail: `desktop-formal-artifact-manifest.json is not valid JSON: ${error instanceof Error ? error.message : String(error)}`,
+    });
+  }
+
+  if (manifest) {
+    validateManifestShape(blockers, manifest, artifacts);
+  }
+
+  return {
+    blockers,
+    path: displayPath(resolved.path),
+    sha256: sha256File(resolved.path),
+    status: blockers.length === 0 ? "pass" : "fail",
+  };
+}
+
+function validateManifestShape(blockers, manifest, artifacts) {
+  if (manifest.manifestVersion !== 1) {
+    blockers.push({
+      id: "desktop-formal-artifact-manifest",
+      label: "Desktop formal artifact manifest",
+      detail: "manifestVersion must be 1.",
+    });
+  }
+  if (manifest.kind !== "joessh-desktop-formal-artifact-manifest") {
+    blockers.push({
+      id: "desktop-formal-artifact-manifest",
+      label: "Desktop formal artifact manifest",
+      detail: "kind must be joessh-desktop-formal-artifact-manifest.",
+    });
+  }
+  if (manifest.version !== releaseVersion) {
+    blockers.push({
+      id: "desktop-formal-artifact-manifest",
+      label: "Desktop formal artifact manifest",
+      detail: `version must be ${releaseVersion}.`,
+    });
+  }
+  if (manifest.releaseTag !== `v${releaseVersion}`) {
+    blockers.push({
+      id: "desktop-formal-artifact-manifest",
+      label: "Desktop formal artifact manifest",
+      detail: `releaseTag must be v${releaseVersion}.`,
+    });
+  }
+  if (manifest.sourceAuthority !== options.sourceAuthority) {
+    blockers.push({
+      id: "desktop-formal-artifact-manifest",
+      label: "Desktop formal artifact manifest",
+      detail: `sourceAuthority must be ${options.sourceAuthority}.`,
+    });
+  }
+  if (!Array.isArray(manifest.artifacts)) {
+    blockers.push({
+      id: "desktop-formal-artifact-manifest",
+      label: "Desktop formal artifact manifest",
+      detail: "artifacts must be an array.",
+    });
+    return;
+  }
+
+  const byName = new Map(
+    manifest.artifacts
+      .filter((artifact) => artifact && typeof artifact === "object")
+      .map((artifact) => [String(artifact.fileName ?? basename(String(artifact.path ?? ""))), artifact]),
+  );
+  const artifactNames = new Set(artifacts.map((artifact) => basename(artifact.path)));
+  for (const name of byName.keys()) {
+    if (!artifactNames.has(name)) {
+      blockers.push({
+        id: "desktop-formal-artifact-manifest",
+        label: "Desktop formal artifact manifest",
+        detail: `artifacts contains unexpected fileName: ${name}.`,
+      });
+    }
+  }
+  for (const artifact of artifacts) {
+    const name = basename(artifact.path);
+    const manifestArtifact = byName.get(name);
+    if (!manifestArtifact) {
+      blockers.push({
+        id: "desktop-formal-artifact-manifest",
+        label: "Desktop formal artifact manifest",
+        detail: `artifacts must include ${name}.`,
+      });
+      continue;
+    }
+    if (manifestArtifact.platform !== artifact.classification.platform) {
+      blockers.push({
+        id: "desktop-formal-artifact-manifest",
+        label: "Desktop formal artifact manifest",
+        detail: `${name}.platform must be ${artifact.classification.platform}.`,
+      });
+    }
+    if ((manifestArtifact.packageType ?? null) !== (artifact.classification.packageType ?? null)) {
+      blockers.push({
+        id: "desktop-formal-artifact-manifest",
+        label: "Desktop formal artifact manifest",
+        detail: `${name}.packageType must match the detected package type.`,
+      });
+    }
+    if (manifestArtifact.sha256 !== sha256File(artifact.path)) {
+      blockers.push({
+        id: "desktop-formal-artifact-manifest",
+        label: "Desktop formal artifact manifest",
+        detail: `${name}.sha256 must match the artifact bytes.`,
+      });
+    }
+    if (manifestArtifact.sizeBytes !== statSync(artifact.path).size) {
+      blockers.push({
+        id: "desktop-formal-artifact-manifest",
+        label: "Desktop formal artifact manifest",
+        detail: `${name}.sizeBytes must match the artifact bytes.`,
+      });
+    }
+  }
 }
 
 function runImporterPreflight() {

@@ -37,7 +37,7 @@ function completeEvidence() {
       platform: "windows",
       sha256: sha256(FIXTURE_ARTIFACTS[0][1]),
       signed: true,
-      signatureVerification: `signtool verify /pa ${FIXTURE_ARTIFACTS[0][0]} passed`,
+      signatureVerification: `signtool verify /pa ${FIXTURE_ARTIFACTS[0][0]} ${sha256(FIXTURE_ARTIFACTS[0][1])} passed`,
     },
     {
       path: FIXTURE_ARTIFACTS[1][0],
@@ -45,8 +45,8 @@ function completeEvidence() {
       sha256: sha256(FIXTURE_ARTIFACTS[1][1]),
       signed: true,
       notarized: true,
-      signatureVerification: `codesign --verify ${FIXTURE_ARTIFACTS[1][0]} passed`,
-      notarizationVerification: `spctl --assess ${FIXTURE_ARTIFACTS[1][0]} passed`,
+      signatureVerification: `codesign --verify ${FIXTURE_ARTIFACTS[1][0]} ${sha256(FIXTURE_ARTIFACTS[1][1])} passed`,
+      notarizationVerification: `spctl --assess ${FIXTURE_ARTIFACTS[1][0]} ${sha256(FIXTURE_ARTIFACTS[1][1])} passed`,
     },
     {
       path: FIXTURE_ARTIFACTS[2][0],
@@ -127,6 +127,42 @@ function localEvidenceSourceOverride() {
       conclusion: "success",
       name: "Package Formal Desktop Evidence",
       status: "completed",
+    },
+    formalArtifactManifest: {
+      artifacts: [
+        {
+          fileName: "JoeSSH_0.1.0-beta.1_x64-setup.exe",
+          packageType: null,
+          platform: "windows",
+          sha256: sha256(FIXTURE_ARTIFACTS[0][1]),
+          sizeBytes: FIXTURE_ARTIFACTS[0][1].length,
+        },
+        {
+          fileName: "JoeSSH_0.1.0-beta.1_aarch64.dmg",
+          packageType: null,
+          platform: "macos",
+          sha256: sha256(FIXTURE_ARTIFACTS[1][1]),
+          sizeBytes: FIXTURE_ARTIFACTS[1][1].length,
+        },
+        {
+          fileName: "JoeSSH_0.1.0-beta.1_amd64.AppImage",
+          packageType: "AppImage",
+          platform: "linux",
+          sha256: sha256(FIXTURE_ARTIFACTS[2][1]),
+          sizeBytes: FIXTURE_ARTIFACTS[2][1].length,
+        },
+      ],
+      kind: "joessh-desktop-formal-artifact-manifest",
+      path: "C:/signed/desktop-formal-artifact-manifest.json",
+      requestId: "desktop-formal-test",
+      sha256: sha256("desktop-formal-artifact-manifest"),
+      source: {
+        gitCommit: "abc123",
+        gitFsckStrict: true,
+        releaseTagCommit: "abc123",
+        repository: "https://git.example/JoeWorkspace/JoeSSH.git",
+      },
+      version: 1,
     },
     repository: "https://git.example/JoeWorkspace/JoeSSH.git",
     runner: {
@@ -213,10 +249,22 @@ test("accepts formal desktop evidence with a local source sidecar", (t) => {
   const root = createFixture(t);
   writeEvidenceSource(root, localEvidenceSourceOverride());
 
-  const result = runChecker(root, ["--require-source"]);
+  const result = runChecker(root, ["--require-source", "--require-source-authority", "local"]);
 
   assert.equal(result.status, 0);
   assert.match(result.stdout, /Desktop release evidence verified for 3 artifact/);
+});
+
+test("rejects local publication source sidecars without a formal artifact manifest", (t) => {
+  const root = createFixture(t);
+  const source = localEvidenceSourceOverride();
+  delete source.formalArtifactManifest;
+  writeEvidenceSource(root, source);
+
+  const result = runChecker(root, ["--require-source", "--require-source-authority", "local"]);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /formalArtifactManifest must be an object/);
 });
 
 test("requires a specific desktop evidence source authority when requested", (t) => {

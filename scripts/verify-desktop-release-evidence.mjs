@@ -21,10 +21,10 @@ const errors = [];
 const manifestEntries = readChecksumManifest(resolve(root, manifestPath));
 const evidenceChecksumEntries = readEvidenceChecksumManifest(resolve(root, evidenceChecksumPath));
 verifyEvidenceChecksum(resolve(root, evidencePath), evidenceChecksumEntries);
-if (requireSource) {
-  verifyEvidenceSource(resolve(root, sourcePath), evidenceChecksumEntries);
-}
 const evidence = readEvidence(resolve(root, evidencePath));
+if (requireSource) {
+  verifyEvidenceSource(resolve(root, sourcePath), evidenceChecksumEntries, evidence, manifestEntries);
+}
 validateEvidence(evidence, manifestEntries);
 
 if (errors.length > 0) {
@@ -133,7 +133,7 @@ function verifyEvidenceChecksum(evidenceFullPath, evidenceChecksumEntries) {
   }
 }
 
-function verifyEvidenceSource(sourceFullPath, evidenceChecksumEntries) {
+function verifyEvidenceSource(sourceFullPath, evidenceChecksumEntries, evidence, manifestEntries) {
   const sourceReleasePath = displayPath(sourceFullPath);
   if (!existsSync(sourceFullPath)) {
     errors.push(`missing desktop evidence source sidecar ${sourceReleasePath}`);
@@ -161,10 +161,10 @@ function verifyEvidenceSource(sourceFullPath, evidenceChecksumEntries) {
     errors.push(`desktop evidence source sidecar is not valid JSON: ${error instanceof Error ? error.message : String(error)}`);
     return;
   }
-  validateEvidenceSource(source);
+  validateEvidenceSource(source, evidence, manifestEntries);
 }
 
-function validateEvidenceSource(source) {
+function validateEvidenceSource(source, evidence, manifestEntries) {
   if (source === null || typeof source !== "object" || Array.isArray(source)) {
     errors.push("desktop evidence source sidecar must be a JSON object");
     return;
@@ -218,6 +218,12 @@ function validateEvidenceSource(source) {
   validateLocalSource(source.source, source.releaseTagCommit);
   validateLocalRunnerSource(source.runner);
   validateLocalFormalEvidenceJobSource(source.formalEvidenceJob);
+  validateLocalFormalArtifactManifestSource(
+    source.formalArtifactManifest,
+    source.releaseTagCommit,
+    evidence,
+    manifestEntries,
+  );
 }
 
 function validateCurrentGitSource(releaseTagCommit) {
@@ -335,6 +341,91 @@ function validateLocalFormalEvidenceJobSource(formalEvidenceJob) {
   }
   if (formalEvidenceJob.artifactRoot !== "reports/release/desktop") {
     errors.push("desktop evidence source sidecar formalEvidenceJob.artifactRoot must be reports/release/desktop");
+  }
+}
+
+function validateLocalFormalArtifactManifestSource(formalArtifactManifest, releaseTagCommit, evidence, manifestEntries) {
+  if (!requiredSourceAuthority) {
+    return;
+  }
+  if (
+    formalArtifactManifest === null ||
+    typeof formalArtifactManifest !== "object" ||
+    Array.isArray(formalArtifactManifest)
+  ) {
+    errors.push("desktop evidence source sidecar formalArtifactManifest must be an object for local/self-hosted publication");
+    return;
+  }
+  if (formalArtifactManifest.kind !== "joessh-desktop-formal-artifact-manifest") {
+    errors.push("desktop evidence source sidecar formalArtifactManifest.kind must be joessh-desktop-formal-artifact-manifest");
+  }
+  if (formalArtifactManifest.version !== 1) {
+    errors.push("desktop evidence source sidecar formalArtifactManifest.version must be 1");
+  }
+  if (typeof formalArtifactManifest.requestId !== "string" || formalArtifactManifest.requestId.trim() === "") {
+    errors.push("desktop evidence source sidecar formalArtifactManifest.requestId must be a non-empty string");
+  }
+  if (typeof formalArtifactManifest.sha256 !== "string" || !/^[a-f0-9]{64}$/.test(formalArtifactManifest.sha256)) {
+    errors.push("desktop evidence source sidecar formalArtifactManifest.sha256 must be a lowercase SHA256 hex digest");
+  }
+
+  const source = formalArtifactManifest.source;
+  if (source === null || typeof source !== "object" || Array.isArray(source)) {
+    errors.push("desktop evidence source sidecar formalArtifactManifest.source must be an object");
+  } else {
+    if (source.gitCommit !== releaseTagCommit) {
+      errors.push("desktop evidence source sidecar formalArtifactManifest.source.gitCommit must match releaseTagCommit");
+    }
+    if (source.releaseTagCommit !== releaseTagCommit) {
+      errors.push("desktop evidence source sidecar formalArtifactManifest.source.releaseTagCommit must match releaseTagCommit");
+    }
+    if (source.gitFsckStrict !== true) {
+      errors.push("desktop evidence source sidecar formalArtifactManifest.source.gitFsckStrict must be true");
+    }
+  }
+
+  const evidenceArtifacts = Array.isArray(evidence?.artifacts) ? evidence.artifacts : [];
+  const manifestArtifacts = Array.isArray(formalArtifactManifest.artifacts)
+    ? formalArtifactManifest.artifacts
+    : null;
+  if (!manifestArtifacts) {
+    errors.push("desktop evidence source sidecar formalArtifactManifest.artifacts must be an array");
+    return;
+  }
+
+  const manifestByName = new Map();
+  for (const artifact of manifestArtifacts) {
+    if (artifact === null || typeof artifact !== "object" || Array.isArray(artifact)) {
+      errors.push("desktop evidence source sidecar formalArtifactManifest.artifacts entries must be objects");
+      continue;
+    }
+    if (typeof artifact.fileName !== "string" || artifact.fileName.trim() === "") {
+      errors.push("desktop evidence source sidecar formalArtifactManifest artifact fileName is required");
+      continue;
+    }
+    manifestByName.set(artifact.fileName, artifact);
+  }
+
+  for (const artifact of evidenceArtifacts) {
+    const artifactName = basename(artifact.path ?? "");
+    const manifestArtifact = manifestByName.get(artifactName);
+    if (!manifestArtifact) {
+      errors.push(`desktop evidence source sidecar formalArtifactManifest.artifacts must include ${artifactName}`);
+      continue;
+    }
+    if (manifestArtifact.platform !== artifact.platform) {
+      errors.push(`desktop evidence source sidecar formalArtifactManifest ${artifactName}.platform must match release evidence`);
+    }
+    if ((manifestArtifact.packageType ?? null) !== (artifact.packageType ?? null)) {
+      errors.push(`desktop evidence source sidecar formalArtifactManifest ${artifactName}.packageType must match release evidence`);
+    }
+    if (manifestArtifact.sha256 !== artifact.sha256) {
+      errors.push(`desktop evidence source sidecar formalArtifactManifest ${artifactName}.sha256 must match release evidence`);
+    }
+    const checksumEntry = manifestEntries.find((entry) => basename(entry.path) === artifactName);
+    if (!checksumEntry || checksumEntry.sha256 !== manifestArtifact.sha256) {
+      errors.push(`desktop evidence source sidecar formalArtifactManifest ${artifactName}.sha256 must match the checksum manifest`);
+    }
   }
 }
 
@@ -499,6 +590,12 @@ function requireNonEmptyString(label, artifact, field) {
 function requireEvidenceBinding(label, artifact, field) {
   const value = typeof artifact[field] === "string" ? artifact[field] : "";
   const artifactName = basename(artifact.path);
+  if (requiredSourceAuthority) {
+    if (!value.includes(artifactName) || !value.includes(artifact.sha256)) {
+      errors.push(`${label}.${field} must mention both the artifact file name and artifact sha256`);
+    }
+    return;
+  }
   if (!value.includes(artifact.path) && !value.includes(artifactName) && !value.includes(artifact.sha256)) {
     errors.push(`${label}.${field} must mention the artifact path, artifact file name, or artifact sha256`);
   }

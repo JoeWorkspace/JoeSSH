@@ -84,10 +84,12 @@ route, not a blocker for the first Public Beta.
    ```
 
    For a local/self-hosted authority, import the external signed artifact
-   directory after the tag is created. Preflight the same input first so missing
-   proof files or platform artifacts are caught before staging release evidence:
+   directory after the tag is created. Generate the request first, then preflight
+   the returned input so missing proof files or platform artifacts are caught
+   before staging release evidence:
 
    ```bash
+   npm run release:desktop:formal-artifacts:request -- --source-authority local
    npm run release:desktop:formal-artifacts:intake -- --input-dir <signed-artifact-dir> --source-authority local
    npm run release:desktop:formal-artifacts:preflight -- --input-dir <signed-artifact-dir> --source-authority local
    npm run release:desktop:formal-artifacts:import -- --input-dir <signed-artifact-dir> --source-authority local
@@ -98,6 +100,13 @@ route, not a blocker for the first Public Beta.
    The intake command writes
    `reports/handoff/desktop/formal-artifact-input-report.json` and its checksum
    manifest without copying artifacts into `reports/release/desktop`.
+   The request command writes
+   `reports/handoff/desktop/formal-artifact-request.json` and
+   `formal-artifact-request-SHA256SUMS.txt` so the external signing directory
+   uses the same proof filenames, returned
+   `desktop-formal-artifact-manifest.json`, artifact SHA256 bindings, and
+   platform contract as the importer. Windows and macOS proof text must mention
+   both the artifact file name and SHA256.
 
 7. Generate provenance, run publish preflight, and draft or stage publication:
 

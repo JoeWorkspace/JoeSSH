@@ -412,7 +412,8 @@ test("local authority diagnostics skip GitHub-only blockers", (t) => {
   assert.equal(report.blockers.some((blocker) => blocker.id === "github-ci"), false);
   assert.ok(
     report.unblockSteps.some((step) =>
-      step.includes("npm run release:desktop:package:local-source"),
+      step.includes("release:desktop:formal-artifacts:request") &&
+        step.includes("release:desktop:formal-artifacts:intake"),
     ),
   );
 });

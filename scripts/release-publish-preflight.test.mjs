@@ -97,7 +97,7 @@ function createReleaseFixture(t) {
           sha256: sha256("desktop installer"),
           signed: true,
           signatureVerification:
-            "signtool verify /pa reports/release/desktop/JoeSSH_0.1.0-beta.1_x64-setup.exe passed",
+            `signtool verify /pa reports/release/desktop/JoeSSH_0.1.0-beta.1_x64-setup.exe ${sha256("desktop installer")} passed`,
         },
         {
           path: "reports/release/desktop/JoeSSH_0.1.0-beta.1_aarch64.dmg",
@@ -105,8 +105,8 @@ function createReleaseFixture(t) {
           sha256: sha256("macos dmg"),
           signed: true,
           notarized: true,
-          signatureVerification: "codesign --verify reports/release/desktop/JoeSSH_0.1.0-beta.1_aarch64.dmg passed",
-          notarizationVerification: "spctl --assess reports/release/desktop/JoeSSH_0.1.0-beta.1_aarch64.dmg passed",
+          signatureVerification: `codesign --verify reports/release/desktop/JoeSSH_0.1.0-beta.1_aarch64.dmg ${sha256("macos dmg")} passed`,
+          notarizationVerification: `spctl --assess reports/release/desktop/JoeSSH_0.1.0-beta.1_aarch64.dmg ${sha256("macos dmg")} passed`,
         },
         {
           path: "reports/release/desktop/JoeSSH_0.1.0-beta.1_amd64.AppImage",
@@ -167,11 +167,12 @@ function localDesktopEvidenceSourceFixture() {
       artifactName: "desktop-release-evidence",
       formalEvidenceJob: {
         artifactRoot: "reports/release/desktop",
-        command: "npm run release:desktop:package",
+        command: "npm run release:desktop:formal-artifacts:import",
         conclusion: "success",
         name: "Package Formal Desktop Evidence",
         status: "completed",
       },
+      formalArtifactManifest: localFormalArtifactManifestFixture(),
       importedAt: "2026-06-21T00:00:00.000Z",
       releaseRef: "v0.1.0-beta.1",
       releaseTagCommit: "abc123",
@@ -192,6 +193,45 @@ function localDesktopEvidenceSourceFixture() {
     null,
     2,
   );
+}
+
+function localFormalArtifactManifestFixture() {
+  return {
+    artifacts: [
+      {
+        fileName: "JoeSSH_0.1.0-beta.1_x64-setup.exe",
+        packageType: null,
+        platform: "windows",
+        sha256: sha256("desktop installer"),
+        sizeBytes: "desktop installer".length,
+      },
+      {
+        fileName: "JoeSSH_0.1.0-beta.1_aarch64.dmg",
+        packageType: null,
+        platform: "macos",
+        sha256: sha256("macos dmg"),
+        sizeBytes: "macos dmg".length,
+      },
+      {
+        fileName: "JoeSSH_0.1.0-beta.1_amd64.AppImage",
+        packageType: "AppImage",
+        platform: "linux",
+        sha256: sha256("linux appimage"),
+        sizeBytes: "linux appimage".length,
+      },
+    ],
+    kind: "joessh-desktop-formal-artifact-manifest",
+    path: "C:/signed/desktop-formal-artifact-manifest.json",
+    requestId: "desktop-formal-test",
+    sha256: sha256("desktop-formal-artifact-manifest"),
+    source: {
+      gitCommit: "abc123",
+      gitFsckStrict: true,
+      releaseTagCommit: "abc123",
+      repository: "https://github.com/joessh/joessh.git",
+    },
+    version: 1,
+  };
 }
 
 function writeLocalDesktopEvidenceSourceFixture(root) {

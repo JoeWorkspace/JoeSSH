@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import {
   copyFileSync,
@@ -7,6 +8,7 @@ import {
   readdirSync,
   rmSync,
   statSync,
+  writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, isAbsolute, join, relative, resolve } from "node:path";
@@ -20,7 +22,10 @@ const verifierPath = resolve(scriptDir, "verify-desktop-release-evidence.mjs");
 const options = parseArgs(process.argv.slice(2));
 const packageJson = JSON.parse(readFileSync(resolve(options.root, "package.json"), "utf8"));
 const releaseVersion = packageJson.version;
+const releaseTag = `v${releaseVersion}`;
 const inputDir = options.inputDir;
+const gitCommand = process.env.ATLASTERM_RELEASE_GIT_COMMAND ?? "git";
+const gitCommandPrefixArgs = parseCommandPrefixArgs("ATLASTERM_RELEASE_GIT_ARGS");
 
 if (!existsSync(inputDir) || !statSync(inputDir).isDirectory()) {
   fail(`--input-dir must point to a directory: ${displayPath(inputDir)}`);
@@ -47,6 +52,8 @@ if (staleArtifacts.length > 0) {
 
 validateDuplicateBasenames(sourceArtifacts);
 validateRequiredPlatforms(sourceArtifacts, options.requiredPlatforms);
+const gitSource = verifyReleaseGitCheckoutForExternalManifest();
+const externalManifest = validateExternalManifest(inputFiles, sourceArtifacts, gitSource);
 
 const platforms = new Set(sourceArtifacts.map((artifact) => artifact.classification.platform));
 const windowsSignatureVerification = platforms.has("windows")
@@ -77,6 +84,22 @@ const macosNotarizationVerification = platforms.has("macos")
     )
   : "";
 
+validateExternalProofBindings(
+  "Windows signature verification",
+  windowsSignatureVerification,
+  sourceArtifacts.filter((artifact) => artifact.classification.platform === "windows"),
+);
+validateExternalProofBindings(
+  "macOS signature verification",
+  macosSignatureVerification,
+  sourceArtifacts.filter((artifact) => artifact.classification.platform === "macos"),
+);
+validateExternalProofBindings(
+  "macOS notarization verification",
+  macosNotarizationVerification,
+  sourceArtifacts.filter((artifact) => artifact.classification.platform === "macos"),
+);
+
 const tempDir = mkdtempSync(join(tmpdir(), "joessh-desktop-formal-artifacts-"));
 
 try {
@@ -103,6 +126,7 @@ try {
   });
 
   if (!options.preflightOnly) {
+    attachExternalManifestToSourceEvidence(externalManifest);
     runNodeScript("Desktop formal evidence verification", verifierPath, [
       "--root",
       options.root,
@@ -205,6 +229,161 @@ function validateRequiredPlatforms(artifacts, requiredPlatforms) {
   }
 }
 
+function validateExternalManifest(inputFiles, artifacts, gitSource) {
+  const manifestPath = resolveSingleInputFile(inputFiles, [
+    "desktop-formal-artifact-manifest.json",
+  ], "Desktop formal artifact manifest");
+  const manifest = readJsonFile(manifestPath, "Desktop formal artifact manifest");
+  const blockers = [];
+  const source = manifest.source;
+
+  if (manifest.manifestVersion !== 1) {
+    blockers.push("manifestVersion must be 1");
+  }
+  if (manifest.kind !== "joessh-desktop-formal-artifact-manifest") {
+    blockers.push("kind must be joessh-desktop-formal-artifact-manifest");
+  }
+  if (typeof manifest.requestId !== "string" || manifest.requestId.trim() === "") {
+    blockers.push("requestId must be a non-empty string");
+  }
+  if (manifest.product !== "JoeSSH") {
+    blockers.push("product must be JoeSSH");
+  }
+  if (manifest.version !== releaseVersion) {
+    blockers.push(`version must be ${releaseVersion}`);
+  }
+  if (manifest.releaseTag !== releaseTag) {
+    blockers.push(`releaseTag must be ${releaseTag}`);
+  }
+  if (manifest.sourceAuthority !== options.sourceAuthority) {
+    blockers.push(`sourceAuthority must be ${options.sourceAuthority}`);
+  }
+  if (source === null || typeof source !== "object" || Array.isArray(source)) {
+    blockers.push("source must be an object");
+  } else {
+    if (source.repository !== gitSource.repository) {
+      blockers.push("source.repository must match the current release checkout origin");
+    }
+    if (source.gitCommit !== gitSource.head) {
+      blockers.push("source.gitCommit must match current HEAD");
+    }
+    if (source.releaseTagCommit !== gitSource.tagCommit) {
+      blockers.push(`source.releaseTagCommit must match ${releaseTag}`);
+    }
+    if (source.gitFsckStrict !== true) {
+      blockers.push("source.gitFsckStrict must be true");
+    }
+  }
+
+  const manifestArtifacts = Array.isArray(manifest.artifacts) ? manifest.artifacts : null;
+  if (!manifestArtifacts) {
+    blockers.push("artifacts must be an array");
+  } else {
+    validateExternalManifestArtifacts(blockers, manifestArtifacts, artifacts);
+  }
+
+  if (blockers.length > 0) {
+    fail(`Desktop formal artifact manifest failed validation:\n- ${blockers.join("\n- ")}`);
+  }
+
+  return {
+    artifacts: artifacts.map((artifact) => {
+      const name = basename(artifact.path);
+      return {
+        fileName: name,
+        packageType: artifact.classification.packageType ?? null,
+        platform: artifact.classification.platform,
+        sha256: sha256File(artifact.path),
+        sizeBytes: statSync(artifact.path).size,
+      };
+    }),
+    kind: manifest.kind,
+    manifestPath,
+    manifestSha256: sha256File(manifestPath),
+    manifestVersion: manifest.manifestVersion,
+    requestId: manifest.requestId,
+    source: {
+      gitCommit: source.gitCommit,
+      gitFsckStrict: source.gitFsckStrict,
+      releaseTagCommit: source.releaseTagCommit,
+      repository: source.repository,
+    },
+  };
+}
+
+function validateExternalManifestArtifacts(blockers, manifestArtifacts, artifacts) {
+  const manifestByFileName = new Map();
+  const sourceNames = new Set(artifacts.map((artifact) => basename(artifact.path)));
+  for (const artifact of manifestArtifacts) {
+    if (artifact === null || typeof artifact !== "object" || Array.isArray(artifact)) {
+      blockers.push("artifacts entries must be objects");
+      continue;
+    }
+    const fileName = typeof artifact.fileName === "string" ? artifact.fileName : basename(String(artifact.path ?? ""));
+    if (!fileName) {
+      blockers.push("artifact.fileName is required");
+      continue;
+    }
+    if (manifestByFileName.has(fileName)) {
+      blockers.push(`artifacts contains duplicate fileName: ${fileName}`);
+    }
+    manifestByFileName.set(fileName, artifact);
+  }
+  for (const fileName of manifestByFileName.keys()) {
+    if (!sourceNames.has(fileName)) {
+      blockers.push(`artifacts contains unexpected fileName: ${fileName}`);
+    }
+  }
+
+  for (const sourceArtifact of artifacts) {
+    const fileName = basename(sourceArtifact.path);
+    const manifestArtifact = manifestByFileName.get(fileName);
+    if (!manifestArtifact) {
+      blockers.push(`artifacts must include ${fileName}`);
+      continue;
+    }
+    const artifactSha256 = sha256File(sourceArtifact.path);
+    const sizeBytes = statSync(sourceArtifact.path).size;
+    if (manifestArtifact.platform !== sourceArtifact.classification.platform) {
+      blockers.push(`${fileName}.platform must be ${sourceArtifact.classification.platform}`);
+    }
+    if ((manifestArtifact.packageType ?? null) !== (sourceArtifact.classification.packageType ?? null)) {
+      blockers.push(`${fileName}.packageType must match the detected package type`);
+    }
+    if (manifestArtifact.sha256 !== artifactSha256) {
+      blockers.push(`${fileName}.sha256 must match the artifact bytes`);
+    }
+    if (manifestArtifact.sizeBytes !== sizeBytes) {
+      blockers.push(`${fileName}.sizeBytes must match the artifact bytes`);
+    }
+  }
+}
+
+function validateExternalProofBindings(label, proofText, artifacts) {
+  if (!proofText) {
+    return;
+  }
+  for (const artifact of artifacts) {
+    const artifactName = basename(artifact.path);
+    const artifactSha256 = sha256File(artifact.path);
+    if (!proofText.includes(artifactName) || !proofText.includes(artifactSha256)) {
+      fail(`${label} proof must mention both the artifact file name and SHA256: ${artifactName}`);
+    }
+  }
+}
+
+function resolveSingleInputFile(files, candidateNames, label) {
+  const candidates = new Set(candidateNames.map((name) => name.toLowerCase()));
+  const matches = files.filter((file) => candidates.has(basename(file).toLowerCase()));
+  if (matches.length === 0) {
+    fail(`${label} is required: ${candidateNames.join(" or ")}`);
+  }
+  if (matches.length > 1) {
+    fail(`Multiple ${label} files found under ${displayPath(inputDir)}; keep exactly one ${candidateNames.join(" or ")}.`);
+  }
+  return matches[0];
+}
+
 function validateInputDirectoryLocation(path) {
   if (isInsidePath(path, options.root)) {
     fail(
@@ -247,6 +426,27 @@ function readRequiredProof(label, path) {
   return text;
 }
 
+function attachExternalManifestToSourceEvidence(manifest) {
+  const sourcePath = resolve(options.root, "reports/release/desktop/release-evidence-source.json");
+  const checksumPath = resolve(options.root, "reports/release/desktop/release-evidence-SHA256SUMS.txt");
+  const source = readJsonFile(sourcePath, "Desktop release evidence source sidecar");
+  source.formalArtifactManifest = {
+    artifacts: manifest.artifacts,
+    kind: manifest.kind,
+    path: displayPath(manifest.manifestPath),
+    requestId: manifest.requestId,
+    sha256: manifest.manifestSha256,
+    source: manifest.source,
+    version: manifest.manifestVersion,
+  };
+  writeFileSync(sourcePath, `${JSON.stringify(source, null, 2)}\n`);
+
+  const evidence = resolve(options.root, "reports/release/desktop/release-evidence.json");
+  const lines = [`${sha256File(evidence)}  reports/release/desktop/release-evidence.json`];
+  lines.push(`${sha256File(sourcePath)}  reports/release/desktop/release-evidence-source.json`);
+  writeFileSync(checksumPath, `${lines.join("\n")}\n`);
+}
+
 function readTextFile(path) {
   const bytes = readFileSync(path);
   if (bytes.length >= 2 && bytes[0] === 0xff && bytes[1] === 0xfe) {
@@ -268,6 +468,56 @@ function readTextFile(path) {
   }
 
   return bytes.toString("utf8").replace(/^\uFEFF/, "");
+}
+
+function readJsonFile(path, label) {
+  try {
+    return JSON.parse(readFileSync(path, "utf8"));
+  } catch (error) {
+    fail(`${label} is not valid JSON: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+function verifyReleaseGitCheckoutForExternalManifest() {
+  const insideWorkTree = runGit(["rev-parse", "--is-inside-work-tree"], "Git checkout metadata is required for Desktop formal artifact import.");
+  if (insideWorkTree !== "true") {
+    fail("Git checkout metadata is required for Desktop formal artifact import.");
+  }
+  const status = runGit(
+    ["status", "--porcelain=v1", "--untracked-files=all", "--", ".", ":(exclude)reports/release"],
+    "Git working tree status is required for Desktop formal artifact import.",
+  );
+  if (status.trim() !== "") {
+    fail(`Git working tree outside reports/release must be clean for Desktop formal artifact import:\n${status}`);
+  }
+  const head = runGit(["rev-parse", "HEAD"], "Unable to resolve HEAD for Desktop formal artifact import.");
+  const tagCommit = runGit(
+    ["rev-parse", "--verify", `${releaseTag}^{}`],
+    `Release tag ${releaseTag} must exist for Desktop formal artifact import.`,
+  );
+  if (head !== tagCommit) {
+    fail(`Release tag ${releaseTag} must point at HEAD for Desktop formal artifact import.`);
+  }
+  const repository = runGit(["remote", "get-url", "origin"], "Git remote origin is required for Desktop formal artifact import.");
+  runGit(["fsck", "--strict"], "git fsck --strict must pass for Desktop formal artifact import.");
+  return { head, repository, tagCommit };
+}
+
+function runGit(args, message) {
+  const result = spawnSync(gitCommand, [...gitCommandPrefixArgs, ...args], {
+    cwd: options.root,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  if (result.status !== 0) {
+    const diagnostic = `${result.stdout}\n${result.stderr}`.trim();
+    fail(diagnostic ? `${message}\n${diagnostic}` : message);
+  }
+  return result.stdout.trim();
+}
+
+function sha256File(path) {
+  return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
 
 function parseArgs(args) {
@@ -408,6 +658,22 @@ function parsePlatformList(value) {
     fail(`Unsupported required platform(s): ${invalidPlatforms.join(", ")}`);
   }
   return [...new Set(platforms)];
+}
+
+function parseCommandPrefixArgs(envName) {
+  const raw = process.env[envName];
+  if (!raw) {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.every((value) => typeof value === "string")) {
+      return parsed;
+    }
+  } catch {
+    // Fall through to the actionable error below.
+  }
+  fail(`${envName} must be a JSON array of strings.`);
 }
 
 function displayPath(path) {

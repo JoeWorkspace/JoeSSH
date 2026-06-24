@@ -92,6 +92,7 @@ native apps stay in preflight/device-smoke validation until a later beta.
 - If GitHub Actions is unavailable or intentionally not the release authority,
   generate formal Desktop evidence on a controlled local/self-hosted release
   machine with
+  `npm run release:desktop:formal-artifacts:request -- --source-authority local`,
   `npm run release:desktop:formal-artifacts:intake -- --input-dir <signed-artifact-dir> --source-authority local`,
   `npm run release:desktop:formal-artifacts:preflight -- --input-dir <signed-artifact-dir> --source-authority local`
   and then
@@ -99,15 +100,24 @@ native apps stay in preflight/device-smoke validation until a later beta.
   The input directory must be outside the release workspace and must contain
   signed Windows artifacts with `windows-signature-verification.txt`,
   signed/notarized macOS artifacts with `macos-signature-verification.txt` and
-  `macos-notarization-verification.txt`, and at least one Linux package. The
+  `macos-notarization-verification.txt`, at least one Linux package, and
+  `desktop-formal-artifact-manifest.json`. The manifest must bind every returned
+  artifact SHA256 to the request, `releaseTagCommit`, and source authority. The
   source sidecar must set `sourceAuthority` to `local` or `self-hosted`, bind
   `releaseTagCommit` to the same commit used by `release:provenance`, record
-  `source.gitFsckStrict: true`, and record the local
+  `source.gitFsckStrict: true`, include `formalArtifactManifest`, and record the local
   `Package Formal Desktop Evidence` job command and artifact root. This keeps
-  Desktop evidence formal without depending on a GitHub workflow run.
+  Desktop evidence formal without depending on a GitHub workflow run. The
+  request command writes
+  `reports/handoff/desktop/formal-artifact-request.json` and
+  `formal-artifact-request-SHA256SUMS.txt` so external signing machines can
+  return a directory that passes intake and import without guessing filenames.
+  Windows and macOS proof text must mention both the artifact file name and
+  SHA256.
 - Create the annotated release tag only after source QA is green. For GitHub
   workflow evidence, release artifacts may already be staged before tagging. For
   local/self-hosted Desktop source evidence, create the tag before
+  `npm run release:desktop:formal-artifacts:request -- --source-authority local`,
   `npm run release:desktop:formal-artifacts:intake -- --input-dir <signed-artifact-dir> --source-authority local`,
   `npm run release:desktop:formal-artifacts:preflight -- --input-dir <signed-artifact-dir> --source-authority local`
   and

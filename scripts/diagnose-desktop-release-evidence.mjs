@@ -704,7 +704,7 @@ function buildUnblockSteps(blockers) {
       );
     } else {
       steps.push(
-        "Collect signed Windows, signed/notarized macOS, and Linux Desktop artifacts into the bundle input, then run npm run release:desktop:package:local-source.",
+        "Run npm run release:desktop:formal-artifacts:request -- --source-authority local, collect signed Windows, signed/notarized macOS, Linux Desktop artifacts, desktop-formal-artifact-manifest.json, and proof files into an input directory outside the workspace, then run release:desktop:formal-artifacts:intake, preflight, and import against that directory.",
       );
     }
   }

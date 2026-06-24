@@ -188,14 +188,26 @@ input directory outside the release workspace:
 - `windows-signature-verification.txt` for Windows signature verification.
 - `macos-signature-verification.txt` for macOS code-sign verification.
 - `macos-notarization-verification.txt` for macOS notarization verification.
+- `desktop-formal-artifact-manifest.json` binding returned artifacts to the
+  request, release tag commit, artifact SHA256 values, and source authority.
 
-Then import the directory through the formal evidence wrapper:
+Generate a checksum-covered request before handing the job to external signing
+machines, then import the returned directory through the formal evidence
+wrapper:
 
 ```bash
+npm run release:desktop:formal-artifacts:request -- --source-authority local
 npm run release:desktop:formal-artifacts:intake -- --input-dir <signed-artifact-dir> --source-authority local
 npm run release:desktop:formal-artifacts:preflight -- --input-dir <signed-artifact-dir> --source-authority local
 npm run release:desktop:formal-artifacts:import -- --input-dir <signed-artifact-dir> --source-authority local
 ```
+
+The request command writes
+`reports/handoff/desktop/formal-artifact-request.json` plus
+`formal-artifact-request-SHA256SUMS.txt`, binding the release tag, Git commit,
+required platforms, accepted artifact extensions, proof file names, proof text
+rules, returned manifest contract, and the exact intake/preflight/import
+commands.
 
 Use `--source-authority self-hosted` when the directory was produced by a
 controlled self-hosted release runner. The wrapper rejects input directories
@@ -215,7 +227,8 @@ The intake command is non-mutating handoff evidence. It writes
 `reports/handoff/desktop/formal-artifact-input-report.json` plus
 `formal-artifact-input-report-SHA256SUMS.txt`, listing detected platform
 artifacts, proof files, missing platforms, stale versions, and proof text that
-does not bind to an artifact or does not show a successful verification.
+does not bind to both an artifact file name and SHA256 or does not show a
+successful verification.
 
 After the full public release gate is complete, retain its log and generate the
 local publication authority:
@@ -246,8 +259,9 @@ verification.
 - Every uploaded desktop artifact must also appear in
   `reports/release/desktop/release-evidence.json`.
 - Every release evidence entry must record the artifact sha256, and that value
-  must match both the manifest hash in `SHA256SUMS.txt` and the actual file
-  hash recomputed from disk by `release:desktop:verify-evidence`.
+  must match the returned `desktop-formal-artifact-manifest.json`, the manifest hash in
+  `SHA256SUMS.txt`, and the actual file hash recomputed from disk by
+  `release:desktop:verify-evidence`.
 - `reports/release/desktop/release-evidence-SHA256SUMS.txt` must cover
   `reports/release/desktop/release-evidence.json` and
   `reports/release/desktop/release-evidence-source.json` before upload.
@@ -256,11 +270,12 @@ verification.
   controlled local/self-hosted release machine sidecar. Publish preflight
   requires it to bind formal evidence to the exact authority that produced it.
 - Windows evidence must record `signed: true` and a non-empty
-  `signatureVerification` result that mentions the artifact path, file name, or
-  artifact sha256.
+  `signatureVerification` result. Local/self-hosted publication requires that
+  proof to mention both the artifact file name and artifact sha256.
 - macOS evidence must record `signed: true`, `notarized: true`, non-empty
   `signatureVerification`, and non-empty `notarizationVerification` results
-  that mention the artifact path, file name, or artifact sha256.
+  that mention both the artifact file name and artifact sha256 for
+  local/self-hosted publication.
 - Linux evidence must record the shipped `packageType`, such as `AppImage`,
   `deb`, or `rpm`.
 - `release:desktop:package` requires

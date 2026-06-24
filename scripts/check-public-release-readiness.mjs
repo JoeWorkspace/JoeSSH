@@ -152,6 +152,8 @@ function checkPackageScripts() {
     "qa:desktop-release-package",
     "test:desktop-formal-artifact-import",
     "qa:desktop-formal-artifact-import",
+    "test:desktop-formal-artifact-request",
+    "qa:desktop-formal-artifact-request",
     "test:desktop-formal-artifact-intake",
     "qa:desktop-formal-artifact-intake",
     "test:desktop-release-evidence",
@@ -198,6 +200,7 @@ function checkPackageScripts() {
     "release:desktop:package",
     "release:desktop:package:local-source",
     "release:desktop:formal-artifacts:import",
+    "release:desktop:formal-artifacts:request",
     "release:desktop:formal-artifacts:intake",
     "release:desktop:formal-artifacts:preflight",
     "release:desktop:checksums",
@@ -438,6 +441,11 @@ function checkPackageScripts() {
     rootQaScript,
   );
   passIf(
+    rootQaScript.includes("qa:desktop-formal-artifact-request"),
+    "Root QA runs Desktop formal artifact request tests",
+    rootQaScript,
+  );
+  passIf(
     rootQaScript.includes("qa:desktop-formal-artifact-intake"),
     "Root QA runs Desktop formal artifact intake diagnostics tests",
     rootQaScript,
@@ -544,6 +552,8 @@ function checkReleaseToolingFiles() {
     "scripts/package-desktop-release.test.mjs",
     "scripts/import-desktop-formal-artifacts.mjs",
     "scripts/import-desktop-formal-artifacts.test.mjs",
+    "scripts/prepare-desktop-formal-artifact-request.mjs",
+    "scripts/prepare-desktop-formal-artifact-request.test.mjs",
     "scripts/diagnose-desktop-formal-artifact-input.mjs",
     "scripts/diagnose-desktop-formal-artifact-input.test.mjs",
     "scripts/configure-desktop-release-secrets.mjs",
@@ -609,6 +619,9 @@ function checkReleaseToolingFiles() {
     readTextIfExists("scripts/package-desktop-release.mjs") ?? "";
   const desktopFormalArtifactImporter =
     readTextIfExists("scripts/import-desktop-formal-artifacts.mjs") ?? "";
+  const desktopFormalArtifactRequest =
+    readTextIfExists("scripts/prepare-desktop-formal-artifact-request.mjs") ??
+    "";
   const desktopFormalArtifactIntake =
     readTextIfExists("scripts/diagnose-desktop-formal-artifact-input.mjs") ?? "";
   const dogfoodVerifier =
@@ -674,9 +687,28 @@ function checkReleaseToolingFiles() {
   passIf(
     desktopFormalArtifactIntake.includes("formal-artifact-input-report.json") &&
       desktopFormalArtifactIntake.includes("formal-artifact-input-report-SHA256SUMS.txt") &&
+      desktopFormalArtifactIntake.includes("desktop-formal-artifact-manifest.json") &&
       desktopFormalArtifactIntake.includes("runImporterPreflight") &&
-      desktopFormalArtifactIntake.includes("proof must show a successful verification"),
+      desktopFormalArtifactIntake.includes("proof must show a successful verification") &&
+      desktopFormalArtifactIntake.includes("proof must mention both the artifact file name and SHA256"),
     "Desktop formal artifact intake diagnostics writes checksum-covered handoff evidence",
+  );
+  passIf(
+    desktopFormalArtifactRequest.includes("formal-artifact-request.json") &&
+      desktopFormalArtifactRequest.includes("formal-artifact-request-SHA256SUMS.txt") &&
+      desktopFormalArtifactRequest.includes("desktop-formal-artifact-manifest.json") &&
+      desktopFormalArtifactRequest.includes("mustMentionAll") &&
+      desktopFormalArtifactRequest.includes("windows-signature-verification.txt") &&
+      desktopFormalArtifactRequest.includes("macos-notarization-verification.txt") &&
+      desktopFormalArtifactRequest.includes("release:desktop:formal-artifacts:intake"),
+    "Desktop formal artifact request generator writes checksum-covered handoff contract",
+  );
+  passIf(
+    desktopFormalArtifactImporter.includes("desktop-formal-artifact-manifest.json") &&
+      desktopFormalArtifactImporter.includes("source.gitCommit must match current HEAD") &&
+      desktopFormalArtifactImporter.includes("formalArtifactManifest") &&
+      desktopFormalArtifactImporter.includes("proof must mention both the artifact file name and SHA256"),
+    "Desktop formal artifact importer requires manifest-bound external artifacts",
   );
 
   const desktopEvidenceVerifier =
@@ -718,12 +750,16 @@ function checkReleaseToolingFiles() {
     desktopEvidenceVerifier.includes("release-evidence-source.json") &&
       desktopEvidenceVerifier.includes("--require-source") &&
       desktopEvidenceVerifier.includes("workflowRun.headSha must match releaseTagCommit") &&
-      desktopEvidenceVerifier.includes("Package Formal Desktop Evidence"),
+      desktopEvidenceVerifier.includes("Package Formal Desktop Evidence") &&
+      desktopEvidenceVerifier.includes("formalArtifactManifest"),
     "Desktop release evidence verifier can require formal Desktop source provenance",
   );
   passIf(
     desktopEvidenceVerifier.includes(
       "must mention the artifact path, artifact file name, or artifact sha256",
+    ) &&
+      desktopEvidenceVerifier.includes(
+        "must mention both the artifact file name and artifact sha256",
     ),
     "Desktop release evidence verifier binds signing proof text to artifact identity",
   );
@@ -807,6 +843,8 @@ function checkReleaseToolingFiles() {
       desktopEvidenceDiagnostics.includes("desktop-signing-secrets") &&
       desktopEvidenceDiagnostics.includes("release-desktop-stale-artifacts") &&
       desktopEvidenceDiagnostics.includes("github-ci") &&
+      desktopEvidenceDiagnostics.includes("release:desktop:formal-artifacts:request") &&
+      desktopEvidenceDiagnostics.includes("release:desktop:formal-artifacts:intake") &&
       desktopEvidenceDiagnostics.includes("check-runs/${checkRunId}/annotations") &&
       desktopEvidenceDiagnostics.includes("verify-desktop-release-evidence.mjs"),
     "Desktop formal evidence diagnostics report binds local evidence, signing secrets, workflow runs, and CI annotations",
