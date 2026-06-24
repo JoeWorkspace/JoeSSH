@@ -192,6 +192,7 @@ input directory outside the release workspace:
 Then import the directory through the formal evidence wrapper:
 
 ```bash
+npm run release:desktop:formal-artifacts:preflight -- --input-dir <signed-artifact-dir> --source-authority local
 npm run release:desktop:formal-artifacts:import -- --input-dir <signed-artifact-dir> --source-authority local
 ```
 

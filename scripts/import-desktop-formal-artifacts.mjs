@@ -95,27 +95,36 @@ try {
     options.runnerType,
     "--require-platforms",
     options.requiredPlatforms.join(","),
+    ...(options.preflightOnly ? ["--preflight-only"] : []),
   ], {
     ATLASTERM_DESKTOP_MACOS_NOTARIZATION_VERIFICATION: macosNotarizationVerification,
     ATLASTERM_DESKTOP_MACOS_SIGNATURE_VERIFICATION: macosSignatureVerification,
     ATLASTERM_DESKTOP_WINDOWS_SIGNATURE_VERIFICATION: windowsSignatureVerification,
   });
 
-  runNodeScript("Desktop formal evidence verification", verifierPath, [
-    "--root",
-    options.root,
-    "--require-source",
-    "--require-current-git-source",
-    "--require-source-authority",
-    options.sourceAuthority,
-  ]);
+  if (!options.preflightOnly) {
+    runNodeScript("Desktop formal evidence verification", verifierPath, [
+      "--root",
+      options.root,
+      "--require-source",
+      "--require-current-git-source",
+      "--require-source-authority",
+      options.sourceAuthority,
+    ]);
+  }
 } finally {
   rmSync(tempDir, { force: true, recursive: true });
 }
 
-console.log(
-  `Imported ${sourceArtifacts.length} Desktop formal artifact(s) into reports/release/desktop with ${options.sourceAuthority} source evidence.`,
-);
+if (options.preflightOnly) {
+  console.log(
+    `Desktop formal artifact input preflight passed for ${sourceArtifacts.length} artifact(s) with ${options.sourceAuthority} source evidence.`,
+  );
+} else {
+  console.log(
+    `Imported ${sourceArtifacts.length} Desktop formal artifact(s) into reports/release/desktop with ${options.sourceAuthority} source evidence.`,
+  );
+}
 
 function runNodeScript(label, scriptPath, args, env = {}) {
   const result = spawnSync(process.execPath, [scriptPath, ...args], {
@@ -270,9 +279,14 @@ function parseArgs(args) {
   let windowsSignatureFile = "";
   let macosSignatureFile = "";
   let macosNotarizationFile = "";
+  let preflightOnly = false;
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
+    if (arg === "--preflight-only") {
+      preflightOnly = true;
+      continue;
+    }
     if (arg === "--root") {
       root = resolve(readValue(args, index, arg));
       index += 1;
@@ -367,6 +381,7 @@ function parseArgs(args) {
     inputDir: resolve(inputPath),
     macosNotarizationFile,
     macosSignatureFile,
+    preflightOnly,
     requiredPlatforms,
     root,
     runnerType,

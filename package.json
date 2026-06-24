@@ -137,6 +137,7 @@
     "release:desktop:package": "node scripts/package-desktop-release.mjs --require-platforms windows,macos,linux",
     "release:desktop:package:local-source": "node scripts/package-desktop-release.mjs --require-platforms windows,macos,linux --source-authority local",
     "release:desktop:formal-artifacts:import": "node scripts/import-desktop-formal-artifacts.mjs",
+    "release:desktop:formal-artifacts:preflight": "node scripts/import-desktop-formal-artifacts.mjs --preflight-only",
     "release:desktop:checksums": "npm run release:desktop:package",
     "release:desktop:secret-template": "node scripts/configure-desktop-release-secrets.mjs --write-template",
     "release:desktop:configure-secrets": "node scripts/configure-desktop-release-secrets.mjs",

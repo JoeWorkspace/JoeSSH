@@ -159,6 +159,19 @@ test("imports self-hosted Desktop formal artifacts with self-hosted source autho
   assert.equal(source.runner.type, "self-hosted-release-machine");
 });
 
+test("preflights signed Desktop formal artifacts without importing them", (t) => {
+  const root = createFixture(t);
+  const inputDir = createSignedArtifactInput(t);
+
+  const result = runImporter(root, inputDir, ["--preflight-only"], createFakeGitCommands(root));
+
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /Desktop release package preflight passed for 3 artifact\(s\)/);
+  assert.match(result.stdout, /Desktop formal artifact input preflight passed for 3 artifact\(s\)/);
+  assert.equal(existsSync(join(root, "reports", "release", "desktop", "release-evidence.json")), false);
+  assert.equal(existsSync(join(root, "reports", "release", "desktop", "SHA256SUMS.txt")), false);
+});
+
 test("rejects macOS artifacts without notarization proof", (t) => {
   const root = createFixture(t);
   const inputDir = createSignedArtifactInput(t);
@@ -168,6 +181,18 @@ test("rejects macOS artifacts without notarization proof", (t) => {
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /macOS notarization verification proof file is required/);
+  assert.equal(existsSync(join(root, "reports", "release", "desktop", "release-evidence.json")), false);
+});
+
+test("preflight rejects signature proof that is not bound to the artifact identity", (t) => {
+  const root = createFixture(t);
+  const inputDir = createSignedArtifactInput(t);
+  writeFile(inputDir, "windows-signature-verification.txt", "signtool verify passed");
+
+  const result = runImporter(root, inputDir, ["--preflight-only"], createFakeGitCommands(root));
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Windows signature verification proof must mention the artifact file name or SHA256/);
   assert.equal(existsSync(join(root, "reports", "release", "desktop", "release-evidence.json")), false);
 });
 

@@ -86,6 +86,7 @@ const releaseScriptNames = [
   "release:desktop:package",
   "release:desktop:package:local-source",
   "release:desktop:formal-artifacts:import",
+  "release:desktop:formal-artifacts:preflight",
   "release:desktop:checksums",
   "release:desktop:secret-template",
   "release:desktop:configure-secrets",
@@ -164,6 +165,9 @@ function fixtureScriptValue(name, overrides = {}) {
   }
   if (name === "release:desktop:package:local-source") {
     return "node scripts/package-desktop-release.mjs --require-platforms windows,macos,linux --source-authority local";
+  }
+  if (name === "release:desktop:formal-artifacts:preflight") {
+    return "node scripts/import-desktop-formal-artifacts.mjs --preflight-only";
   }
   if (name === "release:desktop:configure-secrets") {
     return "node scripts/configure-desktop-release-secrets.mjs";
@@ -297,10 +301,10 @@ function createFixture(t, overrides = {}) {
       "publicReleaseEvidence: false reports/release authenticode sha256File(path) versionMatchesPackage\n",
     "scripts/report-desktop-unsigned-staging.test.mjs": "",
     "scripts/package-desktop-release.mjs":
-      "artifactSha256 sha256: artifactSha256 Desktop bundle source contains artifact(s) that do not include releaseVersion basename(artifact.path) validateSignatureEvidence(sourceArtifacts) Windows Desktop artifacts require --windows-signature-verification mkdirSync(outputDir\n",
+      "artifactSha256 sha256: artifactSha256 Desktop bundle source contains artifact(s) that do not include releaseVersion basename(artifact.path) validateSignatureEvidence(sourceArtifacts) validateSignatureEvidenceBindings(sourceArtifacts) Windows Desktop artifacts require --windows-signature-verification proof must mention the artifact file name or SHA256 sha256(artifactPath) preflightOnly Desktop release package preflight passed mkdirSync(outputDir\n",
     "scripts/package-desktop-release.test.mjs": "",
     "scripts/import-desktop-formal-artifacts.mjs":
-      "release:desktop:verify-evidence --require-source-authority windows-signature-verification.txt macos-notarization-verification.txt Desktop formal artifact input contains file(s) that do not include --input-dir must be outside the release workspace source tree is clean release upload tools cannot pick up staging-only files\n",
+      "release:desktop:verify-evidence --require-source-authority --preflight-only windows-signature-verification.txt macos-notarization-verification.txt Desktop formal artifact input contains file(s) that do not include --input-dir must be outside the release workspace source tree is clean release upload tools cannot pick up staging-only files\n",
     "scripts/import-desktop-formal-artifacts.test.mjs": "",
     "scripts/configure-desktop-release-secrets.mjs":
       'ATLASTERM_WINDOWS_CERTIFICATE_FILE ATLASTERM_APPLE_CERTIFICATE_FILE --write-template reports/handoff/desktop secret-input-template.env "secret", "set" --body-file desktop-release-evidence-preflight.mjs\n',

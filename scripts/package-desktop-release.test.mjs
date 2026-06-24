@@ -196,6 +196,31 @@ test("packages Desktop local source evidence from a healthy release checkout", (
   assert.equal(evidenceResult.status, 0, evidenceResult.stdout + evidenceResult.stderr);
 });
 
+test("preflights Desktop formal artifacts without writing release evidence", (t) => {
+  const root = createFixture(t);
+  writeFile(root, "apps/desktop/src-tauri/target/release/bundle/nsis/JoeSSH_0.1.0-beta.1_x64-setup.exe", "windows");
+  writeFile(root, "apps/desktop/src-tauri/target/release/bundle/dmg/JoeSSH_0.1.0-beta.1_aarch64.dmg", "macos");
+  writeFile(root, "apps/desktop/src-tauri/target/release/bundle/appimage/JoeSSH_0.1.0-beta.1_amd64.AppImage", "linux");
+
+  const result = runPackager(
+    root,
+    [
+      "--require-platforms",
+      "windows,macos,linux",
+      "--source-authority",
+      "local",
+      "--preflight-only",
+    ],
+    createFakeGitCommands(root),
+  );
+
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /Desktop release package preflight passed for 3 artifact\(s\)/);
+  assert.match(result.stdout, /Desktop source evidence preflight passed for local authority/);
+  assert.equal(existsSync(join(root, "reports", "release", "desktop", "release-evidence.json")), false);
+  assert.equal(existsSync(join(root, "reports", "release", "desktop", "SHA256SUMS.txt")), false);
+});
+
 test("rejects local source evidence before staging artifacts when the tag drifts", (t) => {
   const root = createFixture(t);
   writeFile(root, "apps/desktop/src-tauri/target/release/bundle/nsis/JoeSSH_0.1.0-beta.1_x64-setup.exe", "windows");
@@ -225,6 +250,21 @@ test("rejects Windows artifacts without signature verification evidence", (t) =>
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /Windows Desktop artifacts require --windows-signature-verification/);
+  assert.equal(existsSync(join(root, "reports", "release", "desktop", "JoeSSH_0.1.0-beta.1_x64-setup.exe")), false);
+});
+
+test("rejects signature proof that is not bound to the artifact identity before writing", (t) => {
+  const root = createFixture(t);
+  writeFile(root, "apps/desktop/src-tauri/target/release/bundle/nsis/JoeSSH_0.1.0-beta.1_x64-setup.exe", "windows");
+
+  const result = runPackager(root, [
+    "--windows-signature-verification",
+    "signtool verify passed",
+    "--preflight-only",
+  ]);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Windows signature verification proof must mention the artifact file name or SHA256/);
   assert.equal(existsSync(join(root, "reports", "release", "desktop", "JoeSSH_0.1.0-beta.1_x64-setup.exe")), false);
 });
 

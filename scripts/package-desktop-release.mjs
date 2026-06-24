@@ -21,6 +21,7 @@ const {
   macosNotarizationVerification,
   macosSignatureVerification,
   outputDir,
+  preflightOnly,
   requiredPlatforms,
   root,
   runnerType,
@@ -58,7 +59,17 @@ if (staleSourceArtifacts.length > 0) {
 }
 
 validateSignatureEvidence(sourceArtifacts);
+validateSignatureEvidenceBindings(sourceArtifacts);
+validateRequiredPlatforms(sourceArtifacts);
 const localEvidenceSource = sourceAuthority ? createLocalEvidenceSource() : null;
+
+if (preflightOnly) {
+  console.log(`Desktop release package preflight passed for ${sourceArtifacts.length} artifact(s).`);
+  if (sourceAuthority) {
+    console.log(`Desktop source evidence preflight passed for ${sourceAuthority} authority.`);
+  }
+  process.exit(0);
+}
 
 mkdirSync(outputDir, { recursive: true });
 removeStaleDesktopArtifacts(outputDir);
@@ -83,8 +94,6 @@ const releaseArtifacts = sourceArtifacts
       artifactSha256: sha256(destination),
     };
   });
-
-validateRequiredPlatforms(releaseArtifacts);
 
 const evidence = {
   artifacts: releaseArtifacts.map(({ path, classification, artifactSha256 }) =>
@@ -231,6 +240,38 @@ function validateSignatureEvidence(artifacts) {
   }
 }
 
+function validateSignatureEvidenceBindings(artifacts) {
+  for (const artifact of artifacts) {
+    if (artifact.classification.platform === "windows") {
+      requireProofBinding(
+        "Windows signature verification",
+        windowsSignatureVerification,
+        artifact.path,
+      );
+    }
+    if (artifact.classification.platform === "macos") {
+      requireProofBinding(
+        "macOS signature verification",
+        macosSignatureVerification,
+        artifact.path,
+      );
+      requireProofBinding(
+        "macOS notarization verification",
+        macosNotarizationVerification,
+        artifact.path,
+      );
+    }
+  }
+}
+
+function requireProofBinding(label, proofText, artifactPath) {
+  const artifactName = basename(artifactPath);
+  const artifactSha256 = sha256(artifactPath);
+  if (!proofText.includes(artifactName) && !proofText.includes(artifactSha256)) {
+    fail(`${label} proof must mention the artifact file name or SHA256: ${artifactName}`);
+  }
+}
+
 function createLocalEvidenceSource() {
   const source = verifyReleaseGitCheckoutForSource();
   return {
@@ -322,9 +363,14 @@ function parseArgs(args) {
   let sourceAuthority = process.env.ATLASTERM_DESKTOP_RELEASE_SOURCE_AUTHORITY ?? "";
   let runnerType = process.env.ATLASTERM_DESKTOP_RELEASE_RUNNER_TYPE ?? "local-release-machine";
   let requiredPlatforms = [];
+  let preflightOnly = false;
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
+    if (arg === "--preflight-only") {
+      preflightOnly = true;
+      continue;
+    }
     if (arg === "--root") {
       root = resolve(readValue(args, index, arg));
       index += 1;
@@ -453,6 +499,7 @@ function parseArgs(args) {
     macosNotarizationVerification: macosNotarizationVerification.trim(),
     macosSignatureVerification: macosSignatureVerification.trim(),
     outputDir: resolve(root, outputPath),
+    preflightOnly,
     requiredPlatforms,
     root,
     runnerType,

@@ -195,6 +195,7 @@ function checkPackageScripts() {
     "release:desktop:package",
     "release:desktop:package:local-source",
     "release:desktop:formal-artifacts:import",
+    "release:desktop:formal-artifacts:preflight",
     "release:desktop:checksums",
     "release:desktop:secret-template",
     "release:desktop:configure-secrets",
@@ -622,6 +623,7 @@ function checkReleaseToolingFiles() {
   );
   passIf(
     desktopPackager.includes("validateSignatureEvidence(sourceArtifacts)") &&
+      desktopPackager.includes("validateSignatureEvidenceBindings(sourceArtifacts)") &&
       desktopPackager.includes("Windows Desktop artifacts require --windows-signature-verification") &&
       desktopPackager.indexOf("validateSignatureEvidence(sourceArtifacts)") <
         desktopPackager.indexOf("mkdirSync(outputDir"),
@@ -633,9 +635,21 @@ function checkReleaseToolingFiles() {
       desktopFormalArtifactImporter.includes("release upload tools cannot pick up staging-only files"),
     "Desktop formal artifact importer rejects source-tree staging directories",
   );
+  passIf(
+    desktopFormalArtifactImporter.includes("--preflight-only") &&
+      desktopPackager.includes("preflightOnly") &&
+      desktopPackager.includes("Desktop release package preflight passed"),
+    "Desktop formal artifact importer supports non-mutating preflight",
+  );
 
   const desktopEvidenceVerifier =
     readTextIfExists("scripts/verify-desktop-release-evidence.mjs") ?? "";
+  passIf(
+    desktopPackager.includes("proof must mention the artifact file name or SHA256") &&
+      desktopPackager.includes("sha256(artifactPath)") &&
+      desktopEvidenceVerifier.includes("must mention the artifact path, artifact file name, or artifact sha256"),
+    "Desktop release packager preflights signing proof identity binding",
+  );
   passIf(
     desktopEvidenceVerifier.includes("sha256File(fullPath)") &&
       desktopEvidenceVerifier.includes("hash mismatch"),

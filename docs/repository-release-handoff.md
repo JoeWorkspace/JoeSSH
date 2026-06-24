@@ -84,9 +84,11 @@ route, not a blocker for the first Public Beta.
    ```
 
    For a local/self-hosted authority, import the external signed artifact
-   directory after the tag is created:
+   directory after the tag is created. Preflight the same input first so missing
+   proof files or platform artifacts are caught before staging release evidence:
 
    ```bash
+   npm run release:desktop:formal-artifacts:preflight -- --input-dir <signed-artifact-dir> --source-authority local
    npm run release:desktop:formal-artifacts:import -- --input-dir <signed-artifact-dir> --source-authority local
    ```
 
