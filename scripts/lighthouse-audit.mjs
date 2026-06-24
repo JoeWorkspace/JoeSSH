@@ -66,9 +66,11 @@ async function runAudit({ distDir, outputPath, thresholds }) {
     const lhr = await runLighthouseAttempt(distDir, { maxWaitForLoad });
     lastLhr = lhr;
     const runWarningFailures = collectRunWarningFailures(lhr);
-    if (runWarningFailures.length > 0 && attempt < maxAttempts) {
+    const thresholdFailures = collectThresholdFailures(lhr, thresholds);
+    const retryableFailures = [...runWarningFailures, ...thresholdFailures];
+    if (retryableFailures.length > 0 && attempt < maxAttempts) {
       console.log(
-        `Lighthouse emitted ${runWarningFailures.length} run warning(s) on attempt ${attempt}/${maxAttempts}; retrying before failing closed.`,
+        `Lighthouse attempt ${attempt}/${maxAttempts} missed release gate (${retryableFailures.length} issue(s)); retrying before failing closed.`,
       );
       continue;
     }
@@ -118,6 +120,26 @@ async function runAudit({ distDir, outputPath, thresholds }) {
       `Lighthouse thresholds failed:\n- ${failures.join("\n- ")}`,
     );
   }
+}
+
+export function collectThresholdFailures(lhr, thresholds) {
+  const failures = [];
+  for (const category of categories) {
+    const resultCategory = lhr?.categories?.[category];
+    if (!resultCategory || typeof resultCategory.score !== "number") {
+      failures.push(`${category} score is missing`);
+      continue;
+    }
+
+    const score = Math.round(resultCategory.score * 100);
+    const minimum = Math.round(thresholds[category] * 100);
+    if (resultCategory.score < thresholds[category]) {
+      failures.push(
+        `${resultCategory.title} scored ${score}/100 below minimum ${minimum}/100`,
+      );
+    }
+  }
+  return failures;
 }
 
 async function runLighthouseAttempt(distDir, { maxWaitForLoad }) {
