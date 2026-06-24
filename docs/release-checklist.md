@@ -97,6 +97,7 @@ preflight/device-smoke validation until a later beta.
   machine with
   `npm run release:desktop:formal-artifacts:request -- --source-authority local`,
   `npm run release:desktop:formal-artifacts:kit -- --source-authority local`,
+  `npm run release:desktop:formal-artifacts:kit:verify -- --source-authority local`,
   `npm run release:desktop:formal-artifacts:manifest -- --input-dir <signed-artifact-dir> --source-authority local`,
   `npm run release:desktop:formal-artifacts:intake -- --input-dir <signed-artifact-dir> --source-authority local`,
   `npm run release:desktop:formal-artifacts:preflight -- --input-dir <signed-artifact-dir> --source-authority local`
@@ -119,7 +120,9 @@ preflight/device-smoke validation until a later beta.
   receive a checksum-covered
   `desktop-formal-artifact-handoff-kit-<version>.zip`, run the manifest command,
   and return a directory that passes intake and import without guessing JSON
-  fields or filenames.
+  fields or filenames. Verify the handoff kit before it leaves the release
+  machine so stale source, checksum, request, or operator-command drift is
+  caught locally.
   Windows and macOS proof text must mention both the artifact file name and
   SHA256.
 - If this candidate intentionally excludes public Desktop downloads, do not
@@ -140,6 +143,7 @@ preflight/device-smoke validation until a later beta.
   local/self-hosted Desktop source evidence, create the tag before
   `npm run release:desktop:formal-artifacts:request -- --source-authority local`,
   `npm run release:desktop:formal-artifacts:kit -- --source-authority local`,
+  `npm run release:desktop:formal-artifacts:kit:verify -- --source-authority local`,
   `npm run release:desktop:formal-artifacts:manifest -- --input-dir <signed-artifact-dir> --source-authority local`,
   `npm run release:desktop:formal-artifacts:intake -- --input-dir <signed-artifact-dir> --source-authority local`,
   `npm run release:desktop:formal-artifacts:preflight -- --input-dir <signed-artifact-dir> --source-authority local`

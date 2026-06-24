@@ -92,6 +92,7 @@ route, not a blocker for the first Public Beta.
    ```bash
    npm run release:desktop:formal-artifacts:request -- --source-authority local
    npm run release:desktop:formal-artifacts:kit -- --source-authority local
+   npm run release:desktop:formal-artifacts:kit:verify -- --source-authority local
    npm run release:desktop:formal-artifacts:manifest -- --input-dir <signed-artifact-dir> --source-authority local
    npm run release:desktop:formal-artifacts:intake -- --input-dir <signed-artifact-dir> --source-authority local
    npm run release:desktop:formal-artifacts:preflight -- --input-dir <signed-artifact-dir> --source-authority local
@@ -109,7 +110,10 @@ route, not a blocker for the first Public Beta.
    can receive the checksum-covered
    `desktop-formal-artifact-handoff-kit-<version>.zip` and use the same proof filenames, generated
    `desktop-formal-artifact-manifest.json`, artifact SHA256 bindings, and
-   platform contract as the importer. Windows and macOS proof text must mention
+   platform contract as the importer. Verify the handoff kit before sending it
+   to the signing machine so the zip, embedded request, checksum manifest,
+   release tag commit, and operator command files are bound to the current
+   checkout. Windows and macOS proof text must mention
    both the artifact file name and SHA256.
 
 7. Generate provenance, run publish preflight, and draft or stage publication:

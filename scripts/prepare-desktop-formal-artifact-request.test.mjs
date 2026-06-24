@@ -146,6 +146,7 @@ test("writes checksum-covered Desktop formal artifact request from a clean relea
   ]);
   assert.equal(request.inputDirectory.mustBeOutsideReleaseWorkspace, true);
   assert.match(request.commands.kit, /release:desktop:formal-artifacts:kit/);
+  assert.match(request.commands.kitVerify, /release:desktop:formal-artifacts:kit:verify/);
   assert.match(request.commands.manifest, /release:desktop:formal-artifacts:manifest/);
   assert.match(request.commands.intake, /release:desktop:formal-artifacts:intake/);
   assert.match(request.commands.import, /--source-authority local/);

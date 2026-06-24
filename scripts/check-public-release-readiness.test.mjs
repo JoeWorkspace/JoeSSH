@@ -46,6 +46,8 @@ const releaseScriptNames = [
   "qa:desktop-formal-artifact-import",
   "test:desktop-formal-artifact-kit",
   "qa:desktop-formal-artifact-kit",
+  "test:desktop-formal-artifact-kit-verify",
+  "qa:desktop-formal-artifact-kit-verify",
   "test:desktop-formal-artifact-manifest",
   "qa:desktop-formal-artifact-manifest",
   "test:desktop-formal-artifact-request",
@@ -99,6 +101,7 @@ const releaseScriptNames = [
   "release:desktop:package:local-source",
   "release:desktop:formal-artifacts:import",
   "release:desktop:formal-artifacts:kit",
+  "release:desktop:formal-artifacts:kit:verify",
   "release:desktop:formal-artifacts:manifest",
   "release:desktop:formal-artifacts:request",
   "release:desktop:formal-artifacts:intake",
@@ -176,7 +179,7 @@ function fixtureScriptValue(name, overrides = {}) {
     return "npm run test:desktop-public-exclusion";
   }
   if (name === "qa") {
-    return "npm run lint && npm run qa:desktop-formal-artifact-import && npm run qa:desktop-formal-artifact-kit && npm run qa:desktop-formal-artifact-manifest && npm run qa:desktop-formal-artifact-request && npm run qa:desktop-formal-artifact-intake && npm run qa:desktop-public-exclusion && npm run qa:desktop-release-diagnostics && npm run qa:desktop-release-parity && npm run qa:web-admin-rollback-smoke && npm run test:rust-advisory-audit && npm run qa:lighthouse-audit && npm run qa:e2e:fresh";
+    return "npm run lint && npm run qa:desktop-formal-artifact-import && npm run qa:desktop-formal-artifact-kit && npm run qa:desktop-formal-artifact-kit-verify && npm run qa:desktop-formal-artifact-manifest && npm run qa:desktop-formal-artifact-request && npm run qa:desktop-formal-artifact-intake && npm run qa:desktop-public-exclusion && npm run qa:desktop-release-diagnostics && npm run qa:desktop-release-parity && npm run qa:web-admin-rollback-smoke && npm run test:rust-advisory-audit && npm run qa:lighthouse-audit && npm run qa:e2e:fresh";
   }
   if (name === "qa:desktop:real-ssh-smoke:required") {
     return "node scripts/require-real-ssh-smoke-env.mjs && npm run qa:desktop:real-ssh-smoke";
@@ -205,11 +208,20 @@ function fixtureScriptValue(name, overrides = {}) {
   if (name === "release:desktop:formal-artifacts:kit") {
     return "node scripts/prepare-desktop-formal-artifact-kit.mjs";
   }
+  if (name === "release:desktop:formal-artifacts:kit:verify") {
+    return "node scripts/verify-desktop-formal-artifact-kit.mjs";
+  }
   if (name === "test:desktop-formal-artifact-kit") {
     return "node --test scripts/prepare-desktop-formal-artifact-kit.test.mjs";
   }
   if (name === "qa:desktop-formal-artifact-kit") {
     return "npm run test:desktop-formal-artifact-kit";
+  }
+  if (name === "test:desktop-formal-artifact-kit-verify") {
+    return "node --test scripts/verify-desktop-formal-artifact-kit.test.mjs";
+  }
+  if (name === "qa:desktop-formal-artifact-kit-verify") {
+    return "npm run test:desktop-formal-artifact-kit-verify";
   }
   if (name === "release:desktop:formal-artifacts:manifest") {
     return "node scripts/prepare-desktop-formal-artifact-manifest.mjs";
@@ -406,13 +418,16 @@ function createFixture(t, overrides = {}) {
       "release:desktop:verify-evidence --require-source-authority --preflight-only desktop-formal-artifact-manifest.json windows-signature-verification.txt macos-notarization-verification.txt Desktop formal artifact input contains file(s) that do not include --input-dir must be outside the release workspace source tree is clean release upload tools cannot pick up staging-only files source.gitCommit must match current HEAD formalArtifactManifest proof must mention both the artifact file name and SHA256 formal-artifact-request.json formal-artifact-request-SHA256SUMS.txt requestId must match the current Desktop formal artifact request request.source.gitCommit must match current HEAD\n",
     "scripts/import-desktop-formal-artifacts.test.mjs": "",
     "scripts/prepare-desktop-formal-artifact-kit.mjs":
-      "desktop-formal-artifact-handoff-kit formal-artifact-request.json formal-artifact-request-SHA256SUMS.txt requestId request.source.gitCommit must match current HEAD request.source.releaseTagCommit must match request.commands.manifest request.commands.intake request.commands.preflight request.commands.import Proof text must mention both the artifact file name and the artifact SHA256\n",
+      "desktop-formal-artifact-handoff-kit formal-artifact-request.json formal-artifact-request-SHA256SUMS.txt requestId request.source.gitCommit must match current HEAD request.source.releaseTagCommit must match request.commands.kitVerify request.commands.manifest request.commands.intake request.commands.preflight request.commands.import Proof text must mention both the artifact file name and the artifact SHA256\n",
     "scripts/prepare-desktop-formal-artifact-kit.test.mjs": "",
+    "scripts/verify-desktop-formal-artifact-kit.mjs":
+      "desktop-formal-artifact-handoff-kit formal-artifact-request.json formal-artifact-request-SHA256SUMS.txt Embedded formal-artifact-request.json does not match the current request requestId source.gitCommit source.releaseTagCommit request.commands.kitVerify commands/windows-powershell.ps1 checksum does not match sha256File(options.kitPath) git fsck --strict must pass\n",
+    "scripts/verify-desktop-formal-artifact-kit.test.mjs": "",
     "scripts/prepare-desktop-formal-artifact-manifest.mjs":
       "desktop-formal-artifact-manifest.json formal-artifact-request.json formal-artifact-request-SHA256SUMS.txt requestId request.source.gitCommit must match current HEAD request.source.releaseTagCommit must match sha256: sha256File sizeBytes: statSync --input-dir must be outside the release workspace source tree is clean release upload tools cannot pick up staging-only files\n",
     "scripts/prepare-desktop-formal-artifact-manifest.test.mjs": "",
     "scripts/prepare-desktop-formal-artifact-request.mjs":
-      "formal-artifact-request.json formal-artifact-request-SHA256SUMS.txt desktop-formal-artifact-manifest.json mustMentionAll windows-signature-verification.txt macos-notarization-verification.txt release:desktop:formal-artifacts:kit release:desktop:formal-artifacts:manifest release:desktop:formal-artifacts:intake\n",
+      "formal-artifact-request.json formal-artifact-request-SHA256SUMS.txt desktop-formal-artifact-manifest.json mustMentionAll windows-signature-verification.txt macos-notarization-verification.txt release:desktop:formal-artifacts:kit release:desktop:formal-artifacts:kit:verify release:desktop:formal-artifacts:manifest release:desktop:formal-artifacts:intake\n",
     "scripts/prepare-desktop-formal-artifact-request.test.mjs": "",
     "scripts/diagnose-desktop-formal-artifact-input.mjs":
       "formal-artifact-input-report.json formal-artifact-input-report-SHA256SUMS.txt desktop-formal-artifact-manifest.json runImporterPreflight proof must show a successful verification proof must mention both the artifact file name and SHA256\n",
@@ -620,6 +635,8 @@ function ciFixture() {
     "npm run qa:artifact-checksums",
     "npm run qa:desktop-release-package",
     "npm run qa:desktop-formal-artifact-import",
+    "npm run qa:desktop-formal-artifact-kit",
+    "npm run qa:desktop-formal-artifact-kit-verify",
     "npm run qa:desktop-release-evidence",
     "npm run qa:desktop-release-secrets",
     "npm run qa:desktop-release-diagnostics",
@@ -961,6 +978,10 @@ test("rejects Desktop checksum scripts that bypass release evidence packaging", 
             "qa:desktop-release-package",
             "test:desktop-formal-artifact-import",
             "qa:desktop-formal-artifact-import",
+            "test:desktop-formal-artifact-kit",
+            "qa:desktop-formal-artifact-kit",
+            "test:desktop-formal-artifact-kit-verify",
+            "qa:desktop-formal-artifact-kit-verify",
             "test:desktop-release-evidence",
             "qa:desktop-release-evidence",
             "test:web-release",
@@ -987,6 +1008,8 @@ test("rejects Desktop checksum scripts that bypass release evidence packaging", 
             "release:desktop:package",
             "release:desktop:package:local-source",
             "release:desktop:formal-artifacts:import",
+            "release:desktop:formal-artifacts:kit",
+            "release:desktop:formal-artifacts:kit:verify",
             "release:desktop:checksums",
             "release:desktop:verify-evidence",
             "release:desktop:draft",
@@ -1047,6 +1070,10 @@ test("rejects release checksum gates that do not discover all staged manifests",
             "qa:desktop-release-package",
             "test:desktop-formal-artifact-import",
             "qa:desktop-formal-artifact-import",
+            "test:desktop-formal-artifact-kit",
+            "qa:desktop-formal-artifact-kit",
+            "test:desktop-formal-artifact-kit-verify",
+            "qa:desktop-formal-artifact-kit-verify",
             "test:desktop-release-evidence",
             "qa:desktop-release-evidence",
             "test:web-release",
@@ -1073,6 +1100,8 @@ test("rejects release checksum gates that do not discover all staged manifests",
             "release:desktop:package",
             "release:desktop:package:local-source",
             "release:desktop:formal-artifacts:import",
+            "release:desktop:formal-artifacts:kit",
+            "release:desktop:formal-artifacts:kit:verify",
             "release:desktop:checksums",
             "release:desktop:verify-evidence",
             "release:desktop:draft",

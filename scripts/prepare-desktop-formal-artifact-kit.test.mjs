@@ -56,6 +56,8 @@ function writeCurrentRequest(root, options = {}) {
       import: "npm run release:desktop:formal-artifacts:import -- --input-dir <signed-artifact-dir> --source-authority local",
       intake: "npm run release:desktop:formal-artifacts:intake -- --input-dir <signed-artifact-dir> --source-authority local",
       manifest: "npm run release:desktop:formal-artifacts:manifest -- --input-dir <signed-artifact-dir> --source-authority local",
+      kit: "npm run release:desktop:formal-artifacts:kit -- --source-authority local",
+      kitVerify: "npm run release:desktop:formal-artifacts:kit:verify -- --source-authority local",
       preflight: "npm run release:desktop:formal-artifacts:preflight -- --input-dir <signed-artifact-dir> --source-authority local",
       verify: "npm run release:desktop:verify-evidence -- --require-source --require-current-git-source",
     },
@@ -212,8 +214,12 @@ test("writes a checksum-covered Desktop formal artifact handoff kit", (t) => {
   assert.equal(existsSync(archivePath), true);
   const entries = readZipEntries(archivePath);
   assert.match(entries.get("README.md"), /This kit is bound to v0\.1\.0-beta\.1 at abc123/);
+  assert.match(entries.get("README.md"), /Request ID: desktop-formal-test/);
   assert.match(entries.get("README.md"), /desktop-formal-artifact-manifest\.json/);
+  assert.match(entries.get("README.md"), /release:desktop:formal-artifacts:kit:verify/);
+  assert.match(entries.get("commands/windows-powershell.ps1"), /release:desktop:formal-artifacts:kit:verify/);
   assert.match(entries.get("commands/windows-powershell.ps1"), /release:desktop:formal-artifacts:manifest/);
+  assert.match(entries.get("commands/unix.sh"), /release:desktop:formal-artifacts:kit:verify/);
   assert.match(entries.get("commands/unix.sh"), /release:desktop:formal-artifacts:import/);
   assert.equal(
     entries.get("formal-artifact-request.json"),

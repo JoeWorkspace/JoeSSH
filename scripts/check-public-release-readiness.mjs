@@ -155,6 +155,8 @@ function checkPackageScripts() {
     "qa:desktop-formal-artifact-import",
     "test:desktop-formal-artifact-kit",
     "qa:desktop-formal-artifact-kit",
+    "test:desktop-formal-artifact-kit-verify",
+    "qa:desktop-formal-artifact-kit-verify",
     "test:desktop-formal-artifact-manifest",
     "qa:desktop-formal-artifact-manifest",
     "test:desktop-formal-artifact-request",
@@ -208,6 +210,7 @@ function checkPackageScripts() {
     "release:desktop:package:local-source",
     "release:desktop:formal-artifacts:import",
     "release:desktop:formal-artifacts:kit",
+    "release:desktop:formal-artifacts:kit:verify",
     "release:desktop:formal-artifacts:manifest",
     "release:desktop:formal-artifacts:request",
     "release:desktop:formal-artifacts:intake",
@@ -494,6 +497,11 @@ function checkPackageScripts() {
     rootQaScript,
   );
   passIf(
+    rootQaScript.includes("qa:desktop-formal-artifact-kit-verify"),
+    "Root QA runs Desktop formal artifact handoff kit verification tests",
+    rootQaScript,
+  );
+  passIf(
     rootQaScript.includes("qa:desktop-formal-artifact-manifest"),
     "Root QA runs Desktop formal artifact manifest tests",
     rootQaScript,
@@ -557,6 +565,8 @@ function checkCiPublicReleaseWiring() {
     "npm run qa:artifact-checksums",
     "npm run qa:desktop-release-package",
     "npm run qa:desktop-formal-artifact-import",
+    "npm run qa:desktop-formal-artifact-kit",
+    "npm run qa:desktop-formal-artifact-kit-verify",
     "npm run qa:desktop-release-evidence",
     "npm run qa:desktop-release-secrets",
     "npm run qa:desktop-release-diagnostics",
@@ -617,6 +627,8 @@ function checkReleaseToolingFiles() {
     "scripts/import-desktop-formal-artifacts.test.mjs",
     "scripts/prepare-desktop-formal-artifact-kit.mjs",
     "scripts/prepare-desktop-formal-artifact-kit.test.mjs",
+    "scripts/verify-desktop-formal-artifact-kit.mjs",
+    "scripts/verify-desktop-formal-artifact-kit.test.mjs",
     "scripts/prepare-desktop-formal-artifact-manifest.mjs",
     "scripts/prepare-desktop-formal-artifact-manifest.test.mjs",
     "scripts/prepare-desktop-formal-artifact-request.mjs",
@@ -690,6 +702,8 @@ function checkReleaseToolingFiles() {
     readTextIfExists("scripts/import-desktop-formal-artifacts.mjs") ?? "";
   const desktopFormalArtifactKit =
     readTextIfExists("scripts/prepare-desktop-formal-artifact-kit.mjs") ?? "";
+  const desktopFormalArtifactKitVerifier =
+    readTextIfExists("scripts/verify-desktop-formal-artifact-kit.mjs") ?? "";
   const desktopFormalArtifactManifest =
     readTextIfExists("scripts/prepare-desktop-formal-artifact-manifest.mjs") ??
     "";
@@ -785,6 +799,7 @@ function checkReleaseToolingFiles() {
       desktopFormalArtifactRequest.includes("windows-signature-verification.txt") &&
       desktopFormalArtifactRequest.includes("macos-notarization-verification.txt") &&
       desktopFormalArtifactRequest.includes("release:desktop:formal-artifacts:kit") &&
+      desktopFormalArtifactRequest.includes("release:desktop:formal-artifacts:kit:verify") &&
       desktopFormalArtifactRequest.includes("release:desktop:formal-artifacts:manifest") &&
       desktopFormalArtifactRequest.includes("release:desktop:formal-artifacts:intake"),
     "Desktop formal artifact request generator writes checksum-covered handoff contract",
@@ -797,11 +812,27 @@ function checkReleaseToolingFiles() {
       desktopFormalArtifactKit.includes("source.gitCommit") &&
       desktopFormalArtifactKit.includes("source.releaseTagCommit") &&
       desktopFormalArtifactKit.includes("request.commands.manifest") &&
+      desktopFormalArtifactKit.includes("request.commands.kitVerify") &&
       desktopFormalArtifactKit.includes("request.commands.intake") &&
       desktopFormalArtifactKit.includes("request.commands.preflight") &&
       desktopFormalArtifactKit.includes("request.commands.import") &&
       desktopFormalArtifactKit.includes("Proof text must mention both the artifact file name and the artifact SHA256"),
     "Desktop formal artifact handoff kit binds request evidence and operator commands for external signing",
+  );
+  passIf(
+    desktopFormalArtifactKitVerifier.includes("desktop-formal-artifact-handoff-kit") &&
+      desktopFormalArtifactKitVerifier.includes("formal-artifact-request.json") &&
+      desktopFormalArtifactKitVerifier.includes("formal-artifact-request-SHA256SUMS.txt") &&
+      desktopFormalArtifactKitVerifier.includes("Embedded formal-artifact-request.json does not match the current request") &&
+      desktopFormalArtifactKitVerifier.includes("requestId") &&
+      desktopFormalArtifactKitVerifier.includes("source.gitCommit") &&
+      desktopFormalArtifactKitVerifier.includes("source.releaseTagCommit") &&
+      desktopFormalArtifactKitVerifier.includes("request.commands.kitVerify") &&
+      desktopFormalArtifactKitVerifier.includes("commands/windows-powershell.ps1") &&
+      desktopFormalArtifactKitVerifier.includes("checksum does not match") &&
+      desktopFormalArtifactKitVerifier.includes("sha256File(options.kitPath)") &&
+      desktopFormalArtifactKitVerifier.includes("git fsck --strict must pass"),
+    "Desktop formal artifact handoff kit verifier binds kit checksum, embedded request, source, and operator commands",
   );
   passIf(
     desktopFormalArtifactManifest.includes("desktop-formal-artifact-manifest.json") &&

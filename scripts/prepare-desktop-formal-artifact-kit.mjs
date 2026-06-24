@@ -95,6 +95,8 @@ function createReadme(request, kit) {
 
 This kit is bound to ${kit.releaseTag} at ${kit.source.gitCommit}.
 
+Request ID: ${request.requestId}
+
 Do not edit the request JSON or checksum manifest. Build, sign, notarize, and verify the Desktop artifacts on the release machine, then place the returned artifacts and proof files in one directory outside the JoeSSH release workspace.
 
 Required returned files:
@@ -107,6 +109,7 @@ ${requiredProofText}
 Run these commands from the healthy release checkout after the signed directory is ready:
 
 \`\`\`bash
+${request.commands.kitVerify}
 ${request.commands.manifest}
 ${request.commands.intake}
 ${request.commands.preflight}
@@ -120,6 +123,7 @@ Proof text must mention both the artifact file name and the artifact SHA256. The
 
 function createCommandFiles(request) {
   const commands = [
+    request.commands.kitVerify,
     request.commands.manifest,
     request.commands.intake,
     request.commands.preflight,
@@ -232,7 +236,7 @@ function readCurrentFormalArtifactRequest(gitSource) {
       blockers.push(`request.requiredPlatforms must include ${platform}`);
     }
   }
-  for (const commandName of ["manifest", "intake", "preflight", "import", "verify"]) {
+  for (const commandName of ["kit", "kitVerify", "manifest", "intake", "preflight", "import", "verify"]) {
     if (typeof request.commands?.[commandName] !== "string" || request.commands[commandName].trim() === "") {
       blockers.push(`request.commands.${commandName} must be present`);
     }

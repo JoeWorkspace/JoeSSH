@@ -198,6 +198,7 @@ import the returned directory through the formal evidence wrapper:
 ```bash
 npm run release:desktop:formal-artifacts:request -- --source-authority local
 npm run release:desktop:formal-artifacts:kit -- --source-authority local
+npm run release:desktop:formal-artifacts:kit:verify -- --source-authority local
 npm run release:desktop:formal-artifacts:manifest -- --input-dir <signed-artifact-dir> --source-authority local
 npm run release:desktop:formal-artifacts:intake -- --input-dir <signed-artifact-dir> --source-authority local
 npm run release:desktop:formal-artifacts:preflight -- --input-dir <signed-artifact-dir> --source-authority local
@@ -212,7 +213,9 @@ rules, returned manifest contract, and the exact manifest/intake/preflight/impor
 commands. The kit command writes
 `reports/handoff/desktop/desktop-formal-artifact-handoff-kit-<version>.zip` and
 its SHA256 manifest so a signing machine receives the request, checksum,
-operator commands, and returned-directory contract as one artifact. The manifest command hashes every Desktop artifact in
+operator commands, and returned-directory contract as one artifact. Verify the
+kit before handoff so stale request JSON, stale source commits, broken checksum
+coverage, or missing operator commands cannot leave the release machine. The manifest command hashes every Desktop artifact in
 `<signed-artifact-dir>`, binds it to the current request ID and tagged source
 commit, and refuses to overwrite an existing manifest unless `--force` is
 explicit.

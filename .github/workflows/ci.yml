@@ -31,6 +31,8 @@ jobs:
       - run: npm run qa:artifact-checksums
       - run: npm run qa:desktop-release-package
       - run: npm run qa:desktop-formal-artifact-import
+      - run: npm run qa:desktop-formal-artifact-kit
+      - run: npm run qa:desktop-formal-artifact-kit-verify
       - run: npm run qa:desktop-release-evidence
       - run: npm run qa:desktop-release-secrets
       - run: npm run qa:desktop-release-diagnostics
