@@ -129,6 +129,7 @@ function checkPackageScripts() {
     "qa:lighthouse-audit",
     "test:public-beta-dogfood",
     "qa:public-beta-dogfood",
+    "test:rust-advisory-audit",
     "qa:rust-advisory",
     "qa:web-admin-proxy-smoke",
     "qa:web-admin-sync-topology-smoke",
@@ -434,6 +435,11 @@ function checkPackageScripts() {
     rootQaScript,
   );
   passIf(
+    rootQaScript.includes("test:rust-advisory-audit"),
+    "Root QA runs Rust advisory audit wrapper tests",
+    rootQaScript,
+  );
+  passIf(
     rootQaScript.includes("qa:web-admin-rollback-smoke"),
     "Root QA runs Web Admin rollback smoke tests",
     rootQaScript,
@@ -564,6 +570,8 @@ function checkReleaseToolingFiles() {
     "scripts/smoke-web-admin-rollback.test.mjs",
     "scripts/check-mobile-public-env.mjs",
     "scripts/check-mobile-public-env.test.mjs",
+    "scripts/run-rust-advisory-audit.mjs",
+    "scripts/run-rust-advisory-audit.test.mjs",
     "scripts/lighthouse-audit.mjs",
     "scripts/create-github-release-draft.mjs",
     "scripts/create-github-release-draft.test.mjs",
@@ -595,6 +603,8 @@ function checkReleaseToolingFiles() {
     readTextIfExists("scripts/verify-public-beta-dogfood-evidence.mjs") ?? "";
   const unsignedStagingReporter =
     readTextIfExists("scripts/report-desktop-unsigned-staging.mjs") ?? "";
+  const rustAdvisoryAudit =
+    readTextIfExists("scripts/run-rust-advisory-audit.mjs") ?? "";
   passIf(
     dogfoodVerifier.includes("desktop-install-launch") &&
       dogfoodVerifier.includes("sync-backup-restore-rollback") &&
@@ -609,6 +619,14 @@ function checkReleaseToolingFiles() {
       unsignedStagingReporter.includes("sha256File(path)") &&
       unsignedStagingReporter.includes("versionMatchesPackage"),
     "Desktop unsigned staging reporter records handoff evidence without weakening release artifacts",
+  );
+  passIf(
+    rustAdvisoryAudit.includes("cargo audit could not fetch the RustSec advisory DB") &&
+      rustAdvisoryAudit.includes("--no-fetch") &&
+      rustAdvisoryAudit.includes("--stale") &&
+      rustAdvisoryAudit.includes("isFetchFailure") &&
+      rustAdvisoryAudit.includes("maxCacheHours"),
+    "Rust advisory audit wrapper only falls back to fresh local advisory DB after fetch failures",
   );
   passIf(
     desktopPackager.includes("artifactSha256") &&

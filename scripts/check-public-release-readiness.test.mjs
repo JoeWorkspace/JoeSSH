@@ -20,6 +20,7 @@ const releaseScriptNames = [
   "qa:lighthouse-audit",
   "test:public-beta-dogfood",
   "qa:public-beta-dogfood",
+  "test:rust-advisory-audit",
   "qa:rust-advisory",
   "qa:web-admin-proxy-smoke",
   "qa:web-admin-sync-topology-smoke",
@@ -136,6 +137,9 @@ function fixtureScriptValue(name, overrides = {}) {
   if (name === "qa:public-beta-dogfood") {
     return "node scripts/verify-public-beta-dogfood-evidence.mjs";
   }
+  if (name === "test:rust-advisory-audit") {
+    return "node --test scripts/run-rust-advisory-audit.test.mjs";
+  }
   if (name === "test:desktop-unsigned-staging-report") {
     return "node --test scripts/report-desktop-unsigned-staging.test.mjs";
   }
@@ -143,7 +147,7 @@ function fixtureScriptValue(name, overrides = {}) {
     return "npm run test:desktop-unsigned-staging-report";
   }
   if (name === "qa") {
-    return "npm run lint && npm run qa:desktop-formal-artifact-import && npm run qa:desktop-release-diagnostics && npm run qa:desktop-release-parity && npm run qa:web-admin-rollback-smoke && npm run qa:lighthouse-audit && npm run qa:e2e:fresh";
+    return "npm run lint && npm run qa:desktop-formal-artifact-import && npm run qa:desktop-release-diagnostics && npm run qa:desktop-release-parity && npm run qa:web-admin-rollback-smoke && npm run test:rust-advisory-audit && npm run qa:lighthouse-audit && npm run qa:e2e:fresh";
   }
   if (name === "qa:desktop:real-ssh-smoke:required") {
     return "node scripts/require-real-ssh-smoke-env.mjs && npm run qa:desktop:real-ssh-smoke";
@@ -334,6 +338,9 @@ function createFixture(t, overrides = {}) {
     "scripts/check-mobile-public-env.mjs":
       "EXPO_PUBLIC_ATLASTERM_SYNC_AUTH_TOKEN Public Beta mobile release builds embedded in the app bundle\n",
     "scripts/check-mobile-public-env.test.mjs": "",
+    "scripts/run-rust-advisory-audit.mjs":
+      "cargo audit could not fetch the RustSec advisory DB --no-fetch --stale isFetchFailure maxCacheHours\n",
+    "scripts/run-rust-advisory-audit.test.mjs": "",
     "scripts/lighthouse-audit.mjs":
       '"web" apps", "web", "dist reports", "lighthouse", "web-admin.json --min-performance defaultThresholds readDeploymentHeaders ?adminSnapshot=fixture /api/admin/snapshot createEmptyAdminSnapshot collectRunWarningFailures runWarnings\n',
     "scripts/smoke-web-admin-proxy.mjs":
