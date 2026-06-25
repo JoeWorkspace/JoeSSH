@@ -48,6 +48,7 @@ const report = {
 
 auditGit();
 auditReleaseManifests();
+auditReleaseProvenanceVerification();
 auditWebAdminRollback();
 auditDesktopArtifactVersions();
 auditDesktopDogfood();
@@ -178,6 +179,18 @@ function auditReleaseManifests() {
     const result = verifyChecksumManifest(relativePath);
     addCheck(id, label, result.ok ? "pass" : "fail", result.detail, blocking && !result.ok);
   }
+}
+
+function auditReleaseProvenanceVerification() {
+  const scriptName = provenanceVerifyScriptName();
+  const result = runNpm(["run", scriptName]);
+  addCheck(
+    "release-provenance-verify",
+    "Release provenance verification",
+    result.status === 0 ? "pass" : "fail",
+    result.status === 0 ? "passed" : tail(commandDiagnostic(result)).join("\n"),
+    result.status !== 0,
+  );
 }
 
 function auditDesktopArtifactVersions() {
@@ -760,6 +773,18 @@ function publishPreflightScriptName() {
     return "release:publish-preflight:local:desktop-local-unsigned";
   }
   return releaseAuthority === "local" ? "release:publish-preflight:local" : "release:publish-preflight";
+}
+
+function provenanceVerifyScriptName() {
+  if (releaseProfile === "web-sync-only") {
+    return releaseAuthority === "local"
+      ? "release:provenance:verify:local:web-sync-only"
+      : "release:provenance:verify:web-sync-only";
+  }
+  if (releaseProfile === "desktop-local-unsigned") {
+    return "release:provenance:verify:local:desktop-local-unsigned";
+  }
+  return releaseAuthority === "local" ? "release:provenance:verify:local" : "release:provenance:verify";
 }
 
 function normalizeReleaseProfile(value) {

@@ -49,6 +49,7 @@ function createFixture(t, options = {}) {
     head: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     localAuthorityOk: true,
     publishPreflightOk: true,
+    provenanceVerifyOk: true,
     publicBetaDogfoodOk: true,
     tag: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     ...options,
@@ -230,6 +231,20 @@ test("rejects missing release provenance before publish preflight can hide it", 
   const blocker = report.blockers.find((entry) => entry.id === "release-provenance");
   assert(blocker);
   assert.match(blocker.detail, /release-provenance-SHA256SUMS\.txt is missing/);
+});
+
+test("rejects stale release provenance even when its checksum manifest exists", (t) => {
+  const { fakePath, root, statePath } = createFixture(t, {
+    provenanceVerifyOk: false,
+  });
+
+  const result = runAudit(root, fakePath, statePath, ["--release-authority", "local", "--skip-github"]);
+
+  assert.equal(result.status, 0);
+  const report = readAuditReport(root, "local");
+  const blocker = report.blockers.find((entry) => entry.id === "release-provenance-verify");
+  assert(blocker);
+  assert.match(blocker.detail, /Release provenance verification failed/);
 });
 
 test("rejects missing Web Admin rollback evidence", (t) => {
@@ -457,6 +472,11 @@ if (tool === "git") {
   if (args[0] === "run" && args[1] === "release:local-authority:verify") {
     if (state.localAuthorityOk) process.exit(0);
     console.error("Local release authority verification failed: source.gitCommit does not match current HEAD");
+    process.exit(1);
+  }
+  if (args[0] === "run" && args[1].startsWith("release:provenance:verify")) {
+    if (state.provenanceVerifyOk) process.exit(0);
+    console.error("Release provenance verification failed: source.gitCommit does not match current HEAD");
     process.exit(1);
   }
   if (args[0] === "run" && args[1] === "qa:public-beta-dogfood") {
