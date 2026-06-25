@@ -244,7 +244,7 @@ function runGenerator(root, env = createFakeCommands(root), extraArgs = []) {
 function writeLocalReleaseAuthorityFixture(root, options = {}) {
   const releaseProfile = options.releaseProfile ?? "full";
   const command = options.gateCommand ?? "npm run qa:release:public:fixture";
-  const logPath = "reports/release/local-release-authority/qa-release-public.log";
+  const logPath = options.logPath ?? "reports/release/local-release-authority/qa-release-public.log";
   const logText = [
     `> atlasterm@0.1.0-beta.1 ${command.replace("npm run ", "")}`,
     `> ${command}`,
@@ -448,6 +448,33 @@ test("generates and verifies release provenance with local release authority", (
     ),
   );
   assert(provenance.verifiers.includes("verify-local-release-authority.mjs"));
+
+  const verified = runVerifier(root, env, ["--release-authority", "local"]);
+  assert.equal(verified.status, 0, verified.stdout + verified.stderr);
+});
+
+test("ignores other profile local authority manifests when generating full provenance", (t) => {
+  const root = createFixture(t);
+  const env = createFakeCommands(root);
+  writeLocalReleaseAuthorityFixture(root);
+  writeLocalReleaseAuthorityFixture(root, {
+    gateCommand: "npm run qa:release:public:desktop-local-unsigned:local",
+    logPath: "reports/release/local-release-authority/qa-release-public.desktop-local-unsigned.log",
+    releaseProfile: "desktop-local-unsigned",
+  });
+
+  const generated = runGenerator(root, env, ["--release-authority", "local"]);
+
+  assert.equal(generated.status, 0, generated.stdout + generated.stderr);
+  const provenance = JSON.parse(readFile(root, "reports/release/release-provenance.json"));
+  assert.equal(provenance.releaseProfile, "full");
+  assert.deepEqual(
+    provenance.checksumManifests
+      .map((entry) => entry.path)
+      .filter((path) => path.includes("local-release-authority"))
+      .sort(),
+    ["reports/release/local-release-authority.full-SHA256SUMS.txt"],
+  );
 
   const verified = runVerifier(root, env, ["--release-authority", "local"]);
   assert.equal(verified.status, 0, verified.stdout + verified.stderr);

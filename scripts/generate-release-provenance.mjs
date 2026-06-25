@@ -319,6 +319,7 @@ function collectReleaseChecksumManifests() {
     .filter((path) => path !== toReleasePath(checksumPath))
     .filter((path) => !/^reports\/release\/public-beta-rc-audit(?:\.[^.]+)*-SHA256SUMS\.txt$/.test(path))
     .filter((path) => !isLegacyLocalAuthorityAlias(path))
+    .filter((path) => !isOtherReleaseProfileLocalAuthorityManifest(path))
     .sort();
   const requiredExternalManifests = requiredChecksumManifests
     .filter((path) => !path.startsWith("reports/release/"))
@@ -332,6 +333,13 @@ function isLegacyLocalAuthorityAlias(path) {
     requiredChecksumManifests.some((manifest) =>
       /^reports\/release\/local-release-authority\.[^.]+-SHA256SUMS\.txt$/.test(manifest),
     )
+  );
+}
+
+function isOtherReleaseProfileLocalAuthorityManifest(path) {
+  return (
+    /^reports\/release\/local-release-authority\.[^.]+-SHA256SUMS\.txt$/.test(path) &&
+    path !== localReleaseAuthorityChecksumManifestPath()
   );
 }
 
