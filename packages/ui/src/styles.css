@@ -196,14 +196,28 @@ select {
 }
 
 .ui-segmented__item {
+  align-items: center;
   background: transparent;
   border: 0;
   border-radius: 5px;
   color: var(--atlas-text-muted);
   cursor: pointer;
+  display: inline-flex;
+  gap: 6px;
+  justify-content: center;
   min-height: 26px;
   padding: 0 10px;
   white-space: nowrap;
+}
+
+.ui-segmented__icon {
+  display: inline-flex;
+}
+
+.ui-segmented__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ui-segmented__item[aria-selected="true"] {

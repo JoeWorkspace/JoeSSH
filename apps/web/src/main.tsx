@@ -16,8 +16,10 @@ import {
   FileClock,
   KeyRound,
   RefreshCw,
+  Search,
   ShieldCheck,
   Smartphone,
+  X,
   UsersRound,
 } from 'lucide-react';
 import { SUPPORTED_LOCALES, createLocaleFormatters, type AtlasLocale, type LocaleFormatters } from '@atlasterm/i18n';
@@ -26,7 +28,9 @@ import {
   type AdminDashboardSnapshot,
   type AuditEvent,
   type DeviceRecord,
+  type DeviceStatus,
   type MemberRecord,
+  type MemberStatus,
   type RoleRecord,
   type AdminSnapshotSourceDescriptor,
   getAdminSnapshotSourceDescriptor,
@@ -77,8 +81,25 @@ type TelemetryControls = {
   enabled: boolean;
   onChange: (enabled: boolean) => void;
 };
+type TriageStatusFilter = 'all' | 'attention' | 'healthy';
+type DashboardTriageFilters = {
+  query: string;
+  status: TriageStatusFilter;
+};
+type FilteredAdminDashboardSnapshot = AdminDashboardSnapshot & {
+  hiddenCounts: {
+    auditEvents: number;
+    devices: number;
+    members: number;
+    roles: number;
+  };
+};
 const adminNavSections = ['sync', 'devices', 'team', 'audit', 'storage'] as const;
 type AdminNavSection = (typeof adminNavSections)[number];
+const defaultDashboardTriageFilters: DashboardTriageFilters = {
+  query: '',
+  status: 'all',
+};
 
 function getActiveAdminNavSection(): AdminNavSection {
   if (typeof window === 'undefined') {
@@ -330,6 +351,15 @@ const DashboardContent = React.memo(function DashboardContent({
   state: AdminDashboardState;
   t: ReturnType<typeof createWebTranslator>;
 }) {
+  const [triageFilters, setTriageFilters] = React.useState<DashboardTriageFilters>(
+    defaultDashboardTriageFilters,
+  );
+  const readySnapshot = state.phase === 'ready' ? state.snapshot : null;
+  const filteredSnapshot = React.useMemo(
+    () => readySnapshot ? filterAdminDashboardSnapshot(readySnapshot, triageFilters) : null,
+    [readySnapshot, triageFilters],
+  );
+
   if (state.phase !== 'ready') {
     return (
       <>
@@ -339,11 +369,23 @@ const DashboardContent = React.memo(function DashboardContent({
     );
   }
 
+  if (!filteredSnapshot) {
+    return null;
+  }
+
   const { meta, snapshot } = state;
 
   return (
     <>
       <AdminSnapshotStatusBar formatters={formatters} state={state} t={t} />
+      <DashboardTriageToolbar
+        filteredSnapshot={filteredSnapshot}
+        filters={triageFilters}
+        formatters={formatters}
+        onFiltersChange={setTriageFilters}
+        snapshot={snapshot}
+        t={t}
+      />
       <h2 className="visuallyHidden" id="admin-metrics-title">{t.shared('web.teamMetrics')}</h2>
       <section className="metrics" id="sync" role="list" aria-labelledby="admin-metrics-title">
         <Metric icon={<UsersRound size={22} />} label={t.shared('web.activeMembers')} value={formatters.number(snapshot.metrics.activeMembers)} />
@@ -362,16 +404,18 @@ const DashboardContent = React.memo(function DashboardContent({
             </span>
           </div>
           <h3 className="visuallyHidden" id="admin-members-table-title">{t.local('web.table.teamMembers')}</h3>
-          <div className="table memberTable" role="table" aria-labelledby="admin-members-table-title" aria-colcount={4} aria-rowcount={snapshot.members.length + 1}>
+          <div className="table memberTable" role="table" aria-labelledby="admin-members-table-title" aria-colcount={4} aria-rowcount={Math.max(filteredSnapshot.members.length, 1) + 1}>
             <div className="row headerRow" role="row" aria-rowindex={1}>
               <span role="columnheader" aria-colindex={1}>{t.shared('web.member')}</span>
               <span role="columnheader" aria-colindex={2}>{t.shared('web.role')}</span>
               <span role="columnheader" aria-colindex={3}>{t.shared('web.status')}</span>
               <span role="columnheader" aria-colindex={4}>{t.shared('web.devices')}</span>
             </div>
-            {snapshot.members.map((member, index) => (
+            {filteredSnapshot.members.length > 0 ? filteredSnapshot.members.map((member, index) => (
               <MemberRow formatters={formatters} key={member.id} member={member} rowIndex={index + 2} t={t} />
-            ))}
+            )) : (
+              <EmptyTableRow colCount={4} message={t.local('web.triage.empty.members')} />
+            )}
           </div>
         </section>
 
@@ -382,16 +426,115 @@ const DashboardContent = React.memo(function DashboardContent({
           </div>
           <h3 className="visuallyHidden" id="admin-role-permissions-title">{t.shared('web.rolePermissions')}</h3>
           <div className="roleList" role="list" aria-labelledby="admin-role-permissions-title">
-            {snapshot.roles.map((role) => (
+            {filteredSnapshot.roles.length > 0 ? filteredSnapshot.roles.map((role) => (
               <RoleItem formatters={formatters} key={role.id} role={role} t={t} />
-            ))}
+            )) : (
+              <p className="emptyListMessage" role="status">{t.local('web.triage.empty.roles')}</p>
+            )}
           </div>
         </section>
       </section>
 
-      <DeviceTable devices={snapshot.devices} formatters={formatters} t={t} />
-      <AuditLog events={snapshot.auditEvents} formatters={formatters} t={t} />
+      <DeviceTable devices={filteredSnapshot.devices} formatters={formatters} t={t} />
+      <AuditLog events={filteredSnapshot.auditEvents} formatters={formatters} t={t} />
     </>
+  );
+});
+
+const DashboardTriageToolbar = React.memo(function DashboardTriageToolbar({
+  filteredSnapshot,
+  filters,
+  formatters,
+  onFiltersChange,
+  snapshot,
+  t,
+}: {
+  filteredSnapshot: FilteredAdminDashboardSnapshot;
+  filters: DashboardTriageFilters;
+  formatters: LocaleFormatters;
+  onFiltersChange: React.Dispatch<React.SetStateAction<DashboardTriageFilters>>;
+  snapshot: AdminDashboardSnapshot;
+  t: ReturnType<typeof createWebTranslator>;
+}) {
+  const titleId = React.useId();
+  const queryId = React.useId();
+  const statusId = React.useId();
+  const statusSummaryId = React.useId();
+  const hiddenTotal =
+    filteredSnapshot.hiddenCounts.members +
+    filteredSnapshot.hiddenCounts.devices +
+    filteredSnapshot.hiddenCounts.roles +
+    filteredSnapshot.hiddenCounts.auditEvents;
+  const hasActiveFilters = filters.query.trim().length > 0 || filters.status !== 'all';
+
+  function handleQueryChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const query = event.currentTarget.value;
+    onFiltersChange((current) => ({ ...current, query }));
+  }
+
+  function handleStatusChange(event: React.ChangeEvent<HTMLSelectElement>) {
+    const status = event.currentTarget.value as TriageStatusFilter;
+    onFiltersChange((current) => ({ ...current, status }));
+  }
+
+  function clearFilters() {
+    onFiltersChange(defaultDashboardTriageFilters);
+  }
+
+  return (
+    <section className="triageToolbar" aria-describedby={statusSummaryId} aria-labelledby={titleId}>
+      <h2 className="visuallyHidden" id={titleId}>{t.local('web.triage.title')}</h2>
+      <div className="triageField triageSearch">
+        <label htmlFor={queryId}>{t.local('web.triage.search')}</label>
+        <div className="triageSearchBox">
+          <Search size={16} aria-hidden="true" />
+          <input
+            id={queryId}
+            onChange={handleQueryChange}
+            placeholder={t.local('web.triage.searchPlaceholder')}
+            type="search"
+            value={filters.query}
+          />
+        </div>
+      </div>
+      <div className="triageField">
+        <label htmlFor={statusId}>{t.local('web.triage.status')}</label>
+        <select id={statusId} onChange={handleStatusChange} value={filters.status}>
+          <option value="all">{t.local('web.triage.status.all')}</option>
+          <option value="attention">{t.local('web.triage.status.attention')}</option>
+          <option value="healthy">{t.local('web.triage.status.healthy')}</option>
+        </select>
+      </div>
+      <dl className="triageCounts" id={statusSummaryId} aria-live="polite">
+        <div>
+          <dt>{t.shared('web.members')}</dt>
+          <dd>{formatters.number(filteredSnapshot.members.length)} / {formatters.number(snapshot.members.length)}</dd>
+        </div>
+        <div>
+          <dt>{t.local('web.nav.devices')}</dt>
+          <dd>{formatters.number(filteredSnapshot.devices.length)} / {formatters.number(snapshot.devices.length)}</dd>
+        </div>
+        <div>
+          <dt>{t.local('web.nav.audit')}</dt>
+          <dd>{formatters.number(filteredSnapshot.auditEvents.length)} / {formatters.number(snapshot.auditEvents.length)}</dd>
+        </div>
+      </dl>
+      <button
+        className="clearFilterButton"
+        disabled={!hasActiveFilters}
+        onClick={clearFilters}
+        title={t.local('web.triage.clear')}
+        type="button"
+      >
+        <X size={16} aria-hidden="true" />
+        <span>{t.local('web.triage.clear')}</span>
+      </button>
+      {hiddenTotal > 0 ? (
+        <p className="triageHiddenSummary">
+          {formatters.number(hiddenTotal)} {t.local('web.triage.hiddenSuffix')}
+        </p>
+      ) : null}
+    </section>
   );
 });
 
@@ -559,6 +702,91 @@ function formatSnapshotDateTime(value: string, formatters: LocaleFormatters) {
   }
 }
 
+function filterAdminDashboardSnapshot(
+  snapshot: AdminDashboardSnapshot,
+  filters: DashboardTriageFilters,
+): FilteredAdminDashboardSnapshot {
+  const normalizedQuery = normalizeTriageQuery(filters.query);
+  const matchesQuery = (values: string[]) => normalizedQuery === '' || values.some((value) => normalizeTriageQuery(value).includes(normalizedQuery));
+  const matchesStatus = {
+    auditEvents: () => true,
+    devices: (device: DeviceRecord) => matchesDeviceTriageStatus(device.status, filters.status),
+    members: (member: MemberRecord) => matchesMemberTriageStatus(member.status, filters.status),
+    roles: (role: RoleRecord) => matchesRoleTriageStatus(role.risk, filters.status),
+  };
+
+  const members = snapshot.members.filter((member) =>
+    matchesStatus.members(member) &&
+    matchesQuery([member.name, member.email, member.role, member.status, String(member.deviceCount)]),
+  );
+  const roles = snapshot.roles.filter((role) =>
+    matchesStatus.roles(role) &&
+    matchesQuery([role.name, role.scope, role.risk, String(role.memberCount)]),
+  );
+  const devices = snapshot.devices.filter((device) =>
+    matchesStatus.devices(device) &&
+    matchesQuery([device.name, device.owner, device.platform, device.cursor, device.status, device.lastSeen]),
+  );
+  const auditEvents = snapshot.auditEvents.filter((event) =>
+    matchesStatus.auditEvents() &&
+    matchesQuery([event.actor, event.action, event.target, event.time]),
+  );
+
+  return {
+    ...snapshot,
+    auditEvents,
+    devices,
+    hiddenCounts: {
+      auditEvents: snapshot.auditEvents.length - auditEvents.length,
+      devices: snapshot.devices.length - devices.length,
+      members: snapshot.members.length - members.length,
+      roles: snapshot.roles.length - roles.length,
+    },
+    members,
+    roles,
+  };
+}
+
+function normalizeTriageQuery(value: string) {
+  return value.trim().toLocaleLowerCase();
+}
+
+function matchesDeviceTriageStatus(status: DeviceStatus, filter: TriageStatusFilter) {
+  if (filter === 'healthy') {
+    return status === 'current';
+  }
+
+  if (filter === 'attention') {
+    return status !== 'current';
+  }
+
+  return true;
+}
+
+function matchesMemberTriageStatus(status: MemberStatus, filter: TriageStatusFilter) {
+  if (filter === 'healthy') {
+    return status === 'active';
+  }
+
+  if (filter === 'attention') {
+    return status !== 'active';
+  }
+
+  return true;
+}
+
+function matchesRoleTriageStatus(risk: RoleRecord['risk'], filter: TriageStatusFilter) {
+  if (filter === 'healthy') {
+    return risk === 'limited';
+  }
+
+  if (filter === 'attention') {
+    return risk !== 'limited';
+  }
+
+  return true;
+}
+
 const MemberRow = React.memo(function MemberRow({
   formatters,
   member,
@@ -597,6 +825,22 @@ const MemberRow = React.memo(function MemberRow({
         </mark>
       </span>
       <span id={deviceCountId} role="cell" aria-colindex={4} data-label={t.shared('web.devices')}>{deviceCountLabel}</span>
+    </div>
+  );
+});
+
+const EmptyTableRow = React.memo(function EmptyTableRow({
+  colCount,
+  message,
+}: {
+  colCount: number;
+  message: string;
+}) {
+  return (
+    <div className="row emptyTableRow" role="row" aria-rowindex={2}>
+      <span role="cell" aria-colindex={1} aria-colspan={colCount}>
+        {message}
+      </span>
     </div>
   );
 });
@@ -656,7 +900,7 @@ const DeviceTable = React.memo(function DeviceTable({
       </div>
       <h3 className="visuallyHidden" id="admin-storage-title">{t.local('web.nav.storage')}</h3>
       <h3 className="visuallyHidden" id="admin-managed-devices-title">{t.shared('web.managedDevices')}</h3>
-      <div id="storage" className="table deviceTable" role="table" aria-labelledby="admin-storage-title admin-managed-devices-title" aria-colcount={6} aria-rowcount={devices.length + 1}>
+      <div id="storage" className="table deviceTable" role="table" aria-labelledby="admin-storage-title admin-managed-devices-title" aria-colcount={6} aria-rowcount={Math.max(devices.length, 1) + 1}>
         <div className="row headerRow" role="row" aria-rowindex={1}>
           <span role="columnheader" aria-colindex={1}>{t.shared('web.device')}</span>
           <span role="columnheader" aria-colindex={2}>{t.shared('web.owner')}</span>
@@ -665,7 +909,7 @@ const DeviceTable = React.memo(function DeviceTable({
           <span role="columnheader" aria-colindex={5}>{t.shared('web.status')}</span>
           <span role="columnheader" aria-colindex={6}>{t.shared('web.lastSeen')}</span>
         </div>
-        {devices.map((device, index) => {
+        {devices.length > 0 ? devices.map((device, index) => {
           const status = getDeviceStatusMeta(device.status);
           const statusLabel = t.local(status.key);
           const lastSeenLabel = formatLastSeen(device.lastSeen, formatters, t);
@@ -694,7 +938,9 @@ const DeviceTable = React.memo(function DeviceTable({
               </span>
             </div>
           );
-        })}
+        }) : (
+          <EmptyTableRow colCount={6} message={t.local('web.triage.empty.devices')} />
+        )}
       </div>
     </section>
   );
@@ -717,9 +963,11 @@ const AuditLog = React.memo(function AuditLog({
       </div>
       <h3 className="visuallyHidden" id="admin-recent-audit-events-title">{t.shared('web.recentAuditEvents')}</h3>
       <ul className="eventList" aria-labelledby="admin-recent-audit-events-title">
-        {events.map((event) => (
+        {events.length > 0 ? events.map((event) => (
           <AuditEventItem event={event} formatters={formatters} key={event.id} t={t} />
-        ))}
+        )) : (
+          <li className="emptyEventItem" role="status">{t.local('web.triage.empty.auditEvents')}</li>
+        )}
       </ul>
     </section>
   );
@@ -905,7 +1153,7 @@ const errorMonitor = webTelemetryAvailable
   ? createErrorMonitor({
       app: 'web',
       endpoint: webEnv.VITE_ATLASTERM_ERROR_MONITOR_ENDPOINT,
-      version: webEnv.VITE_ATLASTERM_APP_VERSION ?? '0.1.0-beta.9',
+      version: webEnv.VITE_ATLASTERM_APP_VERSION ?? '0.1.0-beta.11',
     })
   : createNoopErrorMonitor();
 

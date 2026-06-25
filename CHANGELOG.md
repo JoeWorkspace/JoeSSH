@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-beta.11] - 2026-06-26
+
+### Added
+- Web Admin dashboard triage filters for local search, attention/healthy
+  filtering, filtered-count feedback, and empty states without refetching the
+  loaded Sync snapshot.
+- Compact Desktop right-panel tabs with icon support from the shared UI
+  segmented control while preserving full accessible labels.
+- Desktop no-session callout that points operators back to the existing Connect
+  workflow when SFTP/forwarding/team context is unavailable.
+
+### Changed
+- Rolled the Public Beta candidate forward from `0.1.0-beta.10` to
+  `0.1.0-beta.11` so regenerated local authority, provenance, dogfood, and
+  rollback evidence binds to the current UI-polished source tree.
+
 ## [0.1.0-beta.10] - 2026-06-23
 
 ### Added

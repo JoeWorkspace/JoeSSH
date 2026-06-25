@@ -292,7 +292,7 @@ describe("web entry telemetry policy", () => {
 
     expect(content).toContain("VITE_ATLASTERM_TELEMETRY_OPT_IN");
     expect(content).toContain("createNoopErrorMonitor");
-    expect(content).toContain("0.1.0-beta.9");
+    expect(content).toContain("0.1.0-beta.11");
     expect(content).not.toContain("version: '0.1.0'");
     expect(content).not.toContain('version: "0.1.0"');
   });
@@ -308,6 +308,23 @@ describe("web entry telemetry policy", () => {
     expect(content).toContain("uninstall?.()");
     expect(content).toContain("errorMonitor.disable()");
     expect(content).toContain("setTelemetryEnabled(nextEnabled)");
+  });
+});
+
+describe("web admin client triage filters", () => {
+  it("keeps search and status filtering local to the loaded dashboard snapshot", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const mainPath = path.resolve(__dirname, "./main.tsx");
+    const content = fs.readFileSync(mainPath, "utf-8");
+
+    expect(content).toContain("filterAdminDashboardSnapshot(readySnapshot, triageFilters)");
+    expect(content).toContain("type DashboardTriageFilters");
+    expect(content).toContain("matchesDeviceTriageStatus");
+    expect(content).toContain("matchesMemberTriageStatus");
+    expect(content).toContain("web.triage.title");
+    expect(content).toContain("web.triage.empty.devices");
+    expect(content).toContain("loadAdminDashboard(window.fetch.bind(window), sourceDescriptor.snapshotUrl");
   });
 });
 

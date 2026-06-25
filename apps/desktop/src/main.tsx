@@ -14,6 +14,7 @@ import {
   Command,
   Copy,
   FileUp,
+  Gauge,
   HardDrive,
   Lock,
   Maximize2,
@@ -23,9 +24,11 @@ import {
   Server,
   ShieldCheck,
   SplitSquareHorizontal,
+  Settings,
   Sun,
   Moon,
   TerminalSquare,
+  Users,
   Video,
   X,
 } from "lucide-react";
@@ -1058,6 +1061,18 @@ function App({ t, locale, onLanguageChoiceChange, languageChoice, telemetry }: {
           </div>
         </header>
 
+        {!hasActiveDesktopSession && isDesktopRuntime() ? (
+          <div className="no-session-callout" role="status">
+            <span>
+              <strong>{t("desktop.noSession")}</strong>
+              <small>{t("desktop.noSessionActionDetail")}</small>
+            </span>
+            <Button size="sm" onClick={() => { setConnectTargetOverride(null); setConnectOpen(true); }}>
+              <Plug size={14} aria-hidden="true" /> {t("desktop.connectAction")}
+            </Button>
+          </div>
+        ) : null}
+
         <nav className="tabbar" aria-label={t("desktop.terminalTabs")}>
           <div role="tablist" aria-label={t("desktop.terminalTabs")}>
           {terminalTabs.map((tab, index) => (
@@ -1144,13 +1159,14 @@ function App({ t, locale, onLanguageChoiceChange, languageChoice, telemetry }: {
             label={t("desktop.context")}
             onChange={setRightPanel}
             options={[
-              { value: "inspector", label: t("desktop.context") },
-              { value: "sftp", label: t("desktop.sftp") },
-              { value: "team", label: t("desktop.team") },
-              { value: "forwarding", label: t("desktop.forwarding") },
-              { value: "settings", label: t("desktop.settings") },
+              { value: "inspector", label: t("desktop.context"), shortLabel: t("desktop.context"), icon: <Gauge size={14} /> },
+              { value: "sftp", label: t("desktop.sftp"), icon: <HardDrive size={14} /> },
+              { value: "team", label: t("desktop.team"), icon: <Users size={14} /> },
+              { value: "forwarding", label: t("desktop.forwarding"), shortLabel: t("desktop.port"), icon: <Network size={14} /> },
+              { value: "settings", label: t("desktop.settings"), icon: <Settings size={14} /> },
             ]}
             value={rightPanel}
+            className="context-panel-tabs"
           />
           <IconButton label={t("desktop.panelCollapse")}>
             <PanelRightOpen size={16} />
@@ -1444,7 +1460,7 @@ const errorMonitor = desktopTelemetryAvailable
   ? createErrorMonitor({
       app: "desktop",
       endpoint: desktopEnv.VITE_ATLASTERM_ERROR_MONITOR_ENDPOINT,
-      version: desktopEnv.VITE_ATLASTERM_APP_VERSION ?? "0.1.0-beta.9",
+      version: desktopEnv.VITE_ATLASTERM_APP_VERSION ?? "0.1.0-beta.11",
     })
   : createNoopErrorMonitor();
 

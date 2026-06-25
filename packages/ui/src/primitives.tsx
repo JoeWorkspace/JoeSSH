@@ -46,7 +46,7 @@ export function SegmentedControl<T extends string>({
   className,
   label,
 }: {
-  options: Array<{ value: T; label: string }>;
+  options: Array<{ value: T; label: string; shortLabel?: string; icon?: ReactNode }>;
   value: T;
   onChange: (value: T) => void;
   className?: string;
@@ -56,14 +56,17 @@ export function SegmentedControl<T extends string>({
     <div className={clsx("ui-segmented", className)} role="tablist" aria-label={label}>
       {options.map((option) => (
         <button
+          aria-label={option.label}
           aria-selected={value === option.value}
           className="ui-segmented__item"
           key={option.value}
           onClick={() => onChange(option.value)}
           role="tab"
+          title={option.label}
           type="button"
         >
-          {option.label}
+          {option.icon ? <span className="ui-segmented__icon" aria-hidden="true">{option.icon}</span> : null}
+          <span className="ui-segmented__label">{option.shortLabel ?? option.label}</span>
         </button>
       ))}
     </div>

@@ -316,6 +316,112 @@ h2 {
   font-size: 13px;
 }
 
+.triageToolbar {
+  align-items: end;
+  background: var(--web-surface);
+  border: 1px solid var(--web-border);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(220px, 1.1fr) minmax(170px, 0.45fr) minmax(260px, 0.8fr) auto;
+  padding: 14px 18px;
+}
+
+.triageField {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.triageField label,
+.triageCounts dt {
+  color: var(--web-text-secondary);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.triageSearchBox {
+  align-items: center;
+  background: var(--web-bg);
+  border: 1px solid var(--web-border);
+  border-radius: 8px;
+  color: var(--web-text-secondary);
+  display: flex;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 10px;
+}
+
+.triageSearchBox input,
+.triageField select {
+  background: transparent;
+  border: 0;
+  color: var(--web-text);
+  font: inherit;
+  min-width: 0;
+  outline: 0;
+  width: 100%;
+}
+
+.triageSearchBox:focus-within,
+.triageField select:focus-visible {
+  outline: 2px solid var(--web-accent);
+  outline-offset: 2px;
+}
+
+.triageField select {
+  appearance: none;
+  background: var(--web-bg);
+  border: 1px solid var(--web-border);
+  border-radius: 8px;
+  min-height: 40px;
+  padding: 0 34px 0 10px;
+}
+
+.triageCounts {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+}
+
+.triageCounts div {
+  min-width: 0;
+}
+
+.triageCounts dd {
+  font-weight: 800;
+  margin: 2px 0 0;
+}
+
+.clearFilterButton {
+  align-items: center;
+  background: var(--web-surface);
+  border: 1px solid var(--web-border);
+  border-radius: 8px;
+  color: var(--web-text);
+  cursor: pointer;
+  display: inline-flex;
+  gap: 6px;
+  font-weight: 700;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+
+.clearFilterButton:disabled {
+  color: var(--web-text-tertiary);
+  cursor: not-allowed;
+}
+
+.triageHiddenSummary {
+  color: var(--web-text-secondary);
+  font-size: 12px;
+  grid-column: 1 / -1;
+}
+
 .dashboardGrid {
   display: grid;
   gap: 20px;
@@ -433,6 +539,11 @@ h2 {
   border-top: 1px solid var(--web-border-subtle);
 }
 
+.emptyTableRow span {
+  color: var(--web-text-secondary);
+  grid-column: 1 / -1;
+}
+
 .headerRow {
   color: var(--web-text-secondary);
   font-size: 12px;
@@ -525,6 +636,11 @@ mark {
   justify-items: end;
 }
 
+.emptyListMessage {
+  color: var(--web-text-secondary);
+  padding: 18px;
+}
+
 .eventList {
   display: grid;
   gap: 0;
@@ -552,10 +668,19 @@ mark {
   border-top: 1px solid var(--web-border-subtle);
 }
 
+.emptyEventItem {
+  color: var(--web-text-secondary);
+  grid-template-columns: 1fr;
+}
+
 @media (max-width: 1080px) {
   .metrics,
   .snapshotStatus dl {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .triageToolbar {
+    grid-template-columns: minmax(220px, 1fr) minmax(170px, 0.5fr);
   }
 
   .dashboardGrid {
@@ -588,6 +713,7 @@ mark {
 
   .metrics,
   .snapshotStatus dl,
+  .triageToolbar,
   .memberTable .row,
   .deviceTable .row,
   .eventList li,
@@ -624,6 +750,10 @@ mark {
     justify-items: start;
   }
 
+  .emptyTableRow span {
+    display: block;
+  }
+
   .headerRow {
     border: 0;
     clip: rect(0 0 0 0);
@@ -652,7 +782,8 @@ mark {
 
   .topbarActions,
   .languagePicker,
-  .telemetryToggle {
+  .telemetryToggle,
+  .clearFilterButton {
     width: 100%;
   }
 
@@ -663,6 +794,10 @@ mark {
 
   h1 {
     font-size: 26px;
+  }
+
+  .triageCounts {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -719,10 +854,14 @@ mark {
   }
   .panel,
   .metric,
-  .statePanel {
+  .statePanel,
+  .triageToolbar {
     border: 1px solid ButtonText;
   }
-  .iconButton {
+  .iconButton,
+  .clearFilterButton,
+  .triageSearchBox,
+  .triageField select {
     border: 1px solid ButtonText;
   }
 }

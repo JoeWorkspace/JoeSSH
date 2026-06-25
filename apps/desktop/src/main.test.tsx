@@ -57,6 +57,31 @@ describe('main entry point', () => {
     expect(content).not.toContain('label: "SFTP"');
   });
 
+  it('keeps right panel tabs compact while preserving localized labels', async () => {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const mainPath = path.resolve(__dirname, './main.tsx');
+    const content = fs.readFileSync(mainPath, 'utf-8');
+
+    expect(content).toContain('className="context-panel-tabs"');
+    expect(content).toContain('label: t("desktop.context"), shortLabel: t("desktop.context")');
+    expect(content).toContain('label: t("desktop.forwarding"), shortLabel: t("desktop.port")');
+    expect(content).toContain('icon: <Settings size={14} />');
+  });
+
+  it('points the desktop no-session state to Connect without changing SSH flow', async () => {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const mainPath = path.resolve(__dirname, './main.tsx');
+    const content = fs.readFileSync(mainPath, 'utf-8');
+
+    expect(content).toContain('className="no-session-callout"');
+    expect(content).toContain('!hasActiveDesktopSession && isDesktopRuntime()');
+    expect(content).toContain('t("desktop.noSessionActionDetail")');
+    expect(content).toContain('<Plug size={14} aria-hidden="true" /> {t("desktop.connectAction")}');
+    expect(content).toContain('setConnectTargetOverride(null); setConnectOpen(true);');
+  });
+
   it('keeps telemetry default-off and versioned for Public Beta', async () => {
     const fs = await import('node:fs');
     const path = await import('node:path');
@@ -65,7 +90,7 @@ describe('main entry point', () => {
 
     expect(content).toContain('VITE_ATLASTERM_TELEMETRY_OPT_IN');
     expect(content).toContain('createNoopErrorMonitor');
-    expect(content).toContain('0.1.0-beta.9');
+    expect(content).toContain('0.1.0-beta.11');
     expect(content).not.toContain("version: '0.1.0'");
     expect(content).not.toContain('version: "0.1.0"');
   });

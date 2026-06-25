@@ -193,6 +193,14 @@ describe('web localization', () => {
     expect(translator.local('web.snapshot.health.ready')).toBe('Healthy');
   });
 
+  it('covers Web Admin triage filter copy through local fallback messages', () => {
+    const translator = createWebTranslator('zh-CN');
+
+    expect(translator.local('web.triage.title')).toBe('Dashboard triage filters');
+    expect(translator.local('web.triage.status.attention')).toBe('Needs attention');
+    expect(translator.local('web.triage.empty.devices')).toBe('No devices match the current triage filters.');
+  });
+
   it('keeps web-local admin chrome free of mojibake', () => {
     for (const locale of SUPPORTED_LOCALES.map((supportedLocale) => supportedLocale.code)) {
       const translator = createWebTranslator(locale);

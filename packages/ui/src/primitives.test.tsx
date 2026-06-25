@@ -85,8 +85,23 @@ describe("design-system primitives", () => {
 
     render(<SegmentedControl options={options} value="x" onChange={onChange} />);
 
-    expect(screen.getByText("X").getAttribute("aria-selected")).toBe("true");
-    expect(screen.getByText("Y").getAttribute("aria-selected")).toBe("false");
+    expect(screen.getByRole("tab", { name: "X" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("tab", { name: "Y" }).getAttribute("aria-selected")).toBe("false");
+  });
+
+  it("renders SegmentedControl with short labels and full accessible names", () => {
+    const onChange = vi.fn();
+    const options = [
+      { value: "forwarding" as const, label: "Port Forwarding", shortLabel: "Ports", icon: <span>F</span> },
+      { value: "settings" as const, label: "Settings", icon: <span>S</span> },
+    ];
+
+    render(<SegmentedControl options={options} value="forwarding" onChange={onChange} label="context" />);
+
+    expect(screen.getByRole("tab", { name: "Port Forwarding" })).toBeTruthy();
+    expect(screen.getByText("Ports")).toBeTruthy();
+    expect(screen.queryByText("Port Forwarding")).toBeFalsy();
+    expect(screen.getByRole("tab", { name: "Port Forwarding" }).getAttribute("title")).toBe("Port Forwarding");
   });
 
   it("renders Panel with ref forwarding", () => {
