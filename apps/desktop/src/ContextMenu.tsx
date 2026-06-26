@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useEffect, useRef } from "react";
 import { ChevronRight, ClipboardCheck, Copy, Folder, Gauge, Settings, TerminalSquare, Trash2 } from "lucide-react";
 import type { Translator } from "@atlasterm/i18n";
 import { desktopGroupLabel } from "./desktopGroups";
@@ -27,6 +27,12 @@ export const ContextMenu = memo(function ContextMenu({
   position,
   t,
 }: ContextMenuProps) {
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]:not([disabled])')?.focus();
+  }, []);
+
   return (
     <div
       className="context-menu-backdrop"
@@ -36,6 +42,7 @@ export const ContextMenu = memo(function ContextMenu({
     >
       <div
         className="context-menu"
+        ref={menuRef}
         style={{ left: position.x, top: position.y }}
         role="menu"
         onClick={(e) => e.stopPropagation()}

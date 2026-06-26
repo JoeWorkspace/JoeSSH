@@ -3,7 +3,10 @@ import { existsSync, readFileSync } from "node:fs";
 import { basename, isAbsolute, relative, resolve } from "node:path";
 import { inflateRawSync } from "node:zlib";
 
-import { scanWebAdminTextForTokenLeaks } from "./check-web-admin-bundle-token-scan.mjs";
+import {
+  WEB_ADMIN_BUNDLE_FORBIDDEN_NEEDLES,
+  scanWebAdminTextForTokenLeaks,
+} from "./check-web-admin-bundle-token-scan.mjs";
 
 const defaultRoot = resolve(import.meta.dirname, "..");
 const { artifactPath, manifestPath, root } = parseArgs(process.argv.slice(2));
@@ -111,6 +114,15 @@ function verifyTextAssetsForTokenLeaks(entries) {
   const leaks = [];
   for (const [entryName, contents] of entries) {
     if (isTextLikeWebAsset(entryName)) {
+      const text = contents.toString("utf8");
+      for (const needle of WEB_ADMIN_BUNDLE_FORBIDDEN_NEEDLES) {
+        if (text.includes(needle.value)) {
+          leaks.push({
+            filePath: entryName,
+            label: needle.label,
+          });
+        }
+      }
       leaks.push(...scanWebAdminTextForTokenLeaks(contents.toString("utf8"), entryName));
     }
   }

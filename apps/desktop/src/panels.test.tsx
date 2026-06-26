@@ -357,6 +357,27 @@ describe('extracted desktop panels', () => {
     expect(html).not.toContain('session.log'); // static items are replaced
   });
 
+  it('keeps SFTP file actions as buttons inside listitem containers', () => {
+    const { container } = render(
+      <SftpPanel
+        formatters={formatters}
+        sftpItems={sftpItems}
+        t={t}
+        directory={{
+          active: true,
+          path: '/var/remote',
+          status: { phase: 'ready', entries: [{ name: 'remote.conf', is_dir: false, size: 2048 }] },
+        }}
+      />,
+    );
+
+    const listItem = container.querySelector('.file-list [role="listitem"]') as HTMLElement;
+    const button = listItem.querySelector('button') as HTMLButtonElement;
+    expect(listItem).toBeTruthy();
+    expect(button).toBeTruthy();
+    expect(button.getAttribute('role')).toBeNull();
+  });
+
   it('renders the live SFTP loading state', () => {
     const html = renderToStaticMarkup(
       <SftpPanel formatters={formatters} sftpItems={sftpItems} t={t} directory={{ active: true, path: '/p', status: { phase: 'loading' } }} />,

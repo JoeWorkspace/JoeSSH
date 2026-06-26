@@ -41,6 +41,11 @@ describe("ContextMenu", () => {
     expect((menu as HTMLElement).style.top).toBe("200px");
   });
 
+  it("focuses the first menu item when opened", () => {
+    render(<ContextMenu {...defaultProps} />);
+    expect(document.activeElement).toBe(screen.getByRole("menuitem", { name: /desktop.contextConnect/ }));
+  });
+
   it("calls onClose when clicking backdrop", () => {
     const onClose = vi.fn();
     render(<ContextMenu {...defaultProps} onClose={onClose} />);

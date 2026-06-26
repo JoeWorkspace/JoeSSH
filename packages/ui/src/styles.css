@@ -81,12 +81,26 @@ select {
     transform var(--dur-1) var(--ease);
 }
 
+.ui-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+  transform: none;
+}
+
 .ui-button:hover {
   transform: translateY(-1px);
 }
 
 .ui-button:active {
   transform: translateY(0) scale(0.97);
+}
+
+.ui-button:disabled:hover,
+.ui-button:disabled:active {
+  background: inherit;
+  box-shadow: none;
+  color: inherit;
+  transform: none;
 }
 
 .ui-button:focus-visible {

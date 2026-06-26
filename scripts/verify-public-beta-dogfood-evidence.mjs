@@ -168,6 +168,10 @@ function validateEvidence(evidence) {
     const artifactFailure = validateRelativeFilePath(`artifacts.${key}`, artifactPath);
     if (artifactFailure) {
       failures.push(artifactFailure);
+      continue;
+    }
+    if (key === "rcAudit") {
+      validateRcAuditDecision(artifactPath, failures);
     }
   }
 
@@ -274,6 +278,23 @@ function validateRequiredTaskEvidence(id, task, failures) {
     if (artifactFailure) {
       failures.push(artifactFailure);
     }
+  }
+}
+
+function validateRcAuditDecision(path, failures) {
+  let audit;
+  try {
+    audit = JSON.parse(readFileSync(resolve(root, path), "utf8").replace(/^\uFEFF/, ""));
+  } catch (error) {
+    failures.push(`artifacts.rcAudit must be valid JSON: ${error.message}`);
+    return;
+  }
+
+  if (audit.decision !== "go") {
+    failures.push('artifacts.rcAudit decision must be "go"');
+  }
+  if (Array.isArray(audit.blockers) && audit.blockers.length > 0) {
+    failures.push("artifacts.rcAudit must not contain blockers");
   }
 }
 

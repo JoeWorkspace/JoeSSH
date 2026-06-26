@@ -882,6 +882,14 @@ test("publish preflight rejects missing Git checkout metadata", (t) => {
   assert.match(result.stderr, /Public release publish preflight failed: Verify release Git checkout/);
 });
 
+test("publish preflight rejects unhealthy Git bypass flags", (t) => {
+  const root = createReleaseFixture(t);
+  const result = runPreflight(root, createFakeGitCommands(root), ["--allow-unhealthy-git"]);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /--allow-unhealthy-git is not supported for publish preflight/);
+});
+
 test("publish preflight rejects a dirty Git working tree", (t) => {
   const root = createReleaseFixture(t);
   const result = runPreflight(root, createFakeGitCommands(root, { dirtyStatus: " M package.json" }));

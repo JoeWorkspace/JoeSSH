@@ -39,6 +39,16 @@ describe("ShortcutsOverlay", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it("provides a focusable close button", () => {
+    const onClose = vi.fn();
+    render(<ShortcutsOverlay onClose={onClose} t={t} />);
+    const closeButton = screen.getByRole("button", { name: "desktop.close" });
+
+    expect(closeButton).toBeTruthy();
+    fireEvent.click(closeButton);
+    expect(onClose).toHaveBeenCalled();
+  });
+
   it("closes on Escape", () => {
     const onClose = vi.fn();
     render(<ShortcutsOverlay onClose={onClose} t={t} />);

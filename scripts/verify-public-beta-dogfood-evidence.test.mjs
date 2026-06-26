@@ -185,6 +185,15 @@ test("rejects missing artifact files", () => {
   assert.match(failure.stderr, /artifacts.rcAudit must be reports\/release\/public-beta-rc-audit\.github\.full\.json/);
 });
 
+test("rejects dogfood evidence that references a No-Go RC audit", () => {
+  const { path, root } = writeEvidence({}, { rcAuditDecision: "no-go" });
+  const failure = runFailure(path, root);
+
+  assert.equal(failure.status, 1);
+  assert.match(failure.stderr, /artifacts\.rcAudit decision must be "go"/);
+  assert.match(failure.stderr, /artifacts\.rcAudit must not contain blockers/);
+});
+
 test("rejects artifact paths that escape the release workspace", () => {
   const { path, root } = writeEvidence({
     artifacts: {
@@ -270,12 +279,20 @@ function createReleaseRoot(options = {}) {
   writeFile(root, "package.json", JSON.stringify({ version }));
   for (const path of Object.values(expectedArtifacts(options))) {
     if (!options.omitArtifacts?.includes(path)) {
-      writeFile(root, path, `${path} evidence`);
+      if (path.includes("public-beta-rc-audit")) {
+        writeFile(root, path, rcAuditFixture(options));
+      } else {
+        writeFile(root, path, `${path} evidence`);
+      }
     }
   }
   for (const path of requiredTaskEvidencePaths(options)) {
     if (!options.omitArtifacts?.includes(path)) {
-      writeFile(root, path, `${path} evidence`);
+      if (path.includes("public-beta-rc-audit")) {
+        writeFile(root, path, rcAuditFixture(options));
+      } else {
+        writeFile(root, path, `${path} evidence`);
+      }
     }
   }
   if (options.gitSource) {
@@ -355,6 +372,20 @@ function taskEvidence(id, options = {}) {
 
 function requiredTaskEvidencePaths(options = {}) {
   return [...new Set(requiredTaskIds.flatMap((id) => taskEvidence(id, options)))];
+}
+
+function rcAuditFixture(options = {}) {
+  return `${JSON.stringify(
+    {
+      blockers: options.rcAuditDecision === "no-go" ? [{ id: "stale-provenance", severity: "P0" }] : [],
+      decision: options.rcAuditDecision ?? "go",
+      releaseAuthority: options.releaseAuthority ?? "github",
+      releaseProfile: options.releaseProfile ?? "full",
+      version,
+    },
+    null,
+    2,
+  )}\n`;
 }
 
 function runFailure(path, root) {

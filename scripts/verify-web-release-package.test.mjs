@@ -113,6 +113,20 @@ test("rejects token-like values inside packaged Web Admin assets", (t) => {
   assert.match(result.stderr, /assets\/app\.js: JoeSSH token environment variable name/);
 });
 
+test("rejects exact forbidden Web Admin public token needles inside release zips", (t) => {
+  const root = createFixture(t, {
+    "apps/web/dist/assets/app.js":
+      'const legacy = "VITE_ATLASTERM_ADMIN_SNAPSHOT_AUTH_TOKEN"; const sentinel = "atlasterm-admin-snapshot-sentinel-token";',
+  });
+  packageFixture(root);
+
+  const result = runVerifier(root);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /assets\/app\.js: legacy admin snapshot auth env name/);
+  assert.match(result.stderr, /assets\/app\.js: admin snapshot sentinel token/);
+});
+
 test("rejects release zips that drift from their checksum manifest", (t) => {
   const root = createFixture(t);
   packageFixture(root);

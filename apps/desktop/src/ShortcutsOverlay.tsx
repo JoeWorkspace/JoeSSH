@@ -1,6 +1,6 @@
 import { memo } from "react";
-import { Command } from "lucide-react";
-import { Badge, Panel } from "@atlasterm/ui";
+import { Command, X } from "lucide-react";
+import { Badge, IconButton, Panel } from "@atlasterm/ui";
 import type { TranslationKey, Translator } from "@atlasterm/i18n";
 import { useFocusTrap } from "./useFocusTrap";
 
@@ -36,6 +36,9 @@ export const ShortcutsOverlay = memo(function ShortcutsOverlay({
           <Command size={16} aria-hidden="true" />
           <strong>{t("desktop.keyboardShortcuts")}</strong>
           <Badge>Esc</Badge>
+          <IconButton label={t("desktop.close")} onClick={onClose}>
+            <X size={16} aria-hidden="true" />
+          </IconButton>
         </div>
         <div className="shortcuts-grid">
           {shortcuts.map(([key, messageKey]) => (

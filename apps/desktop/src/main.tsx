@@ -13,7 +13,6 @@ import { createRoot, type Root } from "react-dom/client";
 import {
   Command,
   Copy,
-  FileUp,
   Gauge,
   HardDrive,
   Lock,
@@ -22,8 +21,6 @@ import {
   PanelRightOpen,
   Plus,
   Server,
-  ShieldCheck,
-  SplitSquareHorizontal,
   Settings,
   Sun,
   Moon,
@@ -800,18 +797,17 @@ function App({ t, locale, onLanguageChoiceChange, languageChoice, telemetry }: {
 
   const commands = useMemo(
     () => [
-      { icon: <TerminalSquare size={16} aria-hidden="true" />, name: t("desktop.openTerminal"), shortcut: "Enter", kind: "command" as const },
-      { icon: <SplitSquareHorizontal size={16} aria-hidden="true" />, name: t("desktop.splitTerminal"), shortcut: "Alt+S", kind: "command" as const },
-      { icon: <FileUp size={16} aria-hidden="true" />, name: t("desktop.uploadToSession"), shortcut: "U", kind: "command" as const },
-      { icon: <ShieldCheck size={16} aria-hidden="true" />, name: t("desktop.requestElevated"), shortcut: "E", kind: "command" as const },
-      { icon: <Copy size={16} aria-hidden="true" />, name: t("desktop.copySession"), kind: "command" as const },
-      { command: "disconnect", icon: <X size={16} aria-hidden="true" />, name: t("desktop.disconnect"), kind: "command" as const },
-      { icon: <Video size={16} aria-hidden="true" />, name: t("desktop.toggleRecording"), kind: "command" as const },
-      { icon: <HardDrive size={16} aria-hidden="true" />, name: t("desktop.openSftp"), shortcut: "Ctrl+2", kind: "command" as const },
-      { icon: <Network size={16} aria-hidden="true" />, name: t("desktop.openForwarding"), shortcut: "Ctrl+4", kind: "command" as const },
-      { icon: <Command size={16} aria-hidden="true" />, name: t("desktop.keyboardShortcuts"), shortcut: "Ctrl+Shift+?", kind: "command" as const },
+      ...(hasActiveDesktopSession
+        ? [
+            { command: "disconnect", icon: <X size={16} aria-hidden="true" />, name: t("desktop.disconnect"), kind: "command" as const },
+            { command: "toggleRecording", icon: <Video size={16} aria-hidden="true" />, name: t("desktop.toggleRecording"), kind: "command" as const },
+          ]
+        : []),
+      { command: "openSftp", icon: <HardDrive size={16} aria-hidden="true" />, name: t("desktop.openSftp"), shortcut: "Ctrl+2", kind: "command" as const },
+      { command: "openForwarding", icon: <Network size={16} aria-hidden="true" />, name: t("desktop.openForwarding"), shortcut: "Ctrl+4", kind: "command" as const },
+      { command: "keyboardShortcuts", icon: <Command size={16} aria-hidden="true" />, name: t("desktop.keyboardShortcuts"), shortcut: "Ctrl+Shift+?", kind: "command" as const },
     ],
-    [t],
+    [hasActiveDesktopSession, t],
   );
 
   const paletteItems = useMemo(() => {
@@ -867,15 +863,28 @@ function App({ t, locale, onLanguageChoiceChange, languageChoice, telemetry }: {
       setConnectTargetOverride(splitConnectionTarget(item.sub ?? paletteState.input));
       setConnectOpen(true);
     }
-    if ((item.kind === "command" || item.kind === "recent-command") && item.command === "disconnect") {
-      void handleDisconnect().then((didDisconnect) => {
-        if (didDisconnect) recordCommand(item.name);
-      });
-    } else if (item.kind === "command" || item.kind === "recent-command") {
-      recordCommand(item.name);
+    if (item.kind === "command" || item.kind === "recent-command") {
+      if (item.command === "disconnect") {
+        void handleDisconnect().then((didDisconnect) => {
+          if (didDisconnect) recordCommand(item.name);
+        });
+      } else if (item.command === "openSftp") {
+        setRightPanel("sftp");
+        recordCommand(item.name);
+      } else if (item.command === "openForwarding") {
+        setRightPanel("forwarding");
+        recordCommand(item.name);
+      } else if (item.command === "keyboardShortcuts") {
+        setShortcutsOpen(true);
+        recordCommand(item.name);
+      } else if (item.command === "toggleRecording" && hasActiveDesktopSession) {
+        toggleRecording();
+        addToast(recording ? t("desktop.recordingStopped") : t("desktop.recordingStarted"), recording ? "warning" : "success");
+        recordCommand(item.name);
+      }
     }
     closePalette();
-  }, [recordConnection, activateConnection, paletteState.input, handleDisconnect, recordCommand, closePalette]);
+  }, [recordConnection, activateConnection, paletteState.input, handleDisconnect, recordCommand, hasActiveDesktopSession, toggleRecording, addToast, recording, t, closePalette]);
 
   const handlePaletteKeyDown = useCallback((event: React.KeyboardEvent) => {
     if (event.key === "ArrowDown") {
@@ -1168,7 +1177,7 @@ function App({ t, locale, onLanguageChoiceChange, languageChoice, telemetry }: {
             value={rightPanel}
             className="context-panel-tabs"
           />
-          <IconButton label={t("desktop.panelCollapse")}>
+          <IconButton label={t("desktop.panelCollapse")} disabled>
             <PanelRightOpen size={16} />
           </IconButton>
         </div>

@@ -163,6 +163,17 @@ describe("Sidebar", () => {
     expect(props.onContextMenu).toHaveBeenCalled();
   });
 
+  it("opens the connection context menu from keyboard menu shortcuts", () => {
+    const props = setup();
+    const card = screen.getByRole("button", { name: /prod-edge-01/i });
+
+    fireEvent.keyDown(card, { key: "ContextMenu" });
+    fireEvent.keyDown(card, { key: "F10", shiftKey: true });
+
+    expect(props.onContextMenu).toHaveBeenCalledTimes(2);
+    expect(props.onContextMenu).toHaveBeenCalledWith("prod-edge-01", expect.any(Number), expect.any(Number));
+  });
+
   it("moves focused connections with Alt+Arrow keyboard shortcuts", () => {
     const prodConnections = [
       conns[0],

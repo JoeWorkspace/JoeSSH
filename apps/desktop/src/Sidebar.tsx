@@ -191,6 +191,12 @@ export const Sidebar = memo(function Sidebar({
                           data-tooltip={`${connection.name} — ${connection.host}`}
                           onClick={() => onActivateConnection(connection.name)}
                           onKeyDown={(event) => {
+                            if (event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey)) {
+                              event.preventDefault();
+                              const rect = event.currentTarget.getBoundingClientRect();
+                              onContextMenu(connection.name, rect.left + 16, rect.top + 16);
+                              return;
+                            }
                             if (!event.altKey || event.ctrlKey || event.metaKey) return;
                             if (event.key === "ArrowUp" && index > 0) {
                               event.preventDefault();

@@ -69,6 +69,19 @@ describe('main entry point', () => {
     expect(content).toContain('icon: <Settings size={14} />');
   });
 
+  it('keeps unwired context pane collapse and command palette actions disabled or omitted', async () => {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const mainPath = path.resolve(__dirname, './main.tsx');
+    const content = fs.readFileSync(mainPath, 'utf-8');
+
+    expect(content).toContain('<IconButton label={t("desktop.panelCollapse")} disabled>');
+    expect(content).not.toContain('t("desktop.openTerminal")');
+    expect(content).not.toContain('t("desktop.splitTerminal")');
+    expect(content).not.toContain('t("desktop.uploadToSession")');
+    expect(content).not.toContain('t("desktop.requestElevated")');
+  });
+
   it('points the desktop no-session state to Connect without changing SSH flow', async () => {
     const fs = await import('node:fs');
     const path = await import('node:path');

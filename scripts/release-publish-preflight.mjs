@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { basename, resolve } from "node:path";
 
 const scriptRoot = resolve(import.meta.dirname, "..");
-const { allowUnhealthyGit, releaseAuthority, releaseProfile, root } = parseArgs(process.argv.slice(2));
+const { releaseAuthority, releaseProfile, root } = parseArgs(process.argv.slice(2));
 const gitCommand = process.env.ATLASTERM_RELEASE_GIT_COMMAND ?? "git";
 const gitCommandPrefixArgs = parseCommandPrefixArgs("ATLASTERM_RELEASE_GIT_ARGS");
 const ghCommand = process.env.ATLASTERM_RELEASE_GH_COMMAND ?? "gh";
@@ -102,14 +102,6 @@ for (const step of steps) {
 console.log("\nPublic release publish preflight passed.");
 
 function verifyReleaseGitCheckout() {
-  if (allowUnhealthyGit) {
-    return {
-      status: 0,
-      stdout: "Skipped release Git checkout verification because --allow-unhealthy-git was supplied.\n",
-      stderr: "",
-    };
-  }
-
   const insideWorkTree = runGit(["rev-parse", "--is-inside-work-tree"]);
   if (insideWorkTree.status !== 0) {
     return gitFailure("Git checkout metadata is required for publish preflight.", insideWorkTree);
@@ -237,7 +229,6 @@ function commandFailure(message, result) {
 }
 
 function parseArgs(args) {
-  let allowUnhealthyGit = false;
   let releaseAuthority = process.env.ATLASTERM_RELEASE_AUTHORITY ?? "github";
   let releaseProfile = process.env.ATLASTERM_RELEASE_PROFILE ?? "full";
   let root = scriptRoot;
@@ -245,8 +236,7 @@ function parseArgs(args) {
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
     if (arg === "--allow-unhealthy-git") {
-      allowUnhealthyGit = true;
-      continue;
+      fail("--allow-unhealthy-git is not supported for publish preflight.");
     }
     if (arg === "--release-authority" || arg === "--authority") {
       const value = args[index + 1];
@@ -307,7 +297,7 @@ function parseArgs(args) {
     fail("--release-profile desktop-local-unsigned requires --release-authority local.");
   }
 
-  return { allowUnhealthyGit, releaseAuthority, releaseProfile, root };
+  return { releaseAuthority, releaseProfile, root };
 }
 
 function createDesktopProfileStep() {

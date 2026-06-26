@@ -524,21 +524,25 @@ export const SftpPanel = memo(function SftpPanel({ sftpItems, formatters, t, dir
                   : (transfer ? () => setSelectedDownloadName(entry.name) : undefined);
                 const isSelected = !entry.is_dir && entry.name === selectedDownloadName;
                 return (
-                <button key={entry.name} type="button" aria-label={`${entry.is_dir ? t("desktop.folder") : t("desktop.file")}: ${entry.name}`} aria-pressed={entry.is_dir ? undefined : isSelected} className={isSelected ? "is-selected" : undefined} role="listitem" disabled={!onClick} onClick={onClick} title={!safeEntryName ? t("desktop.notAvailable") : undefined}>
-                  {entry.is_dir ? <Folder size={16} aria-hidden="true" /> : <FileDown size={16} aria-hidden="true" />}
-                  <span>{entry.name}</span>
-                  <small>{!safeEntryName || entry.size === null ? t("desktop.notAvailable") : formatters.fileSize(entry.size)}</small>
-                </button>
+                  <div key={entry.name} role="listitem">
+                    <button type="button" aria-label={`${entry.is_dir ? t("desktop.folder") : t("desktop.file")}: ${entry.name}`} aria-pressed={entry.is_dir ? undefined : isSelected} className={isSelected ? "is-selected" : undefined} disabled={!onClick} onClick={onClick} title={!safeEntryName ? t("desktop.notAvailable") : undefined}>
+                      {entry.is_dir ? <Folder size={16} aria-hidden="true" /> : <FileDown size={16} aria-hidden="true" />}
+                      <span>{entry.name}</span>
+                      <small>{!safeEntryName || entry.size === null ? t("desktop.notAvailable") : formatters.fileSize(entry.size)}</small>
+                    </button>
+                  </div>
                 );
               })
             : !live
               ? sftpItems.map((item) => (
-            <button key={item.name} type="button" aria-label={`${item.type === "dir" ? t("desktop.folder") : t("desktop.file")}: ${item.name}`} role="listitem" disabled title={t("desktop.noSessionActionDetail")}>
-              {item.type === "dir" ? <Folder size={16} aria-hidden="true" /> : <FileDown size={16} aria-hidden="true" />}
-              <span>{item.name}</span>
-              <small>{item.sizeBytes === undefined ? t("desktop.notAvailable") : formatters.fileSize(item.sizeBytes)}</small>
-              <small>{formatters.relativeTime(item.modified.value, item.modified.unit as RelativeTimeFormatUnit)}</small>
-            </button>
+            <div key={item.name} role="listitem">
+              <button type="button" aria-label={`${item.type === "dir" ? t("desktop.folder") : t("desktop.file")}: ${item.name}`} disabled title={t("desktop.noSessionActionDetail")}>
+                {item.type === "dir" ? <Folder size={16} aria-hidden="true" /> : <FileDown size={16} aria-hidden="true" />}
+                <span>{item.name}</span>
+                <small>{item.sizeBytes === undefined ? t("desktop.notAvailable") : formatters.fileSize(item.sizeBytes)}</small>
+                <small>{formatters.relativeTime(item.modified.value, item.modified.unit as RelativeTimeFormatUnit)}</small>
+              </button>
+            </div>
           ))
               : null}
         </div>
