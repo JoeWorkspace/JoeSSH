@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-beta.15] - 2026-06-26
+
+### Fixed
+- Hardened Web Admin release zip verification against exact forbidden public
+  token needles, not just generic token-like text.
+- Required dogfood evidence to reference a `go` RC audit with no blockers.
+- Removed the publish-preflight unhealthy Git bypass path.
+- Improved Desktop keyboard and accessibility behavior for context menus,
+  shortcut dialogs, disabled shared UI buttons, and SFTP list rows.
+
+### Changed
+- Rolled the Public Beta candidate forward from `0.1.0-beta.14` to
+  `0.1.0-beta.15` so the release gate hardening and Desktop accessibility fixes
+  are bound to a fresh local candidate, tag, provenance, and release evidence
+  set.
+
 ## [0.1.0-beta.14] - 2026-06-26
 
 ### Fixed
