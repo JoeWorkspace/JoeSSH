@@ -142,6 +142,7 @@ function createCommands(authority) {
     manifest: `npm run release:desktop:formal-artifacts:manifest -- --input-dir ${input} --source-authority ${authority}`,
     intake: `npm run release:desktop:formal-artifacts:intake -- --input-dir ${input} --source-authority ${authority}`,
     preflight: `npm run release:desktop:formal-artifacts:preflight -- --input-dir ${input} --source-authority ${authority}`,
+    validate: `npm run release:desktop:formal-artifacts:validate -- --input-dir ${input} --source-authority ${authority}`,
     import: `npm run release:desktop:formal-artifacts:import -- --input-dir ${input} --source-authority ${authority}`,
     verify: `npm run release:desktop:verify-evidence -- --require-source --require-current-git-source --require-source-authority ${authority}`,
   };

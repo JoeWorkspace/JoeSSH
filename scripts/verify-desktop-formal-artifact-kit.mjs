@@ -145,7 +145,7 @@ function verifyEmbeddedKitManifest(entries, gitSource, request) {
   if (kit.returnedManifest?.fileName !== "desktop-formal-artifact-manifest.json") {
     errors.push("handoff kit returnedManifest.fileName must be desktop-formal-artifact-manifest.json");
   }
-  for (const commandName of ["kit", "kitVerify", "manifest", "intake", "preflight", "import", "verify"]) {
+  for (const commandName of ["kit", "kitVerify", "manifest", "intake", "preflight", "validate", "import", "verify"]) {
     if (kit.commands?.[commandName] !== request.commands?.[commandName]) {
       errors.push(`handoff kit commands.${commandName} must match request.commands.${commandName}`);
     }
@@ -158,7 +158,7 @@ function verifyEmbeddedKitManifest(entries, gitSource, request) {
 function verifyOperatorCommandFiles(entries, request) {
   const powershell = entries.get("commands/windows-powershell.ps1") ?? "";
   const shell = entries.get("commands/unix.sh") ?? "";
-  for (const commandName of ["kitVerify", "manifest", "intake", "preflight", "import", "verify"]) {
+  for (const commandName of ["kitVerify", "manifest", "intake", "preflight", "validate", "import", "verify"]) {
     const command = request.commands?.[commandName];
     if (!command) {
       continue;
@@ -295,6 +295,7 @@ function readCurrentFormalArtifactRequest(gitSource) {
   verifyRequiredRequestCommand(blockers, request, "manifest");
   verifyRequiredRequestCommand(blockers, request, "intake");
   verifyRequiredRequestCommand(blockers, request, "preflight");
+  verifyRequiredRequestCommand(blockers, request, "validate");
   verifyRequiredRequestCommand(blockers, request, "import");
   verifyRequiredRequestCommand(blockers, request, "verify");
   if (typeof request.requestId !== "string" || request.requestId.trim() === "") {

@@ -164,6 +164,8 @@ function checkPackageScripts() {
     "qa:desktop-formal-artifact-request",
     "test:desktop-formal-artifact-intake",
     "qa:desktop-formal-artifact-intake",
+    "test:desktop-formal-artifact-validate",
+    "qa:desktop-formal-artifact-validate",
     "test:desktop-release-evidence",
     "qa:desktop-release-evidence",
     "test:desktop-release-secrets",
@@ -218,6 +220,7 @@ function checkPackageScripts() {
     "release:desktop:formal-artifacts:request",
     "release:desktop:formal-artifacts:intake",
     "release:desktop:formal-artifacts:preflight",
+    "release:desktop:formal-artifacts:validate",
     "release:desktop:checksums",
     "release:desktop:secret-template",
     "release:desktop:configure-secrets",
@@ -553,6 +556,11 @@ function checkPackageScripts() {
     rootQaScript,
   );
   passIf(
+    rootQaScript.includes("qa:desktop-formal-artifact-validate"),
+    "Root QA runs Desktop formal artifact validation wrapper tests",
+    rootQaScript,
+  );
+  passIf(
     rootQaScript.includes("qa:desktop-public-exclusion"),
     "Root QA runs Desktop public exclusion tests",
     rootQaScript,
@@ -676,6 +684,8 @@ function checkReleaseToolingFiles() {
     "scripts/prepare-desktop-formal-artifact-request.test.mjs",
     "scripts/diagnose-desktop-formal-artifact-input.mjs",
     "scripts/diagnose-desktop-formal-artifact-input.test.mjs",
+    "scripts/validate-desktop-formal-artifacts.mjs",
+    "scripts/validate-desktop-formal-artifacts.test.mjs",
     "scripts/configure-desktop-release-secrets.mjs",
     "scripts/configure-desktop-release-secrets.test.mjs",
     "scripts/diagnose-desktop-release-evidence.mjs",
@@ -755,6 +765,8 @@ function checkReleaseToolingFiles() {
     "";
   const desktopFormalArtifactIntake =
     readTextIfExists("scripts/diagnose-desktop-formal-artifact-input.mjs") ?? "";
+  const desktopFormalArtifactValidate =
+    readTextIfExists("scripts/validate-desktop-formal-artifacts.mjs") ?? "";
   const dogfoodVerifier =
     readTextIfExists("scripts/verify-public-beta-dogfood-evidence.mjs") ?? "";
   const unsignedStagingReporter =
@@ -854,6 +866,15 @@ function checkReleaseToolingFiles() {
     "Desktop formal artifact intake diagnostics writes checksum-covered handoff evidence",
   );
   passIf(
+    desktopFormalArtifactValidate.includes("prepare-desktop-formal-artifact-manifest.mjs") &&
+      desktopFormalArtifactValidate.includes("diagnose-desktop-formal-artifact-input.mjs") &&
+      desktopFormalArtifactValidate.includes("import-desktop-formal-artifacts.mjs") &&
+      desktopFormalArtifactValidate.includes("--preflight-only") &&
+      desktopFormalArtifactValidate.includes("--force-manifest") &&
+      desktopFormalArtifactValidate.includes("validation is no-go"),
+    "Desktop formal artifact validation wrapper runs manifest, intake, and non-mutating preflight",
+  );
+  passIf(
     desktopFormalArtifactRequest.includes("formal-artifact-request.json") &&
       desktopFormalArtifactRequest.includes("formal-artifact-request-SHA256SUMS.txt") &&
       desktopFormalArtifactRequest.includes("desktop-formal-artifact-manifest.json") &&
@@ -864,6 +885,7 @@ function checkReleaseToolingFiles() {
       desktopFormalArtifactRequest.includes("release:desktop:formal-artifacts:kit:verify") &&
       desktopFormalArtifactRequest.includes("release:desktop:formal-artifacts:manifest") &&
       desktopFormalArtifactRequest.includes("release:desktop:formal-artifacts:intake") &&
+      desktopFormalArtifactRequest.includes("release:desktop:formal-artifacts:validate") &&
       desktopFormalArtifactRequest.includes("--require-source-authority"),
     "Desktop formal artifact request generator writes checksum-covered handoff contract",
   );
@@ -878,6 +900,7 @@ function checkReleaseToolingFiles() {
       desktopFormalArtifactKit.includes("request.commands.kitVerify") &&
       desktopFormalArtifactKit.includes("request.commands.intake") &&
       desktopFormalArtifactKit.includes("request.commands.preflight") &&
+      desktopFormalArtifactKit.includes("request.commands.validate") &&
       desktopFormalArtifactKit.includes("request.commands.import") &&
       desktopFormalArtifactKit.includes("Proof text must mention both the artifact file name and the artifact SHA256"),
     "Desktop formal artifact handoff kit binds request evidence and operator commands for external signing",
@@ -891,6 +914,8 @@ function checkReleaseToolingFiles() {
       desktopFormalArtifactKitVerifier.includes("source.gitCommit") &&
       desktopFormalArtifactKitVerifier.includes("source.releaseTagCommit") &&
       desktopFormalArtifactKitVerifier.includes("request.commands.kitVerify") &&
+      desktopFormalArtifactKitVerifier.includes('"validate"') &&
+      desktopFormalArtifactKitVerifier.includes("request.commands.${commandName}") &&
       desktopFormalArtifactKitVerifier.includes("commands/windows-powershell.ps1") &&
       desktopFormalArtifactKitVerifier.includes("checksum does not match") &&
       desktopFormalArtifactKitVerifier.includes("verifyOptionalContextFiles") &&

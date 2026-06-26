@@ -55,6 +55,8 @@ const releaseScriptNames = [
   "qa:desktop-formal-artifact-request",
   "test:desktop-formal-artifact-intake",
   "qa:desktop-formal-artifact-intake",
+  "test:desktop-formal-artifact-validate",
+  "qa:desktop-formal-artifact-validate",
   "test:desktop-release-evidence",
   "qa:desktop-release-evidence",
   "test:desktop-release-secrets",
@@ -109,6 +111,7 @@ const releaseScriptNames = [
   "release:desktop:formal-artifacts:request",
   "release:desktop:formal-artifacts:intake",
   "release:desktop:formal-artifacts:preflight",
+  "release:desktop:formal-artifacts:validate",
   "release:desktop:checksums",
   "release:desktop:secret-template",
   "release:desktop:configure-secrets",
@@ -193,7 +196,7 @@ function fixtureScriptValue(name, overrides = {}) {
     return "npm run test:desktop-public-exclusion";
   }
   if (name === "qa") {
-    return "npm run lint && npm run qa:desktop-formal-artifact-import && npm run qa:desktop-formal-artifact-kit && npm run qa:desktop-formal-artifact-kit-verify && npm run qa:desktop-formal-artifact-manifest && npm run qa:desktop-formal-artifact-request && npm run qa:desktop-formal-artifact-intake && npm run qa:desktop-public-exclusion && npm run qa:desktop-unsigned-staging-verify && npm run qa:desktop-release-diagnostics && npm run qa:desktop-release-parity && npm run qa:web-admin-rollback-smoke && npm run test:rust-advisory-audit && npm run qa:lighthouse-audit && npm run qa:e2e:fresh";
+    return "npm run lint && npm run qa:desktop-formal-artifact-import && npm run qa:desktop-formal-artifact-kit && npm run qa:desktop-formal-artifact-kit-verify && npm run qa:desktop-formal-artifact-manifest && npm run qa:desktop-formal-artifact-request && npm run qa:desktop-formal-artifact-intake && npm run qa:desktop-formal-artifact-validate && npm run qa:desktop-public-exclusion && npm run qa:desktop-unsigned-staging-verify && npm run qa:desktop-release-diagnostics && npm run qa:desktop-release-parity && npm run qa:web-admin-rollback-smoke && npm run test:rust-advisory-audit && npm run qa:lighthouse-audit && npm run qa:e2e:fresh";
   }
   if (name === "qa:desktop:real-ssh-smoke:required") {
     return "node scripts/require-real-ssh-smoke-env.mjs && npm run qa:desktop:real-ssh-smoke";
@@ -258,11 +261,20 @@ function fixtureScriptValue(name, overrides = {}) {
   if (name === "release:desktop:formal-artifacts:intake") {
     return "node scripts/diagnose-desktop-formal-artifact-input.mjs --no-fail";
   }
+  if (name === "release:desktop:formal-artifacts:validate") {
+    return "node scripts/validate-desktop-formal-artifacts.mjs";
+  }
   if (name === "test:desktop-formal-artifact-intake") {
     return "node --test scripts/diagnose-desktop-formal-artifact-input.test.mjs";
   }
   if (name === "qa:desktop-formal-artifact-intake") {
     return "npm run test:desktop-formal-artifact-intake";
+  }
+  if (name === "test:desktop-formal-artifact-validate") {
+    return "node --test scripts/validate-desktop-formal-artifacts.test.mjs";
+  }
+  if (name === "qa:desktop-formal-artifact-validate") {
+    return "npm run test:desktop-formal-artifact-validate";
   }
   if (name === "release:desktop:configure-secrets") {
     return "node scripts/configure-desktop-release-secrets.mjs";
@@ -459,20 +471,23 @@ function createFixture(t, overrides = {}) {
       "release:desktop:verify-evidence --require-source-authority --preflight-only desktop-formal-artifact-manifest.json windows-signature-verification.txt macos-notarization-verification.txt Desktop formal artifact input contains file(s) that do not include --input-dir must be outside the release workspace source tree is clean release upload tools cannot pick up staging-only files source.gitCommit must match current HEAD formalArtifactManifest proof must mention both the artifact file name and SHA256 formal-artifact-request.json formal-artifact-request-SHA256SUMS.txt requestId must match the current Desktop formal artifact request request.source.gitCommit must match current HEAD\n",
     "scripts/import-desktop-formal-artifacts.test.mjs": "",
     "scripts/prepare-desktop-formal-artifact-kit.mjs":
-      "desktop-formal-artifact-handoff-kit formal-artifact-request.json formal-artifact-request-SHA256SUMS.txt requestId request.source.gitCommit must match current HEAD request.source.releaseTagCommit must match request.commands.kitVerify request.commands.manifest request.commands.intake request.commands.preflight request.commands.import Proof text must mention both the artifact file name and the artifact SHA256\n",
+      "desktop-formal-artifact-handoff-kit formal-artifact-request.json formal-artifact-request-SHA256SUMS.txt requestId request.source.gitCommit must match current HEAD request.source.releaseTagCommit must match request.commands.kitVerify request.commands.manifest request.commands.intake request.commands.preflight request.commands.validate request.commands.import Proof text must mention both the artifact file name and the artifact SHA256\n",
     "scripts/prepare-desktop-formal-artifact-kit.test.mjs": "",
     "scripts/verify-desktop-formal-artifact-kit.mjs":
-      "desktop-formal-artifact-handoff-kit formal-artifact-request.json formal-artifact-request-SHA256SUMS.txt Embedded formal-artifact-request.json does not match the current request requestId source.gitCommit source.releaseTagCommit request.commands.kitVerify commands/windows-powershell.ps1 checksum does not match verifyOptionalContextFiles context/${basename(path)} does not match the current sha256File(options.kitPath) git fsck --strict must pass\n",
+      "desktop-formal-artifact-handoff-kit formal-artifact-request.json formal-artifact-request-SHA256SUMS.txt Embedded formal-artifact-request.json does not match the current request requestId source.gitCommit source.releaseTagCommit request.commands.kitVerify \"validate\" request.commands.${commandName} commands/windows-powershell.ps1 checksum does not match verifyOptionalContextFiles context/${basename(path)} does not match the current sha256File(options.kitPath) git fsck --strict must pass\n",
     "scripts/verify-desktop-formal-artifact-kit.test.mjs": "",
     "scripts/prepare-desktop-formal-artifact-manifest.mjs":
       "desktop-formal-artifact-manifest.json formal-artifact-request.json formal-artifact-request-SHA256SUMS.txt requestId request.source.gitCommit must match current HEAD request.source.releaseTagCommit must match sha256: sha256File sizeBytes: statSync --input-dir must be outside the release workspace source tree is clean release upload tools cannot pick up staging-only files\n",
     "scripts/prepare-desktop-formal-artifact-manifest.test.mjs": "",
     "scripts/prepare-desktop-formal-artifact-request.mjs":
-      "formal-artifact-request.json formal-artifact-request-SHA256SUMS.txt desktop-formal-artifact-manifest.json mustMentionAll windows-signature-verification.txt macos-notarization-verification.txt release:desktop:formal-artifacts:kit release:desktop:formal-artifacts:kit:verify release:desktop:formal-artifacts:manifest release:desktop:formal-artifacts:intake --require-source-authority\n",
+      "formal-artifact-request.json formal-artifact-request-SHA256SUMS.txt desktop-formal-artifact-manifest.json mustMentionAll windows-signature-verification.txt macos-notarization-verification.txt release:desktop:formal-artifacts:kit release:desktop:formal-artifacts:kit:verify release:desktop:formal-artifacts:manifest release:desktop:formal-artifacts:intake release:desktop:formal-artifacts:validate --require-source-authority\n",
     "scripts/prepare-desktop-formal-artifact-request.test.mjs": "",
     "scripts/diagnose-desktop-formal-artifact-input.mjs":
       "formal-artifact-input-report.json formal-artifact-input-report-SHA256SUMS.txt desktop-formal-artifact-manifest.json runImporterPreflight proof must show a successful verification proof must mention both the artifact file name and SHA256\n",
     "scripts/diagnose-desktop-formal-artifact-input.test.mjs": "",
+    "scripts/validate-desktop-formal-artifacts.mjs":
+      "prepare-desktop-formal-artifact-manifest.mjs diagnose-desktop-formal-artifact-input.mjs import-desktop-formal-artifacts.mjs --preflight-only --force-manifest validation is no-go\n",
+    "scripts/validate-desktop-formal-artifacts.test.mjs": "",
     "scripts/configure-desktop-release-secrets.mjs":
       'ATLASTERM_WINDOWS_CERTIFICATE_FILE ATLASTERM_APPLE_CERTIFICATE_FILE --write-template reports/handoff/desktop secret-input-template.env "secret", "set" --body-file desktop-release-evidence-preflight.mjs\n',
     "scripts/configure-desktop-release-secrets.test.mjs": "",

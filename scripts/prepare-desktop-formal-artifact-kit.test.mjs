@@ -59,6 +59,7 @@ function writeCurrentRequest(root, options = {}) {
       kit: "npm run release:desktop:formal-artifacts:kit -- --source-authority local",
       kitVerify: "npm run release:desktop:formal-artifacts:kit:verify -- --source-authority local",
       preflight: "npm run release:desktop:formal-artifacts:preflight -- --input-dir <signed-artifact-dir> --source-authority local",
+      validate: "npm run release:desktop:formal-artifacts:validate -- --input-dir <signed-artifact-dir> --source-authority local",
       verify: "npm run release:desktop:verify-evidence -- --require-source --require-current-git-source --require-source-authority local",
     },
     inputDirectory: {
@@ -217,10 +218,13 @@ test("writes a checksum-covered Desktop formal artifact handoff kit", (t) => {
   assert.match(entries.get("README.md"), /Request ID: desktop-formal-test/);
   assert.match(entries.get("README.md"), /desktop-formal-artifact-manifest\.json/);
   assert.match(entries.get("README.md"), /release:desktop:formal-artifacts:kit:verify/);
+  assert.match(entries.get("README.md"), /release:desktop:formal-artifacts:validate/);
   assert.match(entries.get("commands/windows-powershell.ps1"), /release:desktop:formal-artifacts:kit:verify/);
   assert.match(entries.get("commands/windows-powershell.ps1"), /release:desktop:formal-artifacts:manifest/);
+  assert.match(entries.get("commands/windows-powershell.ps1"), /release:desktop:formal-artifacts:validate/);
   assert.match(entries.get("commands/windows-powershell.ps1"), /--require-source-authority local/);
   assert.match(entries.get("commands/unix.sh"), /release:desktop:formal-artifacts:kit:verify/);
+  assert.match(entries.get("commands/unix.sh"), /release:desktop:formal-artifacts:validate/);
   assert.match(entries.get("commands/unix.sh"), /release:desktop:formal-artifacts:import/);
   assert.match(entries.get("commands/unix.sh"), /--require-source-authority local/);
   assert.equal(
@@ -241,6 +245,7 @@ test("writes a checksum-covered Desktop formal artifact handoff kit", (t) => {
   assert.equal(kit.source.releaseTagCommit, "abc123");
   assert.deepEqual(kit.requiredPlatforms, ["windows", "macos", "linux"]);
   assert.match(kit.commands.preflight, /release:desktop:formal-artifacts:preflight/);
+  assert.match(kit.commands.validate, /release:desktop:formal-artifacts:validate/);
   assert.equal(
     kit.includedFiles.find((entry) => entry.path.endsWith("formal-artifact-request.json")).sha256,
     sha256File(join(root, "reports", "handoff", "desktop", "formal-artifact-request.json")),

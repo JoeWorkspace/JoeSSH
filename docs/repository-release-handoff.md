@@ -96,10 +96,15 @@ route, not a blocker for the first Public Beta.
    npm run release:desktop:formal-artifacts:manifest -- --input-dir <signed-artifact-dir> --source-authority local
    npm run release:desktop:formal-artifacts:intake -- --input-dir <signed-artifact-dir> --source-authority local
    npm run release:desktop:formal-artifacts:preflight -- --input-dir <signed-artifact-dir> --source-authority local
+   npm run release:desktop:formal-artifacts:validate -- --input-dir <signed-artifact-dir> --source-authority local
    npm run release:desktop:formal-artifacts:import -- --input-dir <signed-artifact-dir> --source-authority local
    npm run release:desktop:verify-evidence -- --require-source --require-current-git-source --require-source-authority local
    ```
 
+   The validate command is the preferred non-mutating final check. It generates
+   the returned manifest when missing, reuses an existing manifest unless
+   `--force-manifest` is provided, writes intake evidence, and runs import
+   preflight before artifacts are copied into `reports/release/desktop`.
    The import command stages Desktop artifacts, writes formal source evidence,
    and verifies the evidence against the tagged healthy checkout. The explicit
    verify command repeats the source-authority and current-Git checks after the

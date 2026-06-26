@@ -202,6 +202,7 @@ npm run release:desktop:formal-artifacts:kit:verify -- --source-authority local
 npm run release:desktop:formal-artifacts:manifest -- --input-dir <signed-artifact-dir> --source-authority local
 npm run release:desktop:formal-artifacts:intake -- --input-dir <signed-artifact-dir> --source-authority local
 npm run release:desktop:formal-artifacts:preflight -- --input-dir <signed-artifact-dir> --source-authority local
+npm run release:desktop:formal-artifacts:validate -- --input-dir <signed-artifact-dir> --source-authority local
 npm run release:desktop:formal-artifacts:import -- --input-dir <signed-artifact-dir> --source-authority local
 npm run release:desktop:verify-evidence -- --require-source --require-current-git-source --require-source-authority local
 ```
@@ -210,7 +211,7 @@ The request command writes
 `reports/handoff/desktop/formal-artifact-request.json` plus
 `formal-artifact-request-SHA256SUMS.txt`, binding the release tag, Git commit,
 required platforms, accepted artifact extensions, proof file names, proof text
-rules, returned manifest contract, and the exact manifest/intake/preflight/import
+rules, returned manifest contract, and the exact manifest/intake/preflight/validate/import
 commands. The kit command writes
 `reports/handoff/desktop/desktop-formal-artifact-handoff-kit-<version>.zip` and
 its SHA256 manifest so a signing machine receives the request, checksum,
@@ -245,6 +246,12 @@ The intake command is non-mutating handoff evidence. It writes
 artifacts, proof files, missing platforms, stale versions, and proof text that
 does not bind to both an artifact file name and SHA256 or does not show a
 successful verification.
+
+`release:desktop:formal-artifacts:validate` is the preferred final check before
+importing returned Desktop artifacts. It generates the returned manifest when it
+is missing, reuses an existing manifest unless `--force-manifest` is provided,
+runs intake diagnostics, and then runs the importer in `--preflight-only` mode.
+It must pass before the mutating import command is used.
 
 Generate the local publication authority with an allowed public release gate:
 

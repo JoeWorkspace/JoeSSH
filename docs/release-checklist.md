@@ -108,7 +108,8 @@ until a later beta.
   `npm run release:desktop:formal-artifacts:kit:verify -- --source-authority local`,
   `npm run release:desktop:formal-artifacts:manifest -- --input-dir <signed-artifact-dir> --source-authority local`,
   `npm run release:desktop:formal-artifacts:intake -- --input-dir <signed-artifact-dir> --source-authority local`,
-  `npm run release:desktop:formal-artifacts:preflight -- --input-dir <signed-artifact-dir> --source-authority local`
+  `npm run release:desktop:formal-artifacts:preflight -- --input-dir <signed-artifact-dir> --source-authority local`,
+  `npm run release:desktop:formal-artifacts:validate -- --input-dir <signed-artifact-dir> --source-authority local`
   and then
   `npm run release:desktop:formal-artifacts:import -- --input-dir <signed-artifact-dir> --source-authority local`,
   followed by
@@ -169,7 +170,8 @@ until a later beta.
   `npm run release:desktop:formal-artifacts:kit:verify -- --source-authority local`,
   `npm run release:desktop:formal-artifacts:manifest -- --input-dir <signed-artifact-dir> --source-authority local`,
   `npm run release:desktop:formal-artifacts:intake -- --input-dir <signed-artifact-dir> --source-authority local`,
-  `npm run release:desktop:formal-artifacts:preflight -- --input-dir <signed-artifact-dir> --source-authority local`
+  `npm run release:desktop:formal-artifacts:preflight -- --input-dir <signed-artifact-dir> --source-authority local`,
+  `npm run release:desktop:formal-artifacts:validate -- --input-dir <signed-artifact-dir> --source-authority local`
   and
   `npm run release:desktop:formal-artifacts:import -- --input-dir <signed-artifact-dir> --source-authority local`,
   then

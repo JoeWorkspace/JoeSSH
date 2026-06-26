@@ -54,6 +54,7 @@ function writeCurrentRequest(root, options = {}) {
       kitVerify: "npm run release:desktop:formal-artifacts:kit:verify -- --source-authority local",
       manifest: "npm run release:desktop:formal-artifacts:manifest -- --input-dir <signed-artifact-dir> --source-authority local",
       preflight: "npm run release:desktop:formal-artifacts:preflight -- --input-dir <signed-artifact-dir> --source-authority local",
+      validate: "npm run release:desktop:formal-artifacts:validate -- --input-dir <signed-artifact-dir> --source-authority local",
       verify: "npm run release:desktop:verify-evidence -- --require-source --require-current-git-source --require-source-authority local",
     },
     inputDirectory: {

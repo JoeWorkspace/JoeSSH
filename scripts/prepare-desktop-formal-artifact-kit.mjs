@@ -113,6 +113,7 @@ ${request.commands.kitVerify}
 ${request.commands.manifest}
 ${request.commands.intake}
 ${request.commands.preflight}
+${request.commands.validate}
 ${request.commands.import}
 ${request.commands.verify}
 \`\`\`
@@ -127,6 +128,7 @@ function createCommandFiles(request) {
     request.commands.manifest,
     request.commands.intake,
     request.commands.preflight,
+    request.commands.validate,
     request.commands.import,
     request.commands.verify,
   ];
@@ -236,7 +238,7 @@ function readCurrentFormalArtifactRequest(gitSource) {
       blockers.push(`request.requiredPlatforms must include ${platform}`);
     }
   }
-  for (const commandName of ["kit", "kitVerify", "manifest", "intake", "preflight", "import", "verify"]) {
+  for (const commandName of ["kit", "kitVerify", "manifest", "intake", "preflight", "validate", "import", "verify"]) {
     if (typeof request.commands?.[commandName] !== "string" || request.commands[commandName].trim() === "") {
       blockers.push(`request.commands.${commandName} must be present`);
     }
