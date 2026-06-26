@@ -14,6 +14,16 @@ describe("design-system primitives", () => {
     expect(screen.getByText("Click me")).toBeTruthy();
   });
 
+  it("defaults Button to non-submit behavior", () => {
+    render(<Button>Click me</Button>);
+    expect(screen.getByRole("button", { name: "Click me" }).getAttribute("type")).toBe("button");
+  });
+
+  it("allows Button submit type when explicitly requested", () => {
+    render(<Button type="submit">Save</Button>);
+    expect(screen.getByRole("button", { name: "Save" }).getAttribute("type")).toBe("submit");
+  });
+
   it("renders Button with ghost variant", () => {
     render(<Button variant="ghost">Ghost</Button>);
     expect(screen.getByText("Ghost")).toBeTruthy();

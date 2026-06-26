@@ -10,6 +10,7 @@ import { clsx } from "clsx";
 
 export const Button = memo(function Button({
   className,
+  type = "button",
   variant = "default",
   size = "default",
   ...props
@@ -17,7 +18,7 @@ export const Button = memo(function Button({
   variant?: "default" | "ghost" | "quiet" | "danger";
   size?: "default" | "sm" | "icon";
 }) {
-  return <button className={clsx("ui-button", `ui-button--${variant}`, `ui-button--${size}`, className)} {...props} />;
+  return <button className={clsx("ui-button", `ui-button--${variant}`, `ui-button--${size}`, className)} type={type} {...props} />;
 });
 
 export const IconButton = memo(function IconButton({
