@@ -1,6 +1,6 @@
 # JoeSSH Public Beta Dogfood Script
 
-This script is the repeatable operator dogfood path for `0.1.0-beta.11`.
+This script is the repeatable operator dogfood path for `0.1.0-beta.12`.
 It is for internal dogfood and release-candidate evidence, not a substitute for
 signed Desktop formal release evidence.
 
@@ -41,7 +41,7 @@ reports/dogfood/public-beta/latest.json
 ```
 
 When the verifier runs inside a Git checkout, `gitCommit` must match `HEAD` and
-`releaseTagCommit` must match the `v0.1.0-beta.11` tag. Refresh these fields
+`releaseTagCommit` must match the `v0.1.0-beta.12` tag. Refresh these fields
 after every commit or tag move before generating release authority, provenance,
 or RC audit evidence.
 
