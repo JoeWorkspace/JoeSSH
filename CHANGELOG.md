@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-beta.14] - 2026-06-26
+
+### Fixed
+- Disabled Desktop controls that were visible but not yet wired to actions,
+  including placeholder navigation, snippet creation, pane menu, tab creation,
+  copy/maximize, and plan management controls.
+- Made hover-only Desktop actions visible on keyboard focus and gave custom
+  icon buttons a consistent focusable visual style.
+- Respected reduced-motion preferences for terminal search match scrolling and
+  hover-reveal transitions.
+
+### Changed
+- Rolled the Public Beta candidate forward from `0.1.0-beta.13` to
+  `0.1.0-beta.14` so the Desktop UI polish fixes are included in the current
+  release evidence set.
+
 ## [0.1.0-beta.13] - 2026-06-26
 
 ### Added

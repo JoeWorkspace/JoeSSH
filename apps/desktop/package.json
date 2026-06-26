@@ -1,6 +1,6 @@
 {
   "name": "@atlasterm/desktop",
-  "version": "0.1.0-beta.13",
+  "version": "0.1.0-beta.14",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,9 +12,9 @@
     "tauri:build": "tauri build"
   },
   "dependencies": {
-    "@atlasterm/error-monitor": "0.1.0-beta.13",
-    "@atlasterm/i18n": "0.1.0-beta.13",
-    "@atlasterm/ui": "0.1.0-beta.13",
+    "@atlasterm/error-monitor": "0.1.0-beta.14",
+    "@atlasterm/i18n": "0.1.0-beta.14",
+    "@atlasterm/ui": "0.1.0-beta.14",
     "@tauri-apps/api": "2.5.0",
     "@xterm/xterm": "5.5.0",
     "lucide-react": "^0.468.0",
