@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-beta.13] - 2026-06-26
+
+### Added
+- Desktop formal artifact validation gate for local/self-hosted signing
+  handoff inputs before signed artifacts are copied into public release
+  evidence.
+- Release handoff documentation for the non-mutating Desktop formal artifact
+  validation path and its checksum-covered request/kit workflow.
+
+### Fixed
+- Shared UI buttons now default to `type="button"` so non-submit toolbar and
+  modal actions cannot accidentally submit surrounding forms.
+
+### Changed
+- Rolled the Public Beta candidate forward from `0.1.0-beta.12` to
+  `0.1.0-beta.13` so Desktop formal artifact validation and shared button
+  safety fixes are bound to a fresh local candidate, tag, provenance, and
+  release evidence set.
+
 ## [0.1.0-beta.12] - 2026-06-26
 
 ### Added

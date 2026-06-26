@@ -1,6 +1,6 @@
 {
   "name": "@atlasterm/web",
-  "version": "0.1.0-beta.12",
+  "version": "0.1.0-beta.13",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,8 +11,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@atlasterm/error-monitor": "0.1.0",
-    "@atlasterm/i18n": "0.1.0",
+    "@atlasterm/error-monitor": "0.1.0-beta.13",
+    "@atlasterm/i18n": "0.1.0-beta.13",
     "lucide-react": "^0.468.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"

@@ -106,7 +106,7 @@ secret names and that the workflow is available:
 
 ```bash
 npm run release:desktop:evidence-preflight -- --repo JoeWorkspace/JoeSSH
-npm run release:desktop:evidence-workflow -- --repo JoeWorkspace/JoeSSH --ref v0.1.0-beta.12
+npm run release:desktop:evidence-workflow -- --repo JoeWorkspace/JoeSSH --ref v0.1.0-beta.13
 ```
 
 The preflight checks GitHub CLI authentication, lists repository secret names
@@ -419,7 +419,7 @@ formal signed Desktop evidence gate.
 After installers and checksums are present, run:
 
 ```bash
-git tag -a v0.1.0-beta.12 -m "JoeSSH 0.1.0-beta.12"
+git tag -a v0.1.0-beta.13 -m "JoeSSH 0.1.0-beta.13"
 npm run release:provenance
 npm run release:provenance:verify
 npm run release:publish-preflight
@@ -449,7 +449,7 @@ checks `reports/release/local-release-authority.<profile>.json` with the legacy
 `release:publish-preflight:local:desktop-local-unsigned` command set instead of
 GitHub draft creation; unsigned Desktop builds must stay outside
 `reports/release/`. The draft command then
-requires `docs/release-notes/0.1.0-beta.12.md`, staged release artifacts under
+requires `docs/release-notes/0.1.0-beta.13.md`, staged release artifacts under
 `reports/release/`, fresh checksums, and complete desktop release evidence whose
 artifact sha256 values match the checksum manifest and actual files, with
 `release-evidence-SHA256SUMS.txt` binding the evidence JSON itself. Raw Tauri bundle outputs are inputs to
