@@ -251,13 +251,13 @@ export const Sidebar = memo(function Sidebar({
       </section>
 
       <nav className="sidebar-groups" aria-label={t("desktop.workspace")}>
-        <button type="button">
+        <button type="button" disabled>
           <Star size={16} aria-hidden="true" /> {t("desktop.favorites")}
         </button>
-        <button type="button">
+        <button type="button" disabled>
           <Users size={16} aria-hidden="true" /> {t("desktop.teamVault")}
         </button>
-        <button type="button">
+        <button type="button" disabled>
           <Cloud size={16} aria-hidden="true" /> {t("desktop.syncSpaces")}
         </button>
       </nav>
@@ -265,7 +265,7 @@ export const Sidebar = memo(function Sidebar({
       <section className="snippets-section" aria-label={t("desktop.snippets")}>
         <header>
           <span>{t("desktop.snippets")}</span>
-          <IconButton label={t("desktop.snippetAdd")}>
+          <IconButton label={t("desktop.snippetAdd")} disabled>
             <Plus size={14} />
           </IconButton>
         </header>

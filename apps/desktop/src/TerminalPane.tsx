@@ -34,6 +34,13 @@ export function highlightMatch(text: string, query: string) {
   );
 }
 
+function scrollMatchIntoView(element: HTMLElement) {
+  const reducedMotion =
+    typeof window !== "undefined" &&
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  element.scrollIntoView({ block: "nearest", behavior: reducedMotion ? "auto" : "smooth" });
+}
+
 export const TerminalPane = memo(function TerminalPane({
   title,
   lines,
@@ -131,7 +138,7 @@ export const TerminalPane = memo(function TerminalPane({
               <Video size={15} className={recording ? "recording-active" : ""} />
             </IconButton>
           ) : null}
-          <IconButton label={t("desktop.paneMenu")}>
+          <IconButton label={t("desktop.paneMenu")} disabled>
             <MoreHorizontal size={15} />
           </IconButton>
         </div>
@@ -183,7 +190,7 @@ export const TerminalPane = memo(function TerminalPane({
                   <code
                     className={`terminal-line terminal-line--${line.kind}${isCurrentMatch ? " terminal-line--current-match" : ""}`}
                     key={line.id}
-                    ref={isCurrentMatch ? (el) => { if (el) el.scrollIntoView({ block: "nearest", behavior: "smooth" }); } : undefined}
+                    ref={isCurrentMatch ? (el) => { if (el) scrollMatchIntoView(el); } : undefined}
                     style={{ display: "block", height: LINE_HEIGHT }}
                   >
                     {searchQuery ? highlightMatch(line.text, searchQuery) : line.text}
@@ -199,7 +206,7 @@ export const TerminalPane = memo(function TerminalPane({
               <code
                 className={`terminal-line terminal-line--${line.kind}${isCurrentMatch ? " terminal-line--current-match" : ""}`}
                 key={line.id}
-                ref={isCurrentMatch ? (el) => { if (el) el.scrollIntoView({ block: "nearest", behavior: "smooth" }); } : undefined}
+                ref={isCurrentMatch ? (el) => { if (el) scrollMatchIntoView(el); } : undefined}
               >
                 {searchQuery ? highlightMatch(line.text, searchQuery) : line.text}
               </code>

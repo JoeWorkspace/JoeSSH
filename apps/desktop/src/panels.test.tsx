@@ -564,6 +564,13 @@ describe('extracted desktop panels', () => {
     expect(html).toContain('Business Layer');
   });
 
+  it('keeps unimplemented plan management disabled', () => {
+    const { container } = render(<SettingsPanel t={t} />);
+    const managePlan = Array.from(container.querySelectorAll('button'))
+      .find((button) => button.textContent?.includes('Manage plan')) as HTMLButtonElement;
+    expect(managePlan.disabled).toBe(true);
+  });
+
   it('renders telemetry consent control and wires changes', () => {
     const onChange = vi.fn();
     const { container, rerender } = render(

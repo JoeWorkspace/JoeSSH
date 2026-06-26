@@ -390,6 +390,8 @@
 }
 
 .connection-card:hover .connection-fav,
+.connection-card:focus-within .connection-fav,
+.connection-fav:focus-visible,
 .connection-fav.is-favorited {
   opacity: 1;
 }
@@ -1693,6 +1695,16 @@ kbd {
   [data-tooltip]::after {
     transition: none;
   }
+
+  .connection-fav,
+  .group-manager-actions,
+  .icon-btn {
+    transition: none;
+  }
+
+  .recording-dot {
+    animation: none;
+  }
 }
 
 @media (max-width: 1180px) {
@@ -2106,7 +2118,8 @@ kbd {
   transition: opacity 0.15s;
 }
 
-.group-manager-item:hover .group-manager-actions {
+.group-manager-item:hover .group-manager-actions,
+.group-manager-item:focus-within .group-manager-actions {
   opacity: 1;
 }
 
@@ -2115,6 +2128,40 @@ kbd {
   display: flex;
   gap: 6px;
   width: 100%;
+}
+
+.icon-btn {
+  align-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--atlas-text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  height: 28px;
+  justify-content: center;
+  padding: 0;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+  width: 28px;
+}
+
+.icon-btn:hover {
+  background: rgba(148, 163, 184, 0.12);
+  border-color: var(--atlas-border-strong, var(--atlas-border));
+  color: var(--atlas-text);
+}
+
+.icon-btn:focus-visible {
+  outline: 2px solid var(--atlas-accent);
+  outline-offset: 2px;
+}
+
+.icon-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .icon-btn--danger:hover {

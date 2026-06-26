@@ -1088,7 +1088,7 @@ export const SettingsPanel = memo(function SettingsPanel({ t, connectionsIO, kno
             <CircleDollarSign size={16} /> {t("desktop.seatBilling")}
           </span>
         </div>
-        <Button variant="ghost">
+        <Button variant="ghost" disabled>
           <Bell size={15} /> {t("desktop.managePlan")}
         </Button>
       </Panel>

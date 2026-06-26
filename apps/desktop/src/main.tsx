@@ -1052,10 +1052,10 @@ function App({ t, locale, onLanguageChoiceChange, languageChoice, telemetry }: {
             <Badge tone={hasActiveDesktopSession ? "good" : "neutral"}>
               <Lock size={12} /> SSH
             </Badge>
-            <IconButton label={t("desktop.copySession")} disabled={!hasActiveDesktopSession}>
+            <IconButton label={t("desktop.copySession")} disabled>
               <Copy size={16} />
             </IconButton>
-            <IconButton label={t("desktop.maximizeTerminal")}>
+            <IconButton label={t("desktop.maximizeTerminal")} disabled>
               <Maximize2 size={16} />
             </IconButton>
           </div>
@@ -1083,7 +1083,7 @@ function App({ t, locale, onLanguageChoiceChange, languageChoice, telemetry }: {
             </button>
           ))}
           </div>
-          <IconButton label={t("desktop.newTerminalTab")} disabled={!hasActiveDesktopSession}>
+          <IconButton label={t("desktop.newTerminalTab")} disabled>
             <Plus size={16} />
           </IconButton>
         </nav>

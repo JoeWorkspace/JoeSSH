@@ -88,6 +88,14 @@ describe("Sidebar", () => {
     expect(screen.getByRole("button", { name: /eu-build-runner/i }).hasAttribute("aria-current")).toBe(false);
   });
 
+  it("keeps navigation placeholders and snippet creation disabled until wired", () => {
+    setup();
+    expect((screen.getByRole("button", { name: /desktop.favorites/i }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: /desktop.teamVault/i }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: /desktop.syncSpaces/i }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByLabelText("desktop.snippetAdd") as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it("labels status dots by connection status instead of color", () => {
     setup();
 

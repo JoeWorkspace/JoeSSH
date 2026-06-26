@@ -214,6 +214,18 @@ describe("TerminalPane", () => {
     expect((screen.getByLabelText("desktop.startRecording") as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it("keeps unimplemented pane menu disabled", () => {
+    render(
+      <TerminalPane
+        title="Sample Terminal"
+        lines={makeLines(3)}
+        statusLabel="Live"
+        t={mockT as never}
+      />,
+    );
+    expect((screen.getByLabelText("desktop.paneMenu") as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it("renders virtualized lines for 200+ lines", () => {
     const lines = makeLines(250);
     render(
@@ -259,6 +271,44 @@ describe("TerminalPane", () => {
       />,
     );
     expect(screen.getByText("1/2")).toBeTruthy();
+  });
+
+  it("uses non-animated search scroll for reduced-motion users", () => {
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value: scrollIntoView,
+    });
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: vi.fn().mockReturnValue({
+        addEventListener: vi.fn(),
+        addListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+        matches: true,
+        media: "(prefers-reduced-motion: reduce)",
+        onchange: null,
+        removeEventListener: vi.fn(),
+        removeListener: vi.fn(),
+      }),
+    });
+    render(
+      <TerminalPane
+        title="Test Reduced Motion"
+        lines={[
+          { id: "1", text: "hello world", kind: "output" },
+          { id: "2", text: "no match", kind: "output" },
+        ]}
+        statusLabel="Live"
+        t={mockT as never}
+        active
+        searchOpen
+        searchQuery="hello"
+        onSearchQueryChange={vi.fn()}
+        onSearchClose={vi.fn()}
+      />,
+    );
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest", behavior: "auto" });
   });
 
   it("renders zero match count via translation when no matches", () => {
