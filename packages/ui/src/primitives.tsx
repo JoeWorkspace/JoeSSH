@@ -1,4 +1,11 @@
-import { forwardRef, memo, type ButtonHTMLAttributes, type HTMLAttributes, type ReactNode } from "react";
+import {
+  forwardRef,
+  memo,
+  type ButtonHTMLAttributes,
+  type HTMLAttributes,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import { clsx } from "clsx";
 
 export const Button = memo(function Button({
@@ -52,16 +59,60 @@ export function SegmentedControl<T extends string>({
   className?: string;
   label?: string;
 }) {
+  const selectedIndex = Math.max(
+    0,
+    options.findIndex((option) => option.value === value),
+  );
+
+  function moveToOption(event: KeyboardEvent<HTMLButtonElement>, index: number) {
+    const option = options[index];
+    if (!option) {
+      return;
+    }
+
+    event.preventDefault();
+    onChange(option.value);
+    const tabs = event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]');
+    tabs?.[index]?.focus();
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
+    if (options.length === 0) {
+      return;
+    }
+
+    switch (event.key) {
+      case "ArrowRight":
+      case "ArrowDown":
+        moveToOption(event, (index + 1) % options.length);
+        break;
+      case "ArrowLeft":
+      case "ArrowUp":
+        moveToOption(event, (index - 1 + options.length) % options.length);
+        break;
+      case "Home":
+        moveToOption(event, 0);
+        break;
+      case "End":
+        moveToOption(event, options.length - 1);
+        break;
+      default:
+        break;
+    }
+  }
+
   return (
     <div className={clsx("ui-segmented", className)} role="tablist" aria-label={label}>
-      {options.map((option) => (
+      {options.map((option, index) => (
         <button
           aria-label={option.label}
           aria-selected={value === option.value}
           className="ui-segmented__item"
           key={option.value}
           onClick={() => onChange(option.value)}
+          onKeyDown={(event) => handleKeyDown(event, index)}
           role="tab"
+          tabIndex={index === selectedIndex ? 0 : -1}
           title={option.label}
           type="button"
         >

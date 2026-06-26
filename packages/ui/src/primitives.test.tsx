@@ -89,6 +89,39 @@ describe("design-system primitives", () => {
     expect(screen.getByRole("tab", { name: "Y" }).getAttribute("aria-selected")).toBe("false");
   });
 
+  it("supports SegmentedControl keyboard navigation", () => {
+    const onChange = vi.fn();
+    const options = [
+      { value: "alpha" as const, label: "Alpha" },
+      { value: "beta" as const, label: "Beta" },
+      { value: "gamma" as const, label: "Gamma" },
+    ];
+
+    const { rerender } = render(
+      <SegmentedControl options={options} value="alpha" onChange={onChange} label="sections" />,
+    );
+
+    expect(screen.getByRole("tab", { name: "Alpha" }).getAttribute("tabindex")).toBe("0");
+    expect(screen.getByRole("tab", { name: "Beta" }).getAttribute("tabindex")).toBe("-1");
+
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Alpha" }), { key: "ArrowRight" });
+    expect(onChange).toHaveBeenLastCalledWith("beta");
+    expect(document.activeElement).toBe(screen.getByRole("tab", { name: "Beta" }));
+
+    rerender(<SegmentedControl options={options} value="beta" onChange={onChange} label="sections" />);
+    expect(screen.getByRole("tab", { name: "Beta" }).getAttribute("tabindex")).toBe("0");
+    expect(screen.getByRole("tab", { name: "Gamma" }).getAttribute("tabindex")).toBe("-1");
+
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Beta" }), { key: "End" });
+    expect(onChange).toHaveBeenLastCalledWith("gamma");
+
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Beta" }), { key: "Home" });
+    expect(onChange).toHaveBeenLastCalledWith("alpha");
+
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Beta" }), { key: "ArrowLeft" });
+    expect(onChange).toHaveBeenLastCalledWith("alpha");
+  });
+
   it("renders SegmentedControl with short labels and full accessible names", () => {
     const onChange = vi.fn();
     const options = [
