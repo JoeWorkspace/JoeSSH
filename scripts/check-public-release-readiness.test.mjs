@@ -168,6 +168,9 @@ function fixtureScriptValue(name, overrides = {}) {
   if (name === "qa:mobile-public-env") {
     return "npm run test:mobile-public-env && node scripts/check-mobile-public-env.mjs";
   }
+  if (name === "test:mobile-public-env") {
+    return "node --test scripts/check-mobile-public-env.test.mjs scripts/mobile-e2e-env-guard.test.mjs";
+  }
   if (name === "test:public-beta-dogfood") {
     return "node --test scripts/verify-public-beta-dogfood-evidence.test.mjs";
   }
@@ -397,14 +400,16 @@ function createFixture(t, overrides = {}) {
   });
 
   const version = overrides.__version ?? "0.1.0-beta.1";
+  const scriptOverrides = overrides.__scriptOverrides ?? {};
   const fileOverrides = { ...overrides };
   delete fileOverrides.__version;
+  delete fileOverrides.__scriptOverrides;
 
   const files = {
     "package.json": JSON.stringify({
       version,
       scripts: Object.fromEntries(
-        releaseScriptNames.map((name) => [name, fixtureScriptValue(name)]),
+        releaseScriptNames.map((name) => [name, fixtureScriptValue(name, scriptOverrides)]),
       ),
     }),
     "apps/desktop/package.json": JSON.stringify({ version }),
@@ -514,8 +519,15 @@ function createFixture(t, overrides = {}) {
       "web-admin-rollback-smoke verified current Web Admin release package verified previous Web Admin rollback package rollback-smoke-SHA256SUMS.txt\n",
     "scripts/smoke-web-admin-rollback.test.mjs": "",
     "scripts/check-mobile-public-env.mjs":
-      "EXPO_PUBLIC_ATLASTERM_SYNC_AUTH_TOKEN Public Beta mobile release builds embedded in the app bundle\n",
+      "EXPO_PUBLIC_ATLASTERM_SYNC_AUTH_TOKEN Public Beta mobile release builds embedded in the app bundle discoverMobilePublicEnvFiles .env.example activeForbiddenEnvAssignments statSync(candidate).isFile()\n",
     "scripts/check-mobile-public-env.test.mjs": "",
+    "scripts/mobile-e2e-env-guard.test.mjs": "",
+    "tests/e2e/scripts/mobile-e2e-env-guard.mjs":
+      "ATLASTERM_E2E_MOBILE_SYNC_AUTH_TOKEN ATLASTERM_SYNC_AUTH_TOKEN EXPO_PUBLIC_ATLASTERM_SYNC_AUTH_TOKEN sanitizeFreshPlaywrightEnv validateMobileE2eSyncAuthEnv\n",
+    "tests/e2e/scripts/mobile-static-web-server.mjs":
+      "validateMobileE2eSyncAuthEnv\n",
+    "tests/e2e/scripts/run-playwright-with-fresh-ports.mjs":
+      "sanitizeFreshPlaywrightEnv\n",
     "scripts/run-rust-advisory-audit.mjs":
       "cargo audit could not fetch the RustSec advisory DB --no-fetch --stale isFetchFailure maxCacheHours\n",
     "scripts/run-rust-advisory-audit.test.mjs": "",
@@ -1629,7 +1641,8 @@ test("rejects narrow Web Admin bundle token scanners", (t) => {
 test("rejects narrow mobile public env guards", (t) => {
   const result = runChecker(
     createFixture(t, {
-      "scripts/check-mobile-public-env.mjs": "console.log('ok');\n",
+      "scripts/check-mobile-public-env.mjs":
+        "EXPO_PUBLIC_ATLASTERM_SYNC_AUTH_TOKEN Public Beta mobile release builds embedded in the app bundle\n",
     }),
   );
 
@@ -1637,6 +1650,29 @@ test("rejects narrow mobile public env guards", (t) => {
   assert.match(
     result.stdout,
     /FAIL Mobile public env guard rejects EXPO_PUBLIC sync auth tokens/,
+  );
+});
+
+test("rejects missing mobile E2E Expo token guard coverage", (t) => {
+  const result = runChecker(
+    createFixture(t, {
+      __scriptOverrides: {
+        "test:mobile-public-env": "node --test scripts/check-mobile-public-env.test.mjs",
+      },
+      "tests/e2e/scripts/mobile-e2e-env-guard.mjs": "",
+      "tests/e2e/scripts/mobile-static-web-server.mjs": "",
+      "tests/e2e/scripts/run-playwright-with-fresh-ports.mjs": "",
+    }),
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stdout,
+    /FAIL Mobile public env tests cover env files and E2E Expo token guards/,
+  );
+  assert.match(
+    result.stdout,
+    /FAIL Mobile E2E env guard prevents public token leakage into Expo web bundles/,
   );
 });
 

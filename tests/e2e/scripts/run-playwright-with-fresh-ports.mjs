@@ -2,6 +2,8 @@ import { spawn } from 'node:child_process';
 import net from 'node:net';
 import { fileURLToPath } from 'node:url';
 
+import { sanitizeFreshPlaywrightEnv } from './mobile-e2e-env-guard.mjs';
+
 const e2eRoot = fileURLToPath(new URL('..', import.meta.url));
 const portEnvNames = [
   'ATLASTERM_WEB_PORT',
@@ -16,13 +18,12 @@ const portEnvNames = [
 ];
 
 const allocatedPorts = await allocatePorts(portEnvNames.length);
-const env = { ...process.env };
+const env = sanitizeFreshPlaywrightEnv(process.env);
 
 portEnvNames.forEach((name, index) => {
   env[name] = String(allocatedPorts[index]);
 });
 
-delete env.EXPO_PUBLIC_ATLASTERM_SYNC_URL;
 env.ATLASTERM_E2E_TEST_TIMEOUT_MS ??= '120000';
 
 console.log(

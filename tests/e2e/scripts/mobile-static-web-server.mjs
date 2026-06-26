@@ -7,12 +7,16 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { validateMobileE2eSyncAuthEnv } from './mobile-e2e-env-guard.mjs';
+
 const host = process.env.ATLASTERM_E2E_MOBILE_STATIC_HOST ?? '127.0.0.1';
 const offlinePort = numberEnv('ATLASTERM_MOBILE_PORT', 8099);
 const livePort = numberEnv('ATLASTERM_MOBILE_LIVE_PORT', 8101);
 const mobileSyncPort = numberEnv('ATLASTERM_E2E_MOBILE_SYNC_PORT', 4111);
 const mobileSyncUrl = process.env.ATLASTERM_E2E_MOBILE_SYNC_URL ?? `http://${host}:${mobileSyncPort}`;
 const mobileSyncAuthToken = process.env.ATLASTERM_E2E_MOBILE_SYNC_AUTH_TOKEN ?? 'e2e-mobile-sync-token';
+
+validateMobileE2eSyncAuthEnv(process.env, { mobileSyncAuthToken });
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, '..', '..', '..');

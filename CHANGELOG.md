@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-beta.16] - 2026-06-26
+
+### Fixed
+- Hardened the mobile Public Beta environment guard so local `.env*` files in
+  the repository root and mobile app directory cannot carry an active
+  `EXPO_PUBLIC_ATLASTERM_SYNC_AUTH_TOKEN` into an Expo public build.
+- Refreshed Rust lockfile package versions for the current candidate so Cargo
+  release builds no longer start from a stale beta14 lockfile entry.
+
+### Changed
+- Rolled the Public Beta candidate forward from `0.1.0-beta.15` to
+  `0.1.0-beta.16` so the mobile env-file guard and lockfile refresh are bound
+  to a fresh local candidate, tag, provenance, and release evidence set.
+
 ## [0.1.0-beta.15] - 2026-06-26
 
 ### Fixed

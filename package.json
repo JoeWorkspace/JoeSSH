@@ -1,6 +1,6 @@
 {
   "name": "atlasterm",
-  "version": "0.1.0-beta.15",
+  "version": "0.1.0-beta.16",
   "private": true,
   "description": "JoeSSH monorepo for a local-first SSH, terminal, SFTP, forwarding, sync, and team workspace product.",
   "license": "MIT",
@@ -84,7 +84,7 @@
     "test:release-readiness": "node --test scripts/check-public-release-readiness.test.mjs",
     "test:release-sbom": "node --test scripts/verify-release-sbom.test.mjs",
     "test:lighthouse-audit": "node --test scripts/lighthouse-audit.test.mjs",
-    "test:mobile-public-env": "node --test scripts/check-mobile-public-env.test.mjs",
+    "test:mobile-public-env": "node --test scripts/check-mobile-public-env.test.mjs scripts/mobile-e2e-env-guard.test.mjs",
     "test:public-beta-dogfood": "node --test scripts/verify-public-beta-dogfood-evidence.test.mjs",
     "test:sync-release-package": "node --test scripts/package-sync-release.test.mjs",
     "test:sync-release-evidence": "node --test scripts/verify-sync-release-evidence.test.mjs",

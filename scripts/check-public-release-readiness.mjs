@@ -497,6 +497,14 @@ function checkPackageScripts() {
     "Mobile public env QA runs tests and the env guard",
     mobilePublicEnvScript,
   );
+  const mobilePublicEnvTestScript =
+    packageJson.scripts?.["test:mobile-public-env"] ?? "";
+  passIf(
+    mobilePublicEnvTestScript.includes("check-mobile-public-env.test.mjs") &&
+      mobilePublicEnvTestScript.includes("mobile-e2e-env-guard.test.mjs"),
+    "Mobile public env tests cover env files and E2E Expo token guards",
+    mobilePublicEnvTestScript,
+  );
 
   const requiredRealSshSmokeScript =
     packageJson.scripts?.["qa:desktop:real-ssh-smoke:required"] ?? "";
@@ -1307,8 +1315,30 @@ function checkReleaseToolingFiles() {
   passIf(
     mobilePublicEnvGuard.includes("EXPO_PUBLIC_ATLASTERM_SYNC_AUTH_TOKEN") &&
       mobilePublicEnvGuard.includes("Public Beta mobile release builds") &&
-      mobilePublicEnvGuard.includes("embedded in the app bundle"),
+      mobilePublicEnvGuard.includes("embedded in the app bundle") &&
+      mobilePublicEnvGuard.includes("discoverMobilePublicEnvFiles") &&
+      mobilePublicEnvGuard.includes(".env.example") &&
+      mobilePublicEnvGuard.includes("activeForbiddenEnvAssignments") &&
+      mobilePublicEnvGuard.includes("statSync(candidate).isFile()"),
     "Mobile public env guard rejects EXPO_PUBLIC sync auth tokens",
+  );
+
+  const mobileE2eEnvGuard =
+    readTextIfExists("tests/e2e/scripts/mobile-e2e-env-guard.mjs") ?? "";
+  const mobileE2eStaticServer =
+    readTextIfExists("tests/e2e/scripts/mobile-static-web-server.mjs") ?? "";
+  const freshPlaywrightRunner =
+    readTextIfExists("tests/e2e/scripts/run-playwright-with-fresh-ports.mjs") ??
+    "";
+  passIf(
+    mobileE2eEnvGuard.includes("ATLASTERM_E2E_MOBILE_SYNC_AUTH_TOKEN") &&
+      mobileE2eEnvGuard.includes("ATLASTERM_SYNC_AUTH_TOKEN") &&
+      mobileE2eEnvGuard.includes("EXPO_PUBLIC_ATLASTERM_SYNC_AUTH_TOKEN") &&
+      mobileE2eEnvGuard.includes("sanitizeFreshPlaywrightEnv") &&
+      mobileE2eEnvGuard.includes("validateMobileE2eSyncAuthEnv") &&
+      mobileE2eStaticServer.includes("validateMobileE2eSyncAuthEnv") &&
+      freshPlaywrightRunner.includes("sanitizeFreshPlaywrightEnv"),
+    "Mobile E2E env guard prevents public token leakage into Expo web bundles",
   );
 
   const webPackager = readTextIfExists("scripts/package-web-release.mjs") ?? "";
