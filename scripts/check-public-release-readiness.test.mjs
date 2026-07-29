@@ -404,7 +404,7 @@ function createFixture(t, overrides = {}) {
     "apps/desktop/public/llms.txt":
       "# JoeSSH Workbench\n\nJoeSSH is a local-first remote workbench.\n",
     "apps/desktop/public/humans.txt": "JoeSSH Team\n",
-    "apps/desktop/public/sw.js": 'const CACHE_NAME = "joessh-v1";\n',
+    "apps/desktop/public/sw.js": 'const CACHE_NAME = "joessh-v2";\n',
     "apps/web/public/humans.txt": "JoeSSH Team\n",
     "apps/web/public/sw.js": "const CACHE_NAME = 'joessh-admin-v2';\n",
     "packages/error-monitor/src/index.ts": errorMonitorRuntimeFixture(),

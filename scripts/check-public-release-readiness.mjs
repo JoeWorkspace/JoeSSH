@@ -1731,7 +1731,7 @@ function checkPublicFacingBranding() {
     [
       "Desktop service worker",
       "apps/desktop/public/sw.js",
-      ['const CACHE_NAME = "joessh-v1";'],
+      ['const CACHE_NAME = "joessh-v2";'],
     ],
     ["Architecture", "ARCHITECTURE.md", ["npm run qa:prod-audit"]],
   ];

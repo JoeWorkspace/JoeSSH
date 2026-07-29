@@ -26,6 +26,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run qa:package-lock-portability
       - run: npm run lint
       - run: npm run qa:handoff-hygiene
       - run: npm run qa:artifact-checksums
