@@ -4,7 +4,7 @@ import { expectNoDocumentOverflow } from './i18n';
 test.describe('JoeSSH mobile companion web smoke', () => {
   test.describe.configure({ timeout: 60_000 });
 
-  test('launches at 320px and renders the offline sync preview fallback', async ({ page }) => {
+  test('launches at 320px and renders an honest empty offline fallback', async ({ page }) => {
     await page.goto('/');
     // Hide Expo dev error toast that intercepts pointer events
     await page.addStyleTag({ content: '#error-toast { display: none !important; }' });
@@ -13,20 +13,28 @@ test.describe('JoeSSH mobile companion web smoke', () => {
     await expect(page.getByText('Sync and emergency access')).toBeVisible();
     await expect(page.getByTestId('sync-status-panel')).toContainText('Ready to connect');
     await expect(page.getByText('No workspace pulled yet')).toBeVisible();
-    await expect(page.getByText('Emergency routes appear after the first preview.')).toBeVisible();
+    await expect(page.getByText('No recovery routes are configured for this preview.')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Register and Pull Preview' })).toBeVisible();
     await expectNoDocumentOverflow(page);
 
     await page.getByTestId('sync-primary-action').click();
 
     await expect(page.getByTestId('sync-status-panel')).toContainText('Offline fallback active');
-    await expect(page.getByTestId('sync-error-panel')).toContainText('Sync service offline');
-    await expect(page.getByText('C:\\Tools\\agenttool')).toBeVisible();
-    await expect(page.getByText('mobile-sync-preview / npm run typecheck')).toBeVisible();
-    await expect(page.getByText('Relay Connect')).toBeVisible();
-    await expect(page.getByText('Cached Key')).toBeVisible();
-    await expect(page.getByTestId('emergency-channel-relay-live')).toContainText('Live');
-    await expect(page.getByTestId('emergency-channel-local-cache-offline')).toContainText('Offline');
+    await expect(page.getByTestId('sync-error-panel')).toContainText('Sync unavailable');
+    await expect(page.getByTestId('sync-error-panel')).toContainText(
+      'No live sync endpoint is configured. No live or cached workspace data was loaded.',
+    );
+    await expect(page.locator('[aria-label="Profiles: 0"]')).toBeVisible();
+    await expect(page.locator('[aria-label="Open sessions: 0"]')).toBeVisible();
+    await expect(page.locator('[aria-label="Changes pulled: 0"]')).toBeVisible();
+    await expect(page.getByText('No workspace pulled yet')).toBeVisible();
+    await expect(page.getByText('Run preview to load cursor state')).toBeVisible();
+    await expect(page.getByText('No recovery routes are configured for this preview.')).toBeVisible();
+    await expect(page.getByText('C:\\Tools\\agenttool')).toHaveCount(0);
+    await expect(page.getByText('mobile-sync-preview / npm run typecheck')).toHaveCount(0);
+    await expect(page.getByText('Relay Connect')).toHaveCount(0);
+    await expect(page.getByText('Cached Key')).toHaveCount(0);
+    await expect(page.locator('[data-testid^="emergency-channel-"]')).toHaveCount(0);
     await expectNoDocumentOverflow(page);
   });
 

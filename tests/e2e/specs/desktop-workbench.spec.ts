@@ -50,7 +50,7 @@ test.describe('JoeSSH desktop workbench', () => {
     await expectVisibleText(page, '审计轨迹', 'Audit Trail');
   });
 
-  test('reviews a pending team access request from the Team panel', async ({ page }) => {
+  test('keeps the sample team access review read-only', async ({ page }) => {
     await page.goto('/?lang=en');
 
     await page.getByRole('tab', { name: 'Team' }).click();
@@ -58,18 +58,20 @@ test.describe('JoeSSH desktop workbench', () => {
     await page.keyboard.press('Enter');
 
     await expect(page.getByRole('region', { name: 'Team access review' })).toBeVisible();
-    await expect(page.getByRole('status', { name: 'Team access request status' })).toContainText('pending');
+    const requestStatus = page.getByRole('status', { name: 'Team access request status' });
+    const approveButton = page.getByRole('button', { name: 'Approve' });
+    const rejectButton = page.getByRole('button', { name: 'Reject' });
 
-    await page.getByRole('button', { name: 'Approve' }).focus();
-    await page.keyboard.press('Enter');
-
-    await expect(page.getByRole('status', { name: 'Team access request status' })).toContainText('Approved');
-    await expect(page.locator('.team-summary[aria-label="Team access summary"]')).toContainText('2');
-    await expect(page.getByText('Access request approved')).toBeVisible();
-    await expect(page.getByText('maya.rao / prod-edge-01')).toBeVisible();
+    await expect(requestStatus).toContainText('pending');
+    await expect(approveButton).toBeDisabled();
+    await expect(approveButton).toHaveAttribute('title', 'Not available');
+    await expect(rejectButton).toBeDisabled();
+    await expect(rejectButton).toHaveAttribute('title', 'Not available');
+    await expect(page.getByText('Access request approved')).toHaveCount(0);
+    await expect(requestStatus).toContainText('pending');
   });
 
-  test('reviews a pending team access request in Simplified Chinese', async ({ page }) => {
+  test('keeps the sample team access review read-only in Simplified Chinese', async ({ page }) => {
     await page.goto('/?lang=zh-CN');
     await expect(page.locator('html')).toHaveAttribute('lang', 'zh-CN');
 
@@ -78,15 +80,17 @@ test.describe('JoeSSH desktop workbench', () => {
     await page.keyboard.press('Enter');
 
     await expect(page.getByRole('region', { name: '访问审查' })).toBeVisible();
-    await expect(page.getByRole('status', { name: '访问请求状态' })).toContainText('待处理');
+    const requestStatus = page.getByRole('status', { name: '访问请求状态' });
+    const approveButton = page.getByRole('button', { name: '批准' });
+    const rejectButton = page.getByRole('button', { name: '拒绝' });
 
-    await page.getByRole('button', { name: '批准' }).focus();
-    await page.keyboard.press('Enter');
-
-    await expect(page.getByRole('status', { name: '访问请求状态' })).toContainText('已批准');
-    await expect(page.locator('.team-summary[aria-label="团队访问摘要"]')).toContainText('2');
-    await expect(page.getByText('访问请求已批准')).toBeVisible();
-    await expect(page.getByText('maya.rao / prod-edge-01')).toBeVisible();
+    await expect(requestStatus).toContainText('待处理');
+    await expect(approveButton).toBeDisabled();
+    await expect(approveButton).toHaveAttribute('title', '不可用');
+    await expect(rejectButton).toBeDisabled();
+    await expect(rejectButton).toHaveAttribute('title', '不可用');
+    await expect(page.getByText('访问请求已批准')).toHaveCount(0);
+    await expect(requestStatus).toContainText('待处理');
   });
 
   test('opens and dismisses the command palette', async ({ page }) => {
@@ -258,13 +262,14 @@ test.describe('JoeSSH desktop workbench', () => {
     await expect(page.getByText('My Custom Group', { exact: true })).toBeVisible();
   });
 
-  test('shows recording indicator in terminal header', async ({ page }) => {
+  test('does not expose recording controls for sample terminals without a live SSH session', async ({ page }) => {
     await page.goto('/?lang=en');
 
-    // The recording toggle button should exist
     const recordButton = page.getByRole('button', { name: /Toggle recording|录制|Start recording/i });
-    await expect(recordButton).toBeVisible();
-    await expect(recordButton).toBeDisabled();
+    await expect(page.getByRole('log', { name: 'sample shell' })).toBeVisible();
+    await expect(page.getByText('No SSH session').first()).toBeVisible();
+    await expect(recordButton).toHaveCount(0);
+    await expect(page.locator('.recording-indicator')).toHaveCount(0);
   });
 
   test('terminal autocomplete stays hidden without a live SSH command input', async ({ page }) => {
@@ -318,7 +323,6 @@ test.describe('JoeSSH desktop workbench', () => {
 
     const productionGroup = page.getByRole('list', { name: 'Production' });
     const prodEdge01 = productionGroup.getByRole('button', { name: /prod-edge-01/i });
-    const prodEdge02 = productionGroup.getByRole('button', { name: /prod-edge-02/i });
 
     await expect(productionGroup.getByRole('listitem').first()).toContainText('prod-edge-01');
     await expect(prodEdge01).toHaveAttribute('aria-keyshortcuts', /Alt\+ArrowUp/);

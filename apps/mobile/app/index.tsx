@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -14,7 +14,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { createLocaleFormatters, SUPPORTED_LOCALES } from "@atlasterm/i18n";
 import type { AtlasLocale, Translator } from "@atlasterm/i18n";
 
-import type { EmergencyChannel, SyncDashboardState } from "@/models/sync";
+import type {
+  EmergencyChannel,
+  SyncDashboardState,
+  SyncError,
+} from "@/models/sync";
 import type { LocaleMode } from "@/services/locale";
 import { useMobileLocale } from "@/services/localeContext";
 import {
@@ -45,12 +49,14 @@ const syncErrorTestIds = {
 
 export default function HomeScreen() {
   const [syncState, setSyncState] = useState<SyncDashboardState>(initialState);
+  const isMountedRef = useRef(true);
+  const syncInFlightRef = useRef<Promise<void> | undefined>(undefined);
   const { localeMode, localeState, setLocaleMode, t } = useMobileLocale();
   const colorScheme = useColorScheme();
-  const { fontScale, width } = useWindowDimensions();
+  const { fontScale, height, width } = useWindowDimensions();
   const theme = getMobileTheme(colorScheme);
   const isCompact = width < 360;
-  const isTablet = width >= 720;
+  const isTablet = Math.min(width, height) >= 600;
   const isLargeText = fontScale >= 1.5;
   const useStackedMetrics = isCompact || isLargeText;
 
@@ -88,11 +94,37 @@ export default function HomeScreen() {
     ? theme.statusWarning
     : theme.red;
 
-  async function runSyncPreview() {
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  async function runSyncPreview(): Promise<void> {
+    if (syncInFlightRef.current) {
+      return syncInFlightRef.current;
+    }
+
+    const operation = performSyncPreview();
+    syncInFlightRef.current = operation;
+
+    try {
+      await operation;
+    } finally {
+      if (syncInFlightRef.current === operation) {
+        syncInFlightRef.current = undefined;
+      }
+    }
+  }
+
+  async function performSyncPreview() {
     const lastKnownDevice = syncState.device;
     const lastKnownPreview = syncState.preview;
     let activeDevice = lastKnownDevice;
-    setSyncState({ phase: "registering" });
+    let checkpointError: SyncError | undefined;
+    updateSyncState({ phase: "registering" });
 
     try {
       const registeredDevice = await registerDevice();
@@ -104,10 +136,16 @@ export default function HomeScreen() {
         ? { ...registeredDevice, syncCursor: retainedCursor }
         : registeredDevice;
       activeDevice = device;
-      setSyncState({ device, phase: "previewing" });
+      updateSyncState({ device, phase: "previewing" });
 
       if (device.connectionQuality !== "offline") {
-        await pushMobilePresenceCheckpoint(device);
+        try {
+          await pushMobilePresenceCheckpoint(device);
+        } catch (error) {
+          // Presence is advisory. A failed checkpoint must not prevent the
+          // read-only preview pull from recovering useful workspace context.
+          checkpointError = asSyncError(error);
+        }
       }
 
       const nextPreview = await fetchSyncPreview(
@@ -120,19 +158,38 @@ export default function HomeScreen() {
         ? { ...device, syncCursor: nextPreview.syncCursor }
         : device;
 
-      setSyncState({
+      updateSyncState({
         device: syncedDevice,
-        error: offlineError,
+        error: offlineError ?? checkpointError,
         phase: offlineError ? "offline" : "ready",
         preview: nextPreview,
       });
     } catch (error) {
-      setSyncState({
-        device: activeDevice,
-        error: asSyncError(error),
+      const syncError = asSyncError(error);
+      const failedDevice = activeDevice
+        ? {
+            ...activeDevice,
+            connectionQuality:
+              syncError.code === "offline"
+                ? ("offline" as const)
+                : syncError.code === "timeout" || syncError.code === "unknown"
+                  ? ("degraded" as const)
+                  : activeDevice.connectionQuality,
+          }
+        : undefined;
+
+      updateSyncState({
+        device: failedDevice,
+        error: syncError,
         phase: "error",
         preview: lastKnownPreview,
       });
+    }
+  }
+
+  function updateSyncState(nextState: SyncDashboardState) {
+    if (isMountedRef.current) {
+      setSyncState(nextState);
     }
   }
 
@@ -713,7 +770,7 @@ export default function HomeScreen() {
                 ]}
                 testID="sync-preview-workspace"
               >
-                {preview?.cursor.workspace ?? t("mobile.noWorkspace")}
+                {preview?.cursor.workspace || t("mobile.noWorkspace")}
               </Text>
               <Text
                 style={[
@@ -723,7 +780,7 @@ export default function HomeScreen() {
                 ]}
                 testID="sync-preview-command"
               >
-                {preview
+                {preview?.cursor.branch || preview?.cursor.lastCommand
                   ? `${preview.cursor.branch} / ${preview.cursor.lastCommand}`
                   : t("mobile.runPreview")}
               </Text>
@@ -769,6 +826,7 @@ export default function HomeScreen() {
                 },
                 isRtl ? styles.rtlRow : null,
               ]}
+              testID="emergency-channels-empty"
             >
               <Text
                 accessibilityElementsHidden
@@ -925,8 +983,6 @@ const LanguageOption = memo(function LanguageOption({
         ]}
       />
       <Text
-        ellipsizeMode="tail"
-        numberOfLines={2}
         style={[
           styles.languageOptionLabel,
           { color: active ? theme.selectedOptionText : theme.text },
@@ -935,8 +991,6 @@ const LanguageOption = memo(function LanguageOption({
         {label}
       </Text>
       <Text
-        ellipsizeMode="tail"
-        numberOfLines={1}
         style={[
           styles.languageOptionSubLabel,
           { color: active ? theme.selectedOptionMutedText : theme.mutedText },

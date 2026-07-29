@@ -78,6 +78,24 @@ describe("connection workspace state", () => {
     ).toBe("customer-edge");
   });
 
+  it("inherits parsed target fields when the profile has no explicit overrides", () => {
+    expect(
+      getConnectionTarget({
+        host: "release@edge.internal:2200",
+      }),
+    ).toEqual({
+      host: "edge.internal",
+      port: 2200,
+      username: "release",
+    });
+    expect(
+      findConnectionNameByTarget(
+        [{ host: "edge.internal", name: "different-target" }],
+        { host: "other.internal" },
+      ),
+    ).toBeUndefined();
+  });
+
   it("creates a uniquely named sample profile for an unmatched quick target", () => {
     expect(
       createQuickConnectionProfile(
@@ -127,5 +145,22 @@ describe("connection workspace state", () => {
 
     expect(matchesSidebarSearch(connection, "  RELEASE  ")).toBe(true);
     expect(matchesSidebarSearch(connection, "billing")).toBe(false);
+  });
+
+  it("handles empty queries, absent usernames, and default group labels", () => {
+    const connection = {
+      group: "Production",
+      host: "edge.internal",
+      name: "edge-primary",
+      tags: ["gateway"],
+    };
+
+    expect(matchesSidebarSearch(connection, "   ")).toBe(true);
+    expect(matchesSidebarSearch(connection, "production")).toBe(true);
+    expect(matchesSidebarSearch(connection, "missing")).toBe(false);
+  });
+
+  it("falls back to the first terminal tab when the active tab is absent", () => {
+    expect(getTerminalTabIndex(["prod-edge-01"], "missing")).toBe(0);
   });
 });

@@ -29,24 +29,24 @@ side-channel advisory has a safe path.
 
 ### Production Runtime Audit
 
-| Package                                        | Severity | Advisory                                          | Runtime Impact                                                                                                                                                  | Public Beta Decision                                                                | Follow-up                                                            |
-| ---------------------------------------------- | -------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| `js-yaml` via React Native test/coverage chain | Moderate | https://github.com/advisories/GHSA-h67p-54hq-rp68 | Current audit path is introduced through React Native/Babel/Jest tooling for the mobile workspace. Mobile native apps are not part of the first public release. | Accepted for `0.1.0-beta.9`; does not block Desktop + Web Admin + self-hosted Sync. | Reassess during Expo/React Native upgrade before mobile public beta. |
+| Package                                  | Severity | Advisory                                          | Runtime Impact                                                                                                                                                                                                                                  | Public Beta Decision                                                                | Follow-up                                                                                   |
+| ---------------------------------------- | -------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `uuid` via Expo config plugins / `xcode` | Moderate | https://github.com/advisories/GHSA-w5hq-g745-h8pq | The affected package is used by Expo's iOS project-generation toolchain. It is not shipped in the Desktop, Web Admin, or self-hosted Sync runtime paths, and Mobile remains outside the first public release because its pairing and credential flow is incomplete. | Accepted for `0.1.0-beta.9`; does not block Desktop + Web Admin + self-hosted Sync. | Reassess on every Expo patch; remove the exception when Expo/`xcode` accepts `uuid >=11.1.1`. |
 
 Current npm audit reports the affected production dependency chain through
-`react-native`, `babel-jest`, `@jest/transform`, `babel-plugin-istanbul`, and
-`@istanbuljs/load-nyc-config` before reaching `js-yaml`.
+`expo`, `@expo/cli`, `@expo/config`, `@expo/config-plugins`,
+`@expo/inline-modules`, `@expo/local-build-cache-provider`,
+`@expo/metro-config`, `@expo/prebuild-config`, and `xcode` before reaching
+`uuid`. npm's automated fix proposes an incompatible Expo downgrade, so JoeSSH
+does not force an unverified major `uuid` replacement into the native project
+generator.
 
 ### Development And QA Toolchain Audit
 
-These findings appear in full `npm audit` output without `--omit=dev`. They do
-not ship in the Desktop/Web/Sync runtime artifacts, but they are tracked because
-release engineering should not normalize noisy audit output.
-
-| Package                                               | Severity | Advisory                                          | Tooling Impact                                                                                                                                                                            | Public Beta Decision                                                                                                                 | Follow-up                                                                                                                                  |
-| ----------------------------------------------------- | -------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `@opentelemetry/core` via `lighthouse`/`@sentry/node` | Moderate | https://github.com/advisories/GHSA-8988-4f7v-96qf | Affects the Lighthouse QA dependency chain used for local audits, not shipped app runtime code. The audit fix currently requires a breaking Lighthouse downgrade/major dependency change. | Accepted for `0.1.0-beta.9`; keep high-severity audit as the blocking gate and isolate Lighthouse usage to trusted local/CI targets. | Recheck after Lighthouse/Sentry/OpenTelemetry publish a compatible patched chain; remove or pin the audit lane if a high severity appears. |
-| `esbuild`                                             | Moderate | https://github.com/advisories/GHSA-g7r4-m6w7-qqqr | Affects Windows development server file-read exposure. Public release artifacts are produced by trusted CI/local builds; the dev server must not be exposed to untrusted networks.        | Accepted for `0.1.0-beta.9`; does not affect static Web Admin, desktop installer, or Sync service runtime artifacts.                 | Upgrade Vite/esbuild when the compatible patched esbuild range is available; keep dev server bound to loopback for local development.      |
+The July 29 dependency refresh removed the former `js-yaml`,
+`@opentelemetry/core`, and Windows development-server `esbuild` findings.
+There are currently no additional moderate-or-higher development-only findings
+in the full npm audit output.
 
 ## Rules
 

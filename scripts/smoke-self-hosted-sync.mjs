@@ -309,7 +309,7 @@ async function pushSmokeChange(url, deviceId, baseCursor, entityId, expectedCurs
 async function assertPulledChangesPaginated(url, deviceId, expectedChangeIds, expectedCursor) {
   const seen = new Set();
   let cursor = "0";
-  let finalCursor = "0";
+  let finalCursor;
   let pageCount = 0;
 
   for (;;) {

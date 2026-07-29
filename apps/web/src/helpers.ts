@@ -1,14 +1,18 @@
 import type { LocaleFormatters } from '@atlasterm/i18n';
-import type {
-  DeviceStatus,
-  MemberStatus,
-  RoleRisk,
-} from './adminData';
+import type { DeviceStatus, MemberStatus, RoleRisk } from './adminData';
 import type { LocalMessageKey, createWebTranslator } from './localization';
 
-export function getDeviceStatusMeta(status: DeviceStatus): { className?: string; key: LocalMessageKey; stableText: string } {
+export function getDeviceStatusMeta(status: DeviceStatus): {
+  className?: string;
+  key: LocalMessageKey;
+  stableText: string;
+} {
   if (status === 'catching_up') {
-    return { className: 'pendingStatus', key: 'web.status.catchingUp', stableText: 'Catching up' };
+    return {
+      className: 'pendingStatus',
+      key: 'web.status.catchingUp',
+      stableText: 'Catching up',
+    };
   }
 
   if (status === 'current') {
@@ -16,13 +20,24 @@ export function getDeviceStatusMeta(status: DeviceStatus): { className?: string;
   }
 
   if (status === 'degraded') {
-    return { className: 'warningStatus', key: 'web.status.degraded', stableText: 'Degraded' };
+    return {
+      className: 'warningStatus',
+      key: 'web.status.degraded',
+      stableText: 'Degraded',
+    };
   }
 
-  return { className: 'warningStatus', key: 'web.status.offline', stableText: 'Offline' };
+  return {
+    className: 'warningStatus',
+    key: 'web.status.offline',
+    stableText: 'Offline',
+  };
 }
 
-export function getMemberStatusMeta(status: MemberStatus): { className?: string; key: LocalMessageKey } {
+export function getMemberStatusMeta(status: MemberStatus): {
+  className?: string;
+  key: LocalMessageKey;
+} {
   if (status === 'invited') {
     return { className: 'pendingStatus', key: 'web.status.invited' };
   }
@@ -34,12 +49,18 @@ export function getMemberStatusMeta(status: MemberStatus): { className?: string;
   return { key: 'web.status.active' };
 }
 
-export function getRoleRiskMeta(risk: RoleRisk): { className?: string; key: LocalMessageKey } {
+export function getRoleRiskMeta(risk: RoleRisk): {
+  className?: string;
+  key: LocalMessageKey;
+} {
   if (risk === 'limited') {
     return { className: 'neutralStatus', key: 'web.risk.limited' };
   }
 
-  return { className: 'warningStatus', key: risk === 'full' ? 'web.risk.full' : 'web.risk.elevated' };
+  return {
+    className: 'warningStatus',
+    key: risk === 'full' ? 'web.risk.full' : 'web.risk.elevated',
+  };
 }
 
 export function getRoleMessageKey(role: string): LocalMessageKey | undefined {
@@ -78,6 +99,15 @@ export function matchKnownValue(value: string, map: Partial<Record<string, Local
   return map[value.trim().toLowerCase()];
 }
 
+export function formatSnapshotEndpoint(value: string | null, fixtureLabel: string) {
+  if (value === null) {
+    return fixtureLabel;
+  }
+
+  const queryIndex = value.indexOf('?');
+  return queryIndex >= 0 ? `${value.slice(0, queryIndex)}?\u2026` : value;
+}
+
 export function formatLastSeen(value: string, formatters: LocaleFormatters, t: ReturnType<typeof createWebTranslator>) {
   if (value === 'Live') {
     return t.local('web.status.live');
@@ -89,7 +119,11 @@ export function formatLastSeen(value: string, formatters: LocaleFormatters, t: R
     // Live mode returns ISO/RFC3339 timestamps; avoid JavaScript's lenient parsing for arbitrary labels.
     if (isIsoDateTime(value)) {
       try {
-        return formatters.time(value, { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
+        return formatters.time(value, {
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZone: 'UTC',
+        });
       } catch {
         return value;
       }

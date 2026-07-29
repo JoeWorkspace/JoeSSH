@@ -23,7 +23,6 @@ import { createRoot, type Root } from "react-dom/client";
 import {
   Command,
   Copy,
-  FileUp,
   HardDrive,
   Lock,
   Maximize2,
@@ -35,7 +34,6 @@ import {
   Sun,
   Moon,
   TerminalSquare,
-  Video,
   X,
 } from "lucide-react";
 import { Plug } from "lucide-react";
@@ -51,7 +49,7 @@ import {
   type TranslationKey,
   type Translator,
 } from "@atlasterm/i18n";
-import { getTeamAccessSummary, teamAccessRequests } from "./teamAccess";
+import { getTeamAccessSummary } from "./teamAccess";
 import {
   createTerminalSession,
   submitTerminalCommand,
@@ -90,9 +88,11 @@ import {
   LOCALE_STORAGE_KEY,
   LAYOUT_STORAGE_KEY,
   GETTING_STARTED_STORAGE_KEY,
+  FORWARD_RULES_STORAGE_KEY,
   THEME_STORAGE_KEY,
   readStorageText,
   readStoredCustomConnections,
+  readStoredForwardRules,
   readStoredLayout,
   readStoredTheme,
   writeStorageJson,
@@ -101,12 +101,12 @@ import {
   type DesktopLayoutState,
   type PersistedConnection,
 } from "./persistence";
+import type { ForwardRule } from "./panels";
 import { useGroupManager } from "./useGroupManager";
 import { useCustomConnections } from "./useCustomConnections";
 import { useCommandPalette } from "./useCommandPalette";
 import { useRecentFavorites } from "./useRecentFavorites";
 import { useDragReorder } from "./useDragReorder";
-import { useRecording } from "./useRecording";
 import { useToast } from "./useToast";
 import {
   addTerminalTab,
@@ -206,13 +206,6 @@ const initialTerminalTabs = [
   "staging-api",
   "db-replica-03",
 ] as const;
-const connectionRegionLabels: Record<string, string> = {
-  Production: ["us-east", "edge"].join(" / "),
-  Staging: ["us-west", "staging"].join(" / "),
-  "CI runners": ["eu-central", "build"].join(" / "),
-  Data: ["us-east", "data"].join(" / "),
-};
-
 const connections = [
   {
     name: "prod-edge-01",
@@ -559,7 +552,6 @@ function App({
   const [theme, setTheme] = useState<ThemeChoice>(() =>
     readStoredTheme("system"),
   );
-  const { recording, recordingTimeLabel, toggleRecording } = useRecording();
   const { toasts, addToast } = useToast();
   const [openTerminalTabs, setOpenTerminalTabs] = useState<string[]>(() =>
     addTerminalTab(initialTerminalTabs, storedLayout.activeConnection),
@@ -579,19 +571,24 @@ function App({
         group: groupState.connectionGroups[connection.name] ?? connection.group,
         ...getConnectionPresence(desktopSessionsRef.current[connection.name]),
       })),
-      ...customConnections.connections.map((connection): DesktopConnection => ({
-        name: connection.name,
-        host: connection.host,
-        group: groupState.connectionGroups[connection.name] ?? connection.group,
-        port: connection.port,
-        ...getConnectionPresence(desktopSessionsRef.current[connection.name]),
-        tags: connection.tags,
-        username: connection.username,
-      })),
-      ...quickConnections.map((connection): DesktopConnection => ({
-        ...connection,
-        ...getConnectionPresence(desktopSessionsRef.current[connection.name]),
-      })),
+      ...customConnections.connections.map(
+        (connection): DesktopConnection => ({
+          name: connection.name,
+          host: connection.host,
+          group:
+            groupState.connectionGroups[connection.name] ?? connection.group,
+          port: connection.port,
+          ...getConnectionPresence(desktopSessionsRef.current[connection.name]),
+          tags: connection.tags,
+          username: connection.username,
+        }),
+      ),
+      ...quickConnections.map(
+        (connection): DesktopConnection => ({
+          ...connection,
+          ...getConnectionPresence(desktopSessionsRef.current[connection.name]),
+        }),
+      ),
     ];
   }, [
     groupState.connectionGroups,
@@ -623,7 +620,7 @@ function App({
             latencies.reduce((total, latency) => total + latency, 0) /
               latencies.length,
           )
-        : 0;
+        : undefined;
     return {
       averageLatencyMs,
       onlineConnections: effectiveConnections.filter(
@@ -634,12 +631,10 @@ function App({
   }, [effectiveConnections]);
   const inspectorSessionContext = useMemo(
     () => ({
-      regionLabel:
-        connectionRegionLabels[activeConnection.group] ??
-        activeConnection.group,
-      userHandle: teamAccessRequests[0]?.requestedBy ?? "",
+      regionLabel: t("desktop.notAvailable"),
+      userHandle: activeConnection.username ?? t("desktop.notAvailable"),
     }),
-    [activeConnection.group],
+    [activeConnection.username, t],
   );
   const [connectOpen, setConnectOpen] = useState(false);
   const [newConnectionOpen, setNewConnectionOpen] = useState(false);
@@ -670,13 +665,14 @@ function App({
         if (!cancelled) {
           setKnownHostEntries([]);
           setKnownHostsStoredCount(0);
+          addToast(t("desktop.knownHostActionFailed"), "error");
         }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [connectVersion, knownHostsVersion]);
+  }, [addToast, connectVersion, knownHostsVersion, t]);
   const activeDesktopSessionId =
     desktopSessionsRef.current[activeConnection.name];
   const hasActiveDesktopSession =
@@ -712,6 +708,12 @@ function App({
     };
   }, [activeConnection.name, connectVersion]);
   const forwardRules = useForwardRules(forwardFns.start, forwardFns.stop);
+  const [customForwardRules, setCustomForwardRules] = useState<ForwardRule[]>(
+    readStoredForwardRules,
+  );
+  useEffect(() => {
+    writeStorageJson(FORWARD_RULES_STORAGE_KEY, customForwardRules);
+  }, [customForwardRules]);
   // Real SFTP transfer (download/upload) bound to the active connection's session.
   const transferFns = useMemo(() => {
     void connectVersion;
@@ -803,33 +805,45 @@ function App({
       return;
     }
     let added = 0;
-    for (const item of list) {
+    for (const item of list.slice(0, 100)) {
       if (
         isRecord(item) &&
         typeof item.name === "string" &&
-        typeof item.host === "string" &&
-        customConnections.add({
-          name: item.name,
-          host: item.host,
-          group:
-            typeof item.group === "string"
-              ? item.group
-              : (groupOrder[0] ?? "Production"),
-          port:
-            typeof item.port === "number" &&
-            Number.isInteger(item.port) &&
-            item.port >= 1 &&
-            item.port <= 65535
-              ? item.port
-              : undefined,
-          tags: Array.isArray(item.tags)
-            ? item.tags.filter((tag): tag is string => typeof tag === "string")
-            : [],
-          username:
-            typeof item.username === "string" ? item.username : undefined,
-        })
+        typeof item.host === "string"
       ) {
-        added += 1;
+        const importedGroup =
+          typeof item.group === "string" && item.group.trim()
+            ? item.group.trim()
+            : (groupOrder[0] ?? "Production");
+        if (
+          customConnections.add({
+            name: item.name,
+            host: item.host,
+            group: importedGroup,
+            port:
+              typeof item.port === "number" &&
+              Number.isInteger(item.port) &&
+              item.port >= 1 &&
+              item.port <= 65535
+                ? item.port
+                : undefined,
+            tags: Array.isArray(item.tags)
+              ? item.tags.filter(
+                  (tag): tag is string => typeof tag === "string",
+                )
+              : [],
+            username:
+              typeof item.username === "string" ? item.username : undefined,
+          })
+        ) {
+          if (!allGroupNames.includes(importedGroup)) {
+            groupDispatch({
+              type: "ADD_CUSTOM_GROUP",
+              name: importedGroup,
+            });
+          }
+          added += 1;
+        }
       }
     }
     if (added === 0) {
@@ -950,6 +964,9 @@ function App({
   const openConnectionTab = useCallback((name: string) => {
     setOpenTerminalTabs((tabs) => addTerminalTab(tabs, name));
   }, []);
+  const clearPreparedTerminalInput = useCallback(() => {
+    setCommandInput("");
+  }, []);
 
   const activateConnection = useCallback(
     (name: string) => {
@@ -1062,13 +1079,59 @@ function App({
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      if ((event.ctrlKey || event.metaKey) && event.key === "k") {
-        event.preventDefault();
-        if (paletteState.open) {
+      const commandPaletteShortcut =
+        (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k";
+
+      if (paletteState.open) {
+        if (commandPaletteShortcut || event.key === "Escape") {
+          event.preventDefault();
           closePalette();
-        } else {
-          openPalette();
         }
+        return;
+      }
+
+      if (shortcutsOpen) {
+        if (isKeyboardShortcutsToggle(event) || event.key === "Escape") {
+          event.preventDefault();
+          setShortcutsOpen(false);
+        }
+        return;
+      }
+
+      if (gettingStartedOpen) {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          closeGettingStarted();
+        }
+        return;
+      }
+
+      if (
+        connectOpen ||
+        newConnectionOpen ||
+        editConnection !== null ||
+        groupState.managerOpen
+      ) {
+        // Modal components own Escape and focus trapping. Never allow a
+        // global shortcut to open or mutate content behind an active dialog.
+        return;
+      }
+
+      if (contextMenu) {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          setContextMenu(null);
+          groupDispatch({
+            type: "SET_MOVE_TO_GROUP_MENU",
+            connection: null,
+          });
+        }
+        return;
+      }
+
+      if (commandPaletteShortcut) {
+        event.preventDefault();
+        openPalette();
         return;
       }
 
@@ -1162,29 +1225,9 @@ function App({
       }
 
       if (event.key === "Escape") {
-        if (paletteState.open) {
-          event.preventDefault();
-          closePalette();
-          return;
-        }
-        if (shortcutsOpen) {
-          event.preventDefault();
-          setShortcutsOpen(false);
-          return;
-        }
-        if (gettingStartedOpen) {
-          event.preventDefault();
-          closeGettingStarted();
-          return;
-        }
         if (terminalMaximized) {
           event.preventDefault();
           setTerminalMaximized(false);
-          return;
-        }
-        if (contextMenu) {
-          event.preventDefault();
-          setContextMenu(null);
           return;
         }
       }
@@ -1194,9 +1237,14 @@ function App({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [
     activateConnection,
+    connectOpen,
     dragState.order,
     contextMenu,
+    editConnection,
     effectiveConnections,
+    groupState.managerOpen,
+    groupDispatch,
+    newConnectionOpen,
     openPalette,
     paletteState.open,
     shortcutsOpen,
@@ -1222,13 +1270,6 @@ function App({
         kind: "command" as const,
       },
       {
-        command: "open-sftp",
-        icon: <FileUp size={16} aria-hidden="true" />,
-        name: t("desktop.uploadToSession"),
-        shortcut: "U",
-        kind: "command" as const,
-      },
-      {
         command: "open-team",
         icon: <ShieldCheck size={16} aria-hidden="true" />,
         name: t("desktop.requestElevated"),
@@ -1245,12 +1286,6 @@ function App({
         command: "disconnect",
         icon: <X size={16} aria-hidden="true" />,
         name: t("desktop.disconnect"),
-        kind: "command" as const,
-      },
-      {
-        command: "toggle-recording",
-        icon: <Video size={16} aria-hidden="true" />,
-        name: t("desktop.toggleRecording"),
         kind: "command" as const,
       },
       {
@@ -1332,13 +1367,13 @@ function App({
       }
     }
     for (const rcmd of recentsState.recentCommands) {
-      const cmd = commands.find((c) => c.name === rcmd);
+      const cmd = commands.find((c) => c.command === rcmd);
       if (cmd && (!q || cmd.name.toLowerCase().includes(q))) {
         items.push({ ...cmd, kind: "recent-command" });
       }
     }
     for (const cmd of commands) {
-      if (recentsState.recentCommands.includes(cmd.name)) continue;
+      if (recentsState.recentCommands.includes(cmd.command)) continue;
       if (!q || cmd.name.toLowerCase().includes(q)) {
         items.push(cmd);
       }
@@ -1403,14 +1438,19 @@ function App({
           activateConnection(existingConnection.name);
         }
 
-        setConnectProfileName(connectionName);
-        setConnectTargetOverride(target);
-        setConnectOpen(true);
+        if (
+          !existingConnection ||
+          !desktopSessionsRef.current[existingConnection.name]
+        ) {
+          setConnectProfileName(connectionName);
+          setConnectTargetOverride(target);
+          setConnectOpen(true);
+        }
       }
       if (item.kind === "command" || item.kind === "recent-command") {
         if (item.command === "disconnect") {
           void handleDisconnect().then((didDisconnect) => {
-            if (didDisconnect) recordCommand(item.name);
+            if (didDisconnect && item.command) recordCommand(item.command);
           });
         } else {
           if (item.command === "focus-terminal") {
@@ -1445,21 +1485,8 @@ function App({
               void handleCopySshCommand(activeConnection);
             else addToast(t("desktop.noSession"), "warning");
           }
-          if (item.command === "toggle-recording") {
-            if (hasActiveDesktopSession) {
-              toggleRecording();
-              addToast(
-                recording
-                  ? t("desktop.recordingStopped")
-                  : t("desktop.recordingStarted"),
-                recording ? "warning" : "success",
-              );
-            } else {
-              addToast(t("desktop.noSession"), "warning");
-            }
-          }
           if (item.command === "open-shortcuts") setShortcutsOpen(true);
-          recordCommand(item.name);
+          if (item.command) recordCommand(item.command);
         }
       }
       closePalette();
@@ -1476,8 +1503,6 @@ function App({
       activeConnection,
       addToast,
       t,
-      toggleRecording,
-      recording,
       effectiveConnections,
       openConnectionTab,
     ],
@@ -1623,6 +1648,7 @@ function App({
         collapsed={sidebarCollapsed}
         onToggleCollapsed={() => setSidebarCollapsed((value) => !value)}
         onNewConnection={() => setNewConnectionOpen(true)}
+        snippetsEnabled={hasActiveDesktopSession}
       />
 
       <section className="terminal-zone" id="terminal-zone" tabIndex={-1}>
@@ -1764,6 +1790,23 @@ function App({
                     <LazyXtermTerminal
                       deps={ptyDeps}
                       label={t("desktop.xtermTerminalLabel")}
+                      onPreparedInputConsumed={clearPreparedTerminalInput}
+                      preparedInput={commandInput}
+                      search={{
+                        closeLabel: t("desktop.searchClose"),
+                        matchesLabel: (count) =>
+                          t("desktop.searchMatches", { count }),
+                        nextLabel: t("desktop.searchNextMatch"),
+                        onClose: () => {
+                          setSearchOpen(false);
+                          setSearchQuery("");
+                        },
+                        onQueryChange: setSearchQuery,
+                        open: searchOpen,
+                        placeholder: t("desktop.searchPlaceholder"),
+                        previousLabel: t("desktop.searchPrevMatch"),
+                        query: searchQuery,
+                      }}
                       statusLabels={{
                         opening: t("desktop.ptyOpening"),
                         open: t("desktop.ptyOpen"),
@@ -1808,22 +1851,6 @@ function App({
                       ? t("desktop.gatewayShell")
                       : t("desktop.demoShell")
                   }
-                  recording={recording}
-                  recordingTimeLabel={recordingTimeLabel}
-                  recordingDisabled={!hasActiveDesktopSession}
-                  onToggleRecording={
-                    hasActiveDesktopSession
-                      ? () => {
-                          toggleRecording();
-                          addToast(
-                            recording
-                              ? t("desktop.recordingStopped")
-                              : t("desktop.recordingStarted"),
-                            recording ? "warning" : "success",
-                          );
-                        }
-                      : undefined
-                  }
                 />
               )}
               {activeConnection.name === "prod-edge-01" ? (
@@ -1862,7 +1889,7 @@ function App({
               formatters={formatters}
               hasActiveSession={hasActiveDesktopSession}
               onPrepareCommand={() =>
-                setCommandInput(commandSnippets[0].command)
+                setCommandInput(`${commandSnippets[0].command}\r`)
               }
               onOpenForwarding={() => setRightPanel("forwarding")}
               sessionContext={inspectorSessionContext}
@@ -1901,6 +1928,16 @@ function App({
           ) : null}
           {rightPanel === "forwarding" ? (
             <LazyForwardingPanel
+              customRules={customForwardRules}
+              onAddCustomRule={(rule) =>
+                setCustomForwardRules((current) => [...current, rule])
+              }
+              onRemoveCustomRule={(id) =>
+                setCustomForwardRules((current) =>
+                  current.filter((rule) => rule.id !== id),
+                )
+              }
+              showSampleRules={!forwardRules.active}
               t={t}
               forwards={
                 forwardRules.active
@@ -1992,7 +2029,9 @@ function App({
         <ContextMenu
           allGroupNames={allGroupNames}
           capabilities={{
-            connect: isDesktopRuntime(),
+            connect:
+              isDesktopRuntime() &&
+              !desktopSessionsRef.current[contextMenu.connection.name],
             delete: !builtinConnectionNameSet.has(contextMenu.connection.name),
             edit: customConnections.connections.some(
               (connection) => connection.name === contextMenu.connection.name,
@@ -2010,12 +2049,17 @@ function App({
           }}
           onSelect={(action) => {
             if (action === "connect") {
-              setActiveConnectionName(contextMenu.connection.name);
-              if (isDesktopRuntime()) {
+              activateConnection(contextMenu.connection.name);
+              if (
+                isDesktopRuntime() &&
+                !desktopSessionsRef.current[contextMenu.connection.name]
+              ) {
                 setConnectProfileName(contextMenu.connection.name);
                 setConnectTargetOverride(null);
                 setConnectOpen(true);
-              } else addToast(t("desktop.noSessionActionDetail"), "warning");
+              } else if (!isDesktopRuntime()) {
+                addToast(t("desktop.noSessionActionDetail"), "warning");
+              }
             } else if (action === "test") {
               const conn = effectiveConnections.find(
                 (c) => c.name === contextMenu.connection.name,
@@ -2024,8 +2068,8 @@ function App({
                 conn ?? { host: contextMenu.connection.name },
               );
               if (isDesktopRuntime()) {
-                void testConnection(target.host, target.port ?? 22).then(
-                  (probe) => {
+                void testConnection(target.host, target.port ?? 22)
+                  .then((probe) => {
                     if (probe.outcome === "reachable") {
                       addToast(
                         connectionTestResultToast(
@@ -2051,8 +2095,18 @@ function App({
                         "error",
                       );
                     }
-                  },
-                );
+                  })
+                  .catch((error: unknown) => {
+                    addToast(
+                      connectionTestResultToast(
+                        t,
+                        error instanceof Error
+                          ? error.message
+                          : t("desktop.connectFailed"),
+                      ),
+                      "error",
+                    );
+                  });
               } else {
                 addToast(t("desktop.noSessionActionDetail"), "warning");
               }
@@ -2159,10 +2213,28 @@ function App({
             addToast(groupCreatedToast(t, name));
           }}
           onDeleteGroup={(name) => {
+            for (const connection of effectiveConnections) {
+              if (connection.group === name) {
+                groupDispatch({
+                  type: "MOVE_CONNECTION",
+                  connection: connection.name,
+                  group: "Production",
+                });
+              }
+            }
             groupDispatch({ type: "REMOVE_CUSTOM_GROUP", name });
             addToast(groupDeletedToast(t, name), "warning");
           }}
           onRenameGroup={(oldName, newName) => {
+            for (const connection of effectiveConnections) {
+              if (connection.group === oldName) {
+                groupDispatch({
+                  type: "MOVE_CONNECTION",
+                  connection: connection.name,
+                  group: newName,
+                });
+              }
+            }
             groupDispatch({ type: "RENAME_GROUP", oldName, newName });
             addToast(groupRenamedToast(t, newName));
           }}
@@ -2190,6 +2262,12 @@ function App({
           onCreate={(connection) => {
             const created = customConnections.add(connection);
             if (created) {
+              if (!allGroupNames.includes(connection.group)) {
+                groupDispatch({
+                  type: "ADD_CUSTOM_GROUP",
+                  name: connection.group,
+                });
+              }
               openConnectionTab(connection.name);
               setActiveConnectionName(connection.name);
               addToast(connectionCreatedToast(t, connection.name));
@@ -2213,6 +2291,12 @@ function App({
               port: connection.port,
               username: connection.username,
             });
+            if (!allGroupNames.includes(connection.group)) {
+              groupDispatch({
+                type: "ADD_CUSTOM_GROUP",
+                name: connection.group,
+              });
+            }
             addToast(connectionEditedToast(t, connection.name));
             return true;
           }}

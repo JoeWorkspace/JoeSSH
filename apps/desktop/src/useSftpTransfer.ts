@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export type SftpReadFn = (path: string) => Promise<number[]>;
 export type SftpWriteFn = (path: string, data: number[]) => Promise<void>;
@@ -22,12 +22,19 @@ export type SftpDownloadOptions = {
 /// wires real `sftp_read`/`sftp_write`); when absent the hook is inactive so
 /// the panel can keep its static fallback. `download` returns the file bytes
 /// (the caller turns them into a browser download); `upload` sends bytes.
-export function useSftpTransfer(read?: SftpReadFn, write?: SftpWriteFn, options: SftpTransferOptions = {}) {
+export function useSftpTransfer(
+  read?: SftpReadFn,
+  write?: SftpWriteFn,
+  options: SftpTransferOptions = {},
+) {
   const [status, setStatus] = useState<TransferStatus>({ phase: "idle" });
+  const operationSeq = useRef(0);
   const active = read !== undefined && write !== undefined;
   const maxBytes = options.maxBytes ?? SFTP_TRANSFER_MAX_BYTES;
   const limitMessage = useMemo(
-    () => options.limitMessage ?? ((limit: number) => `Transfer exceeds the ${limit} byte safety limit.`),
+    () =>
+      options.limitMessage ??
+      ((limit: number) => `Transfer exceeds the ${limit} byte safety limit.`),
     [options.limitMessage],
   );
 
@@ -35,16 +42,31 @@ export function useSftpTransfer(read?: SftpReadFn, write?: SftpWriteFn, options:
     setStatus({ phase: "error", message: limitMessage(maxBytes) });
   }, [limitMessage, maxBytes]);
 
+  useEffect(() => {
+    operationSeq.current += 1;
+    setStatus({ phase: "idle" });
+  }, [read, write]);
+
   const download = useCallback(
-    async (path: string, downloadOptions: SftpDownloadOptions = {}): Promise<number[] | undefined> => {
+    async (
+      path: string,
+      downloadOptions: SftpDownloadOptions = {},
+    ): Promise<number[] | undefined> => {
       if (!read) return undefined;
-      if (downloadOptions.knownSizeBytes !== null && downloadOptions.knownSizeBytes !== undefined && downloadOptions.knownSizeBytes > maxBytes) {
+      if (
+        downloadOptions.knownSizeBytes !== null &&
+        downloadOptions.knownSizeBytes !== undefined &&
+        downloadOptions.knownSizeBytes > maxBytes
+      ) {
         rejectTooLarge();
         return undefined;
       }
+      const requestSeq = operationSeq.current + 1;
+      operationSeq.current = requestSeq;
       setStatus({ phase: "transferring" });
       try {
         const bytes = await read(path);
+        if (operationSeq.current !== requestSeq) return undefined;
         if (bytes.length > maxBytes) {
           rejectTooLarge();
           return undefined;
@@ -52,7 +74,11 @@ export function useSftpTransfer(read?: SftpReadFn, write?: SftpWriteFn, options:
         setStatus({ phase: "idle" });
         return bytes;
       } catch (error) {
-        setStatus({ phase: "error", message: error instanceof Error ? error.message : String(error) });
+        if (operationSeq.current !== requestSeq) return undefined;
+        setStatus({
+          phase: "error",
+          message: error instanceof Error ? error.message : String(error),
+        });
         return undefined;
       }
     },
@@ -66,13 +92,20 @@ export function useSftpTransfer(read?: SftpReadFn, write?: SftpWriteFn, options:
         rejectTooLarge();
         return false;
       }
+      const requestSeq = operationSeq.current + 1;
+      operationSeq.current = requestSeq;
       setStatus({ phase: "transferring" });
       try {
         await write(path, data);
+        if (operationSeq.current !== requestSeq) return false;
         setStatus({ phase: "idle" });
         return true;
       } catch (error) {
-        setStatus({ phase: "error", message: error instanceof Error ? error.message : String(error) });
+        if (operationSeq.current !== requestSeq) return false;
+        setStatus({
+          phase: "error",
+          message: error instanceof Error ? error.message : String(error),
+        });
         return false;
       }
     },

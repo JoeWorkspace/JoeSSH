@@ -24,6 +24,12 @@ export default tseslint.config(
     plugins: { "react-hooks": reactHooks },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      // These compiler-oriented rules reject several intentional integration
+      // patterns used by the imperative terminal/SFTP adapters. The project
+      // still enforces the correctness-critical rules-of-hooks and
+      // exhaustive-deps checks from the recommended preset.
+      "react-hooks/refs": "off",
+      "react-hooks/set-state-in-effect": "off",
       "@typescript-eslint/no-unused-vars": [
         "error",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },

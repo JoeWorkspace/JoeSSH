@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 export type ConnectAuthKind = "password" | "private_key";
 
@@ -42,7 +42,9 @@ const DEFAULT_FIELDS: ConnectFormFields = {
 
 type ConnectInitialFields = Partial<ConnectFormFields>;
 
-function createInitialFields(initialFields: ConnectInitialFields = {}): ConnectFormFields {
+function createInitialFields(
+  initialFields: ConnectInitialFields = {},
+): ConnectFormFields {
   return {
     ...DEFAULT_FIELDS,
     ...initialFields,
@@ -80,7 +82,13 @@ export function validateConnectForm(
   const pinned = fields.pinnedFingerprint.trim();
   return {
     ok: true,
-    value: { host, port, username, auth, pinnedFingerprint: pinned || undefined },
+    value: {
+      host,
+      port,
+      username,
+      auth,
+      pinnedFingerprint: pinned || undefined,
+    },
   };
 }
 
@@ -93,36 +101,57 @@ export function useConnectForm(
   const [initialSnapshot] = useState(() => createInitialFields(initialFields));
   const [fields, setFields] = useState<ConnectFormFields>(initialSnapshot);
   const [status, setStatus] = useState<ConnectStatus>({ phase: "idle" });
+  const submitInFlight = useRef(false);
 
   const validation = useMemo(() => validateConnectForm(fields), [fields]);
   const isValid = validation.ok;
 
-  const setField = useCallback(<K extends keyof ConnectFormFields>(key: K, value: ConnectFormFields[K]) => {
-    setFields((prev) => ({ ...prev, [key]: value }));
-    setStatus((prev) => (prev.phase === "error" ? { phase: "idle" } : prev));
-  }, []);
+  const setField = useCallback(
+    <K extends keyof ConnectFormFields>(
+      key: K,
+      value: ConnectFormFields[K],
+    ) => {
+      setFields((prev) => ({ ...prev, [key]: value }));
+      setStatus((prev) => (prev.phase === "error" ? { phase: "idle" } : prev));
+    },
+    [],
+  );
 
   const reset = useCallback(() => {
     setFields(initialSnapshot);
     setStatus({ phase: "idle" });
   }, [initialSnapshot]);
 
-  const submit = useCallback(async (overrideInput?: ConnectSubmitInput): Promise<string | undefined> => {
-    const nextValidation = overrideInput ? { ok: true as const, value: overrideInput } : validation;
-    if (!nextValidation.ok) {
-      setStatus({ phase: "error", message: nextValidation.reason });
-      return undefined;
-    }
-    setStatus({ phase: "connecting" });
-    try {
-      const sessionId = await connect(nextValidation.value);
-      setStatus({ phase: "connected", sessionId });
-      return sessionId;
-    } catch (error) {
-      setStatus({ phase: "error", message: error instanceof Error ? error.message : String(error) });
-      return undefined;
-    }
-  }, [connect, validation]);
+  const submit = useCallback(
+    async (overrideInput?: ConnectSubmitInput): Promise<string | undefined> => {
+      if (submitInFlight.current) {
+        return undefined;
+      }
+      const nextValidation = overrideInput
+        ? { ok: true as const, value: overrideInput }
+        : validation;
+      if (!nextValidation.ok) {
+        setStatus({ phase: "error", message: nextValidation.reason });
+        return undefined;
+      }
+      submitInFlight.current = true;
+      setStatus({ phase: "connecting" });
+      try {
+        const sessionId = await connect(nextValidation.value);
+        setStatus({ phase: "connected", sessionId });
+        return sessionId;
+      } catch (error) {
+        setStatus({
+          phase: "error",
+          message: error instanceof Error ? error.message : String(error),
+        });
+        return undefined;
+      } finally {
+        submitInFlight.current = false;
+      }
+    },
+    [connect, validation],
+  );
 
   return { fields, status, isValid, setField, reset, submit };
 }

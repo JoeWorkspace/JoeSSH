@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -32,6 +33,8 @@ const MobileLocaleContext = createContext<MobileLocaleContextValue | undefined>(
 
 export function MobileLocaleProvider({ children }: PropsWithChildren) {
   const [localeMode, setLocaleModeState] = useState<LocaleMode>("auto");
+  const localePersistenceQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const localeSelectionRevisionRef = useRef(0);
   const localeState = useMemo(
     () => resolveMobileLocale(localeMode),
     [localeMode],
@@ -42,8 +45,13 @@ export function MobileLocaleProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     let cancelled = false;
+    const selectionRevision = localeSelectionRevisionRef.current;
+
     getStoredMobileLocaleMode().then((storedMode) => {
-      if (!cancelled) {
+      if (
+        !cancelled &&
+        localeSelectionRevisionRef.current === selectionRevision
+      ) {
         setLocaleModeState(storedMode);
       }
     });
@@ -70,8 +78,13 @@ export function MobileLocaleProvider({ children }: PropsWithChildren) {
   );
 
   const setLocaleMode = useCallback((mode: LocaleMode) => {
+    localeSelectionRevisionRef.current += 1;
     setLocaleModeState(mode);
-    void persistMobileLocaleMode(mode);
+    localePersistenceQueueRef.current = localePersistenceQueueRef.current.then(
+      async () => {
+        await persistMobileLocaleMode(mode);
+      },
+    );
   }, []);
 
   const value = useMemo(

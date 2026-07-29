@@ -84,8 +84,9 @@ describe("mobile home screen sync states", () => {
     expect(textContent(screen.root)).toContain("Register and Pull Preview");
     expect(textContent(screen.root)).toContain("No workspace pulled yet");
     expect(textContent(screen.root)).toContain(
-      "Emergency routes appear after the first preview.",
+      "No recovery routes are configured for this preview.",
     );
+    expect(hostByTestId(screen.root, "emergency-channels-empty")).toBeTruthy();
     expect(
       hostByTestId(screen.root, "sync-primary-action").props.disabled,
     ).toBe(false);
@@ -175,10 +176,48 @@ describe("mobile home screen sync states", () => {
 
   it("adapts spacing across compact and tablet widths while keeping touch targets accessible", async () => {
     const viewports = [
-      { height: 568, padding: 14, stackedMetrics: true, width: 320 },
-      { height: 844, padding: 20, stackedMetrics: false, width: 390 },
-      { height: 932, padding: 20, stackedMetrics: false, width: 430 },
-      { height: 1024, padding: 32, stackedMetrics: false, width: 768 },
+      {
+        height: 568,
+        padding: 14,
+        stackedMetrics: true,
+        tablet: false,
+        width: 320,
+      },
+      {
+        height: 844,
+        padding: 20,
+        stackedMetrics: false,
+        tablet: false,
+        width: 390,
+      },
+      {
+        height: 932,
+        padding: 20,
+        stackedMetrics: false,
+        tablet: false,
+        width: 430,
+      },
+      {
+        height: 390,
+        padding: 20,
+        stackedMetrics: false,
+        tablet: false,
+        width: 844,
+      },
+      {
+        height: 1024,
+        padding: 32,
+        stackedMetrics: false,
+        tablet: true,
+        width: 768,
+      },
+      {
+        height: 768,
+        padding: 32,
+        stackedMetrics: false,
+        tablet: true,
+        width: 1024,
+      },
     ] as const;
 
     for (const viewport of viewports) {
@@ -213,13 +252,10 @@ describe("mobile home screen sync states", () => {
         ).minHeight,
       ).toBe(56);
 
-      if (viewport.width === 768) {
-        expect(
-          flattenStyle(
-            hostByTestId(screen.root, "sync-detail-grid").props.style,
-          ).flexDirection,
-        ).toBe("row");
-      }
+      expect(
+        flattenStyle(hostByTestId(screen.root, "sync-detail-grid").props.style)
+          .flexDirection,
+      ).toBe(viewport.tablet ? "row" : undefined);
 
       await act(async () => {
         screen.unmount();
@@ -291,6 +327,9 @@ describe("mobile home screen sync states", () => {
       flattenStyle(hostByTestId(screen.root, "language-option-en").props.style)
         .maxWidth,
     ).toBe(196);
+    expect(
+      hostByTestId(screen.root, "language-option-en").props.numberOfLines,
+    ).toBeUndefined();
 
     await pressPrimaryActionAndSettle(screen);
 
@@ -426,6 +465,32 @@ describe("mobile home screen sync states", () => {
     });
   });
 
+  it("coalesces repeated action events into one register-push-pull operation", async () => {
+    const pendingDevice = deferred<RegisteredDevice>();
+    syncMocks.registerDevice.mockReturnValue(pendingDevice.promise);
+    syncMocks.fetchSyncPreview.mockResolvedValue(livePreview);
+    const screen = await renderHomeScreen();
+    const primaryAction = hostByTestId(screen.root, "sync-primary-action");
+
+    await act(async () => {
+      void primaryAction.props.onPress();
+      void primaryAction.props.onPress();
+      await Promise.resolve();
+    });
+
+    expect(syncMocks.registerDevice).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      pendingDevice.resolve(onlineDevice);
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(syncMocks.pushMobilePresenceCheckpoint).toHaveBeenCalledTimes(1);
+    expect(syncMocks.fetchSyncPreview).toHaveBeenCalledTimes(1);
+  });
+
   it("renders ready preview data and emergency channels after a successful pull", async () => {
     syncMocks.registerDevice.mockResolvedValue(onlineDevice);
     syncMocks.fetchSyncPreview.mockResolvedValue(livePreview);
@@ -463,6 +528,31 @@ describe("mobile home screen sync states", () => {
     expect(
       hostByTestId(screen.root, "sync-primary-action").props.disabled,
     ).toBe(false);
+  });
+
+  it("continues the read-only pull and reports a checkpoint warning when presence push times out", async () => {
+    const timeoutError: SyncError = {
+      code: "timeout",
+      message: "The presence checkpoint did not answer in time.",
+      recoverable: true,
+      title: "Presence checkpoint timed out",
+    };
+    syncMocks.registerDevice.mockResolvedValue(onlineDevice);
+    syncMocks.pushMobilePresenceCheckpoint.mockRejectedValue(timeoutError);
+    syncMocks.fetchSyncPreview.mockResolvedValue(livePreview);
+    const screen = await renderHomeScreen();
+
+    await pressPrimaryActionAndSettle(screen);
+
+    expect(syncMocks.fetchSyncPreview).toHaveBeenCalledWith(
+      "mobile-online",
+      "0",
+    );
+    expect(hostByTestId(screen.root, "sync-status-ready")).toBeTruthy();
+    expect(hostByTestId(screen.root, "sync-error-timeout")).toBeTruthy();
+    expect(textContent(screen.root)).toContain(
+      "The presence checkpoint did not answer in time.",
+    );
   });
 
   it("retains the last successful pull cursor for same-device refreshes", async () => {
@@ -548,6 +638,9 @@ describe("mobile home screen sync states", () => {
     await pressPrimaryActionAndSettle(screen);
 
     expect(textContent(screen.root)).toContain("Sync timed out");
+    expect(
+      hostByTestId(screen.root, "sync-device-quality").children.join(""),
+    ).toBe("degraded");
     expect(syncMocks.fetchSyncPreview).toHaveBeenNthCalledWith(
       2,
       "mobile-online",
@@ -571,6 +664,9 @@ describe("mobile home screen sync states", () => {
     expect(textContent(screen.root)).toContain(
       "sync-api / next cursor server-43",
     );
+    expect(
+      hostByTestId(screen.root, "sync-device-quality").children.join(""),
+    ).toBe("online");
   });
 
   it("continues pulling the preview when a repeated presence push reports conflicts", async () => {

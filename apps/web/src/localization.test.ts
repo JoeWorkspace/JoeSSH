@@ -186,14 +186,22 @@ describe('web localization', () => {
     expect(translator.local('web.state.loading.message')).toContain('团队');
   });
 
-  it('localizes snapshot chrome in Chinese and falls back safely elsewhere', () => {
+  it('localizes snapshot chrome across every supported non-English locale', () => {
     const chineseTranslator = createWebTranslator('zh-CN');
     const frenchTranslator = createWebTranslator('fr');
 
     expect(chineseTranslator.local('web.snapshot.lastRefreshed')).toBe('\u6700\u8fd1\u5237\u65b0');
     expect(chineseTranslator.local('web.snapshot.health.ready')).toBe('\u5065\u5eb7');
-    expect(frenchTranslator.local('web.snapshot.lastRefreshed')).toBe('Last refreshed');
-    expect(frenchTranslator.local('web.snapshot.health.ready')).toBe('Healthy');
+    expect(frenchTranslator.local('web.snapshot.lastRefreshed')).toBe('Dernière actualisation');
+    expect(frenchTranslator.local('web.snapshot.health.ready')).toBe('Sain');
+
+    for (const locale of SUPPORTED_LOCALES.map((supportedLocale) => supportedLocale.code)) {
+      if (locale === 'en') continue;
+
+      const translator = createWebTranslator(locale);
+      expect(translator.local('web.snapshot.status')).not.toBe('Snapshot status');
+      expect(translator.local('web.snapshot.health.ready')).not.toBe('Healthy');
+    }
   });
 
   it('keeps web-local admin chrome free of mojibake', () => {

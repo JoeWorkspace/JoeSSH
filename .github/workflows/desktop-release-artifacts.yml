@@ -40,9 +40,9 @@ jobs:
             bundles: appimage deb
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -218,7 +218,7 @@ jobs:
 
       - name: Upload macOS DMG diagnostics
         if: failure() && runner.os == 'macOS'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-macos-dmg-diagnostics
           path: desktop-macos-dmg-diagnostics/
@@ -266,7 +266,7 @@ jobs:
             tee macos-notarization-verification.txt
 
       - name: Upload Desktop bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-bundle-${{ matrix.platform }}
           path: |
@@ -291,16 +291,16 @@ jobs:
     if: inputs.formal_evidence
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
 
       - run: npm ci
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: desktop-bundles
           pattern: desktop-bundle-*
@@ -340,7 +340,7 @@ jobs:
           npm run release:desktop:verify-evidence
 
       - name: Upload formal Desktop release evidence
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-release-evidence
           path: reports/release/desktop/

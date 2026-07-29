@@ -273,7 +273,7 @@ const staticShellSourceByteBudgets: Record<string, number> = {
 };
 const staticServiceWorkerExpectedEventTypes = ['install', 'activate', 'fetch'];
 const staticServiceWorkerCachePolicyNeedles = [
-  "const CACHE_NAME = 'joessh-admin-v1';",
+  "const CACHE_NAME = 'joessh-admin-v2';",
   'const MAX_CACHE_ENTRIES = 100;',
   "const STATIC_ASSETS = ['/', '/index.html', '/manifest.json', '/favicon.svg', '/offline.html'];",
   'caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS)).then(() => self.skipWaiting()),',
@@ -281,15 +281,19 @@ const staticServiceWorkerCachePolicyNeedles = [
   '.then(() => self.clients.claim()),',
   "if (request.method !== 'GET') {",
   'if (url.origin !== self.location.origin) {',
+  "if (url.pathname === '/api' || url.pathname.startsWith('/api/')) {",
   "const isManifest = url.pathname === '/manifest.json';",
   'if (!isStaticAsset && !isNavigation && !isManifest) {',
   'event.respondWith(',
-  'fetch(request)',
-  "cached || caches.match('/').then((root) =>",
-  "root || caches.match('/offline.html').then((offline) =>",
-  "offline || new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain' } })",
+  'event.respondWith(networkFirstNavigation(request));',
   'event.respondWith(staleWhileRevalidate(request));',
   'async function staleWhileRevalidate(request) {',
+  'async function networkFirstNavigation(request) {',
+  'function isCacheableResponse(response) {',
+  "response.type === 'basic'",
+  '!response.redirected',
+  '/(?:^|,)\\s*(?:private|no-store)\\b/i.test(cacheControl)',
+  'function offlineResponse() {',
   'async function trimCache(cache) {',
   'if (keys.length > MAX_CACHE_ENTRIES) {',
   'await cache.delete(keys[0]);',
@@ -1565,7 +1569,7 @@ describe('web admin accessibility contracts', () => {
       );
     }
     expect(
-      countPatternMatches(staticServiceWorkerSource, /^const CACHE_NAME = 'joessh-admin-v1';$/gm),
+      countPatternMatches(staticServiceWorkerSource, /^const CACHE_NAME = 'joessh-admin-v2';$/gm),
       '../public/sw.js static Service Worker cache name cardinality',
     ).toBe(1);
     expect(

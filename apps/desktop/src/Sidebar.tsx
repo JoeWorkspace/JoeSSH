@@ -75,6 +75,7 @@ type SidebarProps = {
   collapsed?: boolean;
   onToggleCollapsed: () => void;
   onNewConnection?: () => void;
+  snippetsEnabled?: boolean;
 };
 
 function formatConnectionLatency(
@@ -140,6 +141,7 @@ export const Sidebar = memo(function Sidebar({
   collapsed,
   onToggleCollapsed,
   onNewConnection,
+  snippetsEnabled = false,
 }: SidebarProps) {
   return (
     <aside
@@ -258,145 +260,159 @@ export const Sidebar = memo(function Sidebar({
                     role="list"
                     aria-label={groupLabel}
                   >
-                    {items.map((connection, index) => (
-                      <div
-                        className={`connection-card ${connection.name === activeConnectionName ? "is-active" : ""} ${dragState.dragging === connection.name ? "is-dragging" : ""} ${dragState.dragOver === connection.name ? "is-drag-over" : ""}`}
-                        key={connection.name}
-                        role="listitem"
-                      >
-                        <button
-                          className="connection-card-main"
-                          type="button"
-                          aria-current={
-                            connection.name === activeConnectionName
-                              ? "true"
-                              : undefined
-                          }
-                          aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
-                          draggable
-                          data-tooltip={`${connection.name} \u2014 ${connection.host}`}
-                          onClick={() => onActivateConnection(connection.name)}
-                          onKeyDown={(event) => {
-                            if (!event.altKey || event.ctrlKey || event.metaKey)
-                              return;
-                            if (event.key === "ArrowUp" && index > 0) {
-                              event.preventDefault();
-                              onMoveConnectionBefore(
-                                connection.name,
-                                items[index - 1].name,
-                              );
-                            } else if (
-                              event.key === "ArrowDown" &&
-                              index < items.length - 1
-                            ) {
-                              event.preventDefault();
-                              onMoveConnectionAfter(
-                                connection.name,
-                                items[index + 1].name,
-                              );
-                            }
-                          }}
-                          onDragStart={() => onDragStart(connection.name)}
-                          onDragOver={(e) => {
-                            e.preventDefault();
-                            onDragOver(connection.name);
-                          }}
-                          onDragLeave={onDragLeave}
-                          onDragEnd={onDragEnd}
-                          onContextMenu={(e) => {
-                            e.preventDefault();
-                            onContextMenu(
-                              connection.name,
-                              e.clientX,
-                              e.clientY,
-                            );
-                          }}
+                    {items.map((connection, index) => {
+                      const shortcutIndex = dragState.order.indexOf(
+                        connection.name,
+                      );
+                      return (
+                        <div
+                          className={`connection-card ${connection.name === activeConnectionName ? "is-active" : ""} ${dragState.dragging === connection.name ? "is-dragging" : ""} ${dragState.dragOver === connection.name ? "is-drag-over" : ""}`}
+                          key={connection.name}
+                          role="listitem"
                         >
-                          <span
-                            className={`status-dot status-dot--${connection.color}`}
-                            aria-label={connectionStatusLabel(connection, t)}
-                            role="img"
-                          />
-                          <span className="connection-main">
-                            <strong>{connection.name}</strong>
-                            <small>{connection.host}</small>
-                            <span className="connection-tags">
-                              {connection.tags.map((tag) => (
-                                <span
-                                  className={`connection-tag connection-tag--${tag}`}
-                                  key={tag}
-                                >
-                                  {tag}
-                                </span>
-                              ))}
-                            </span>
-                          </span>
-                          <span className="connection-meta">
-                            <b>
-                              {formatConnectionLatency(
-                                connection,
-                                formatters,
-                                t,
-                              )}
-                            </b>
-                            {connection.latencyHistory ? (
-                              <Sparkline
-                                values={connection.latencyHistory}
-                                color={connection.color}
-                              />
-                            ) : null}
-                            {connection.status === "online" ? (
-                              <span
-                                className="health-pulse"
-                                aria-label={t("desktop.connectionHealthy")}
-                              />
-                            ) : null}
-                            {connection.status === "busy" ? (
-                              <span
-                                className="reconnect-badge"
-                                aria-label={t("desktop.connectionBusy")}
-                              >
-                                {t("desktop.connectionBusy")}
+                          <button
+                            className="connection-card-main"
+                            type="button"
+                            aria-current={
+                              connection.name === activeConnectionName
+                                ? "true"
+                                : undefined
+                            }
+                            aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
+                            draggable
+                            data-tooltip={`${connection.name} \u2014 ${connection.host}`}
+                            onClick={() =>
+                              onActivateConnection(connection.name)
+                            }
+                            onKeyDown={(event) => {
+                              if (
+                                !event.altKey ||
+                                event.ctrlKey ||
+                                event.metaKey
+                              )
+                                return;
+                              if (event.key === "ArrowUp" && index > 0) {
+                                event.preventDefault();
+                                onMoveConnectionBefore(
+                                  connection.name,
+                                  items[index - 1].name,
+                                );
+                              } else if (
+                                event.key === "ArrowDown" &&
+                                index < items.length - 1
+                              ) {
+                                event.preventDefault();
+                                onMoveConnectionAfter(
+                                  connection.name,
+                                  items[index + 1].name,
+                                );
+                              }
+                            }}
+                            onDragStart={() => onDragStart(connection.name)}
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              onDragOver(connection.name);
+                            }}
+                            onDragLeave={onDragLeave}
+                            onDragEnd={onDragEnd}
+                            onContextMenu={(e) => {
+                              e.preventDefault();
+                              onContextMenu(
+                                connection.name,
+                                e.clientX,
+                                e.clientY,
+                              );
+                            }}
+                          >
+                            <span
+                              className={`status-dot status-dot--${connection.color}`}
+                              aria-label={connectionStatusLabel(connection, t)}
+                              role="img"
+                            />
+                            <span className="connection-main">
+                              <strong>{connection.name}</strong>
+                              <small>{connection.host}</small>
+                              <span className="connection-tags">
+                                {connection.tags.map((tag) => (
+                                  <span
+                                    className={`connection-tag connection-tag--${tag}`}
+                                    key={tag}
+                                  >
+                                    {tag}
+                                  </span>
+                                ))}
                               </span>
-                            ) : null}
-                            {connection.status === "locked" ? (
-                              <Lock
-                                size={10}
-                                className="lock-icon"
-                                aria-hidden="true"
-                              />
-                            ) : null}
-                            {index < 8 ? (
-                              <kbd className="shortcut-hint" aria-hidden="true">
-                                Alt+{index + 1}
-                              </kbd>
-                            ) : null}
-                          </span>
-                        </button>
-                        <button
-                          className={`connection-fav ${favorites.includes(connection.name) ? "is-favorited" : ""}`}
-                          type="button"
-                          aria-label={
-                            favorites.includes(connection.name)
-                              ? t("desktop.removeFromFavorites")
-                              : t("desktop.addToFavorites")
-                          }
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onToggleFavorite(connection.name);
-                          }}
-                        >
-                          <Star
-                            size={12}
-                            fill={
+                            </span>
+                            <span className="connection-meta">
+                              <b>
+                                {formatConnectionLatency(
+                                  connection,
+                                  formatters,
+                                  t,
+                                )}
+                              </b>
+                              {connection.latencyHistory ? (
+                                <Sparkline
+                                  values={connection.latencyHistory}
+                                  color={connection.color}
+                                />
+                              ) : null}
+                              {connection.status === "online" ? (
+                                <span
+                                  className="health-pulse"
+                                  aria-label={t("desktop.connectionHealthy")}
+                                />
+                              ) : null}
+                              {connection.status === "busy" ? (
+                                <span
+                                  className="reconnect-badge"
+                                  aria-label={t("desktop.connectionBusy")}
+                                >
+                                  {t("desktop.connectionBusy")}
+                                </span>
+                              ) : null}
+                              {connection.status === "locked" ? (
+                                <Lock
+                                  size={10}
+                                  className="lock-icon"
+                                  aria-hidden="true"
+                                />
+                              ) : null}
+                              {shortcutIndex >= 0 && shortcutIndex < 8 ? (
+                                <kbd
+                                  className="shortcut-hint"
+                                  aria-hidden="true"
+                                >
+                                  Alt+{shortcutIndex + 1}
+                                </kbd>
+                              ) : null}
+                            </span>
+                          </button>
+                          <button
+                            className={`connection-fav ${favorites.includes(connection.name) ? "is-favorited" : ""}`}
+                            type="button"
+                            aria-label={
                               favorites.includes(connection.name)
-                                ? "var(--atlas-amber)"
-                                : "none"
+                                ? t("desktop.removeFromFavorites")
+                                : t("desktop.addToFavorites")
                             }
-                          />
-                        </button>
-                      </div>
-                    ))}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onToggleFavorite(connection.name);
+                            }}
+                          >
+                            <Star
+                              size={12}
+                              fill={
+                                favorites.includes(connection.name)
+                                  ? "var(--atlas-amber)"
+                                  : "none"
+                              }
+                            />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -426,9 +442,14 @@ export const Sidebar = memo(function Sidebar({
           {commandSnippets.map((snippet) => (
             <button
               className="snippet-item"
+              disabled={!snippetsEnabled}
               key={snippet.nameKey}
               onClick={() => onCommandInputChange(snippet.command)}
-              title={snippet.command}
+              title={
+                snippetsEnabled
+                  ? snippet.command
+                  : t("desktop.noSessionActionDetail")
+              }
               type="button"
             >
               <Braces size={14} />

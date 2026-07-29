@@ -1,6 +1,6 @@
 # JoeSSH Mobile
 
-Expo skeleton for the JoeSSH mobile companion app.
+Expo companion app for JoeSSH mobile sync preview and emergency context.
 
 ## Commands
 
@@ -14,9 +14,9 @@ npm run smoke:native:preflight
 ```
 
 Set `EXPO_PUBLIC_ATLASTERM_SYNC_URL=http://127.0.0.1:4100` to point the
-mobile preview at the local sync service. Without that endpoint, the app keeps
-showing the intentional offline fallback so emergency channels and cached device
-context stay available during development.
+mobile preview at the local sync service. Without that endpoint, the app shows
+an explicit empty offline state. It does not claim that cached workspace data or
+emergency routes exist when none were loaded.
 
 For local preview only, when the sync service is started with
 `ATLASTERM_SYNC_AUTH_TOKEN`, set the matching mobile build-time value with
@@ -32,24 +32,35 @@ pulls preview state from `GET /v1/sync/pull`. The presence push uses the current
 device cursor as `base_cursor`, and the preview pull uses that same current
 cursor as `since` so remote changes between the old cursor and the push response
 are not skipped. After a successful pull, the returned `next_cursor` is retained
-for the next refresh from the same device. If Expo does not expose a UUID-shaped
-install id, the mobile client reuses the server-assigned `device_id` for later
-registrations in the same app runtime so refreshes stay tied to one registered
-device identity. Presence checkpoint conflicts are treated as non-blocking
-status-signal conflicts; the app still pulls the preview from the last successful
-cursor so a stale presence update cannot hide remote workspace changes.
+for the next refresh from the same device and persisted with its endpoint-scoped
+device registration. A generated install UUID is persisted before the first
+registration, so an ambiguous registration retry cannot create a fresh device
+identity after an app restart. Presence checkpoint IDs and timestamps are also
+persisted until acknowledgement, allowing a timeout retry to use the server's
+change-ID idempotency instead of writing a duplicate presence event.
 
-Service tests cover endpoint selection, optional bearer auth, UUID reuse,
-server-assigned device id reuse, presence checkpoint push, retained-cursor
-preview pulls, malformed successful register/push/pull responses, offline
-fallback, timeout/unauthorized classification, and emergency-channel preview
-data.
+Presence checkpoint conflicts and transport failures are treated as non-blocking
+status-signal failures; the app still pulls the read-only response from the last
+successful cursor and surfaces the checkpoint warning. Pull responses are
+device-ID validated and all advertised pages are consumed before the preview is
+reported ready. The pull cursor is persisted only after the final page succeeds,
+so an interrupted refresh resumes from the last complete checkpoint. The current
+client counts pulled change envelopes but does not yet decrypt them into profile,
+session, workspace, command, or recovery-route models; those surfaces remain
+honestly empty until that product work is implemented.
+
+Service tests cover endpoint selection, optional bearer auth, durable install
+and registration identity, retained cursors across runtime restarts, idempotent
+presence retries, paginated pulls, response-body timeouts, device-ID validation,
+malformed successful register/push/pull responses, offline fallback,
+timeout/unauthorized classification, and non-fabricated empty preview data.
 Home screen tests cover the idle, registering, ready, offline fallback, and
 structured-error UI states for the sync preview flow, including light and dark
-OS theme readability for the device status surface and repeated same-device
-refreshes that advance from the last successful pull cursor, retain that cursor
-after failed refreshes, and continue preview pulls after non-blocking presence
-checkpoint conflicts.
+OS theme readability, phone and tablet portrait/landscape sizing, large text,
+RTL layout, coalesced repeated action events, repeated same-device refreshes
+that advance from the last successful pull cursor, retain that cursor after
+failed refreshes, and continue preview pulls after non-blocking presence
+checkpoint failures.
 
 ## Native Smoke Strategy
 
@@ -62,8 +73,8 @@ The first native smoke should verify:
 - iOS simulator and Android emulator launch the Expo Router app.
 - The home screen renders the sync status panel and register/pull action.
 - The no-endpoint offline fallback reaches the offline status, fallback error,
-  sync preview, and emergency recovery route hooks after running the preview.
-- Light and dark OS appearances keep the status panel and recovery copy readable.
+  sync preview, and empty recovery-state hooks after running the preview.
+- Light and dark OS appearances keep the status panel and empty-state copy readable.
 
 Recommended tooling is Maestro or Detox driven through the existing `npm run ios`
 and `npm run android` scripts, with the Expo Web Playwright project left as the
@@ -88,9 +99,9 @@ npm run smoke:native:devices
 The first Maestro flow lives at `maestro/native-smoke.yaml` and targets shared
 `testID` hooks instead of localized visible copy, so it can run under any device
 locale. After tapping the primary action, the flow asserts the offline fallback
-status, fallback error panel, preview command surface, and both emergency
-connection routes (`relay` and `local-cache`). Set the app id for the runtime
-being tested before launching it, for example:
+status, fallback error panel, preview command surface, and honest empty recovery
+state. Set the app id for the runtime being tested before launching it, for
+example:
 
 ```powershell
 $env:ATLASTERM_MAESTRO_APP_ID='com.atlasterm.mobile'

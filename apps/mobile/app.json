@@ -3,7 +3,7 @@
     "name": "JoeSSH",
     "slug": "atlasterm-mobile",
     "version": "0.1.0-beta.9",
-    "orientation": "portrait",
+    "orientation": "default",
     "scheme": "atlasterm",
     "userInterfaceStyle": "automatic",
     "assetBundlePatterns": ["**/*"],

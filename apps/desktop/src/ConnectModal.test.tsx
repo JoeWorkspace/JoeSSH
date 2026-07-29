@@ -1,5 +1,12 @@
 // @vitest-environment happy-dom
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ConnectModal } from "./ConnectModal";
@@ -12,17 +19,29 @@ afterEach(() => cleanup());
 
 function setup(
   onConnect: (input: ConnectSubmitInput) => Promise<string>,
-  props: Partial<Pick<ComponentProps<typeof ConnectModal>, "defaultHost" | "defaultPort" | "defaultUsername" | "onHostKeyProbe">> = {},
+  props: Partial<
+    Pick<
+      ComponentProps<typeof ConnectModal>,
+      "defaultHost" | "defaultPort" | "defaultUsername" | "onHostKeyProbe"
+    >
+  > = {},
 ) {
   const onClose = vi.fn();
   const onConnected = vi.fn();
   const { container } = render(
-    <ConnectModal onClose={onClose} onConnect={onConnect} onConnected={onConnected} t={t} {...props} />,
+    <ConnectModal
+      onClose={onClose}
+      onConnect={onConnect}
+      onConnected={onConnected}
+      t={t}
+      {...props}
+    />,
   );
   return { onClose, onConnected, container };
 }
 
-const q = (container: HTMLElement, selector: string) => container.querySelector(selector) as HTMLInputElement;
+const q = (container: HTMLElement, selector: string) =>
+  container.querySelector(selector) as HTMLInputElement;
 
 function deferred<T>() {
   let resolve: (value: T) => void = () => {};
@@ -32,13 +51,19 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
-type HostKeyProbeResultForTest = Awaited<ReturnType<NonNullable<ComponentProps<typeof ConnectModal>["onHostKeyProbe"]>>>;
+type HostKeyProbeResultForTest = Awaited<
+  ReturnType<NonNullable<ComponentProps<typeof ConnectModal>["onHostKeyProbe"]>>
+>;
 
 describe("ConnectModal", () => {
   it("renders a labelled dialog with a disabled connect button until valid", () => {
     setup(vi.fn());
-    expect(screen.getByRole("dialog", { name: "desktop.connectTitle" })).toBeTruthy();
-    const button = screen.getByRole("button", { name: "desktop.connectAction" }) as HTMLButtonElement;
+    expect(
+      screen.getByRole("dialog", { name: "desktop.connectTitle" }),
+    ).toBeTruthy();
+    const button = screen.getByRole("button", {
+      name: "desktop.connectAction",
+    }) as HTMLButtonElement;
     expect(button.disabled).toBe(true);
   });
 
@@ -46,19 +71,35 @@ describe("ConnectModal", () => {
     const onConnect = vi.fn().mockResolvedValue("sess-9");
     const { onClose, onConnected, container } = setup(onConnect);
 
-    fireEvent.change(q(container, 'input[type="text"]'), { target: { value: "example.com" } });
-    fireEvent.change(q(container, 'input[type="number"]'), { target: { value: "22" } });
-    // second text input is username
-    fireEvent.change(container.querySelectorAll('input[type="text"]')[1] as HTMLInputElement, {
-      target: { value: "lin" },
+    fireEvent.change(q(container, 'input[type="text"]'), {
+      target: { value: "example.com" },
     });
-    fireEvent.change(q(container, 'input[type="password"]'), { target: { value: "secret" } });
-    fireEvent.click(screen.getByRole("button", { name: "desktop.connectAction" }));
+    fireEvent.change(q(container, 'input[type="number"]'), {
+      target: { value: "22" },
+    });
+    // second text input is username
+    fireEvent.change(
+      container.querySelectorAll('input[type="text"]')[1] as HTMLInputElement,
+      {
+        target: { value: "lin" },
+      },
+    );
+    fireEvent.change(q(container, 'input[type="password"]'), {
+      target: { value: "secret" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "desktop.connectAction" }),
+    );
 
     await waitFor(() => expect(onConnected).toHaveBeenCalledWith("sess-9"));
-    expect(onConnect).toHaveBeenCalledWith(expect.objectContaining({
-      host: "example.com", username: "lin", port: 22, auth: { kind: "password", password: "secret" },
-    }));
+    expect(onConnect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        host: "example.com",
+        username: "lin",
+        port: 22,
+        auth: { kind: "password", password: "secret" },
+      }),
+    );
     expect(onClose).toHaveBeenCalled();
   });
 
@@ -68,23 +109,34 @@ describe("ConnectModal", () => {
       defaultHost: "server.internal",
       defaultUsername: "atlas",
     });
-    const button = screen.getByRole("button", { name: "desktop.connectAction" }) as HTMLButtonElement;
+    const button = screen.getByRole("button", {
+      name: "desktop.connectAction",
+    }) as HTMLButtonElement;
 
     expect(button.disabled).toBe(true);
     expect(q(container, 'input[type="text"]').value).toBe("server.internal");
-    expect((container.querySelectorAll('input[type="text"]')[1] as HTMLInputElement).value).toBe("atlas");
+    expect(
+      (container.querySelectorAll('input[type="text"]')[1] as HTMLInputElement)
+        .value,
+    ).toBe("atlas");
 
-    fireEvent.change(q(container, 'input[type="password"]'), { target: { value: "secret" } });
+    fireEvent.change(q(container, 'input[type="password"]'), {
+      target: { value: "secret" },
+    });
     expect(button.disabled).toBe(false);
     fireEvent.click(button);
 
-    await waitFor(() => expect(onConnected).toHaveBeenCalledWith("sess-default"));
-    expect(onConnect).toHaveBeenCalledWith(expect.objectContaining({
-      host: "server.internal",
-      username: "atlas",
-      port: 22,
-      auth: { kind: "password", password: "secret" },
-    }));
+    await waitFor(() =>
+      expect(onConnected).toHaveBeenCalledWith("sess-default"),
+    );
+    expect(onConnect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        host: "server.internal",
+        username: "atlas",
+        port: 22,
+        auth: { kind: "password", password: "secret" },
+      }),
+    );
   });
 
   it("requires confirmation for an unknown host key before authenticating", async () => {
@@ -96,26 +148,43 @@ describe("ConnectModal", () => {
     });
     const { onConnected, container } = setup(onConnect, { onHostKeyProbe });
 
-    fireEvent.change(q(container, 'input[type="text"]'), { target: { value: "example.com" } });
-    fireEvent.change(container.querySelectorAll('input[type="text"]')[1] as HTMLInputElement, {
-      target: { value: "lin" },
+    fireEvent.change(q(container, 'input[type="text"]'), {
+      target: { value: "example.com" },
     });
-    fireEvent.change(q(container, 'input[type="password"]'), { target: { value: "secret" } });
-    fireEvent.click(screen.getByRole("button", { name: "desktop.connectAction" }));
+    fireEvent.change(
+      container.querySelectorAll('input[type="text"]')[1] as HTMLInputElement,
+      {
+        target: { value: "lin" },
+      },
+    );
+    fireEvent.change(q(container, 'input[type="password"]'), {
+      target: { value: "secret" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "desktop.connectAction" }),
+    );
 
-    await waitFor(() => expect(onHostKeyProbe).toHaveBeenCalledWith("example.com", 22));
+    await waitFor(() =>
+      expect(onHostKeyProbe).toHaveBeenCalledWith("example.com", 22),
+    );
     expect(onConnect).not.toHaveBeenCalled();
     expect(screen.getByText("desktop.hostKeyConfirmTitle")).toBeTruthy();
     expect(screen.getByText("SHA256:new-host")).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "desktop.trustHostKeyAndConnect" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "desktop.trustHostKeyAndConnect" }),
+    );
 
-    await waitFor(() => expect(onConnected).toHaveBeenCalledWith("sess-host-key"));
-    expect(onConnect).toHaveBeenCalledWith(expect.objectContaining({
-      host: "example.com",
-      username: "lin",
-      pinnedFingerprint: "SHA256:new-host",
-    }));
+    await waitFor(() =>
+      expect(onConnected).toHaveBeenCalledWith("sess-host-key"),
+    );
+    expect(onConnect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        host: "example.com",
+        username: "lin",
+        pinnedFingerprint: "SHA256:new-host",
+      }),
+    );
   });
 
   it("blocks authentication when the stored host key changed", async () => {
@@ -127,14 +196,27 @@ describe("ConnectModal", () => {
     });
     const { container } = setup(onConnect, { onHostKeyProbe });
 
-    fireEvent.change(q(container, 'input[type="text"]'), { target: { value: "example.com" } });
-    fireEvent.change(container.querySelectorAll('input[type="text"]')[1] as HTMLInputElement, {
-      target: { value: "lin" },
+    fireEvent.change(q(container, 'input[type="text"]'), {
+      target: { value: "example.com" },
     });
-    fireEvent.change(q(container, 'input[type="password"]'), { target: { value: "secret" } });
-    fireEvent.click(screen.getByRole("button", { name: "desktop.connectAction" }));
+    fireEvent.change(
+      container.querySelectorAll('input[type="text"]')[1] as HTMLInputElement,
+      {
+        target: { value: "lin" },
+      },
+    );
+    fireEvent.change(q(container, 'input[type="password"]'), {
+      target: { value: "secret" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "desktop.connectAction" }),
+    );
 
-    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("desktop.hostKeyChangedDetail"));
+    await waitFor(() =>
+      expect(screen.getByRole("alert").textContent).toContain(
+        "desktop.hostKeyChangedDetail",
+      ),
+    );
     expect(onConnect).not.toHaveBeenCalled();
   });
 
@@ -144,15 +226,28 @@ describe("ConnectModal", () => {
     const onHostKeyProbe = vi.fn().mockReturnValue(staleProbe.promise);
     const { container } = setup(onConnect, { onHostKeyProbe });
 
-    fireEvent.change(q(container, 'input[type="text"]'), { target: { value: "old.example.com" } });
-    fireEvent.change(container.querySelectorAll('input[type="text"]')[1] as HTMLInputElement, {
-      target: { value: "lin" },
+    fireEvent.change(q(container, 'input[type="text"]'), {
+      target: { value: "old.example.com" },
     });
-    fireEvent.change(q(container, 'input[type="password"]'), { target: { value: "secret" } });
-    fireEvent.click(screen.getByRole("button", { name: "desktop.connectAction" }));
-    await waitFor(() => expect(onHostKeyProbe).toHaveBeenCalledWith("old.example.com", 22));
+    fireEvent.change(
+      container.querySelectorAll('input[type="text"]')[1] as HTMLInputElement,
+      {
+        target: { value: "lin" },
+      },
+    );
+    fireEvent.change(q(container, 'input[type="password"]'), {
+      target: { value: "secret" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "desktop.connectAction" }),
+    );
+    await waitFor(() =>
+      expect(onHostKeyProbe).toHaveBeenCalledWith("old.example.com", 22),
+    );
 
-    fireEvent.change(q(container, 'input[type="text"]'), { target: { value: "new.example.com" } });
+    fireEvent.change(q(container, 'input[type="text"]'), {
+      target: { value: "new.example.com" },
+    });
     staleProbe.resolve({
       status: "changed",
       presented_fingerprint: "SHA256:stale-presented",
@@ -173,19 +268,30 @@ describe("ConnectModal", () => {
     });
     const { onConnected, container } = setup(onConnect, { onHostKeyProbe });
 
-    fireEvent.change(q(container, 'input[type="text"]'), { target: { value: "example.com" } });
-    fireEvent.change(container.querySelectorAll('input[type="text"]')[1] as HTMLInputElement, {
-      target: { value: "lin" },
+    fireEvent.change(q(container, 'input[type="text"]'), {
+      target: { value: "example.com" },
     });
-    fireEvent.change(q(container, 'input[type="password"]'), { target: { value: "secret" } });
-    fireEvent.click(screen.getByRole("button", { name: "desktop.connectAction" }));
+    fireEvent.change(
+      container.querySelectorAll('input[type="text"]')[1] as HTMLInputElement,
+      {
+        target: { value: "lin" },
+      },
+    );
+    fireEvent.change(q(container, 'input[type="password"]'), {
+      target: { value: "secret" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "desktop.connectAction" }),
+    );
 
     await waitFor(() => expect(onConnected).toHaveBeenCalledWith("sess-match"));
-    expect(onConnect).toHaveBeenCalledWith(expect.objectContaining({
-      host: "example.com",
-      username: "lin",
-      pinnedFingerprint: undefined,
-    }));
+    expect(onConnect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        host: "example.com",
+        username: "lin",
+        pinnedFingerprint: undefined,
+      }),
+    );
   });
 
   it("uses a default port when provided by Quick Connect parsing", async () => {
@@ -195,70 +301,158 @@ describe("ConnectModal", () => {
       defaultPort: 2200,
       defaultUsername: "atlas",
     });
-    const button = screen.getByRole("button", { name: "desktop.connectAction" }) as HTMLButtonElement;
+    const button = screen.getByRole("button", {
+      name: "desktop.connectAction",
+    }) as HTMLButtonElement;
 
     expect(q(container, 'input[type="number"]').value).toBe("2200");
-    fireEvent.change(q(container, 'input[type="password"]'), { target: { value: "secret" } });
+    fireEvent.change(q(container, 'input[type="password"]'), {
+      target: { value: "secret" },
+    });
     fireEvent.click(button);
 
     await waitFor(() => expect(onConnected).toHaveBeenCalledWith("sess-port"));
-    expect(onConnect).toHaveBeenCalledWith(expect.objectContaining({
-      host: "server.internal",
-      username: "atlas",
-      port: 2200,
-    }));
+    expect(onConnect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        host: "server.internal",
+        username: "atlas",
+        port: 2200,
+      }),
+    );
   });
 
   it("switches to private-key fields and submits a key payload", async () => {
     const onConnect = vi.fn().mockResolvedValue("sess-k");
     const { onConnected, container } = setup(onConnect);
 
-    fireEvent.change(q(container, 'input[type="text"]'), { target: { value: "h" } });
-    fireEvent.change(container.querySelectorAll('input[type="text"]')[1] as HTMLInputElement, {
-      target: { value: "u" },
+    fireEvent.change(q(container, 'input[type="text"]'), {
+      target: { value: "h" },
     });
-    fireEvent.change(q(container, 'input[type="number"]'), { target: { value: "2222" } });
-    fireEvent.change(q(container, "select"), { target: { value: "private_key" } });
-    fireEvent.change(q(container, "textarea"), { target: { value: "KEYDATA" } });
-    fireEvent.change(q(container, 'input[type="password"]'), { target: { value: "pp" } });
+    fireEvent.change(
+      container.querySelectorAll('input[type="text"]')[1] as HTMLInputElement,
+      {
+        target: { value: "u" },
+      },
+    );
+    fireEvent.change(q(container, 'input[type="number"]'), {
+      target: { value: "2222" },
+    });
+    fireEvent.change(q(container, "select"), {
+      target: { value: "private_key" },
+    });
+    fireEvent.change(q(container, "textarea"), {
+      target: { value: "KEYDATA" },
+    });
+    fireEvent.change(q(container, 'input[type="password"]'), {
+      target: { value: "pp" },
+    });
     // pinnedFingerprint is the last text input (host, username, then fingerprint)
     const textInputs = container.querySelectorAll('input[type="text"]');
-    fireEvent.change(textInputs[textInputs.length - 1] as HTMLInputElement, { target: { value: "SHA256:zz" } });
-    fireEvent.click(screen.getByRole("button", { name: "desktop.connectAction" }));
+    fireEvent.change(textInputs[textInputs.length - 1] as HTMLInputElement, {
+      target: { value: "SHA256:zz" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "desktop.connectAction" }),
+    );
 
     await waitFor(() => expect(onConnected).toHaveBeenCalledWith("sess-k"));
-    expect(onConnect).toHaveBeenCalledWith(expect.objectContaining({
-      port: 2222,
-      auth: { kind: "private_key", pem: "KEYDATA", passphrase: "pp" },
-      pinnedFingerprint: "SHA256:zz",
-    }));
+    expect(onConnect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        port: 2222,
+        auth: { kind: "private_key", pem: "KEYDATA", passphrase: "pp" },
+        pinnedFingerprint: "SHA256:zz",
+      }),
+    );
   });
 
   it("shows an error and does not close when the connection fails", async () => {
     const onConnect = vi.fn().mockRejectedValue(new Error("auth failed"));
     const { onClose, onConnected, container } = setup(onConnect);
 
-    fireEvent.change(q(container, 'input[type="text"]'), { target: { value: "h" } });
-    fireEvent.change(container.querySelectorAll('input[type="text"]')[1] as HTMLInputElement, {
-      target: { value: "u" },
+    fireEvent.change(q(container, 'input[type="text"]'), {
+      target: { value: "h" },
     });
-    fireEvent.change(q(container, 'input[type="password"]'), { target: { value: "p" } });
-    fireEvent.click(screen.getByRole("button", { name: "desktop.connectAction" }));
+    fireEvent.change(
+      container.querySelectorAll('input[type="text"]')[1] as HTMLInputElement,
+      {
+        target: { value: "u" },
+      },
+    );
+    fireEvent.change(q(container, 'input[type="password"]'), {
+      target: { value: "p" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "desktop.connectAction" }),
+    );
 
-    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("auth failed"));
+    await waitFor(() =>
+      expect(screen.getByRole("alert").textContent).toContain("auth failed"),
+    );
     const alert = screen.getByRole("alert");
     expect(alert.className).toContain("inline-alert");
     expect(alert.getAttribute("aria-atomic")).toBe("true");
     expect(alert.querySelector(".inline-alert-icon svg")).toBeTruthy();
-    expect(alert.querySelector(".inline-alert-copy strong")?.textContent).toBe("desktop.connectFailed");
-    expect(alert.querySelector(".inline-alert-copy small")?.textContent).toBe("auth failed");
+    expect(alert.querySelector(".inline-alert-copy strong")?.textContent).toBe(
+      "desktop.connectFailed",
+    );
+    expect(alert.querySelector(".inline-alert-copy small")?.textContent).toBe(
+      "auth failed",
+    );
     expect(onConnected).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it("cannot be dismissed while authentication is pending", async () => {
+    const pendingConnection = deferred<string>();
+    const { onClose, onConnected, container } = setup(
+      vi.fn(() => pendingConnection.promise),
+    );
+
+    fireEvent.change(q(container, 'input[type="text"]'), {
+      target: { value: "example.com" },
+    });
+    fireEvent.change(
+      container.querySelectorAll('input[type="text"]')[1] as HTMLInputElement,
+      { target: { value: "lin" } },
+    );
+    fireEvent.change(q(container, 'input[type="password"]'), {
+      target: { value: "secret" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "desktop.connectAction" }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("dialog", { name: "desktop.connectTitle" })
+          .getAttribute("aria-busy"),
+      ).toBe("true"),
+    );
+    const closeButton = screen.getByRole("button", { name: "desktop.close" });
+    expect((closeButton as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    fireEvent.click(screen.getByRole("dialog"));
+    expect(onClose).not.toHaveBeenCalled();
+
+    await act(async () => {
+      pendingConnection.resolve("sess-late");
+      await pendingConnection.promise;
+    });
+    await waitFor(() => expect(onConnected).toHaveBeenCalledWith("sess-late"));
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
   it("closes on Escape and on backdrop click", () => {
     const onClose = vi.fn();
-    render(<ConnectModal onClose={onClose} onConnect={vi.fn()} onConnected={vi.fn()} t={t} />);
+    render(
+      <ConnectModal
+        onClose={onClose}
+        onConnect={vi.fn()}
+        onConnected={vi.fn()}
+        t={t}
+      />,
+    );
     fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     expect(onClose).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole("dialog"));

@@ -79,7 +79,11 @@
 .workbench {
   background: var(--atlas-bg);
   display: grid;
-  grid-template-columns: clamp(252px, 18.5vw, 288px) minmax(0, 1fr) clamp(296px, 22vw, 340px);
+  grid-template-columns: clamp(252px, 18.5vw, 288px) minmax(0, 1fr) clamp(
+      296px,
+      22vw,
+      340px
+    );
   grid-template-rows: minmax(0, 1fr) 32px;
   height: 100vh;
   min-height: 0;
@@ -287,7 +291,9 @@
   display: grid;
   gap: 5px;
 }
-.connection-group { margin-bottom: 2px; }
+.connection-group {
+  margin-bottom: 2px;
+}
 .connection-group-header {
   align-items: center;
   background: none;
@@ -303,8 +309,13 @@
   text-transform: uppercase;
   width: 100%;
 }
-.connection-group-header:hover { color: var(--atlas-text); }
-.connection-group-items { display: grid; gap: 2px; }
+.connection-group-header:hover {
+  color: var(--atlas-text);
+}
+.connection-group-items {
+  display: grid;
+  gap: 2px;
+}
 
 .connection-card {
   align-items: center;
@@ -344,8 +355,14 @@
 }
 
 .connection-card.is-active {
-  border-color: color-mix(in srgb, var(--atlas-accent) 55%, var(--atlas-border));
-  box-shadow: inset 3px 0 0 var(--atlas-accent), var(--elev-1);
+  border-color: color-mix(
+    in srgb,
+    var(--atlas-accent) 55%,
+    var(--atlas-border)
+  );
+  box-shadow:
+    inset 3px 0 0 var(--atlas-accent),
+    var(--elev-1);
 }
 
 .connection-card.is-drag-over {
@@ -369,8 +386,15 @@
 }
 
 @keyframes pulse-healthy {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(0.85); }
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.85);
+  }
 }
 
 .reconnect-badge {
@@ -421,7 +445,8 @@
 
 .status-dot--neutral {
   background: var(--atlas-text-faint);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--atlas-text-faint) 12%, transparent);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--atlas-text-faint) 12%, transparent);
 }
 
 .status-dot--good {
@@ -806,12 +831,21 @@
 }
 
 .terminal-pane.is-active {
-  border-color: color-mix(in srgb, var(--atlas-accent) 60%, var(--atlas-border));
-  box-shadow: inset 0 2px 0 color-mix(in srgb, var(--atlas-accent) 70%, transparent);
+  border-color: color-mix(
+    in srgb,
+    var(--atlas-accent) 60%,
+    var(--atlas-border)
+  );
+  box-shadow: inset 0 2px 0
+    color-mix(in srgb, var(--atlas-accent) 70%, transparent);
 }
 
 .terminal-pane header {
-  background: color-mix(in srgb, var(--atlas-bg-soft) 84%, var(--atlas-bg-raised));
+  background: color-mix(
+    in srgb,
+    var(--atlas-bg-soft) 84%,
+    var(--atlas-bg-raised)
+  );
   border-bottom: 1px solid var(--atlas-border);
   color: var(--atlas-text-muted);
   font-size: 13px;
@@ -1492,8 +1526,14 @@ kbd {
 }
 
 @keyframes toast-in {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .toast-container {
@@ -1574,7 +1614,9 @@ kbd {
   background: var(--atlas-bg-raised);
   border: 1px solid var(--atlas-border);
   border-radius: 8px;
-  box-shadow: var(--atlas-shadow), 0 8px 24px rgba(0, 0, 0, 0.18);
+  box-shadow:
+    var(--atlas-shadow),
+    0 8px 24px rgba(0, 0, 0, 0.18);
   display: grid;
   min-width: 180px;
   padding: 4px;
@@ -1859,7 +1901,12 @@ kbd {
 
 .skeleton {
   animation: skeleton-shimmer 1.5s ease-in-out infinite;
-  background: linear-gradient(90deg, var(--atlas-bg-soft) 25%, var(--atlas-bg-raised) 50%, var(--atlas-bg-soft) 75%);
+  background: linear-gradient(
+    90deg,
+    var(--atlas-bg-soft) 25%,
+    var(--atlas-bg-raised) 50%,
+    var(--atlas-bg-soft) 75%
+  );
   background-size: 200% 100%;
   border-radius: 6px;
 }
@@ -1893,8 +1940,12 @@ kbd {
 }
 
 @keyframes skeleton-shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2239,14 +2290,18 @@ kbd {
 }
 
 @keyframes recording-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
 }
 
 .terminal-pane.is-recording {
   box-shadow: inset 0 2px 0 0 rgba(239, 68, 68, 0.3);
 }
-
 
 .connect-form {
   display: flex;
@@ -2366,7 +2421,6 @@ kbd {
   margin-top: 4px;
 }
 
-
 .sftp-state {
   align-items: center;
   background: var(--atlas-bg-soft);
@@ -2464,7 +2518,6 @@ kbd {
   }
 }
 
-
 .terminal-pane--xterm {
   padding: 8px;
   overflow: hidden;
@@ -2475,6 +2528,10 @@ kbd {
   grid-template-rows: minmax(0, 1fr) auto;
   height: 100%;
   min-height: 240px;
+}
+
+.xterm-shell.is-searching {
+  grid-template-rows: auto minmax(0, 1fr) auto;
 }
 
 .xterm-host {
@@ -2498,7 +2555,6 @@ kbd {
 .xterm-status-bar span {
   overflow-wrap: anywhere;
 }
-
 
 .known-hosts-row {
   display: flex;
@@ -2655,13 +2711,23 @@ kbd {
 }
 
 @keyframes modal-backdrop-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes modal-pop-in {
-  from { opacity: 0; transform: translateY(8px) scale(0.97); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .workbench.terminal-maximized {
@@ -2714,7 +2780,8 @@ kbd {
 .getting-started-mark {
   align-items: center;
   background: color-mix(in srgb, var(--atlas-accent) 14%, var(--atlas-bg));
-  border: 1px solid color-mix(in srgb, var(--atlas-accent) 45%, var(--atlas-border));
+  border: 1px solid
+    color-mix(in srgb, var(--atlas-accent) 45%, var(--atlas-border));
   border-radius: 8px;
   color: var(--atlas-accent);
   display: flex;

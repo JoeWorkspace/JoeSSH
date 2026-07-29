@@ -50,7 +50,17 @@ describe("ContextMenu", () => {
   });
 
   it("hides actions that are unavailable for the runtime or connection type", () => {
-    render(<ContextMenu {...defaultProps} capabilities={{ connect: false, delete: false, edit: false, test: false }} />);
+    render(
+      <ContextMenu
+        {...defaultProps}
+        capabilities={{
+          connect: false,
+          delete: false,
+          edit: false,
+          test: false,
+        }}
+      />,
+    );
 
     expect(screen.queryByText("desktop.contextConnect")).toBeNull();
     expect(screen.queryByText("desktop.contextTest")).toBeNull();
@@ -69,15 +79,28 @@ describe("ContextMenu", () => {
 
   it("calls onClose when clicking backdrop", () => {
     const onClose = vi.fn();
-    render(<ContextMenu {...defaultProps} onClose={onClose} />);
-    fireEvent.click(screen.getByRole("menu").parentElement as HTMLElement);
+    const onToggleMoveToGroup = vi.fn();
+    render(
+      <ContextMenu
+        {...defaultProps}
+        moveToGroupMenu="my-server"
+        onClose={onClose}
+        onToggleMoveToGroup={onToggleMoveToGroup}
+      />,
+    );
+    fireEvent.click(
+      screen.getAllByRole("menu")[0].parentElement as HTMLElement,
+    );
     expect(onClose).toHaveBeenCalled();
+    expect(onToggleMoveToGroup).toHaveBeenCalledWith(null);
   });
 
   it("calls onSelect('connect') when clicking connect", () => {
     const onSelect = vi.fn();
     const onClose = vi.fn();
-    render(<ContextMenu {...defaultProps} onSelect={onSelect} onClose={onClose} />);
+    render(
+      <ContextMenu {...defaultProps} onSelect={onSelect} onClose={onClose} />,
+    );
     fireEvent.click(screen.getByText("desktop.contextConnect"));
     expect(onSelect).toHaveBeenCalledWith("connect");
     expect(onClose).toHaveBeenCalled();
@@ -86,7 +109,9 @@ describe("ContextMenu", () => {
   it("calls onSelect('test') when clicking test connection", () => {
     const onSelect = vi.fn();
     const onClose = vi.fn();
-    render(<ContextMenu {...defaultProps} onSelect={onSelect} onClose={onClose} />);
+    render(
+      <ContextMenu {...defaultProps} onSelect={onSelect} onClose={onClose} />,
+    );
     fireEvent.click(screen.getByText("desktop.contextTest"));
     expect(onSelect).toHaveBeenCalledWith("test");
     expect(onClose).toHaveBeenCalled();
@@ -122,35 +147,59 @@ describe("ContextMenu", () => {
 
   it("opens submenu when clicking move to group", () => {
     const onToggleMoveToGroup = vi.fn();
-    render(<ContextMenu {...defaultProps} onToggleMoveToGroup={onToggleMoveToGroup} />);
+    render(
+      <ContextMenu
+        {...defaultProps}
+        onToggleMoveToGroup={onToggleMoveToGroup}
+      />,
+    );
     fireEvent.click(screen.getByText("desktop.moveToGroup"));
     expect(onToggleMoveToGroup).toHaveBeenCalledWith("my-server");
   });
 
   it("closes submenu when clicking move to group again", () => {
     const onToggleMoveToGroup = vi.fn();
-    render(<ContextMenu {...defaultProps} moveToGroupMenu="my-server" onToggleMoveToGroup={onToggleMoveToGroup} />);
+    render(
+      <ContextMenu
+        {...defaultProps}
+        moveToGroupMenu="my-server"
+        onToggleMoveToGroup={onToggleMoveToGroup}
+      />,
+    );
     fireEvent.click(screen.getByText("desktop.moveToGroup"));
     expect(onToggleMoveToGroup).toHaveBeenCalledWith(null);
   });
 
   it("shows group list when submenu is open", () => {
     render(<ContextMenu {...defaultProps} moveToGroupMenu="my-server" />);
-    expect(screen.getByText("desktop.groupProduction", { exact: false })).toBeTruthy();
-    expect(screen.getByText("desktop.groupStaging", { exact: false })).toBeTruthy();
+    expect(
+      screen.getByText("desktop.groupProduction", { exact: false }),
+    ).toBeTruthy();
+    expect(
+      screen.getByText("desktop.groupStaging", { exact: false }),
+    ).toBeTruthy();
     expect(screen.getByText("Dev", { exact: false })).toBeTruthy();
   });
 
   it("marks current group with checkmark", () => {
     render(<ContextMenu {...defaultProps} moveToGroupMenu="my-server" />);
-    const productionItem = screen.getByRole("menuitem", { name: /desktop.groupProduction/ });
+    const productionItem = screen.getByRole("menuitem", {
+      name: /desktop.groupProduction/,
+    });
     expect(productionItem.getAttribute("aria-current")).toBe("true");
   });
 
   it("calls onMoveToGroup when selecting a different group", () => {
     const onMoveToGroup = vi.fn();
     const onClose = vi.fn();
-    render(<ContextMenu {...defaultProps} moveToGroupMenu="my-server" onMoveToGroup={onMoveToGroup} onClose={onClose} />);
+    render(
+      <ContextMenu
+        {...defaultProps}
+        moveToGroupMenu="my-server"
+        onMoveToGroup={onMoveToGroup}
+        onClose={onClose}
+      />,
+    );
     fireEvent.click(screen.getByText("desktop.groupStaging"));
     expect(onMoveToGroup).toHaveBeenCalledWith("my-server", "Staging");
     expect(onClose).toHaveBeenCalled();
@@ -160,8 +209,17 @@ describe("ContextMenu", () => {
     const onMoveToGroup = vi.fn();
     const onClose = vi.fn();
     // defaultConnection.group is "Production".
-    render(<ContextMenu {...defaultProps} moveToGroupMenu="my-server" onMoveToGroup={onMoveToGroup} onClose={onClose} />);
-    fireEvent.click(screen.getByText("desktop.groupProduction", { exact: false }));
+    render(
+      <ContextMenu
+        {...defaultProps}
+        moveToGroupMenu="my-server"
+        onMoveToGroup={onMoveToGroup}
+        onClose={onClose}
+      />,
+    );
+    fireEvent.click(
+      screen.getByText("desktop.groupProduction", { exact: false }),
+    );
     expect(onMoveToGroup).not.toHaveBeenCalled();
     expect(onClose).toHaveBeenCalled();
   });
@@ -169,36 +227,52 @@ describe("ContextMenu", () => {
   it("closes on Escape key in backdrop", () => {
     const onClose = vi.fn();
     const onToggleMoveToGroup = vi.fn();
-    render(<ContextMenu {...defaultProps} onClose={onClose} onToggleMoveToGroup={onToggleMoveToGroup} />);
-    fireEvent.keyDown(screen.getByRole("menu").parentElement as HTMLElement, { key: "Escape" });
+    render(
+      <ContextMenu
+        {...defaultProps}
+        onClose={onClose}
+        onToggleMoveToGroup={onToggleMoveToGroup}
+      />,
+    );
+    fireEvent.keyDown(screen.getByRole("menu").parentElement as HTMLElement, {
+      key: "Escape",
+    });
     expect(onClose).toHaveBeenCalled();
     expect(onToggleMoveToGroup).toHaveBeenCalledWith(null);
   });
 
   it("sets aria-haspopup and aria-expanded on move to group button", () => {
     render(<ContextMenu {...defaultProps} />);
-    const button = screen.getByText("desktop.moveToGroup").closest("button") as HTMLElement;
+    const button = screen
+      .getByText("desktop.moveToGroup")
+      .closest("button") as HTMLElement;
     expect(button.getAttribute("aria-haspopup")).toBe("true");
     expect(button.getAttribute("aria-expanded")).toBe("false");
   });
 
   it("sets aria-expanded true when submenu is open", () => {
     render(<ContextMenu {...defaultProps} moveToGroupMenu="my-server" />);
-    const button = screen.getByText("desktop.moveToGroup").closest("button") as HTMLElement;
+    const button = screen
+      .getByText("desktop.moveToGroup")
+      .closest("button") as HTMLElement;
     expect(button.getAttribute("aria-expanded")).toBe("true");
   });
 
   it("closes on right-click context menu on backdrop", () => {
     const onClose = vi.fn();
     render(<ContextMenu {...defaultProps} onClose={onClose} />);
-    fireEvent.contextMenu(screen.getByRole("menu").parentElement as HTMLElement);
+    fireEvent.contextMenu(
+      screen.getByRole("menu").parentElement as HTMLElement,
+    );
     expect(onClose).toHaveBeenCalled();
   });
 
   it("handles ArrowDown key to navigate menu items", () => {
     render(<ContextMenu {...defaultProps} />);
     const menu = screen.getByRole("menu");
-    const items = menu.querySelectorAll('[role="menuitem"]:not([disabled])') as NodeListOf<HTMLElement>;
+    const items = menu.querySelectorAll(
+      '[role="menuitem"]:not([disabled])',
+    ) as NodeListOf<HTMLElement>;
     items[0]?.focus();
     fireEvent.keyDown(menu, { key: "ArrowDown" });
   });
@@ -219,7 +293,9 @@ describe("ContextMenu", () => {
   it("handles ArrowUp after focusing last item", () => {
     render(<ContextMenu {...defaultProps} />);
     const menu = screen.getByRole("menu");
-    const items = menu.querySelectorAll('[role="menuitem"]:not([disabled])') as NodeListOf<HTMLElement>;
+    const items = menu.querySelectorAll(
+      '[role="menuitem"]:not([disabled])',
+    ) as NodeListOf<HTMLElement>;
     items[items.length - 1]?.focus();
     fireEvent.keyDown(menu, { key: "ArrowUp" });
   });
@@ -247,7 +323,9 @@ describe("ContextMenu", () => {
   });
 
   it("handles ArrowDown with empty menu", () => {
-    const { container } = render(<ContextMenu {...defaultProps} allGroupNames={[]} />);
+    const { container } = render(
+      <ContextMenu {...defaultProps} allGroupNames={[]} />,
+    );
     const menu = container.querySelector('[role="menu"]');
     if (menu) fireEvent.keyDown(menu, { key: "ArrowDown" });
   });
@@ -255,7 +333,9 @@ describe("ContextMenu", () => {
   it("handles ArrowUp key to navigate menu items", () => {
     render(<ContextMenu {...defaultProps} />);
     const menu = screen.getByRole("menu");
-    const items = menu.querySelectorAll('[role="menuitem"]:not([disabled])') as NodeListOf<HTMLElement>;
+    const items = menu.querySelectorAll(
+      '[role="menuitem"]:not([disabled])',
+    ) as NodeListOf<HTMLElement>;
     items[1]?.focus();
     fireEvent.keyDown(menu, { key: "ArrowUp" });
   });
@@ -276,7 +356,13 @@ describe("ContextMenu", () => {
   it("handles Escape key inside menu to close", () => {
     const onClose = vi.fn();
     const onToggleMoveToGroup = vi.fn();
-    render(<ContextMenu {...defaultProps} onClose={onClose} onToggleMoveToGroup={onToggleMoveToGroup} />);
+    render(
+      <ContextMenu
+        {...defaultProps}
+        onClose={onClose}
+        onToggleMoveToGroup={onToggleMoveToGroup}
+      />,
+    );
     fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(onToggleMoveToGroup).toHaveBeenCalledTimes(1);

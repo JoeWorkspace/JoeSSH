@@ -144,14 +144,13 @@ function verifyEvidenceSource(sourceFullPath, evidenceChecksumEntries) {
     }
   }
 
-  let source = null;
   try {
-    source = JSON.parse(readFileSync(sourceFullPath, "utf8"));
+    const source = JSON.parse(readFileSync(sourceFullPath, "utf8"));
+    validateEvidenceSource(source);
   } catch (error) {
     errors.push(`desktop evidence source sidecar is not valid JSON: ${error instanceof Error ? error.message : String(error)}`);
     return;
   }
-  validateEvidenceSource(source);
 }
 
 function validateEvidenceSource(source) {

@@ -29,10 +29,8 @@
   --web-danger-bg: #fee9e9;
   --web-danger-text: #b43b44;
   --web-hover: rgba(13, 34, 40, 0.045);
-  --web-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 14px 36px rgba(29, 48, 56, 0.09);
-  --web-shadow-soft:
-    0 1px 0 rgba(255, 255, 255, 0.86) inset, 0 5px 16px rgba(29, 48, 56, 0.065);
+  --web-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 14px 36px rgba(29, 48, 56, 0.09);
+  --web-shadow-soft: 0 1px 0 rgba(255, 255, 255, 0.86) inset, 0 5px 16px rgba(29, 48, 56, 0.065);
   --web-radius-sm: 8px;
   --web-radius-md: 12px;
   --web-radius-lg: 16px;
@@ -76,10 +74,8 @@
     --web-danger-bg: rgba(255, 115, 123, 0.14);
     --web-danger-text: #ff9097;
     --web-hover: rgba(255, 255, 255, 0.04);
-    --web-shadow:
-      0 1px 0 rgba(255, 255, 255, 0.035) inset, 0 18px 46px rgba(0, 0, 0, 0.3);
-    --web-shadow-soft:
-      0 1px 0 rgba(255, 255, 255, 0.025) inset, 0 7px 20px rgba(0, 0, 0, 0.2);
+    --web-shadow: 0 1px 0 rgba(255, 255, 255, 0.035) inset, 0 18px 46px rgba(0, 0, 0, 0.3);
+    --web-shadow-soft: 0 1px 0 rgba(255, 255, 255, 0.025) inset, 0 7px 20px rgba(0, 0, 0, 0.2);
     --web-focus: 0 0 0 3px rgba(56, 214, 174, 0.2);
   }
 }
@@ -89,13 +85,7 @@ html {
 }
 
 body {
-  background:
-    radial-gradient(
-      circle at 68% -12%,
-      color-mix(in srgb, var(--web-accent) 9%, transparent),
-      transparent 38rem
-    ),
-    var(--web-bg);
+  background: radial-gradient(circle at 68% -12%, color-mix(in srgb, var(--web-accent) 9%, transparent), transparent 38rem), var(--web-bg);
   letter-spacing: -0.006em;
 }
 
@@ -110,24 +100,12 @@ body {
 }
 
 .shell {
-  background: linear-gradient(
-    to right,
-    var(--web-nav-bg) 0,
-    var(--web-nav-bg) 248px,
-    transparent 248px,
-    transparent 100%
-  );
+  background: linear-gradient(to right, var(--web-nav-bg) 0, var(--web-nav-bg) 248px, transparent 248px, transparent 100%);
   grid-template-columns: 248px minmax(0, 1fr);
 }
 
 .sidebar {
-  background:
-    radial-gradient(
-      circle at 22% 0,
-      rgba(56, 214, 174, 0.11),
-      transparent 18rem
-    ),
-    var(--web-nav-bg);
+  background: radial-gradient(circle at 22% 0, rgba(56, 214, 174, 0.11), transparent 18rem), var(--web-nav-bg);
   border-inline-end: 1px solid rgba(255, 255, 255, 0.06);
   padding: 26px 18px;
   scrollbar-color: #283944 transparent;
@@ -141,13 +119,7 @@ body {
 }
 
 .brand svg {
-  background:
-    radial-gradient(
-      circle at 26% 18%,
-      rgba(255, 255, 255, 0.17),
-      transparent 45%
-    ),
-    rgba(56, 214, 174, 0.15);
+  background: radial-gradient(circle at 26% 18%, rgba(255, 255, 255, 0.17), transparent 45%), rgba(56, 214, 174, 0.15);
   border: 1px solid rgba(56, 214, 174, 0.35);
   border-radius: var(--web-radius-md);
   box-sizing: content-box;
@@ -182,14 +154,22 @@ body {
 }
 
 .navItem.active {
-  background: linear-gradient(
-    90deg,
-    rgba(56, 214, 174, 0.15),
-    rgba(56, 214, 174, 0.055)
-  );
+  background: linear-gradient(90deg, rgba(56, 214, 174, 0.15), rgba(56, 214, 174, 0.055));
   border-color: rgba(56, 214, 174, 0.18);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
   color: #effffb;
+}
+
+.navItem[aria-disabled="true"] {
+  color: var(--web-nav-item);
+  cursor: default;
+  opacity: 0.56;
+}
+
+.navItem[aria-disabled="true"]:hover {
+  background: transparent;
+  border-color: transparent;
+  transform: none;
 }
 
 .navItem.active::before {
@@ -218,10 +198,21 @@ body {
 .topbar {
   backdrop-filter: blur(18px) saturate(125%);
   background: color-mix(in srgb, var(--web-bg) 86%, transparent);
-  border-bottom: 1px solid
-    color-mix(in srgb, var(--web-border) 70%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--web-border) 70%, transparent);
   margin: -16px -8px 0;
   padding: 15px 8px;
+}
+
+.topbarTitle {
+  min-width: 0;
+}
+
+.eyebrowRow {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 5px;
 }
 
 .eyebrow {
@@ -229,7 +220,20 @@ body {
   font-size: 11px;
   font-weight: 820;
   letter-spacing: 0.08em;
-  margin-bottom: 5px;
+  margin-bottom: 0;
+}
+
+.readOnlyBadge {
+  background: var(--web-accent-bg);
+  border: 1px solid color-mix(in srgb, var(--web-accent) 28%, var(--web-border));
+  border-radius: 999px;
+  color: var(--web-accent-strong);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.045em;
+  line-height: 1;
+  padding: 4px 7px;
+  text-transform: uppercase;
 }
 
 h1 {
@@ -265,9 +269,7 @@ h2 {
 .languagePicker select,
 .telemetryToggle,
 .iconButton {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent),
-    color-mix(in srgb, var(--web-surface) 88%, transparent);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent), color-mix(in srgb, var(--web-surface) 88%, transparent);
   border-color: var(--web-border);
   border-radius: var(--web-radius-sm);
   box-shadow: var(--web-shadow-soft);
@@ -309,9 +311,7 @@ h2 {
 .metric,
 .panel,
 .statePanel {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 72%),
-    var(--web-surface);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 72%), var(--web-surface);
   border-color: var(--web-border);
   box-shadow: var(--web-shadow-soft);
 }
@@ -382,13 +382,7 @@ h2 {
 }
 
 .metricIcon {
-  background:
-    radial-gradient(
-      circle at 30% 18%,
-      rgba(255, 255, 255, 0.2),
-      transparent 48%
-    ),
-    var(--web-accent-bg);
+  background: radial-gradient(circle at 30% 18%, rgba(255, 255, 255, 0.2), transparent 48%), var(--web-accent-bg);
   border: 1px solid color-mix(in srgb, var(--web-accent) 22%, var(--web-border));
   border-radius: var(--web-radius-md);
   height: 46px;
@@ -418,6 +412,14 @@ h2 {
 .panel {
   box-shadow: var(--web-shadow-soft);
   min-width: 0;
+}
+
+.collectionEmpty {
+  color: var(--web-text-secondary);
+  display: grid;
+  min-height: 92px;
+  padding: 22px 20px;
+  place-items: center start;
 }
 
 .panelHeader {
@@ -661,9 +663,7 @@ mark,
   }
 
   .sidebar {
-    background:
-      linear-gradient(90deg, rgba(56, 214, 174, 0.08), transparent 55%),
-      var(--web-nav-bg);
+    background: linear-gradient(90deg, rgba(56, 214, 174, 0.08), transparent 55%), var(--web-nav-bg);
     border-bottom: 1px solid rgba(255, 255, 255, 0.065);
     border-inline-end: 0;
     overflow-x: hidden;
@@ -791,7 +791,12 @@ mark,
   .telemetryToggle {
     justify-content: space-between;
     min-width: 0;
+    white-space: normal;
     width: auto;
+  }
+
+  .telemetryToggle span {
+    overflow-wrap: anywhere;
   }
 
   .topbarActions .iconButton {
@@ -844,6 +849,11 @@ mark,
   .iconButton {
     border: 1px solid ButtonText;
     box-shadow: none;
+  }
+
+  .navItem[aria-disabled="true"] {
+    color: GrayText;
+    opacity: 1;
   }
 
   .sidebar nav {
@@ -954,10 +964,13 @@ mark,
 
   .snapshotStatus,
   .metrics,
-  .dashboardGrid,
-  .panel,
   .statePanel {
     break-inside: avoid;
+  }
+
+  .dashboardGrid,
+  .panel {
+    break-inside: auto;
   }
 
   .snapshotStatus {
@@ -1034,6 +1047,7 @@ mark,
   .deviceTable .row:not(.headerRow),
   .roleItem,
   .eventList li {
+    break-inside: avoid;
     min-height: 0;
     padding: 7pt 10pt;
   }

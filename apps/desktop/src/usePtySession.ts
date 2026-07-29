@@ -20,13 +20,17 @@ const PTY_COMMAND_BLOCKED_PREFIX = "pty input blocked by desktop safety policy";
 /// Drives an interactive PTY's lifecycle. IPC is injected (the desktop wires
 /// real `pty*` calls); `onData` is the sink for output bytes (xterm.write).
 /// Inactive when `deps` is undefined so the pane keeps its line fallback.
-export function usePtySession(deps: PtyDeps | undefined, onData: (bytes: number[]) => void) {
+export function usePtySession(
+  deps: PtyDeps | undefined,
+  onData: (bytes: number[]) => void,
+) {
   const [status, setStatus] = useState<PtyStatus>("idle");
   const [exitCode, setExitCode] = useState<number | null>(null);
   const [blockedReason, setBlockedReason] = useState<string | null>(null);
   const ptyIdRef = useRef<string | null>(null);
   const unlistenRef = useRef<Unlisten | null>(null);
   const generationRef = useRef(0);
+  const openingGenerationRef = useRef<number | null>(null);
   const onDataRef = useRef(onData);
   onDataRef.current = onData;
 
@@ -40,8 +44,11 @@ export function usePtySession(deps: PtyDeps | undefined, onData: (bytes: number[
 
   const open = useCallback(
     async (cols: number, rows: number) => {
-      if (!deps || ptyIdRef.current) return;
+      if (!deps || ptyIdRef.current || openingGenerationRef.current !== null) {
+        return;
+      }
       const generation = generationRef.current;
+      openingGenerationRef.current = generation;
       setStatus("opening");
       setExitCode(null);
       setBlockedReason(null);
@@ -53,7 +60,8 @@ export function usePtySession(deps: PtyDeps | undefined, onData: (bytes: number[
         }
 
         ptyIdRef.current = ptyId;
-        const isCurrentPty = () => generationRef.current === generation && ptyIdRef.current === ptyId;
+        const isCurrentPty = () =>
+          generationRef.current === generation && ptyIdRef.current === ptyId;
         const unlisten = await deps.subscribe(
           ptyId,
           (bytes) => {
@@ -67,7 +75,10 @@ export function usePtySession(deps: PtyDeps | undefined, onData: (bytes: number[
             setStatus("closed");
           },
         );
-        if (generationRef.current !== generation || ptyIdRef.current !== ptyId) {
+        if (
+          generationRef.current !== generation ||
+          ptyIdRef.current !== ptyId
+        ) {
           unlisten();
           if (ptyIdRef.current === ptyId) {
             ptyIdRef.current = null;
@@ -86,6 +97,10 @@ export function usePtySession(deps: PtyDeps | undefined, onData: (bytes: number[
           setBlockedReason(null);
           setStatus("error");
         }
+      } finally {
+        if (openingGenerationRef.current === generation) {
+          openingGenerationRef.current = null;
+        }
       }
     },
     [deps, resetRefs],
@@ -98,12 +113,18 @@ export function usePtySession(deps: PtyDeps | undefined, onData: (bytes: number[
       const generation = generationRef.current;
       void deps.write(ptyId, data).then(
         () => {
-          if (generationRef.current === generation && ptyIdRef.current === ptyId) {
+          if (
+            generationRef.current === generation &&
+            ptyIdRef.current === ptyId
+          ) {
             setBlockedReason(null);
           }
         },
         (error: unknown) => {
-          if (generationRef.current !== generation || ptyIdRef.current !== ptyId) {
+          if (
+            generationRef.current !== generation ||
+            ptyIdRef.current !== ptyId
+          ) {
             return;
           }
 
@@ -113,22 +134,31 @@ export function usePtySession(deps: PtyDeps | undefined, onData: (bytes: number[
             return;
           }
 
+          generationRef.current += 1;
+          const failedPtyId = resetRefs();
+          if (failedPtyId) {
+            void deps.close(failedPtyId);
+          }
+          setExitCode(null);
+          setBlockedReason(null);
           setStatus("error");
         },
       );
     },
-    [deps],
+    [deps, resetRefs],
   );
 
   const resize = useCallback(
     (cols: number, rows: number) => {
-      if (deps && ptyIdRef.current) void deps.resize(ptyIdRef.current, cols, rows);
+      if (deps && ptyIdRef.current)
+        void deps.resize(ptyIdRef.current, cols, rows);
     },
     [deps],
   );
 
   const close = useCallback(() => {
     generationRef.current += 1;
+    openingGenerationRef.current = null;
     const ptyId = resetRefs();
     if (deps && ptyId) void deps.close(ptyId);
     setExitCode(null);
@@ -143,16 +173,31 @@ export function usePtySession(deps: PtyDeps | undefined, onData: (bytes: number[
     setBlockedReason(null);
     return () => {
       generationRef.current += 1;
+      openingGenerationRef.current = null;
       const ptyId = resetRefs();
       if (deps && ptyId) void deps.close(ptyId);
     };
   }, [deps, resetRefs]);
 
-  return { status, exitCode, blockedReason, active: deps !== undefined, open, write, resize, close };
+  return {
+    status,
+    exitCode,
+    blockedReason,
+    active: deps !== undefined,
+    open,
+    write,
+    resize,
+    close,
+  };
 }
 
 function ptyCommandBlockedReason(error: unknown) {
-  const message = error instanceof Error ? error.message : typeof error === "string" ? error : "";
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "string"
+        ? error
+        : "";
   if (message === PTY_COMMAND_BLOCKED_PREFIX) {
     return "";
   }

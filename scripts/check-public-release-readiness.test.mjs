@@ -344,7 +344,7 @@ function createFixture(t, overrides = {}) {
     "apps/desktop/src/useSftpTransfer.test.ts":
       "rejects downloads with known sizes over the transfer limit before reading\nrejects downloaded payloads over the transfer limit\nrejects upload payloads over the transfer limit before writing\n",
     "apps/desktop/src/useForwardRules.ts":
-      "pending?: boolean\ninFlightRules\nruntimeRef\nbackendSeq\ninFlightRules.current.has(id)\ninFlightRules.current.add(id)\ninFlightRules.current.delete(id)\nvoid stop(forwardId).catch(() => {})\n",
+      "pending?: boolean\ninFlightRules\nruntimeRef\nbackendSeq\ninFlightRules.current.has(id)\ninFlightRules.current.set(id, operationId)\ninFlightRules.current.get(id) === operationId\ninFlightRules.current.delete(id)\nvoid stop(forwardId).catch(() => {})\n",
     "apps/desktop/src/useForwardRules.test.ts":
       "ignores duplicate start calls while a forward is pending\nignores duplicate stop calls while a forward stop is pending\nstops active native forwards and clears runtime state when the backend session changes\nignores stale start results after the backend session changes\ntoHaveBeenCalledTimes(1)\n",
     "apps/desktop/src/panels.tsx":
@@ -388,7 +388,7 @@ function createFixture(t, overrides = {}) {
     "docs/self-hosting-sync.md":
       "ATLASTERM_SYNC_AUTH_TOKEN ATLASTERM_SYNC_METRICS_TOKEN ATLASTERM_SYNC_ALLOW_EPHEMERAL_STORAGE 32 characters /readyz /metrics schema_version: 1 qa:sync:config-guard-smoke ledger.lock joessh_sync_storage_write_failures_total qa:sync:backup-restore-smoke RPO RTO systemd Docker HEALTHCHECK Authorization: Bearer ${ATLASTERM_SYNC_METRICS_TOKEN} qa:sync-release-package qa:sync:release-smoke\n",
     "docs/dependency-risk-register.md":
-      "js-yaml GHSA-h67p-54hq-rp68 @opentelemetry/core GHSA-8988-4f7v-96qf esbuild GHSA-g7r4-m6w7-qqqr\n",
+      "uuid GHSA-w5hq-g745-h8pq @expo/config-plugins xcode\n",
     "docs/privacy-public-beta.md": privacyFixture(),
     "deploy/web-admin/node-admin-snapshot-proxy.mjs":
       "ATLASTERM_WEB_ADMIN_PROXY_ALLOW_PUBLIC_BIND ATLASTERM_WEB_ADMIN_PROXY_OPERATOR_TOKEN isAuthorizedBearer timingSafeEqual isLoopbackHost ATLASTERM_ADMIN_SNAPSHOT_PROXY_MAX_BYTES readUpstreamTextWithLimit content-length upstream_snapshot_too_large UpstreamSnapshotTooLargeError\n",
@@ -406,7 +406,7 @@ function createFixture(t, overrides = {}) {
     "apps/desktop/public/humans.txt": "JoeSSH Team\n",
     "apps/desktop/public/sw.js": 'const CACHE_NAME = "joessh-v1";\n',
     "apps/web/public/humans.txt": "JoeSSH Team\n",
-    "apps/web/public/sw.js": "const CACHE_NAME = 'joessh-admin-v1';\n",
+    "apps/web/public/sw.js": "const CACHE_NAME = 'joessh-admin-v2';\n",
     "packages/error-monitor/src/index.ts": errorMonitorRuntimeFixture(),
     "packages/error-monitor/src/index.test.ts":
       runtimeDisableTestFixture("error monitor"),

@@ -46,7 +46,22 @@ describe("splitConnectionTarget", () => {
     expect(splitConnectionTarget("@prod-edge-01")).toEqual({ host: "@prod-edge-01" });
     expect(splitConnectionTarget("atlas@")).toEqual({ host: "atlas@" });
     expect(splitConnectionTarget("prod-edge-01:99999")).toEqual({ host: "prod-edge-01", port: undefined });
+    expect(splitConnectionTarget("prod-edge-01:0")).toEqual({ host: "prod-edge-01", port: undefined });
     expect(splitConnectionTarget("2001:db8::10")).toEqual({ host: "2001:db8::10" });
+    expect(splitConnectionTarget("ssh://")).toEqual({ host: "ssh://" });
+    expect(splitConnectionTarget("   ")).toEqual({ host: "   " });
+  });
+
+  it("parses targets whose optional URL and IPv6 fields are omitted", () => {
+    expect(splitConnectionTarget("ssh://prod-edge-01.internal")).toEqual({
+      host: "prod-edge-01.internal",
+      port: undefined,
+      username: undefined,
+    });
+    expect(splitConnectionTarget("[2001:db8::10]")).toEqual({
+      host: "2001:db8::10",
+      port: undefined,
+    });
   });
 });
 
@@ -55,5 +70,12 @@ describe("formatConnectionTarget", () => {
     expect(formatConnectionTarget({ host: "prod-edge-01", username: "atlas" })).toBe("atlas@prod-edge-01");
     expect(formatConnectionTarget({ host: "prod-edge-01", port: 2200, username: "atlas" })).toBe("atlas@prod-edge-01:2200");
     expect(formatConnectionTarget({ host: "2001:db8::10", port: 2200, username: "atlas" })).toBe("atlas@[2001:db8::10]:2200");
+  });
+
+  it("formats plain hosts and host-only ports without optional decorations", () => {
+    expect(formatConnectionTarget({ host: "prod-edge-01" })).toBe("prod-edge-01");
+    expect(formatConnectionTarget({ host: "prod-edge-01", port: 2222 })).toBe(
+      "prod-edge-01:2222",
+    );
   });
 });

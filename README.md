@@ -149,7 +149,7 @@ JoeSSH implements defense-in-depth security across all client apps:
 
 ## CI/CD
 
-GitHub Actions runs on push, PR, and weekday schedule:
+GitHub Actions runs on push, PR, and a weekly Monday schedule:
 
 - Lint, typecheck, unit tests, production build
 - Bundle size budget check (250KB per chunk, shared with local `npm run qa`)

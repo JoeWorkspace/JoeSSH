@@ -177,9 +177,43 @@ describe("Sidebar", () => {
   });
 
   it("loads a snippet command on click", () => {
-    const props = setup();
+    const props = setup({ snippetsEnabled: true });
     fireEvent.click(screen.getByText("desktop.snippetPodStatus"));
     expect(props.onCommandInputChange).toHaveBeenCalledWith("kubectl get pods");
+  });
+
+  it("disables snippets when no live terminal can receive them", () => {
+    const props = setup({ snippetsEnabled: false });
+    const snippet = screen
+      .getByText("desktop.snippetPodStatus")
+      .closest("button") as HTMLButtonElement;
+
+    expect(snippet.disabled).toBe(true);
+    fireEvent.click(snippet);
+    expect(props.onCommandInputChange).not.toHaveBeenCalled();
+  });
+
+  it("shows Alt-number hints from the global connection order", () => {
+    setup({
+      dragState: {
+        order: ["db-replica-03", "prod-edge-01", "eu-build-runner"],
+        dragging: null,
+        dragOver: null,
+      },
+    });
+
+    const prodCard = screen
+      .getByRole("button", { name: /prod-edge-01/i })
+      .closest(".connection-card");
+    const dataCard = screen
+      .getByRole("button", { name: /db-replica-03/i })
+      .closest(".connection-card");
+    expect(prodCard?.querySelector(".shortcut-hint")?.textContent).toBe(
+      "Alt+2",
+    );
+    expect(dataCard?.querySelector(".shortcut-hint")?.textContent).toBe(
+      "Alt+1",
+    );
   });
 
   it("updates the sidebar search value", () => {

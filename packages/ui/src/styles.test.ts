@@ -35,6 +35,23 @@ function contrastRatio(foreground: string, background: string): number {
   return (values[0] + 0.05) / (values[1] + 0.05);
 }
 
+function blendOverWhite(foreground: string, alpha: number): string {
+  const channels = foreground
+    .replace("#", "")
+    .match(/.{2}/g)
+    ?.map((channel) => Number.parseInt(channel, 16));
+  if (!channels || channels.length !== 3)
+    throw new Error(`Invalid color ${foreground}`);
+
+  return `#${channels
+    .map((channel) =>
+      Math.round(channel * alpha + 255 * (1 - alpha))
+        .toString(16)
+        .padStart(2, "0"),
+    )
+    .join("")}`;
+}
+
 describe("shared UI theme contracts", () => {
   it("lets an explicit dark theme override a light operating-system preference", () => {
     const darkTheme = selectorBlock('[data-theme="dark"]');
@@ -51,8 +68,44 @@ describe("shared UI theme contracts", () => {
     expect(contrastRatio("#7a8c97", "#17232f")).toBeGreaterThanOrEqual(4.5);
   });
 
+  it("keeps every light semantic badge and danger action AA-readable", () => {
+    const lightSemanticColors = [
+      ["#245bc7", 0.12],
+      ["#8a5707", 0.12],
+      ["#ad2635", 0.2],
+      ["#6849bf", 0.13],
+      ["#197347", 0.12],
+    ] as const;
+
+    for (const [foreground, alpha] of lightSemanticColors) {
+      expect(
+        contrastRatio(foreground, blendOverWhite(foreground, alpha)),
+        `${foreground} on its light semantic surface`,
+      ).toBeGreaterThanOrEqual(4.5);
+    }
+
+    expect(styles).toContain(
+      ':root:not([data-theme="dark"]) .ui-button--danger',
+    );
+    expect(styles).toContain(
+      ':root:not([data-theme="dark"]) .ui-badge--premium',
+    );
+    expect(styles).toContain('[data-theme="light"] .ui-button--danger');
+    expect(styles).toContain('[data-theme="light"] .ui-badge--premium');
+  });
+
   it("does not force horizontal overflow at the 320px viewport boundary", () => {
     const body = selectorBlock("body");
     expect(body).toContain("min-width: 0;");
+  });
+
+  it("keeps keyboard focus visible when forced colors suppress shadows", () => {
+    const buttonFocus = selectorBlock(".ui-button:focus-visible");
+
+    expect(buttonFocus).toContain("outline: 2px solid var(--atlas-accent);");
+    expect(buttonFocus).not.toMatch(/outline:\s*0\s*;/);
+    expect(styles).toMatch(
+      /@media \(forced-colors: active\)[\s\S]*?\.ui-button:focus-visible,[\s\S]*?outline:\s*2px solid Highlight\s*;/,
+    );
   });
 });
