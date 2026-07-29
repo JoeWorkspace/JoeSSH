@@ -1,0 +1,248 @@
+name: Windows Invite Beta Stage A
+
+on:
+  workflow_dispatch:
+    inputs:
+      reviewed_sha:
+        description: "Full reviewed commit SHA. Must exactly match the dispatched ref."
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-invite-beta-stage-a-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-stage-a:
+    name: Build unsigned internal-only Windows candidate
+    if: github.ref == 'refs/heads/main' && github.ref_protected == true
+    runs-on: windows-2025
+    timeout-minutes: 120
+    environment: windows-invite-stage-a
+
+    steps:
+      - name: Enforce the protected reviewed-main boundary
+        id: review
+        shell: pwsh
+        env:
+          REVIEWED_SHA_INPUT: ${{ inputs.reviewed_sha }}
+          DISPATCH_SHA: ${{ github.sha }}
+          DISPATCH_REF: ${{ github.ref }}
+          REF_PROTECTED: ${{ github.ref_protected }}
+        run: |
+          if (
+            $env:DISPATCH_REF -cne "refs/heads/main" -or
+            -not [StringComparer]::OrdinalIgnoreCase.Equals($env:REF_PROTECTED, "true")
+          ) {
+            throw "Windows Invite Beta Stage A only runs from protected main."
+          }
+
+          if ($env:REVIEWED_SHA_INPUT -cnotmatch "\A[0-9a-fA-F]{40}\z") {
+            throw "reviewed_sha must be exactly one full 40-character commit SHA."
+          }
+
+          if (
+            -not [StringComparer]::OrdinalIgnoreCase.Equals(
+              $env:REVIEWED_SHA_INPUT,
+              $env:DISPATCH_SHA
+            )
+          ) {
+            throw "reviewed_sha must exactly match github.sha."
+          }
+
+          "reviewed_sha=$($env:REVIEWED_SHA_INPUT.ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+        with:
+          components: clippy, rustfmt
+
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          workspaces: |
+            .
+            apps/desktop/src-tauri
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install pinned RustSec auditor
+        run: cargo install cargo-audit --version 0.22.2 --locked
+
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium
+
+      - name: Ensure NASM is available
+        shell: pwsh
+        run: |
+          if (-not (Get-Command nasm.exe -ErrorAction SilentlyContinue)) {
+            choco install nasm --version=2.16.03 --yes --no-progress
+          }
+
+          $nasm = Get-Command nasm.exe -ErrorAction SilentlyContinue
+          if (-not $nasm) {
+            throw "NASM is required to build the Windows Tauri candidate."
+          }
+
+          & $nasm.Source -v
+
+      - name: Ensure Windows OpenSSH Server is available
+        shell: pwsh
+        run: |
+          $openSshRoot = Join-Path $env:WINDIR "System32\OpenSSH"
+          $requiredTools = @("sshd.exe", "ssh-keygen.exe", "sftp-server.exe")
+          $missingTools = @(
+            $requiredTools | Where-Object {
+              -not (Test-Path -LiteralPath (Join-Path $openSshRoot $_))
+            }
+          )
+
+          if ($missingTools.Count -gt 0) {
+            $capability = Get-WindowsCapability -Online |
+              Where-Object Name -Like "OpenSSH.Server*"
+            if (-not $capability) {
+              throw "The Windows OpenSSH Server capability is unavailable."
+            }
+            if ($capability.State -ne "Installed") {
+              Add-WindowsCapability -Online -Name $capability.Name | Out-Host
+            }
+          }
+
+          $missingTools = @(
+            $requiredTools | Where-Object {
+              -not (Test-Path -LiteralPath (Join-Path $openSshRoot $_))
+            }
+          )
+          if ($missingTools.Count -gt 0) {
+            throw "Windows OpenSSH fixture tool(s) are missing: $($missingTools -join ', ')"
+          }
+
+          $openSshRoot | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          Get-ChildItem -LiteralPath $openSshRoot -File |
+            Where-Object Name -In $requiredTools |
+            Select-Object Name, FullName
+
+      - name: Run the Windows invite Beta gate
+        run: npm run qa:beta:windows:fixture
+
+      - name: Build the unsigned NSIS candidate with commit attestation
+        run: npm run release:desktop:build:windows-invite
+
+      - name: Stage the internal-only candidate
+        run: npm run release:desktop:package:windows-invite:stage-a
+
+      - name: Enforce the exact handoff-only boundary
+        id: handoff
+        shell: pwsh
+        run: |
+          if (Test-Path -LiteralPath "reports/release") {
+            throw "Stage A must never create or touch reports/release."
+          }
+
+          $handoffRoot = "reports/handoff/desktop/windows-invite"
+          if (-not (Test-Path -LiteralPath $handoffRoot -PathType Container)) {
+            throw "The Stage A handoff directory was not created."
+          }
+
+          $candidateDirs = @(Get-ChildItem -LiteralPath $handoffRoot -Directory)
+          if ($candidateDirs.Count -ne 1) {
+            throw "Expected exactly one Stage A candidate directory."
+          }
+
+          $candidate = $candidateDirs[0]
+          $nestedDirs = @(Get-ChildItem -LiteralPath $candidate.FullName -Directory)
+          if ($nestedDirs.Count -ne 0) {
+            throw "The Stage A candidate must not contain nested directories."
+          }
+
+          $handoffFiles = @(Get-ChildItem -LiteralPath $candidate.FullName -File)
+          $installer = @($handoffFiles | Where-Object Name -Like "*-UNSIGNED-INTERNAL-ONLY.exe")
+          $requiredNames = @(
+            "build-attestation.json",
+            "candidate.json",
+            "HANDOFF-SHA256SUMS.txt",
+            "SHA256SUMS.txt",
+            "signature-verification.txt"
+          )
+          $unexpected = @(
+            $handoffFiles | Where-Object {
+              $_.Name -notin $requiredNames -and
+              $_.Name -notlike "*-UNSIGNED-INTERNAL-ONLY.exe"
+            }
+          )
+          if (
+            $installer.Count -ne 1 -or
+            $handoffFiles.Count -ne 6 -or
+            $unexpected.Count -ne 0 -or
+            @($requiredNames | Where-Object { $_ -notin $handoffFiles.Name }).Count -ne 0
+          ) {
+            throw "The Stage A candidate file allowlist is incomplete or contains unexpected files."
+          }
+
+          $installerSha256 = (
+            Get-FileHash -LiteralPath $installer[0].FullName -Algorithm SHA256
+          ).Hash.ToLowerInvariant()
+          $handoffFiles | Select-Object FullName, Length
+          "candidate_path=$($candidate.FullName)" >> $env:GITHUB_OUTPUT
+          "installer_sha256=$installerSha256" >> $env:GITHUB_OUTPUT
+
+      # This artifact is build handoff evidence only. It is not formal Desktop
+      # release evidence and must not be published or sent to testers until the
+      # clean Windows VM/native smoke review has passed.
+      - name: Upload awaiting-native-smoke handoff
+        id: upload
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: joessh-windows-invite-stage-a-unsigned-internal-only-${{ github.sha }}
+          path: ${{ steps.handoff.outputs.candidate_path }}
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Record the distribution boundary
+        shell: pwsh
+        env:
+          REVIEWED_SHA: ${{ steps.review.outputs.reviewed_sha }}
+          INSTALLER_SHA256: ${{ steps.handoff.outputs.installer_sha256 }}
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+          ARTIFACT_DIGEST: ${{ steps.upload.outputs.artifact-digest }}
+        run: |
+          $approvalEvidence = @{
+            REVIEWED_SHA = $env:REVIEWED_SHA
+            INSTALLER_SHA256 = $env:INSTALLER_SHA256
+            ARTIFACT_ID = $env:ARTIFACT_ID
+            ARTIFACT_URL = $env:ARTIFACT_URL
+            ARTIFACT_DIGEST = $env:ARTIFACT_DIGEST
+          }
+          foreach ($entry in $approvalEvidence.GetEnumerator()) {
+            if ([string]::IsNullOrWhiteSpace($entry.Value)) {
+              throw "Missing external approval evidence: $($entry.Key)."
+            }
+          }
+
+          @(
+            "## Windows Invite Beta Stage A",
+            "",
+            "- Status: **awaiting-native-smoke**",
+            "- Scope: unsigned, internal-only Windows NSIS candidate",
+            "- Distribution: **do not distribute directly**",
+            "- Reviewed commit: ``$($env:REVIEWED_SHA)``",
+            "- Installer SHA-256: ``$($env:INSTALLER_SHA256)``",
+            "- Workflow artifact: [$($env:ARTIFACT_ID)]($($env:ARTIFACT_URL))",
+            "- Workflow artifact digest: ``$($env:ARTIFACT_DIGEST)``",
+            "- External approval: independently match the reviewed commit, installer SHA-256, artifact ID/URL, and artifact digest before promotion.",
+            "- Required next gate: clean Windows VM install, launch, SSH/PTY/SFTP/forwarding, rollback, and uninstall evidence",
+            "- This artifact is not ``reports/release``, formal Desktop evidence, or a GitHub Release candidate."
+          ) | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY

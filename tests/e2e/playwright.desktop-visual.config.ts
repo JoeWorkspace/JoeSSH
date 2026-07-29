@@ -8,32 +8,45 @@ const testTimeout = Number(
 );
 
 export default defineConfig({
-  testDir: "./specs",
-  timeout: testTimeout,
-  expect: { timeout: 5_000 },
-  reporter: [["list"]],
+  expect: {
+    timeout: 10_000,
+  },
   projects: [
     {
-      name: "desktop-workbench",
-      testMatch: /desktop-workbench\.spec\.ts/,
+      name: "desktop-visual-wide",
+      testMatch: /visual-qa\.spec\.ts/,
       use: {
         ...devices["Desktop Chrome"],
         baseURL: desktopUrl,
+        viewport: { height: 900, width: 1440 },
       },
     },
     {
-      name: "desktop-accessibility",
-      testMatch: /accessibility\.spec\.ts/,
+      name: "desktop-visual-narrow",
+      testMatch: /visual-qa\.spec\.ts/,
       use: {
         ...devices["Desktop Chrome"],
         baseURL: desktopUrl,
+        viewport: { height: 768, width: 900 },
       },
     },
   ],
+  reporter: [
+    ["list"],
+    [
+      "html",
+      { open: "never", outputFolder: "playwright-desktop-visual-report" },
+    ],
+  ],
+  testDir: "./specs",
+  timeout: testTimeout,
+  use: {
+    trace: "retain-on-failure",
+  },
   webServer: {
     command: `npm --prefix ../.. run dev -w @atlasterm/desktop -- --host ${host} --port ${desktopPort} --strictPort`,
-    url: desktopUrl,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    url: desktopUrl,
   },
 });

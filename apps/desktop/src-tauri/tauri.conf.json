@@ -27,6 +27,19 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "icon": ["icons/icon.png"]
+    "publisher": "JoeSSH Project",
+    "homepage": "https://github.com/JoeWorkspace/JoeSSH",
+    "copyright": "Copyright (c) 2026 JoeSSH contributors",
+    "license": "MIT",
+    "category": "DeveloperTool",
+    "shortDescription": "Local-first SSH, terminal, SFTP, and port-forwarding workbench.",
+    "longDescription": "JoeSSH is a local-first Windows SSH workbench for secure host-key verification, PTY terminal sessions, SFTP transfers, and port forwarding.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.png",
+      "icons/icon.ico"
+    ]
   }
 }

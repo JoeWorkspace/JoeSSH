@@ -5,6 +5,8 @@
   "scripts": {
     "test": "playwright test",
     "test:fresh": "node scripts/run-playwright-with-fresh-ports.mjs",
+    "test:desktop:fresh": "node scripts/run-playwright-with-fresh-ports.mjs --config=playwright.desktop.config.ts",
+    "test:desktop:visual:fresh": "node scripts/run-playwright-with-fresh-ports.mjs --config=playwright.desktop-visual.config.ts",
     "test:i18n-strict": "playwright test --grep @i18n-strict",
     "test:visual": "playwright test --config=playwright.visual.config.ts",
     "test:visual:fresh": "node scripts/run-playwright-with-fresh-ports.mjs --config=playwright.visual.config.ts",

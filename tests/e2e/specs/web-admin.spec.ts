@@ -607,7 +607,6 @@ test.describe('JoeSSH web admin', () => {
         }
 
         return new Promise<Response>((resolve, reject) => {
-          let pending: PendingSnapshot;
           const cleanup = () => signal?.removeEventListener('abort', handleAbort);
           const handleAbort = () => {
             cleanup();
@@ -619,7 +618,7 @@ test.describe('JoeSSH web admin', () => {
             reject(abortError());
           };
 
-          pending = {
+          const pending: PendingSnapshot = {
             resolve: (response: Response) => {
               cleanup();
               resolve(response);

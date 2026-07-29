@@ -1,0 +1,279 @@
+import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { spawnSync } from "node:child_process";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import test from "node:test";
+
+const SCRIPT_PATH = resolve(
+  import.meta.dirname,
+  "package-windows-invite-beta.mjs",
+);
+const UNSIGNED_PE_PATH = resolve(
+  import.meta.dirname,
+  "../node_modules/fb-dotslash/bin/windows/dotslash.exe",
+);
+const VERSION = "0.1.0-beta.9";
+const windowsOnly = { skip: process.platform !== "win32" };
+
+test(
+  "packages one commit-bound unsigned PE into private Stage A handoff",
+  windowsOnly,
+  (t) => {
+    const fixture = createFixture(t);
+    const result = runPackager(fixture, ["--stage-a"]);
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /awaiting native clean-VM smoke/);
+
+    const candidateDir = join(
+      fixture.root,
+      "reports",
+      "handoff",
+      "desktop",
+      "windows-invite",
+      `${VERSION}-${fixture.commit.slice(0, 12)}-stage-a`,
+    );
+    const candidate = readJson(join(candidateDir, "candidate.json"));
+    const artifactPath = join(candidateDir, candidate.artifact.fileName);
+
+    assert.equal(candidate.stage, "A");
+    assert.equal(candidate.artifactCommitBinding, "build-attestation");
+    assert.equal(candidate.publicReleaseEvidence, false);
+    assert.equal(candidate.releaseEligible, false);
+    assert.equal(candidate.inviteDistributionReady, false);
+    assert.equal(candidate.authenticode.status, "NotSigned");
+    assert.match(candidate.artifact.fileName, /UNSIGNED-INTERNAL-ONLY\.exe$/);
+    assert.equal(candidate.artifact.sha256, sha256File(artifactPath));
+    assert.match(
+      readFileSync(join(candidateDir, "HANDOFF-SHA256SUMS.txt"), "ascii"),
+      /candidate\.json/,
+    );
+  },
+);
+
+test("rejects a dirty source worktree", windowsOnly, (t) => {
+  const fixture = createFixture(t);
+  writeJson(join(fixture.root, "package.json"), {
+    version: VERSION,
+    dirtyMarker: true,
+  });
+  const result = runPackager(fixture, ["--stage-a"]);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /require a clean Git worktree/);
+});
+
+test("rejects stale or multiple Desktop installers", windowsOnly, (t) => {
+  const fixture = createFixture(t);
+  copyFileSync(
+    UNSIGNED_PE_PATH,
+    join(fixture.bundleDir, "JoeSSH_0.1.0-beta.8_x64-setup.exe"),
+  );
+  const result = runPackager(fixture, ["--stage-a"]);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Expected exactly one Desktop installer/);
+});
+
+test("rejects a non-PE file renamed to .exe", windowsOnly, (t) => {
+  const fixture = createFixture(t, { textArtifact: true });
+  const result = runPackager(fixture, ["--stage-a"]);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /not a valid Windows PE installer/);
+});
+
+test("rejects a project version mismatch", windowsOnly, (t) => {
+  const fixture = createFixture(t, { desktopVersion: "0.1.0-beta.8" });
+  const result = runPackager(fixture, ["--stage-a"]);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /version mismatch/);
+});
+
+test("rejects a stale or forged build attestation", windowsOnly, (t) => {
+  const fixture = createFixture(t, { attestationCommit: "f".repeat(40) });
+  const result = runPackager(fixture, ["--stage-a"]);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /does not bind this installer/);
+});
+
+test("rejects a build attestation for another PE machine", windowsOnly, (t) => {
+  const fixture = createFixture(t, {
+    attestationPeMachine: "forged-machine",
+  });
+  const result = runPackager(fixture, ["--stage-a"]);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /does not bind this installer/);
+});
+
+test("rejects output paths outside private handoff", windowsOnly, (t) => {
+  const fixture = createFixture(t);
+  const result = runPackager(fixture, [
+    "--stage-a",
+    "--output-root",
+    "reports/release/desktop",
+  ]);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /must stay inside/);
+});
+
+test("keeps Stage B fail-closed", () => {
+  const result = spawnSync(process.execPath, [SCRIPT_PATH, "--stage-b"], {
+    cwd: resolve(import.meta.dirname, ".."),
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Stage B packaging is blocked/);
+});
+
+function createFixture(t, overrides = {}) {
+  assert.equal(
+    existsSync(UNSIGNED_PE_PATH),
+    true,
+    "The Windows dotslash PE fixture must be installed by npm ci.",
+  );
+  const root = mkdtempSync(join(tmpdir(), "joessh-windows-invite-package-"));
+  t.after(() => rmSync(root, { force: true, recursive: true }));
+
+  writeJson(join(root, "package.json"), { version: VERSION });
+  writeJson(join(root, "apps/desktop/package.json"), {
+    name: "@atlasterm/desktop",
+    version: overrides.desktopVersion ?? VERSION,
+  });
+  writeJson(join(root, "apps/desktop/src-tauri/tauri.conf.json"), {
+    productName: "JoeSSH",
+    version: VERSION,
+    identifier: "dev.atlasterm.joessh",
+    bundle: { publisher: "JoeSSH Project" },
+  });
+  writeFile(
+    join(root, "apps/desktop/src-tauri/Cargo.toml"),
+    `[package]\nname = "atlasterm-desktop-shell"\nversion = "${VERSION}"\n`,
+  );
+  writeFile(
+    join(root, ".gitignore"),
+    "apps/desktop/src-tauri/target/\nreports/\n",
+  );
+  git(root, ["init", "--quiet"]);
+  git(root, ["config", "user.email", "tests@joessh.invalid"]);
+  git(root, ["config", "user.name", "JoeSSH Tests"]);
+  git(root, ["add", "."]);
+  git(root, ["commit", "--quiet", "-m", "fixture"]);
+  const commit = git(root, ["rev-parse", "HEAD"]).stdout.trim();
+
+  const bundleDir = join(
+    root,
+    "apps",
+    "desktop",
+    "src-tauri",
+    "target",
+    "release",
+    "bundle",
+    "nsis",
+  );
+  mkdirSync(bundleDir, { recursive: true });
+  const artifactPath = join(bundleDir, `JoeSSH_${VERSION}_x64-setup.exe`);
+  if (overrides.textArtifact) {
+    writeFileSync(artifactPath, "not a PE installer");
+  } else {
+    copyFileSync(UNSIGNED_PE_PATH, artifactPath);
+  }
+  const artifactStat = statSync(artifactPath);
+  const artifactData = readFileSync(artifactPath);
+  const peOffset = overrides.textArtifact ? 0 : artifactData.readUInt32LE(0x3c);
+  const machineCode = overrides.textArtifact
+    ? 0x8664
+    : artifactData.readUInt16LE(peOffset + 4);
+  writeJson(join(bundleDir, "windows-invite-build-attestation.json"), {
+    schemaVersion: 1,
+    kind: "windows-invite-build-attestation",
+    generatedAt: "2026-07-29T09:01:00.000Z",
+    startedAt: "2026-07-29T09:00:00.000Z",
+    platform: "windows",
+    architecture: "x64",
+    bundleTarget: "nsis",
+    version: VERSION,
+    commit: overrides.attestationCommit ?? commit,
+    gitExecutable: "C:/Program Files/Git/cmd/git.exe",
+    gitVersion: "git version 2.50.1.windows.1",
+    sourceTreeClean: true,
+    artifact: {
+      fileName: `JoeSSH_${VERSION}_x64-setup.exe`,
+      sizeBytes: artifactStat.size,
+      sha256: sha256File(artifactPath),
+      peMachine:
+        overrides.attestationPeMachine ??
+        (machineCode === 0x014c ? "x86-nsis-bootstrapper" : "x64"),
+    },
+  });
+
+  return { bundleDir, commit, root };
+}
+
+function runPackager(fixture, args) {
+  return spawnSync(
+    process.execPath,
+    [
+      SCRIPT_PATH,
+      "--root",
+      fixture.root,
+      "--bundle-dir",
+      fixture.bundleDir,
+      ...args,
+    ],
+    {
+      cwd: fixture.root,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        ATLASTERM_RELEASE_GIT_COMMAND: "ignored-fake-git",
+        ATLASTERM_RELEASE_POWERSHELL_COMMAND: "ignored-fake-powershell",
+        ATLASTERM_RELEASE_SIGNTOOL_COMMAND: "ignored-fake-signtool",
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
+}
+
+function git(root, args) {
+  const result = spawnSync("git", args, {
+    cwd: root,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  assert.equal(result.status, 0, result.stderr);
+  return result;
+}
+
+function writeJson(path, value) {
+  writeFile(path, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+function writeFile(path, value) {
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, value);
+}
+
+function readJson(path) {
+  return JSON.parse(readFileSync(path, "utf8"));
+}
+
+function sha256File(path) {
+  return createHash("sha256").update(readFileSync(path)).digest("hex");
+}

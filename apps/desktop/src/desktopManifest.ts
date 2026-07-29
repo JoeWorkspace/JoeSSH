@@ -3,6 +3,7 @@ import type { Translator } from "@atlasterm/i18n";
 type ManifestIcon = {
   readonly sizes: string;
   readonly src: string;
+  readonly type?: "image/png";
 };
 
 type WebAppManifestShortcut = {
@@ -31,7 +32,11 @@ export type DesktopWebAppManifest = {
   readonly theme_color: string;
 };
 
-const icon = { src: "/favicon.svg", sizes: "any" } as const;
+const shortcutIcon = {
+  src: "/icons/icon-192.png",
+  sizes: "192x192",
+  type: "image/png",
+} as const;
 const descriptionSelectors = [
   'meta[name="description"]',
   'meta[property="og:description"]',
@@ -51,9 +56,20 @@ export function createDesktopManifest(t: Translator): DesktopWebAppManifest {
     orientation: "any",
     icons: [
       {
-        ...icon,
-        type: "image/svg+xml",
-        purpose: "any maskable",
+        ...shortcutIcon,
+        purpose: "any",
+      },
+      {
+        src: "/icons/icon-512.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/icons/icon-maskable-512.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "maskable",
       },
     ],
     shortcuts: [
@@ -61,31 +77,31 @@ export function createDesktopManifest(t: Translator): DesktopWebAppManifest {
         name: t("desktop.quickConnect"),
         short_name: t("desktop.connectAction"),
         url: "/?action=connect",
-        icons: [icon],
+        icons: [shortcutIcon],
       },
       {
         name: t("desktop.openSftp"),
         short_name: t("desktop.sftp"),
         url: "/?panel=sftp",
-        icons: [icon],
+        icons: [shortcutIcon],
       },
       {
         name: t("team.access"),
         short_name: t("desktop.team"),
         url: "/?panel=team",
-        icons: [icon],
+        icons: [shortcutIcon],
       },
       {
         name: t("desktop.openForwarding"),
         short_name: t("desktop.forwarding"),
         url: "/?panel=forwarding",
-        icons: [icon],
+        icons: [shortcutIcon],
       },
       {
         name: t("desktop.settings"),
         short_name: t("desktop.settings"),
         url: "/?panel=settings",
-        icons: [icon],
+        icons: [shortcutIcon],
       },
     ],
     categories: ["developer", "utilities"],

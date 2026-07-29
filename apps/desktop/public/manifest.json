@@ -6,7 +6,10 @@
   "dir": "ltr",
   "description": "SSH terminal, SFTP, team access, and session management.",
   "description_localized": {
-    "ar": { "value": "طرفية SSH وSFTP ووصول الفريق وإدارة الجلسات.", "dir": "rtl" },
+    "ar": {
+      "value": "طرفية SSH وSFTP ووصول الفريق وإدارة الجلسات.",
+      "dir": "rtl"
+    },
     "de": "SSH-Terminal, SFTP, Teamzugriff und Sitzungsverwaltung.",
     "en": "SSH terminal, SFTP, team access, and session management.",
     "es": "Terminal SSH, SFTP, acceso de equipo y gestión de sesiones.",
@@ -29,10 +32,22 @@
   "orientation": "any",
   "icons": [
     {
-      "src": "/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "shortcuts": [
@@ -74,7 +89,13 @@
         "zh-TW": "連線"
       },
       "url": "/?action=connect",
-      "icons": [{ "src": "/favicon.svg", "sizes": "any" }]
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     },
     {
       "name": "Open SFTP",
@@ -114,7 +135,13 @@
         "zh-TW": "SFTP"
       },
       "url": "/?panel=sftp",
-      "icons": [{ "src": "/favicon.svg", "sizes": "any" }]
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     },
     {
       "name": "Team Access",
@@ -154,7 +181,13 @@
         "zh-TW": "團隊"
       },
       "url": "/?panel=team",
-      "icons": [{ "src": "/favicon.svg", "sizes": "any" }]
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     },
     {
       "name": "Port Forwarding",
@@ -194,7 +227,13 @@
         "zh-TW": "連接埠轉發"
       },
       "url": "/?panel=forwarding",
-      "icons": [{ "src": "/favicon.svg", "sizes": "any" }]
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     },
     {
       "name": "Settings",
@@ -234,7 +273,13 @@
         "zh-TW": "設定"
       },
       "url": "/?panel=settings",
-      "icons": [{ "src": "/favicon.svg", "sizes": "any" }]
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
   ],
   "categories": ["developer", "utilities"],

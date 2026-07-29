@@ -170,6 +170,7 @@ GitHub Actions runs on push, PR, and a weekly Monday schedule:
 - [SECURITY.md](SECURITY.md) - Vulnerability reporting and security measures
 - [CHANGELOG.md](CHANGELOG.md) - Release history and notable changes
 - [docs/product-excellence-plan.md](docs/product-excellence-plan.md) - World-class product completion plan and operating cadence
+- [docs/windows-invite-beta.md](docs/windows-invite-beta.md) - 90-day Windows Desktop invite-only Beta playbook, safety boundaries, and success gates
 - [docs/sync-api.md](docs/sync-api.md) - Sync service REST API reference
 - [docs/qa-checklist.md](docs/qa-checklist.md) - Release QA checklist
 

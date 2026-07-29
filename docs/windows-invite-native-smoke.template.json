@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "candidate": {
+    "version": "<candidate.json version>",
+    "commit": "<candidate.json full commit>",
+    "artifactSha256": "<candidate.json artifact.sha256>"
+  },
+  "testerId": "<random non-identifying tester id>",
+  "testedAt": "2026-01-01T00:00:00.000Z",
+  "windows": {
+    "version": "Windows 11",
+    "build": "<Windows build>",
+    "webview2Version": "<WebView2 version>",
+    "scalePercent": 125
+  },
+  "environment": {
+    "isolated": true,
+    "productionCredentialsUsed": false
+  },
+  "defender": {
+    "status": "clean",
+    "artifactSha256": "<candidate.json artifact.sha256>",
+    "engineVersion": "<Defender engine version>",
+    "definitionVersion": "<Defender definition version>",
+    "scannedAt": "2026-01-01T00:00:00.000Z"
+  },
+  "checks": {
+    "install": true,
+    "firstLaunch": true,
+    "restart": true,
+    "uninstallOrRollback": true,
+    "settingsPersistence": true,
+    "unknownHostKey": true,
+    "changedHostKeyBlocked": true,
+    "pty": true,
+    "sftp": true,
+    "portForwarding": true
+  },
+  "openP0": 0,
+  "openP1": 0,
+  "redactionConfirmed": true,
+  "sensitiveDataIncluded": false
+}
