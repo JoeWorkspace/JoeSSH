@@ -47,6 +47,19 @@ describe('main entry point', () => {
     expect(content).not.toContain('statusLabel={t("desktop.live")}');
   });
 
+  it('derives profile status from native sessions and renders stateful terminal tabs', async () => {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const mainPath = path.resolve(__dirname, './main.tsx');
+    const content = fs.readFileSync(mainPath, 'utf-8');
+
+    expect(content).toContain('getConnectionPresence(desktopSessionsRef.current[connection.name])');
+    expect(content).toContain('openTerminalTabs.map((tab)');
+    expect(content).toContain('openConnectionTab(connection.name)');
+    expect(content).not.toContain('status: "online",\n        color: "neutral"');
+    expect(content).not.toContain('index === activeTab ? <X');
+  });
+
   it('keeps the SFTP panel tab label localized', async () => {
     const fs = await import('node:fs');
     const path = await import('node:path');
@@ -106,10 +119,13 @@ describe('main entry point', () => {
     const content = fs.readFileSync(mainPath, 'utf-8');
 
     expect(content).toContain('connectTargetOverride');
-    expect(content).toContain('setConnectTargetOverride(splitConnectionTarget(item.sub ?? paletteState.input))');
+    expect(content).toContain('const target = splitConnectionTarget(item.sub ?? paletteState.input)');
+    expect(content).toContain('setConnectTargetOverride(target)');
     expect(content).toContain('setConnectOpen(true)');
     expect(content).toContain('defaultPort={connectDefaults.port}');
     expect(content).toContain('setConnectTargetOverride(null)');
+    expect(content).toContain('setConnectProfileName(connectionName)');
+    expect(content).toContain('desktopSessionsRef.current[connectionName] = sessionId');
   });
 
   it('joins SFTP transfer paths through safe listing entry names', async () => {
@@ -119,8 +135,9 @@ describe('main entry point', () => {
     const content = fs.readFileSync(mainPath, 'utf-8');
 
     expect(content).toContain('joinSftpRemoteEntryPath');
-    expect(content).toContain('handleSftpDownload(name: string, size: number | null, directoryPath = sftpDirectory.path)');
-    expect(content).toContain('handleSftpUploadFile(file: File, directoryPath = sftpDirectory.path)');
+    expect(content).toContain('async function handleSftpDownload(');
+    expect(content).toContain('async function handleSftpUploadFile(');
+    expect(content).toContain('directoryPath = sftpDirectory.path');
     expect(content).toContain('joinSftpRemoteEntryPath(directoryPath, name)');
     expect(content).toContain('joinSftpRemoteEntryPath(directoryPath, file.name)');
     expect(content).not.toContain('joinSftpRemotePath(sftpDirectory.path');
@@ -135,6 +152,7 @@ describe('main entry point', () => {
     expect(content).toContain('connectionsImportFailedToast');
     expect(content).toContain('if (!list)');
     expect(content).toContain('if (added === 0)');
-    expect(content).toContain('onImportError: () => addToast(connectionsImportFailedToast(t), "error")');
+    expect(content).toContain('onImportError: () =>');
+    expect(content).toContain('addToast(connectionsImportFailedToast(t), "error")');
   });
 });

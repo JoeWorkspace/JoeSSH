@@ -23,7 +23,6 @@ describe("CommandPalette", () => {
     onIndexChange: vi.fn(),
     onKeyDown: vi.fn(),
     onSelect: vi.fn(),
-    paletteRef: { current: null } as React.RefObject<HTMLDivElement | null>,
     t,
   };
 
@@ -31,6 +30,19 @@ describe("CommandPalette", () => {
     render(<CommandPalette {...defaultProps} />);
     expect(screen.getByRole("dialog")).toBeTruthy();
     expect(screen.getByRole("listbox")).toBeTruthy();
+  });
+
+  it("moves focus into the combobox and restores the opener on unmount", () => {
+    const opener = document.createElement("button");
+    document.body.appendChild(opener);
+    opener.focus();
+
+    const { unmount } = render(<CommandPalette {...defaultProps} />);
+    expect(document.activeElement).toBe(screen.getByRole("combobox"));
+
+    unmount();
+    expect(document.activeElement).toBe(opener);
+    opener.remove();
   });
 
   it("renders placeholder when no items", () => {
@@ -144,7 +156,9 @@ describe("CommandPalette", () => {
     expect(input.getAttribute("aria-expanded")).toBe("true");
     expect(input.getAttribute("aria-controls")).toBe("palette-listbox");
     expect(input.getAttribute("aria-activedescendant")).toBe("palette-option-1");
-    expect(screen.getByText("Second").closest("button")?.id).toBe("palette-option-1");
+    const activeOption = screen.getByText("Second").closest("button");
+    expect(activeOption?.id).toBe("palette-option-1");
+    expect(activeOption?.tabIndex).toBe(-1);
   });
 
   it("collapses combobox when there are no items", () => {

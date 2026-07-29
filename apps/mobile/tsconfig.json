@@ -11,9 +11,6 @@
       ],
       "@/*": [
         "./*"
-      ],
-      "react-native": [
-        "test/reactNativeMock.ts"
       ]
     }
   },

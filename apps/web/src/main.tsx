@@ -57,6 +57,7 @@ import {
 } from './helpers';
 import { WebErrorBoundary } from './WebErrorBoundary';
 import './styles.css';
+import './admin-theme.css';
 
 type AdminSnapshotMeta = AdminSnapshotSourceDescriptor & {
   refreshedAt: string;
@@ -234,7 +235,7 @@ function App({
       <a className="skipLink" href="#main-content">
         {t.shared('web.skipToContent')}
       </a>
-      <div className="sidebar">
+      <header className="sidebar">
         <div className="brand">
           <Cloud size={24} aria-hidden="true" />
           <span>JoeSSH</span>
@@ -262,7 +263,7 @@ function App({
             {t.local('web.nav.storage')}
           </a>
         </nav>
-      </div>
+      </header>
 
       <main
         className="workspace"
@@ -285,7 +286,11 @@ function App({
             />
             <label
               className="telemetryToggle"
-              title={!telemetry.available ? t.shared('web.telemetryUnavailable') : undefined}
+              title={
+                telemetry.available
+                  ? t.shared('desktop.telemetryPrivacyHint')
+                  : t.shared('web.telemetryUnavailable')
+              }
             >
               <span>{t.shared('web.telemetryErrors')}</span>
               <input
@@ -345,12 +350,12 @@ const DashboardContent = React.memo(function DashboardContent({
     <>
       <AdminSnapshotStatusBar formatters={formatters} state={state} t={t} />
       <h2 className="visuallyHidden" id="admin-metrics-title">{t.shared('web.teamMetrics')}</h2>
-      <section className="metrics" id="sync" role="list" aria-labelledby="admin-metrics-title">
+      <div className="metrics" id="sync" role="list" aria-labelledby="admin-metrics-title">
         <Metric icon={<UsersRound size={22} />} label={t.shared('web.activeMembers')} value={formatters.number(snapshot.metrics.activeMembers)} />
         <Metric icon={<KeyRound size={22} />} label={t.shared('web.rolesConfigured')} value={formatters.number(snapshot.metrics.rolesConfigured)} />
         <Metric icon={<ShieldCheck size={22} />} label={t.shared('web.healthyDevices')} value={formatters.number(snapshot.metrics.healthyDevices)} />
         <Metric icon={<Activity size={22} />} label={t.shared('web.auditEventsToday')} value={formatters.number(snapshot.metrics.auditEventsToday)} />
-      </section>
+      </div>
 
       <section className="dashboardGrid" id="team" aria-labelledby="admin-team-overview-title">
         <h2 className="visuallyHidden" id="admin-team-overview-title">{t.shared('web.teamOverview')}</h2>
@@ -619,7 +624,7 @@ const RoleItem = React.memo(function RoleItem({
   const riskId = React.useId();
 
   return (
-    <article className="roleItem" role="listitem" aria-labelledby={`${nameId} ${scopeId} ${memberCountId} ${riskId}`}>
+    <div className="roleItem" role="listitem" aria-labelledby={`${nameId} ${scopeId} ${memberCountId} ${riskId}`}>
       <div>
         <strong id={nameId}>{nameKey ? t.local(nameKey) : role.name}</strong>
         <span id={scopeId}>
@@ -633,7 +638,7 @@ const RoleItem = React.memo(function RoleItem({
         </span>
         <mark id={riskId} className={risk.className}>{t.local(risk.key)}</mark>
       </div>
-    </article>
+    </div>
   );
 });
 
@@ -807,7 +812,7 @@ const Metric = React.memo(function Metric({
   const valueId = React.useId();
 
   return (
-    <article className="metric" role="listitem" aria-labelledby={`${labelId} ${valueId}`}>
+    <div className="metric" role="listitem" aria-labelledby={`${labelId} ${valueId}`}>
       <div className="metricIcon" aria-hidden="true">
         {icon}
       </div>
@@ -815,7 +820,7 @@ const Metric = React.memo(function Metric({
         <strong id={valueId}>{value}</strong>
         <span id={labelId}>{label}</span>
       </div>
-    </article>
+    </div>
   );
 });
 

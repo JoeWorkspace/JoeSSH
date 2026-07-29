@@ -63,11 +63,11 @@ test.describe('JoeSSH mobile companion web smoke', () => {
     await page.goto('/');
 
     await expect(page.getByTestId('sync-status-panel')).toContainText('Ready to connect');
-    await expectComputedStyle(page, '[data-testid="mobile-home-root"]', 'backgroundColor', 'rgb(17, 20, 24)');
-    await expectComputedStyle(page, '[data-testid="sync-status-panel"]', 'backgroundColor', 'rgb(25, 31, 38)');
+    await expectComputedStyle(page, '[data-testid="mobile-home-root"]', 'backgroundColor', 'rgb(8, 13, 18)');
+    await expectComputedStyle(page, '[data-testid="sync-status-panel"]', 'backgroundColor', 'rgb(17, 25, 35)');
     await expect(page.getByText('Start by registering this phone and pulling a safe preview from JoeSSH sync.')).toHaveCSS(
       'color',
-      'rgb(184, 194, 204)',
+      'rgb(162, 177, 186)',
     );
     await expectNoDocumentOverflow(page);
 

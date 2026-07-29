@@ -4,6 +4,12 @@ export type ConnectionTarget = {
   username?: string;
 };
 
+export function formatConnectionTarget(target: ConnectionTarget): string {
+  const host = target.host.includes(":") ? `[${target.host}]` : target.host;
+  const destination = target.username ? `${target.username}@${host}` : host;
+  return target.port ? `${destination}:${target.port}` : destination;
+}
+
 export function splitConnectionTarget(target: string): ConnectionTarget {
   const trimmedTarget = target.trim();
   if (trimmedTarget.startsWith("ssh://")) {

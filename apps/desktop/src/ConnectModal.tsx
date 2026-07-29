@@ -122,7 +122,13 @@ export const ConnectModal = memo(function ConnectModal({
       aria-modal="true"
       aria-label={t("desktop.connectTitle")}
       onClick={onClose}
-      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          e.stopPropagation();
+          onClose();
+        }
+      }}
     >
       <div className="modal connect-modal" ref={focusTrapRef} onClick={(e) => e.stopPropagation()}>
         <header className="modal-header">
@@ -132,7 +138,7 @@ export const ConnectModal = memo(function ConnectModal({
         <form className="connect-form" onSubmit={handleSubmit}>
           <label className="connect-field connect-field--host">
             <span>{t("desktop.host")}</span>
-            <input type="text" value={fields.host} autoFocus
+            <input type="text" value={fields.host} data-autofocus
               onChange={(e) => updateField("host", e.target.value)} />
           </label>
           <label className="connect-field connect-field--port">

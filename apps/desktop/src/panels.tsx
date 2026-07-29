@@ -210,6 +210,8 @@ export const InspectorPanel = memo(function InspectorPanel({
   connectionStats,
   formatters,
   hasActiveSession = true,
+  onOpenForwarding,
+  onPrepareCommand,
   sessionContext,
   t,
 }: {
@@ -217,30 +219,11 @@ export const InspectorPanel = memo(function InspectorPanel({
   connectionStats: InspectorConnectionStats;
   formatters: LocaleFormatters;
   hasActiveSession?: boolean;
+  onOpenForwarding?: () => void;
+  onPrepareCommand?: () => void;
   sessionContext: InspectorSessionContext;
   t: Translator;
 }) {
-  const [loaded, setLoaded] = useState(false);
-  useEffect(() => { const timer = setTimeout(() => setLoaded(true), 600); return () => clearTimeout(timer); }, []);
-
-  if (!loaded) {
-    return (
-      <div className="stack" aria-busy="true" aria-label={t("desktop.panelLoading")} role="status">
-        <Panel className="context-card skeleton--card" aria-hidden="true">
-          <div className="skeleton-row"><div className="skeleton skeleton--text" /><div className="skeleton skeleton--circle" /></div>
-          <div className="skeleton-row"><div className="skeleton skeleton--text" /><div className="skeleton skeleton--text-sm" /></div>
-          <div className="skeleton-row"><div className="skeleton skeleton--text" /><div className="skeleton skeleton--text-sm" /></div>
-          <div className="skeleton-row"><div className="skeleton skeleton--text" /><div className="skeleton skeleton--text-sm" /></div>
-        </Panel>
-        <Panel className="context-card skeleton--card" aria-hidden="true">
-          <div className="skeleton-row"><div className="skeleton skeleton--text" /><div className="skeleton skeleton--circle" /></div>
-          <div className="skeleton-row"><div className="skeleton skeleton--text" /></div>
-          <div className="skeleton-row"><div className="skeleton skeleton--text" /></div>
-        </Panel>
-      </div>
-    );
-  }
-
   return (
     <div className="stack">
       <Panel className="context-card">
@@ -322,26 +305,26 @@ export const InspectorPanel = memo(function InspectorPanel({
           </div>
           <div>
             <dt>{t("desktop.avgLatency")}</dt>
-            <dd>{formatters.latency(connectionStats.averageLatencyMs)}</dd>
+            <dd>{hasActiveSession ? formatters.latency(connectionStats.averageLatencyMs) : t("desktop.notAvailable")}</dd>
           </div>
         </dl>
       </Panel>
       <Panel className="context-card">
         <header>
           <span>{t("desktop.runbook")}</span>
-          <Badge tone="info">{t("desktop.attached")}</Badge>
+          <Badge tone={hasActiveSession ? "info" : "neutral"}>{hasActiveSession ? t("desktop.attached") : t("desktop.noSession")}</Badge>
         </header>
         <div className="runbook-item">
           <Braces size={16} aria-hidden="true" />
           <span>{t("desktop.gatewayTriage")}</span>
-          <Button disabled={!hasActiveSession} size="sm" title={!hasActiveSession ? t("desktop.noSessionActionDetail") : undefined} variant="ghost">
+          <Button disabled={!hasActiveSession || !onPrepareCommand} onClick={onPrepareCommand} size="sm" title={!hasActiveSession ? t("desktop.noSessionActionDetail") : undefined} variant="ghost">
             <Play size={13} aria-hidden="true" /> {t("desktop.run")}
           </Button>
         </div>
         <div className="runbook-item">
           <Network size={16} aria-hidden="true" />
           <span>{t("desktop.openSecureTunnel")}</span>
-          <Button disabled={!hasActiveSession} size="sm" title={!hasActiveSession ? t("desktop.noSessionActionDetail") : undefined} variant="ghost">
+          <Button disabled={!hasActiveSession || !onOpenForwarding} onClick={onOpenForwarding} size="sm" title={!hasActiveSession ? t("desktop.noSessionActionDetail") : undefined} variant="ghost">
             <Zap size={13} aria-hidden="true" /> {t("desktop.start")}
           </Button>
         </div>
@@ -986,7 +969,7 @@ export const SettingsPanel = memo(function SettingsPanel({ t, connectionsIO, kno
           <label className="toggle-row">
             <span>
               <strong>{t("desktop.telemetryErrors")}</strong>
-              <small>{t("desktop.telemetryErrorsHint")}</small>
+              <small>{t("desktop.telemetryPrivacyHint")}</small>
             </span>
             <input
               checked={telemetry.enabled}

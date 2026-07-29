@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import {
   commonMarketLocales,
   expectedAtlasLocaleByMarketLocale,
@@ -106,20 +106,22 @@ test.describe('JoeSSH desktop workbench', () => {
     await expect(paletteDialog).toHaveCount(0);
   });
 
-  test('prefills quick connect from keyboard shortcuts', async ({ page }) => {
+  test('opens new connection from Ctrl+N without exposing native quick connect in browser preview', async ({ page }) => {
     await page.goto('/?lang=en');
     await expect(page.getByRole('button', { name: 'Command palette' })).toBeVisible();
 
-    let paletteInput = await openQuickConnectWithShortcut(page, 'n');
-    await expect(paletteInput).toBeVisible();
-    await expect(paletteInput).toHaveValue('ssh://');
-    await expect(page.getByText('Quick connect').first()).toBeVisible();
+    const newConnectionDialog = page.getByRole('dialog', { name: 'New connection' });
+    for (let attempt = 0; attempt < 5 && !(await newConnectionDialog.isVisible()); attempt += 1) {
+      await dispatchAppShortcut(page, 'n');
+      await page.waitForTimeout(100);
+    }
+    await expect(newConnectionDialog).toBeVisible();
+    await newConnectionDialog.getByRole('button', { name: 'Close' }).click();
 
-    await page.keyboard.press('Escape');
-    await expect(paletteInput).toHaveCount(0);
-    paletteInput = await openQuickConnectWithShortcut(page, 'C', { shiftKey: true });
-    await expect(paletteInput).toBeVisible();
-    await expect(paletteInput).toHaveValue('ssh://');
+    await page.getByRole('button', { name: 'Command palette' }).click();
+    const palette = page.getByRole('dialog', { name: 'Command palette' });
+    await palette.getByRole('combobox').fill('ssh://example.internal');
+    await expect(palette.getByText('Quick connect')).toHaveCount(0);
   });
 
   test('activates a connection from the command palette with Enter', async ({ page }) => {
@@ -365,17 +367,18 @@ test.describe('JoeSSH desktop workbench', () => {
     await expect(stagingGroup.getByRole('button', { name: /prod-edge-01/i })).toBeVisible();
   });
 
-  test('connection right-click context menu has all expected actions', async ({ page }) => {
+  test('connection right-click context menu exposes only executable actions', async ({ page }) => {
     await page.goto('/?lang=en');
 
     const connection = page.getByText('prod-edge-01').first();
     await connection.click({ button: 'right' });
 
-    await expect(page.getByRole('menuitem', { name: 'Connect', exact: true })).toBeVisible();
-    await expect(page.getByRole('menuitem', { name: /Edit connection|编辑连接/i })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: 'Connect', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('menuitem', { name: /Test connection/i })).toHaveCount(0);
+    await expect(page.getByRole('menuitem', { name: /Edit connection|编辑连接/i })).toHaveCount(0);
     await expect(page.getByRole('menuitem', { name: /Duplicate|复制/i })).toBeVisible();
     await expect(page.getByRole('menuitem', { name: /Copy SSH command|SSH/i })).toBeVisible();
-    await expect(page.getByRole('menuitem', { name: /Delete|删除/i })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: /Delete|删除/i })).toHaveCount(0);
   });
 
   test('toggles theme with keyboard shortcut', async ({ page }) => {
@@ -496,33 +499,15 @@ test.describe('JoeSSH desktop workbench', () => {
   test('toast appears after a successful action', async ({ page }) => {
     await page.goto('/?lang=en');
 
-    // Right-click on a connection and select an action — triggers a toast
+    // Duplicate is available in the browser preview and triggers a toast.
     await page.getByRole('button', { name: /prod-edge-01/i }).click({ button: 'right' });
-    await page.getByRole('menuitem', { name: 'Connect', exact: true }).click();
+    await page.getByRole('menuitem', { name: /Duplicate/i }).click();
 
     // Toast container should show a status message
     const toast = page.locator('.toast-container [role="status"]');
     await expect(toast.first()).toBeVisible({ timeout: 3000 });
   });
 });
-
-async function openQuickConnectWithShortcut(page: Page, key: string, options?: { shiftKey?: boolean }): Promise<Locator> {
-  const paletteInput = page.getByPlaceholder('Run command, open host, start workflow');
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    await dispatchAppShortcut(page, key, options);
-    try {
-      await expect(paletteInput).toBeVisible({ timeout: 750 });
-      return paletteInput;
-    } catch (error) {
-      if (attempt === 4) {
-        throw error;
-      }
-      await page.waitForTimeout(100);
-    }
-  }
-
-  return paletteInput;
-}
 
 async function dispatchAppShortcut(page: Page, key: string, options?: { shiftKey?: boolean }) {
   for (let attempt = 0; attempt < 3; attempt += 1) {

@@ -42,6 +42,7 @@ const messages: Partial<Record<TranslationKey, string>> = {
   'desktop.syncEncrypted': 'Sync encrypted snippets',
   'desktop.telemetryErrors': 'Error telemetry',
   'desktop.telemetryErrorsHint': 'Send redacted crash and error summaries.',
+  'desktop.telemetryPrivacyHint': 'Optional and off by default. Never sends sensitive SSH data.',
   'desktop.availableProBusiness': 'Available on Pro and Business',
   'desktop.businessLayer': 'Business Layer',
   'desktop.team': 'Team',
@@ -129,7 +130,7 @@ describe('panel event handlers', () => {
     vi.useRealTimers();
   });
 
-  it('transitions InspectorPanel from skeleton to loaded after effect timer', async () => {
+  it('renders InspectorPanel content immediately without an artificial loading delay', () => {
     render(
       <InspectorPanel
         activeConnection={activeConnection}
@@ -139,12 +140,6 @@ describe('panel event handlers', () => {
         t={t}
       />,
     );
-
-    expect(document.querySelector('.skeleton--card')).toBeTruthy();
-
-    await act(async () => {
-      vi.advanceTimersByTime(700);
-    });
 
     expect(document.querySelector('.skeleton--card')).toBeNull();
     expect(screen.getByText('prod-edge-01')).toBeTruthy();

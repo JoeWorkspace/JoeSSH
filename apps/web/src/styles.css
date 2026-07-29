@@ -61,7 +61,7 @@
 
 body {
   margin: 0;
-  min-width: 320px;
+  min-width: 0;
   min-height: 100vh;
   background: var(--web-bg);
   color: var(--web-text);
@@ -108,6 +108,13 @@ a {
 }
 
 .shell {
+  background: linear-gradient(
+    to right,
+    var(--web-nav-bg) 0,
+    var(--web-nav-bg) 232px,
+    var(--web-bg) 232px,
+    var(--web-bg) 100%
+  );
   display: grid;
   grid-template-columns: 232px 1fr;
   min-height: 100vh;
@@ -116,7 +123,11 @@ a {
 .sidebar {
   background: var(--web-nav-bg);
   color: var(--web-nav-text);
+  height: 100vh;
+  overflow-y: auto;
   padding: 24px 16px;
+  position: sticky;
+  top: 0;
 }
 
 .brand {
@@ -158,9 +169,16 @@ nav {
 
 .topbar {
   align-items: center;
+  backdrop-filter: blur(12px);
+  background: color-mix(in srgb, var(--web-bg) 92%, transparent);
   display: flex;
   gap: 16px;
   justify-content: space-between;
+  margin: -12px -4px 0;
+  padding: 12px 4px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .eyebrow {
@@ -352,6 +370,7 @@ h2 {
 .metric strong {
   display: block;
   font-size: 24px;
+  font-variant-numeric: tabular-nums;
   line-height: 1.1;
 }
 
@@ -431,6 +450,18 @@ h2 {
 
 .row + .row {
   border-top: 1px solid var(--web-border-subtle);
+}
+
+.row:not(.headerRow):hover,
+.roleItem:hover,
+.eventList li:hover {
+  background: color-mix(in srgb, var(--web-accent-bg) 48%, transparent);
+}
+
+.row,
+.roleItem,
+.eventList li {
+  transition: background 120ms ease;
 }
 
 .headerRow {
@@ -565,10 +596,17 @@ mark {
 
 @media (max-width: 760px) {
   .shell {
+    background: var(--web-bg);
     grid-template-columns: 1fr;
   }
 
   .sidebar {
+    height: auto;
+    overflow-x: auto;
+    overflow-y: hidden;
+    position: sticky;
+    top: 0;
+    z-index: 20;
     padding: 16px;
   }
 

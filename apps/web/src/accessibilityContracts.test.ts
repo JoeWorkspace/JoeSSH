@@ -313,7 +313,7 @@ function collectShellSources(rootPath: string, displayPrefix: string): Record<st
     }
 
     if (shellSourceExtensions.has(extname(entry.name)) || shellSourceExtensionlessFiles.has(entry.name)) {
-      sources[displayPath] = readFileSync(entryPath, 'utf-8');
+      sources[displayPath] = readFileSync(entryPath, 'utf-8').replace(/\r\n/g, '\n');
     }
   }
   return sources;
@@ -679,7 +679,7 @@ function findDuplicateJsonKeys(source: string): string[] {
 }
 
 const productionShellSources: Record<string, string> = {
-  '../index.html': readFileSync(join(webRootPath, 'index.html'), 'utf-8'),
+  '../index.html': readFileSync(join(webRootPath, 'index.html'), 'utf-8').replace(/\r\n/g, '\n'),
   ...collectShellSources(join(webRootPath, 'public'), '../public'),
 };
 const nonServiceWorkerShellSources: Record<string, string> = Object.fromEntries(
@@ -2105,11 +2105,15 @@ describe('web admin accessibility contracts', () => {
       'manifest app integration guard',
     ).toEqual([]);
     expect(productionSources['./main.tsx'], './main.tsx contract source').toContain('aria-labelledby=');
-    expect(productionSources['./main.tsx'], './main.tsx error-state source').toContain("message: t.local('web.state.error.message')");
+    expect(productionSources['./main.tsx'], './main.tsx error-state source').toMatch(
+      /message:\s*t\.local\((['"])web\.state\.error\.message\1\)/,
+    );
     expect(productionSources['./main.tsx'], './main.tsx raw error detail source').not.toContain('adminError.message');
     expect(productionSources['./main.tsx'], './main.tsx error-state source').not.toContain('state.message');
     expect(productionSources['./localization.ts'], './localization.ts storage source').toContain('window.localStorage.setItem');
     expect(productionSources['./localization.ts'], './localization.ts storage source').toContain('window.localStorage.getItem');
-    expect(productionSources['./main.tsx'], './main.tsx network source').toContain('loadAdminDashboard(window.fetch.bind(window)');
+    expect(productionSources['./main.tsx'], './main.tsx network source').toMatch(
+      /loadAdminDashboard\(\s*window\.fetch\.bind\(window\)/,
+    );
   }, 30_000);
 });

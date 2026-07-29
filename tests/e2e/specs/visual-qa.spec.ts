@@ -38,19 +38,18 @@ test.describe('JoeSSH scripted visual QA', () => {
 
   test('web admin visual baseline for Chinese and English paths @visual', async ({ page }, testInfo) => {
     test.skip(!testInfo.project.name.startsWith('web-admin-visual-'), 'Web Admin visual baseline runs only in Web Admin projects.');
+    await page.clock.install({ time: new Date('2026-07-13T07:24:00.000Z') });
 
     await assertWebAdminVisualPath(page, 'zh-CN');
     await expect(page).toHaveScreenshot(`web-admin-${testInfo.project.name}-zh-CN.png`, {
       animations: 'disabled',
       fullPage: true,
-      mask: [page.locator('.snapshotStatus time')],
     });
 
     await assertWebAdminVisualPath(page, 'en');
     await expect(page).toHaveScreenshot(`web-admin-${testInfo.project.name}-en.png`, {
       animations: 'disabled',
       fullPage: true,
-      mask: [page.locator('.snapshotStatus dl > div').nth(3).locator('dd')],
     });
   });
 });
@@ -64,7 +63,8 @@ async function assertDesktopVisualPath(page: Page, language: 'en' | 'zh-CN') {
   await expect(page.locator('.sidebar')).toBeVisible();
   await expect(page.locator('.terminal-pane').first()).toBeVisible();
   await expect(page.locator('.context-pane')).toBeVisible();
-  await expect(page.locator('.context-pane .skeleton--card')).toHaveCount(0);
+  await expect(page.locator('.context-pane .panel-loading')).toHaveCount(0);
+  await expect(page.locator('.context-pane .context-card').first()).toBeVisible();
   await expect(page.getByRole('log', { name: language === 'en' ? 'sample shell' : undefined }).first()).toBeVisible();
   if (language === 'en') {
     await expect(page.getByText('No SSH session').first()).toBeVisible();

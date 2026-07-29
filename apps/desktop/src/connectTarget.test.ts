@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { splitConnectionTarget } from "./connectTarget";
+import { formatConnectionTarget, splitConnectionTarget } from "./connectTarget";
 
 describe("splitConnectionTarget", () => {
   it("splits a username-qualified host", () => {
@@ -47,5 +47,13 @@ describe("splitConnectionTarget", () => {
     expect(splitConnectionTarget("atlas@")).toEqual({ host: "atlas@" });
     expect(splitConnectionTarget("prod-edge-01:99999")).toEqual({ host: "prod-edge-01", port: undefined });
     expect(splitConnectionTarget("2001:db8::10")).toEqual({ host: "2001:db8::10" });
+  });
+});
+
+describe("formatConnectionTarget", () => {
+  it("formats usernames, ports, and IPv6 targets without ambiguity", () => {
+    expect(formatConnectionTarget({ host: "prod-edge-01", username: "atlas" })).toBe("atlas@prod-edge-01");
+    expect(formatConnectionTarget({ host: "prod-edge-01", port: 2200, username: "atlas" })).toBe("atlas@prod-edge-01:2200");
+    expect(formatConnectionTarget({ host: "2001:db8::10", port: 2200, username: "atlas" })).toBe("atlas@[2001:db8::10]:2200");
   });
 });

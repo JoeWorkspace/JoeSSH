@@ -145,4 +145,23 @@ describe("useDragReorder", () => {
     act(() => result.current.dispatch({ type: "SET_ORDER", order: ["s3", "s4"] }));
     expect(result.current.state.order).toEqual(["s3", "s4"]);
   });
+
+  it("adds and removes connection names while preserving the current order", () => {
+    const { result, rerender } = renderHook(
+      ({ connectionNames }) => useDragReorder(connectionNames),
+      { initialProps: { connectionNames: ["s1", "s2"] } },
+    );
+    act(() => result.current.moveBefore("s2", "s1"));
+    expect(result.current.state.order).toEqual(["s2", "s1"]);
+
+    rerender({ connectionNames: ["s1", "s2", "custom-server"] });
+    expect(result.current.state.order).toEqual([
+      "s2",
+      "s1",
+      "custom-server",
+    ]);
+
+    rerender({ connectionNames: ["s2", "custom-server"] });
+    expect(result.current.state.order).toEqual(["s2", "custom-server"]);
+  });
 });

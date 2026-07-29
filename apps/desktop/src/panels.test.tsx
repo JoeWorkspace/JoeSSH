@@ -85,6 +85,7 @@ const messages: Partial<Record<TranslationKey, string>> = {
   'desktop.syncEncrypted': 'Sync encrypted snippets',
   'desktop.telemetryErrors': 'Error telemetry',
   'desktop.telemetryErrorsHint': 'Send redacted crash and error summaries.',
+  'desktop.telemetryPrivacyHint': 'Optional and off by default. Never sends sensitive SSH data.',
   'desktop.team': 'Team',
   'desktop.upload': 'Upload',
   'desktop.workspaceSettings': 'Workspace Settings',
@@ -214,14 +215,13 @@ describe('panel charts', () => {
 });
 
 describe('extracted desktop panels', () => {
-  it('renders the inspector skeleton without needing the lazy-loaded effect to run', () => {
+  it('renders the inspector content without an artificial loading delay', () => {
     const html = renderToStaticMarkup(renderInspectorPanel());
 
-    expect(html).toContain('skeleton--card');
-    expect(html).toContain('role="status"');
-    expect(html).toContain('aria-busy="true"');
-    expect(html).toContain('aria-label="Loading panel"');
-    expect(html).toContain('aria-hidden="true"');
+    expect(html).toContain('prod-edge-01');
+    expect(html).toContain('10.48.12.11');
+    expect(html).not.toContain('skeleton--card');
+    expect(html).not.toContain('aria-busy="true"');
     expect(html).not.toMatch(/NaN|Infinity/);
   });
 
@@ -571,7 +571,7 @@ describe('extracted desktop panels', () => {
     );
 
     expect(container.innerHTML).toContain('Error telemetry');
-    expect(container.innerHTML).toContain('Send redacted crash and error summaries.');
+    expect(container.innerHTML).toContain('Optional and off by default. Never sends sensitive SSH data.');
     const checkbox = Array.from(container.querySelectorAll('input[type="checkbox"]'))
       .find((input) => input.closest('label')?.textContent?.includes('Error telemetry')) as HTMLInputElement;
     expect(checkbox.checked).toBe(false);

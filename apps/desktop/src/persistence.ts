@@ -8,6 +8,7 @@ export const CONNECTION_GROUPS_STORAGE_KEY = "atlasterm.connectionGroups";
 export const CONNECTION_ORDER_STORAGE_KEY = "atlasterm.connectionOrder";
 export const CUSTOM_CONNECTIONS_STORAGE_KEY = "atlasterm.customConnections";
 export const LAYOUT_STORAGE_KEY = "atlasterm.layout";
+export const GETTING_STARTED_STORAGE_KEY = "atlasterm.gettingStarted";
 
 export type PersistedRightPanel = "inspector" | "sftp" | "team" | "forwarding" | "settings";
 export type PersistedTheme = "dark" | "light" | "system";

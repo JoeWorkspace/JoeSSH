@@ -28,12 +28,27 @@ export const NewConnectionModal = memo(function NewConnectionModal({
   const [host, setHost] = useState(edit?.host ?? "");
   const [group, setGroup] = useState(edit?.group ?? defaultGroup);
   const [tags, setTags] = useState((edit?.tags ?? []).join(", "));
+  const [username, setUsername] = useState(edit?.username ?? "");
+  const [port, setPort] = useState(
+    edit?.port === undefined ? "" : String(edit.port),
+  );
 
   const trimmedName = name.trim();
+  const trimmedPort = port.trim();
+  const parsedPort = trimmedPort.length === 0 ? undefined : Number(trimmedPort);
+  const portValid =
+    parsedPort === undefined ||
+    (Number.isInteger(parsedPort) && parsedPort >= 1 && parsedPort <= 65_535);
   // In edit mode the name is fixed (it is the identity key), so the
   // availability check only applies when creating.
-  const nameAvailable = edit ? true : trimmedName.length > 0 && isNameAvailable(trimmedName);
-  const canCreate = nameAvailable && trimmedName.length > 0 && host.trim().length > 0;
+  const nameAvailable = edit
+    ? true
+    : trimmedName.length > 0 && isNameAvailable(trimmedName);
+  const canCreate =
+    nameAvailable &&
+    trimmedName.length > 0 &&
+    host.trim().length > 0 &&
+    portValid;
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -42,7 +57,12 @@ export const NewConnectionModal = memo(function NewConnectionModal({
       name: trimmedName,
       host: host.trim(),
       group: group.trim() || defaultGroup,
-      tags: tags.split(",").map((tag) => tag.trim()).filter(Boolean),
+      tags: tags
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter(Boolean),
+      ...(parsedPort === undefined ? {} : { port: parsedPort }),
+      ...(username.trim().length === 0 ? {} : { username: username.trim() }),
     });
     if (created) onClose();
   }
@@ -56,35 +76,96 @@ export const NewConnectionModal = memo(function NewConnectionModal({
       aria-modal="true"
       aria-label={title}
       onClick={onClose}
-      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          e.stopPropagation();
+          onClose();
+        }
+      }}
     >
-      <div className="modal connect-modal" ref={focusTrapRef} onClick={(e) => e.stopPropagation()}>
+      <div
+        className="modal connect-modal"
+        ref={focusTrapRef}
+        onClick={(e) => e.stopPropagation()}
+      >
         <header className="modal-header">
-          <h2><Plus size={18} aria-hidden="true" /> {title}</h2>
-          <IconButton label={t("desktop.close")} onClick={onClose}><X size={16} /></IconButton>
+          <h2>
+            <Plus size={18} aria-hidden="true" /> {title}
+          </h2>
+          <IconButton label={t("desktop.close")} onClick={onClose}>
+            <X size={16} />
+          </IconButton>
         </header>
         <form className="connect-form" onSubmit={handleSubmit}>
           <label className="connect-field">
             <span>{t("desktop.connectionName")}</span>
-            <input type="text" value={name} autoFocus disabled={edit !== undefined} onChange={(e) => setName(e.target.value)} />
+            <input
+              type="text"
+              value={name}
+              data-autofocus
+              disabled={edit !== undefined}
+              onChange={(e) => setName(e.target.value)}
+            />
           </label>
           {trimmedName.length > 0 && !nameAvailable ? (
-            <InlineAlert className="connect-error" title={t("desktop.nameTaken")} />
+            <InlineAlert
+              className="connect-error"
+              title={t("desktop.nameTaken")}
+            />
           ) : null}
           <label className="connect-field">
             <span>{t("desktop.host")}</span>
-            <input type="text" value={host} onChange={(e) => setHost(e.target.value)} />
+            <input
+              type="text"
+              value={host}
+              data-autofocus
+              onChange={(e) => setHost(e.target.value)}
+            />
           </label>
           <label className="connect-field">
             <span>{t("desktop.group")}</span>
-            <input type="text" value={group} onChange={(e) => setGroup(e.target.value)} />
+            <input
+              type="text"
+              value={group}
+              onChange={(e) => setGroup(e.target.value)}
+            />
           </label>
           <label className="connect-field">
             <span>{t("desktop.tagsCommaHint")}</span>
-            <input type="text" value={tags} onChange={(e) => setTags(e.target.value)} />
+            <input
+              type="text"
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+            />
           </label>
+          <div className="connect-field-row">
+            <label className="connect-field">
+              <span>{t("desktop.user")}</span>
+              <input
+                type="text"
+                value={username}
+                autoComplete="username"
+                onChange={(e) => setUsername(e.target.value)}
+              />
+            </label>
+            <label className="connect-field connect-field--port">
+              <span>{t("desktop.port")}</span>
+              <input
+                aria-invalid={!portValid}
+                type="number"
+                min={1}
+                max={65_535}
+                inputMode="numeric"
+                value={port}
+                onChange={(e) => setPort(e.target.value)}
+              />
+            </label>
+          </div>
           <div className="connect-actions">
-            <Button type="submit" disabled={!canCreate}>{t("desktop.createConnection")}</Button>
+            <Button type="submit" disabled={!canCreate}>
+              {t("desktop.createConnection")}
+            </Button>
           </div>
         </form>
       </div>

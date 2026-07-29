@@ -144,7 +144,7 @@ jobs:
 
   visual-qa:
     name: Visual QA
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     needs: [build]
     steps:
       - uses: actions/checkout@v4
@@ -156,9 +156,9 @@ jobs:
       - name: Cache Playwright browsers
         uses: actions/cache@v4
         with:
-          path: ~/.cache/ms-playwright
+          path: ~/AppData/Local/ms-playwright
           key: playwright-visual-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install chromium
       - run: npm run qa:e2e:visual:fresh
       - uses: actions/upload-artifact@v4
         if: failure()

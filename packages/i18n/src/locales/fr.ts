@@ -1,11 +1,15 @@
 export const fr = {
-  "desktop.demoScopeSummary": "Demo sample - no real SSH session",
-  "desktop.demoShell": "sample shell",
-  "desktop.noSession": "No SSH session",
-  "desktop.noSessionActionDetail": "Connect to a real host before running terminal, SFTP, or forwarding actions.",
-  "desktop.sampleDataShort": "Sample data",
-  "desktop.terminalSessionConnectRequired": "Use Connect to open a real SSH session before running commands.",
-  "desktop.terminalSessionSample": "Sample connection profile only. No SSH session is connected.",
+  "desktop.demoScopeSummary":
+    "Données de démonstration — aucune session SSH réelle",
+  "desktop.demoShell": "Shell d’exemple",
+  "desktop.noSession": "Aucune session SSH",
+  "desktop.noSessionActionDetail":
+    "Connectez-vous à un hôte réel avant d’utiliser le terminal, SFTP ou la redirection de ports.",
+  "desktop.sampleDataShort": "Données d’exemple",
+  "desktop.terminalSessionConnectRequired":
+    "Utilisez « Se connecter » pour ouvrir une session SSH réelle avant d’exécuter des commandes.",
+  "desktop.terminalSessionSample":
+    "Profil de connexion d’exemple uniquement. Aucune session SSH n’est active.",
   "desktop.sftp": "SFTP",
   "desktop.manifestDescription": "Terminal SSH, SFTP, accès d'équipe et gestion des sessions.",
   "language.selectorLabel": "Langue d'affichage",
@@ -109,7 +113,7 @@ export const fr = {
   "desktop.requiredProduction": "Requis pour les périmètres de production",
   "desktop.syncEncrypted": "Synchroniser les extraits chiffrés",
   "desktop.availableProBusiness": "Disponible dans Pro et Business",
-  "desktop.telemetryErrors": "Télémétrie d'erreurs",
+  "desktop.telemetryErrors": "Rapports d’erreurs facultatifs",
   "desktop.telemetryErrorsHint": "Envoyer des résumés expurgés de plantages et d'erreurs.",
   "desktop.businessLayer": "Couche métier",
   "desktop.sharedVaults": "Coffres partagés",
@@ -275,7 +279,7 @@ export const fr = {
   "web.skipToContent": "Aller au contenu principal",
   "web.teamOperations": "Opérations d'équipe",
   "web.refreshTeamDashboard": "Actualiser le tableau de bord d'équipe",
-  "web.telemetryErrors": "Télémétrie d'erreurs",
+  "web.telemetryErrors": "Rapports d’erreurs facultatifs",
   "web.telemetryUnavailable": "La télémétrie n'est pas activée dans cette build.",
   "web.teamMetrics": "Métriques des opérations d'équipe",
   "web.activeMembers": "Membres actifs",
@@ -321,7 +325,7 @@ export const fr = {
   "mobile.readyToConnectMessage": "Commencez par enregistrer ce téléphone et récupérer un aperçu sécurisé depuis la synchronisation JoeSSH.",
   "mobile.profiles": "Profils",
   "mobile.openSessions": "Sessions ouvertes",
-  "mobile.pendingChanges": "Modifications en attente",
+  "mobile.pendingChanges": "Modifications reçues",
   "mobile.deviceRegistration": "Enregistrement de l'appareil",
   "mobile.device": "Appareil",
   "mobile.notRegistered": "Non enregistré",
@@ -390,5 +394,9 @@ export const fr = {
   "desktop.importConnections": "Importer les connexions",
   "team.accessReview": "Examen de l'accès d'équipe",
   "team.accessRequestStatus": "État de la demande d'accès d'équipe",
+  "desktop.restoreWorkbench": "Restaurer l’espace de travail",
+  "desktop.gettingStarted": "Bien démarrer",
+  "desktop.surfaceGuide": "Desktop ouvre les sessions SSH ; Web Admin surveille Sync et les équipes ; Mobile est l’application d’accompagnement.",
+  "desktop.telemetryPrivacyHint": "Facultatif et désactivé par défaut. N’envoie jamais les hôtes, utilisateurs, commandes, clés, jetons, chemins ou sorties du terminal.",
   "team.reviewedBy": "examiné par {reviewer}"
 } as const;

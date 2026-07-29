@@ -1,11 +1,15 @@
 export const ru = {
-  "desktop.demoScopeSummary": "Demo sample - no real SSH session",
-  "desktop.demoShell": "sample shell",
-  "desktop.noSession": "No SSH session",
-  "desktop.noSessionActionDetail": "Connect to a real host before running terminal, SFTP, or forwarding actions.",
-  "desktop.sampleDataShort": "Sample data",
-  "desktop.terminalSessionConnectRequired": "Use Connect to open a real SSH session before running commands.",
-  "desktop.terminalSessionSample": "Sample connection profile only. No SSH session is connected.",
+  "desktop.demoScopeSummary":
+    "Демонстрационные данные — без реального сеанса SSH",
+  "desktop.demoShell": "Пример оболочки",
+  "desktop.noSession": "Нет сеанса SSH",
+  "desktop.noSessionActionDetail":
+    "Подключитесь к реальному хосту, прежде чем использовать терминал, SFTP или переадресацию портов.",
+  "desktop.sampleDataShort": "Демонстрационные данные",
+  "desktop.terminalSessionConnectRequired":
+    "Нажмите «Подключиться», чтобы открыть реальный сеанс SSH перед выполнением команд.",
+  "desktop.terminalSessionSample":
+    "Это только пример профиля подключения. Активного сеанса SSH нет.",
   "desktop.sftp": "SFTP",
   "desktop.manifestDescription": "SSH-терминал, SFTP, командный доступ и управление сеансами.",
   "language.selectorLabel": "Язык интерфейса",
@@ -109,7 +113,7 @@ export const ru = {
   "desktop.requiredProduction": "Обязательно для production-областей",
   "desktop.syncEncrypted": "Синхронизировать зашифрованные фрагменты",
   "desktop.availableProBusiness": "Доступно в Pro и Business",
-  "desktop.telemetryErrors": "Телеметрия ошибок",
+  "desktop.telemetryErrors": "Необязательные отчёты об ошибках",
   "desktop.telemetryErrorsHint": "Отправлять отредактированные сводки сбоев и ошибок.",
   "desktop.businessLayer": "Бизнес-уровень",
   "desktop.sharedVaults": "Общие хранилища",
@@ -275,7 +279,7 @@ export const ru = {
   "web.skipToContent": "Перейти к основному содержанию",
   "web.teamOperations": "Командные операции",
   "web.refreshTeamDashboard": "Обновить панель команды",
-  "web.telemetryErrors": "Телеметрия ошибок",
+  "web.telemetryErrors": "Необязательные отчёты об ошибках",
   "web.telemetryUnavailable": "Телеметрия не включена в этой сборке.",
   "web.teamMetrics": "Метрики командных операций",
   "web.activeMembers": "Активные участники",
@@ -321,7 +325,7 @@ export const ru = {
   "mobile.readyToConnectMessage": "Сначала зарегистрируйте этот телефон и получите безопасный предпросмотр из синхронизации JoeSSH.",
   "mobile.profiles": "Профили",
   "mobile.openSessions": "Открытые сеансы",
-  "mobile.pendingChanges": "Ожидающие изменения",
+  "mobile.pendingChanges": "Получено изменений",
   "mobile.deviceRegistration": "Регистрация устройства",
   "mobile.device": "Устройство",
   "mobile.notRegistered": "Не зарегистрировано",
@@ -390,5 +394,9 @@ export const ru = {
   "desktop.importConnections": "Импорт подключений",
   "team.accessReview": "Проверка доступа команды",
   "team.accessRequestStatus": "Статус запроса доступа команды",
+  "desktop.restoreWorkbench": "Восстановить рабочую область",
+  "desktop.gettingStarted": "Начало работы",
+  "desktop.surfaceGuide": "Desktop открывает SSH-сеансы; Web Admin контролирует Sync и команды; Mobile служит приложением-компаньоном.",
+  "desktop.telemetryPrivacyHint": "Необязательно и по умолчанию выключено. Никогда не отправляет хосты, имена пользователей, команды, ключи, токены, пути или вывод терминала.",
   "team.reviewedBy": "Проверил {reviewer}"
 } as const;
