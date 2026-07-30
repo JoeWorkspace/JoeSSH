@@ -8,11 +8,26 @@ import {
   getAuditActionKey,
   getAuditTargetKey,
   matchKnownValue,
+  formatSnapshotEndpoint,
   formatLastSeen,
   formatClockTime,
   getClockDateTime,
 } from "./helpers";
 import { createLocaleFormatters } from "@atlasterm/i18n";
+
+describe("formatSnapshotEndpoint", () => {
+  it("keeps fixture and query-free endpoint labels intact", () => {
+    expect(formatSnapshotEndpoint(null, "Built-in fixture")).toBe("Built-in fixture");
+    expect(formatSnapshotEndpoint("/api/admin/snapshot", "fixture")).toBe("/api/admin/snapshot");
+  });
+
+  it("redacts configured endpoint query values from visible and printable UI", () => {
+    expect(formatSnapshotEndpoint("https://sync.example.com/v1/admin/snapshot?team=atlas&token=secret", "fixture")).toBe(
+      "https://sync.example.com/v1/admin/snapshot?…",
+    );
+    expect(formatSnapshotEndpoint("/api/admin/snapshot?access_token=secret", "fixture")).toBe("/api/admin/snapshot?…");
+  });
+});
 
 describe("getDeviceStatusMeta", () => {
   it("returns catching_up status with pending class", () => {
@@ -180,7 +195,10 @@ describe("matchKnownValue", () => {
 
 describe("formatLastSeen", () => {
   const formatters = createLocaleFormatters("en");
-  const t = { shared: (key: string) => key, local: (key: string) => key } as any;
+  const t = {
+    shared: (key: string) => key,
+    local: (key: string) => key,
+  } as any;
 
   it("returns live label for Live value", () => {
     expect(formatLastSeen("Live", formatters, t)).toBe("web.status.live");

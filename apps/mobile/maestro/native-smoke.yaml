@@ -28,17 +28,9 @@ appId: ${ATLASTERM_MAESTRO_APP_ID}
     id: "sync-preview-command"
 - scrollUntilVisible:
     element:
-      id: "emergency-channel-relay"
+      id: "emergency-channels-empty"
     direction: DOWN
     visibilityPercentage: 60
     timeout: 10000
 - assertVisible:
-    id: "emergency-channel-relay"
-- scrollUntilVisible:
-    element:
-      id: "emergency-channel-local-cache"
-    direction: DOWN
-    visibilityPercentage: 60
-    timeout: 10000
-- assertVisible:
-    id: "emergency-channel-local-cache"
+    id: "emergency-channels-empty"

@@ -26,6 +26,7 @@ export default defineConfig({
       '@': path.resolve(__dirname),
       '@atlasterm/i18n': path.resolve(__dirname, '../../packages/i18n/src/index.ts'),
       'react-native': path.resolve(__dirname, 'test/reactNativeMock.ts'),
+      'react-native-safe-area-context': path.resolve(__dirname, 'test/reactNativeMock.ts'),
     },
   },
   esbuild: { jsx: 'automatic' },

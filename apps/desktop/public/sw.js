@@ -1,10 +1,13 @@
-const CACHE_NAME = "joessh-v1";
+const CACHE_NAME = "joessh-v2";
 const MAX_CACHE_ENTRIES = 100;
 const PRECACHE_URLS = ["/", "/offline.html"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS)).then(() => self.skipWaiting())
+    caches
+      .open(CACHE_NAME)
+      .then((cache) => cache.addAll(PRECACHE_URLS))
+      .then(() => self.skipWaiting()),
   );
 });
 
@@ -12,8 +15,12 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((names) => Promise.all(names.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n))))
-      .then(() => self.clients.claim())
+      .then((names) =>
+        Promise.all(
+          names.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n)),
+        ),
+      )
+      .then(() => self.clients.claim()),
   );
 });
 
@@ -25,7 +32,10 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
 
   // Skip API/data requests; only cache static assets and navigation
-  const isStaticAsset = /\.(?:js|css|svg|png|jpg|jpeg|gif|webp|woff2?|ttf|eot|ico)(?:\?|$)/.test(url.pathname);
+  const isStaticAsset =
+    /\.(?:js|css|svg|png|jpg|jpeg|gif|webp|woff2?|ttf|eot|ico)(?:\?|$)/.test(
+      url.pathname,
+    );
   const isNavigation = request.mode === "navigate";
   const isManifest = url.pathname === "/manifest.json";
 
@@ -42,13 +52,15 @@ self.addEventListener("fetch", (event) => {
 async function staleWhileRevalidate(request) {
   const cache = await caches.open(CACHE_NAME);
   const cached = await cache.match(request);
-  const fetchPromise = fetch(request).then((response) => {
-    if (response.ok) {
-      cache.put(request, response.clone());
-      trimCache(cache);
-    }
-    return response;
-  }).catch(() => cached);
+  const fetchPromise = fetch(request)
+    .then((response) => {
+      if (response.ok) {
+        cache.put(request, response.clone());
+        trimCache(cache);
+      }
+      return response;
+    })
+    .catch(() => cached);
 
   return cached || fetchPromise;
 }
@@ -68,7 +80,13 @@ async function networkFirst(request) {
     const root = await caches.match("/");
     if (root) return root;
     const offlineResponse = await caches.match("/offline.html");
-    return offlineResponse || new Response("Offline", { status: 503, headers: { "Content-Type": "text/plain" } });
+    return (
+      offlineResponse ||
+      new Response("Offline", {
+        status: 503,
+        headers: { "Content-Type": "text/plain" },
+      })
+    );
   }
 }
 

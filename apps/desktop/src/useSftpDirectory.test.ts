@@ -2,9 +2,18 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { useSftpDirectory, joinPath, parentPath } from "./useSftpDirectory";
-import { isSafeSftpEntryName, joinSftpRemoteEntryPath, joinSftpRemotePath, normalizeSftpRemotePath } from "./sftpRemotePath";
+import {
+  isSafeSftpEntryName,
+  joinSftpRemoteEntryPath,
+  joinSftpRemotePath,
+  normalizeSftpRemotePath,
+} from "./sftpRemotePath";
 
-const entry = (name: string, is_dir = false) => ({ name, is_dir, size: is_dir ? null : 10 });
+const entry = (name: string, is_dir = false) => ({
+  name,
+  is_dir,
+  size: is_dir ? null : 10,
+});
 
 function deferred<T>() {
   let resolve: (value: T) => void = () => {};
@@ -35,12 +44,17 @@ describe("useSftpDirectory", () => {
   });
 
   it("loads the initial directory on mount", async () => {
-    const list = vi.fn().mockResolvedValue([entry("a.txt"), entry("logs", true)]);
+    const list = vi
+      .fn()
+      .mockResolvedValue([entry("a.txt"), entry("logs", true)]);
     const { result } = renderHook(() => useSftpDirectory(list, "/srv"));
 
     await waitFor(() => expect(result.current.status.phase).toBe("ready"));
     expect(list).toHaveBeenCalledWith("/srv");
-    expect(result.current.status).toEqual({ phase: "ready", entries: [entry("a.txt"), entry("logs", true)] });
+    expect(result.current.status).toEqual({
+      phase: "ready",
+      entries: [entry("a.txt"), entry("logs", true)],
+    });
     expect(result.current.active).toBe(true);
   });
 
@@ -58,7 +72,10 @@ describe("useSftpDirectory", () => {
     const { result } = renderHook(() => useSftpDirectory(list, "/root"));
 
     await waitFor(() => expect(result.current.status.phase).toBe("error"));
-    expect(result.current.status).toEqual({ phase: "error", message: "permission denied" });
+    expect(result.current.status).toEqual({
+      phase: "error",
+      message: "permission denied",
+    });
   });
 
   it("stringifies a non-Error rejection reason", async () => {
@@ -66,7 +83,10 @@ describe("useSftpDirectory", () => {
     const { result } = renderHook(() => useSftpDirectory(list, "/root"));
 
     await waitFor(() => expect(result.current.status.phase).toBe("error"));
-    expect(result.current.status).toEqual({ phase: "error", message: "raw failure" });
+    expect(result.current.status).toEqual({
+      phase: "error",
+      message: "raw failure",
+    });
   });
 
   it("navigates to a new path and reloads", async () => {
@@ -96,7 +116,12 @@ describe("useSftpDirectory", () => {
       second.resolve([entry("current.log")]);
       await second.promise;
     });
-    await waitFor(() => expect(result.current.status).toEqual({ phase: "ready", entries: [entry("current.log")] }));
+    await waitFor(() =>
+      expect(result.current.status).toEqual({
+        phase: "ready",
+        entries: [entry("current.log")],
+      }),
+    );
 
     await act(async () => {
       first.resolve([entry("stale.log")]);
@@ -104,7 +129,42 @@ describe("useSftpDirectory", () => {
     });
 
     expect(result.current.path).toBe("/srv/logs");
-    expect(result.current.status).toEqual({ phase: "ready", entries: [entry("current.log")] });
+    expect(result.current.status).toEqual({
+      phase: "ready",
+      entries: [entry("current.log")],
+    });
+  });
+
+  it("resets navigation and ignores stale listings when the active backend changes", async () => {
+    const oldListing = deferred<ReturnType<typeof entry>[]>();
+    const oldList = vi.fn(() => oldListing.promise);
+    const newList = vi.fn().mockResolvedValue([entry("new-home.log")]);
+    const { result, rerender } = renderHook(
+      ({ list }) => useSftpDirectory(list, "."),
+      { initialProps: { list: oldList } },
+    );
+
+    await waitFor(() => expect(oldList).toHaveBeenCalledWith("."));
+    act(() => result.current.open("private"));
+    await waitFor(() => expect(result.current.path).toBe("private"));
+
+    rerender({ list: newList });
+    await waitFor(() => expect(result.current.path).toBe("."));
+    await waitFor(() =>
+      expect(result.current.status).toEqual({
+        phase: "ready",
+        entries: [entry("new-home.log")],
+      }),
+    );
+
+    await act(async () => {
+      oldListing.resolve([entry("stale-secret")]);
+      await oldListing.promise;
+    });
+    expect(result.current.status).toEqual({
+      phase: "ready",
+      entries: [entry("new-home.log")],
+    });
   });
 
   it("normalizes opened paths before reloading", async () => {
@@ -194,10 +254,16 @@ describe("sftp path helpers", () => {
   it("joinSftpRemotePath builds stable file payload paths", () => {
     expect(joinSftpRemotePath("/", "file.txt")).toBe("/file.txt");
     expect(joinSftpRemotePath("/srv/", "file.txt")).toBe("/srv/file.txt");
-    expect(joinSftpRemotePath("/srv//logs", "audit.log")).toBe("/srv/logs/audit.log");
+    expect(joinSftpRemotePath("/srv//logs", "audit.log")).toBe(
+      "/srv/logs/audit.log",
+    );
     expect(joinSftpRemotePath("/srv", "")).toBe("/srv");
-    expect(joinSftpRemotePath("/srv", "file name #1.txt")).toBe("/srv/file name #1.txt");
-    expect(joinSftpRemotePath("/srv/logs/", "../archive/report.txt")).toBe("/srv/archive/report.txt");
+    expect(joinSftpRemotePath("/srv", "file name #1.txt")).toBe(
+      "/srv/file name #1.txt",
+    );
+    expect(joinSftpRemotePath("/srv/logs/", "../archive/report.txt")).toBe(
+      "/srv/archive/report.txt",
+    );
     expect(joinSftpRemotePath(".", "file.txt")).toBe("file.txt");
     expect(joinSftpRemotePath("logs", "audit.log")).toBe("logs/audit.log");
     expect(joinSftpRemotePath("logs", "../audit.log")).toBe("audit.log");
@@ -217,9 +283,13 @@ describe("sftp path helpers", () => {
   });
 
   it("joinSftpRemoteEntryPath refuses names that escape the current directory", () => {
-    expect(joinSftpRemoteEntryPath("/srv", "file name #1.txt")).toBe("/srv/file name #1.txt");
+    expect(joinSftpRemoteEntryPath("/srv", "file name #1.txt")).toBe(
+      "/srv/file name #1.txt",
+    );
     expect(joinSftpRemoteEntryPath(".", "file.txt")).toBe("file.txt");
-    expect(joinSftpRemoteEntryPath("/srv", "../archive/report.txt")).toBeUndefined();
+    expect(
+      joinSftpRemoteEntryPath("/srv", "../archive/report.txt"),
+    ).toBeUndefined();
     expect(joinSftpRemoteEntryPath("/srv", "/etc/passwd")).toBeUndefined();
     expect(joinSftpRemoteEntryPath("/srv", "logs/archive")).toBeUndefined();
     expect(joinSftpRemoteEntryPath("/srv", "logs\\archive")).toBeUndefined();

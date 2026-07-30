@@ -9,11 +9,15 @@ describe("useSftpTransfer", () => {
     expect(result.current.active).toBe(false);
 
     let bytes: number[] | undefined = [9];
-    await act(async () => { bytes = await result.current.download("/p"); });
+    await act(async () => {
+      bytes = await result.current.download("/p");
+    });
     expect(bytes).toBeUndefined();
 
     let ok = true;
-    await act(async () => { ok = await result.current.upload("/p", [1]); });
+    await act(async () => {
+      ok = await result.current.upload("/p", [1]);
+    });
     expect(ok).toBe(false);
     expect(result.current.status).toEqual({ phase: "idle" });
   });
@@ -25,7 +29,9 @@ describe("useSftpTransfer", () => {
     expect(result.current.active).toBe(true);
 
     let bytes: number[] | undefined;
-    await act(async () => { bytes = await result.current.download("/srv/a"); });
+    await act(async () => {
+      bytes = await result.current.download("/srv/a");
+    });
     expect(bytes).toEqual([1, 2, 3]);
     expect(read).toHaveBeenCalledWith("/srv/a");
     expect(result.current.status).toEqual({ phase: "idle" });
@@ -43,12 +49,17 @@ describe("useSftpTransfer", () => {
 
     let bytes: number[] | undefined = [0];
     await act(async () => {
-      bytes = await result.current.download("/srv/huge.tar", { knownSizeBytes: 3 });
+      bytes = await result.current.download("/srv/huge.tar", {
+        knownSizeBytes: 3,
+      });
     });
 
     expect(bytes).toBeUndefined();
     expect(read).not.toHaveBeenCalled();
-    expect(result.current.status).toEqual({ phase: "error", message: "too large: 2" });
+    expect(result.current.status).toEqual({
+      phase: "error",
+      message: "too large: 2",
+    });
   });
 
   it("rejects downloaded payloads over the transfer limit", async () => {
@@ -68,7 +79,10 @@ describe("useSftpTransfer", () => {
 
     expect(bytes).toBeUndefined();
     expect(read).toHaveBeenCalledWith("/srv/huge.tar");
-    expect(result.current.status).toEqual({ phase: "error", message: "too large: 2" });
+    expect(result.current.status).toEqual({
+      phase: "error",
+      message: "too large: 2",
+    });
   });
 
   it("uploads bytes and returns true", async () => {
@@ -77,7 +91,9 @@ describe("useSftpTransfer", () => {
     const { result } = renderHook(() => useSftpTransfer(read, write));
 
     let ok = false;
-    await act(async () => { ok = await result.current.upload("/srv/b", [4, 5]); });
+    await act(async () => {
+      ok = await result.current.upload("/srv/b", [4, 5]);
+    });
     expect(ok).toBe(true);
     expect(write).toHaveBeenCalledWith("/srv/b", [4, 5]);
   });
@@ -99,7 +115,10 @@ describe("useSftpTransfer", () => {
 
     expect(ok).toBe(false);
     expect(write).not.toHaveBeenCalled();
-    expect(result.current.status).toEqual({ phase: "error", message: "too large: 2" });
+    expect(result.current.status).toEqual({
+      phase: "error",
+      message: "too large: 2",
+    });
   });
 
   it("records a download error (non-Error reason stringified)", async () => {
@@ -108,9 +127,14 @@ describe("useSftpTransfer", () => {
     const { result } = renderHook(() => useSftpTransfer(read, write));
 
     let bytes: number[] | undefined = [0];
-    await act(async () => { bytes = await result.current.download("/p"); });
+    await act(async () => {
+      bytes = await result.current.download("/p");
+    });
     expect(bytes).toBeUndefined();
-    expect(result.current.status).toEqual({ phase: "error", message: "read boom" });
+    expect(result.current.status).toEqual({
+      phase: "error",
+      message: "read boom",
+    });
   });
 
   it("records an upload error", async () => {
@@ -119,8 +143,83 @@ describe("useSftpTransfer", () => {
     const { result } = renderHook(() => useSftpTransfer(read, write));
 
     let ok = true;
-    await act(async () => { ok = await result.current.upload("/p", [1]); });
+    await act(async () => {
+      ok = await result.current.upload("/p", [1]);
+    });
     expect(ok).toBe(false);
-    expect(result.current.status).toEqual({ phase: "error", message: "disk full" });
+    expect(result.current.status).toEqual({
+      phase: "error",
+      message: "disk full",
+    });
+  });
+
+  it("ignores a stale download result after the active backend changes", async () => {
+    let resolveOldRead: (bytes: number[]) => void = () => {};
+    const oldRead = vi.fn(
+      () =>
+        new Promise<number[]>((resolve) => {
+          resolveOldRead = resolve;
+        }),
+    );
+    const newRead = vi.fn().mockResolvedValue([9]);
+    const oldWrite = vi.fn();
+    const newWrite = vi.fn();
+    const { result, rerender } = renderHook(
+      ({ read, write }) => useSftpTransfer(read, write),
+      { initialProps: { read: oldRead, write: oldWrite } },
+    );
+
+    let staleDownload: Promise<number[] | undefined> =
+      Promise.resolve(undefined);
+    act(() => {
+      staleDownload = result.current.download("/old/secret");
+    });
+    rerender({ read: newRead, write: newWrite });
+
+    let staleBytes: number[] | undefined = [1];
+    await act(async () => {
+      resolveOldRead([1, 2, 3]);
+      staleBytes = await staleDownload;
+    });
+
+    expect(staleBytes).toBeUndefined();
+    expect(result.current.status).toEqual({ phase: "idle" });
+  });
+
+  it("ignores a stale upload completion after the active backend changes", async () => {
+    let resolveOldWrite: () => void = () => {};
+    const oldWrite = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveOldWrite = resolve;
+        }),
+    );
+    const { result, rerender } = renderHook(
+      ({ read, write }) => useSftpTransfer(read, write),
+      {
+        initialProps: {
+          read: vi.fn().mockResolvedValue([]),
+          write: oldWrite,
+        },
+      },
+    );
+
+    let staleUpload: Promise<boolean> = Promise.resolve(true);
+    act(() => {
+      staleUpload = result.current.upload("/old/file", [1]);
+    });
+    rerender({
+      read: vi.fn().mockResolvedValue([]),
+      write: vi.fn().mockResolvedValue(undefined),
+    });
+
+    let completed = true;
+    await act(async () => {
+      resolveOldWrite();
+      completed = await staleUpload;
+    });
+
+    expect(completed).toBe(false);
+    expect(result.current.status).toEqual({ phase: "idle" });
   });
 });

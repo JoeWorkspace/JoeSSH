@@ -7,7 +7,6 @@ import { fileURLToPath } from 'node:url';
 import http from 'node:http';
 import net from 'node:net';
 
-const e2eRoot = fileURLToPath(new URL('..', import.meta.url));
 const root = fileURLToPath(new URL('../../..', import.meta.url));
 const host = process.env.ATLASTERM_E2E_REAL_SYNC_HOST ?? '127.0.0.1';
 const publicPort = Number.parseInt(process.env.ATLASTERM_E2E_REAL_SYNC_PORT ?? '4112', 10);

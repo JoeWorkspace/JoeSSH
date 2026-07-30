@@ -273,7 +273,7 @@ const staticShellSourceByteBudgets: Record<string, number> = {
 };
 const staticServiceWorkerExpectedEventTypes = ['install', 'activate', 'fetch'];
 const staticServiceWorkerCachePolicyNeedles = [
-  "const CACHE_NAME = 'joessh-admin-v1';",
+  "const CACHE_NAME = 'joessh-admin-v2';",
   'const MAX_CACHE_ENTRIES = 100;',
   "const STATIC_ASSETS = ['/', '/index.html', '/manifest.json', '/favicon.svg', '/offline.html'];",
   'caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS)).then(() => self.skipWaiting()),',
@@ -281,15 +281,19 @@ const staticServiceWorkerCachePolicyNeedles = [
   '.then(() => self.clients.claim()),',
   "if (request.method !== 'GET') {",
   'if (url.origin !== self.location.origin) {',
+  "if (url.pathname === '/api' || url.pathname.startsWith('/api/')) {",
   "const isManifest = url.pathname === '/manifest.json';",
   'if (!isStaticAsset && !isNavigation && !isManifest) {',
   'event.respondWith(',
-  'fetch(request)',
-  "cached || caches.match('/').then((root) =>",
-  "root || caches.match('/offline.html').then((offline) =>",
-  "offline || new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain' } })",
+  'event.respondWith(networkFirstNavigation(request));',
   'event.respondWith(staleWhileRevalidate(request));',
   'async function staleWhileRevalidate(request) {',
+  'async function networkFirstNavigation(request) {',
+  'function isCacheableResponse(response) {',
+  "response.type === 'basic'",
+  '!response.redirected',
+  '/(?:^|,)\\s*(?:private|no-store)\\b/i.test(cacheControl)',
+  'function offlineResponse() {',
   'async function trimCache(cache) {',
   'if (keys.length > MAX_CACHE_ENTRIES) {',
   'await cache.delete(keys[0]);',
@@ -313,7 +317,7 @@ function collectShellSources(rootPath: string, displayPrefix: string): Record<st
     }
 
     if (shellSourceExtensions.has(extname(entry.name)) || shellSourceExtensionlessFiles.has(entry.name)) {
-      sources[displayPath] = readFileSync(entryPath, 'utf-8');
+      sources[displayPath] = readFileSync(entryPath, 'utf-8').replace(/\r\n/g, '\n');
     }
   }
   return sources;
@@ -679,7 +683,7 @@ function findDuplicateJsonKeys(source: string): string[] {
 }
 
 const productionShellSources: Record<string, string> = {
-  '../index.html': readFileSync(join(webRootPath, 'index.html'), 'utf-8'),
+  '../index.html': readFileSync(join(webRootPath, 'index.html'), 'utf-8').replace(/\r\n/g, '\n'),
   ...collectShellSources(join(webRootPath, 'public'), '../public'),
 };
 const nonServiceWorkerShellSources: Record<string, string> = Object.fromEntries(
@@ -1565,7 +1569,7 @@ describe('web admin accessibility contracts', () => {
       );
     }
     expect(
-      countPatternMatches(staticServiceWorkerSource, /^const CACHE_NAME = 'joessh-admin-v1';$/gm),
+      countPatternMatches(staticServiceWorkerSource, /^const CACHE_NAME = 'joessh-admin-v2';$/gm),
       '../public/sw.js static Service Worker cache name cardinality',
     ).toBe(1);
     expect(
@@ -2105,11 +2109,15 @@ describe('web admin accessibility contracts', () => {
       'manifest app integration guard',
     ).toEqual([]);
     expect(productionSources['./main.tsx'], './main.tsx contract source').toContain('aria-labelledby=');
-    expect(productionSources['./main.tsx'], './main.tsx error-state source').toContain("message: t.local('web.state.error.message')");
+    expect(productionSources['./main.tsx'], './main.tsx error-state source').toMatch(
+      /message:\s*t\.local\((['"])web\.state\.error\.message\1\)/,
+    );
     expect(productionSources['./main.tsx'], './main.tsx raw error detail source').not.toContain('adminError.message');
     expect(productionSources['./main.tsx'], './main.tsx error-state source').not.toContain('state.message');
     expect(productionSources['./localization.ts'], './localization.ts storage source').toContain('window.localStorage.setItem');
     expect(productionSources['./localization.ts'], './localization.ts storage source').toContain('window.localStorage.getItem');
-    expect(productionSources['./main.tsx'], './main.tsx network source').toContain('loadAdminDashboard(window.fetch.bind(window)');
+    expect(productionSources['./main.tsx'], './main.tsx network source').toMatch(
+      /loadAdminDashboard\(\s*window\.fetch\.bind\(window\)/,
+    );
   }, 30_000);
 });

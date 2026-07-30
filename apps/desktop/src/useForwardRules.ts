@@ -21,7 +21,8 @@ export type ForwardRuntime = {
 /// web preview stays interactive without a backend.
 export function useForwardRules(start?: ForwardStartFn, stop?: ForwardStopFn) {
   const [runtime, setRuntime] = useState<Record<string, ForwardRuntime>>({});
-  const inFlightRules = useRef(new Set<string>());
+  const inFlightRules = useRef(new Map<string, number>());
+  const operationCounter = useRef(0);
   const runtimeRef = useRef(runtime);
   const backendSeq = useRef(0);
   const active = start !== undefined && stop !== undefined;
@@ -46,27 +47,57 @@ export function useForwardRules(start?: ForwardStartFn, stop?: ForwardStopFn) {
   }, [start, stop]);
 
   const startRule = useCallback(
-    async (id: string, bindAddr: string, targetHost: string, targetPort: number) => {
+    async (
+      id: string,
+      bindAddr: string,
+      targetHost: string,
+      targetPort: number,
+    ) => {
       if (inFlightRules.current.has(id)) return;
       if (!start) {
         setRuntime((prev) => ({ ...prev, [id]: { active: true } }));
         return;
       }
       const requestSeq = backendSeq.current;
-      inFlightRules.current.add(id);
-      setRuntime((prev) => ({ ...prev, [id]: { ...prev[id], active: false, pending: true, error: undefined } }));
+      const operationId = operationCounter.current + 1;
+      operationCounter.current = operationId;
+      inFlightRules.current.set(id, operationId);
+      setRuntime((prev) => ({
+        ...prev,
+        [id]: { ...prev[id], active: false, pending: true, error: undefined },
+      }));
       try {
-        const { forward_id, bound_addr } = await start(bindAddr, targetHost, targetPort);
-        if (backendSeq.current !== requestSeq) return;
-        setRuntime((prev) => ({ ...prev, [id]: { active: true, forwardId: forward_id, boundAddr: bound_addr } }));
+        const { forward_id, bound_addr } = await start(
+          bindAddr,
+          targetHost,
+          targetPort,
+        );
+        if (backendSeq.current !== requestSeq) {
+          if (stop) {
+            void stop(forward_id).catch(() => {});
+          }
+          return;
+        }
+        setRuntime((prev) => ({
+          ...prev,
+          [id]: { active: true, forwardId: forward_id, boundAddr: bound_addr },
+        }));
       } catch (error) {
         if (backendSeq.current !== requestSeq) return;
-        setRuntime((prev) => ({ ...prev, [id]: { active: false, error: error instanceof Error ? error.message : String(error) } }));
+        setRuntime((prev) => ({
+          ...prev,
+          [id]: {
+            active: false,
+            error: error instanceof Error ? error.message : String(error),
+          },
+        }));
       } finally {
-        inFlightRules.current.delete(id);
+        if (inFlightRules.current.get(id) === operationId) {
+          inFlightRules.current.delete(id);
+        }
       }
     },
-    [start],
+    [start, stop],
   );
 
   const stopRule = useCallback(
@@ -74,21 +105,37 @@ export function useForwardRules(start?: ForwardStartFn, stop?: ForwardStopFn) {
       if (inFlightRules.current.has(id)) return;
       const requestSeq = backendSeq.current;
       const current = runtime[id];
-      inFlightRules.current.add(id);
-      setRuntime((prev) => ({ ...prev, [id]: { ...prev[id], pending: true, error: undefined } }));
+      const operationId = operationCounter.current + 1;
+      operationCounter.current = operationId;
+      inFlightRules.current.set(id, operationId);
+      setRuntime((prev) => ({
+        ...prev,
+        [id]: { ...prev[id], pending: true, error: undefined },
+      }));
       if (stop && current?.forwardId) {
         try {
           await stop(current.forwardId);
         } catch (error) {
           if (backendSeq.current !== requestSeq) return;
-          setRuntime((prev) => ({ ...prev, [id]: { ...current, active: true, error: error instanceof Error ? error.message : String(error) } }));
-          inFlightRules.current.delete(id);
+          setRuntime((prev) => ({
+            ...prev,
+            [id]: {
+              ...current,
+              active: true,
+              error: error instanceof Error ? error.message : String(error),
+            },
+          }));
+          if (inFlightRules.current.get(id) === operationId) {
+            inFlightRules.current.delete(id);
+          }
           return;
         }
       }
       if (backendSeq.current !== requestSeq) return;
       setRuntime((prev) => ({ ...prev, [id]: { active: false } }));
-      inFlightRules.current.delete(id);
+      if (inFlightRules.current.get(id) === operationId) {
+        inFlightRules.current.delete(id);
+      }
     },
     [stop, runtime],
   );

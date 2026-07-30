@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SftpEntry } from "./ipc";
-import { joinSftpRemoteEntryPath, normalizeSftpRemotePath, parentSftpRemotePath } from "./sftpRemotePath";
+import {
+  joinSftpRemoteEntryPath,
+  normalizeSftpRemotePath,
+  parentSftpRemotePath,
+} from "./sftpRemotePath";
 
 export type SftpListFn = (path: string) => Promise<SftpEntry[]>;
 
@@ -25,8 +29,12 @@ export type SftpDirectoryStatus =
 /// Drives a remote SFTP directory listing. `list` is injected (the desktop
 /// runtime passes a real `sftp_list`-backed loader); when `list` is undefined
 /// the hook stays idle so the panel can show its static/demo fallback.
-export function useSftpDirectory(list: SftpListFn | undefined, initialPath = ".") {
-  const [path, setPath] = useState(() => normalizeSftpRemotePath(initialPath));
+export function useSftpDirectory(
+  list: SftpListFn | undefined,
+  initialPath = ".",
+) {
+  const normalizedInitialPath = normalizeSftpRemotePath(initialPath);
+  const [path, setPath] = useState(() => normalizedInitialPath);
   const [status, setStatus] = useState<SftpDirectoryStatus>({ phase: "idle" });
   const loadSeq = useRef(0);
 
@@ -43,20 +51,44 @@ export function useSftpDirectory(list: SftpListFn | undefined, initialPath = "."
         setStatus({ phase: "ready", entries });
       } catch (error) {
         if (loadSeq.current !== requestSeq) return;
-        setStatus({ phase: "error", message: error instanceof Error ? error.message : String(error) });
+        setStatus({
+          phase: "error",
+          message: error instanceof Error ? error.message : String(error),
+        });
       }
     },
     [list],
   );
 
   useEffect(() => {
+    loadSeq.current += 1;
+    setPath(normalizedInitialPath);
+    setStatus({ phase: "idle" });
+  }, [list, normalizedInitialPath]);
+
+  useEffect(() => {
     void load(path);
   }, [load, path]);
 
-  const open = useCallback((next: string) => setPath(normalizeSftpRemotePath(next)), []);
-  const openChild = useCallback((name: string) => setPath((current) => joinPath(current, name) ?? current), []);
+  const open = useCallback(
+    (next: string) => setPath(normalizeSftpRemotePath(next)),
+    [],
+  );
+  const openChild = useCallback(
+    (name: string) => setPath((current) => joinPath(current, name) ?? current),
+    [],
+  );
   const goUp = useCallback(() => setPath((current) => parentPath(current)), []);
   const refresh = useCallback(() => void load(path), [load, path]);
 
-  return { path, status, open, openChild, goUp, refresh, canGoUp: path !== "/" && path !== ".", active: list !== undefined };
+  return {
+    path,
+    status,
+    open,
+    openChild,
+    goUp,
+    refresh,
+    canGoUp: path !== "/" && path !== ".",
+    active: list !== undefined,
+  };
 }

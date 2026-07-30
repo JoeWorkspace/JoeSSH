@@ -1,4 +1,4 @@
-const CACHE_NAME = 'joessh-admin-v1';
+const CACHE_NAME = 'joessh-admin-v2';
 const MAX_CACHE_ENTRIES = 100;
 const STATIC_ASSETS = ['/', '/index.html', '/manifest.json', '/favicon.svg', '/offline.html'];
 
@@ -31,7 +31,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Skip API/data requests; only cache static assets and navigation
+  // Never place authenticated API responses in Cache Storage, even when a
+  // route happens to end in an asset-like extension.
+  if (url.pathname === '/api' || url.pathname.startsWith('/api/')) {
+    return;
+  }
+
+  // Only cache static assets and navigation.
   const isStaticAsset = /\.(?:js|css|svg|png|jpg|jpeg|gif|webp|woff2?|ttf|eot|ico)(?:\?|$)/.test(url.pathname);
   const isNavigation = request.mode === 'navigate';
   const isManifest = url.pathname === '/manifest.json';
@@ -42,26 +48,7 @@ self.addEventListener('fetch', (event) => {
 
   // Network-first for navigation (HTML pages)
   if (isNavigation) {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, clone);
-            trimCache(cache);
-          });
-          return response;
-        })
-        .catch(() =>
-          caches.match(request).then((cached) =>
-            cached || caches.match('/').then((root) =>
-              root || caches.match('/offline.html').then((offline) =>
-                offline || new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain' } })
-              )
-            )
-          )
-        ),
-    );
+    event.respondWith(networkFirstNavigation(request));
     return;
   }
 
@@ -73,14 +60,54 @@ async function staleWhileRevalidate(request) {
   const cache = await caches.open(CACHE_NAME);
   const cached = await cache.match(request);
   const fetchPromise = fetch(request).then((response) => {
-    if (response.ok) {
+    if (isCacheableResponse(response)) {
       cache.put(request, response.clone());
       trimCache(cache);
     }
     return response;
-  }).catch(() => cached);
+  }).catch(() => cached || offlineResponse());
 
   return cached || fetchPromise;
+}
+
+async function networkFirstNavigation(request) {
+  try {
+    const response = await fetch(request);
+    if (isCacheableResponse(response)) {
+      try {
+        const cache = await caches.open(CACHE_NAME);
+        await cache.put(request, response.clone());
+        await trimCache(cache);
+      } catch {
+        // Cache write failures must not hide a valid network response.
+      }
+    }
+    return response;
+  } catch {
+    return (
+      (await caches.match(request)) ||
+      (await caches.match('/')) ||
+      (await caches.match('/offline.html')) ||
+      offlineResponse()
+    );
+  }
+}
+
+function isCacheableResponse(response) {
+  const cacheControl = response.headers.get('Cache-Control') || '';
+  return (
+    response.ok &&
+    response.type === 'basic' &&
+    !response.redirected &&
+    !/(?:^|,)\s*(?:private|no-store)\b/i.test(cacheControl)
+  );
+}
+
+function offlineResponse() {
+  return new Response('Offline', {
+    status: 503,
+    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+  });
 }
 
 async function trimCache(cache) {

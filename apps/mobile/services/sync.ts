@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
@@ -18,6 +19,7 @@ type SyncRegisterDeviceResponse = {
 type SyncPullResponse = {
   changes: unknown[];
   device_id: string;
+  has_more: boolean;
   next_cursor: string;
 };
 
@@ -34,12 +36,36 @@ export type SyncCheckpointResult = {
 };
 
 const REQUEST_TIMEOUT_MS = 8_000;
+const MAX_PULL_PAGES = 20;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export const MOBILE_SYNC_INSTALL_ID_STORAGE_KEY = 'atlasterm.mobile.sync.install-id.v1';
+export const MOBILE_SYNC_PENDING_PRESENCE_STORAGE_KEY = 'atlasterm.mobile.sync.pending-presence.v1';
+export const MOBILE_SYNC_REGISTRATION_STORAGE_KEY = 'atlasterm.mobile.sync.registration.v1';
 
-let rememberedRegisteredDeviceId: string | undefined;
+type StoredSyncRegistration = {
+  apiBaseUrl: string;
+  deviceId: string;
+  syncCursor: string;
+};
+
+type StoredPendingPresence = {
+  apiBaseUrl: string;
+  baseCursor: string;
+  changeId: string;
+  clientTime: string;
+  deviceId: string;
+};
+
+let rememberedInstallId: string | undefined;
+let rememberedInstallIdPromise: Promise<string> | undefined;
+let rememberedPendingPresence: StoredPendingPresence | undefined;
+let rememberedRegistration: StoredSyncRegistration | undefined;
 
 export function resetRegisteredDeviceMemoryForTests() {
-  rememberedRegisteredDeviceId = undefined;
+  rememberedInstallId = undefined;
+  rememberedInstallIdPromise = undefined;
+  rememberedPendingPresence = undefined;
+  rememberedRegistration = undefined;
 }
 
 function delay(ms: number) {
@@ -54,8 +80,8 @@ export function toSyncError(error: unknown): SyncError {
   if (error instanceof Error && /network|failed to fetch|load failed/.test(error.message.toLowerCase())) {
     return {
       code: 'offline',
-      title: 'Offline mode',
-      message: 'JoeSSH cannot reach sync services. Emergency channels and cached device context are still available.',
+      title: 'Sync unavailable',
+      message: 'JoeSSH could not reach the configured sync service. No live workspace data was received.',
       recoverable: true,
     };
   }
@@ -64,7 +90,7 @@ export function toSyncError(error: unknown): SyncError {
     return {
       code: 'timeout',
       title: 'Sync timed out',
-      message: 'The sync service did not answer in time. Cached context and emergency channels remain available.',
+      message: 'The sync service did not answer in time. No live workspace data was received.',
       recoverable: true,
     };
   }
@@ -72,8 +98,8 @@ export function toSyncError(error: unknown): SyncError {
   if (error instanceof Error && (error.message.includes('401') || error.message.includes('403'))) {
     return {
       code: 'unauthorized',
-      title: 'Sign-in required',
-      message: 'JoeSSH sync rejected this mobile device. Sign in again before pulling live workspace state.',
+      title: 'Sync authorization failed',
+      message: 'The configured sync credentials were rejected. Update the preview configuration before retrying.',
       recoverable: false,
     };
   }
@@ -87,17 +113,24 @@ export function toSyncError(error: unknown): SyncError {
 }
 
 export function asSyncError(error: unknown): SyncError {
-  return isSyncError(error) ? error : getOfflineError();
+  return isSyncError(error) ? error : toSyncError(error);
 }
 
 export function isSyncError(error: unknown): error is SyncError {
+  if (typeof error !== 'object' || error === null) {
+    return false;
+  }
+
+  const candidate = error as Partial<SyncError>;
+
   return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    'title' in error &&
-    'message' in error &&
-    'recoverable' in error
+    (candidate.code === 'offline' ||
+      candidate.code === 'timeout' ||
+      candidate.code === 'unauthorized' ||
+      candidate.code === 'unknown') &&
+    typeof candidate.title === 'string' &&
+    typeof candidate.message === 'string' &&
+    typeof candidate.recoverable === 'boolean'
   );
 }
 
@@ -111,35 +144,39 @@ async function requestJson(path: string, init?: RequestInit): Promise<unknown> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-  let response: Response;
-
   try {
-    response = await fetch(`${apiBaseUrl}${path}`, {
+    const response = await fetch(`${apiBaseUrl}${path}`, {
       ...init,
-      headers: getRequestHeaders(init?.headers),
+      headers: getRequestHeaders(init?.headers, init?.body !== undefined),
       signal: controller.signal,
     });
+
+    if (!response.ok) {
+      throw new Error(`sync API failed with ${response.status}`);
+    }
+
+    // Keep the timeout active while the response body is consumed. A server can
+    // send headers and then stall the JSON body indefinitely.
+    return await response.json();
   } catch (error) {
     // On web, an aborted fetch rejects with a DOMException (name 'AbortError'),
     // which is not `instanceof Error`; on native it is a plain Error.
     if (typeof error === 'object' && error !== null && (error as { name?: string }).name === 'AbortError') {
-      throw new Error(`timeout: sync API request exceeded ${REQUEST_TIMEOUT_MS}ms`);
+      throw new Error(`timeout: sync API request exceeded ${REQUEST_TIMEOUT_MS}ms`, {
+        cause: error,
+      });
     }
 
     throw error;
   } finally {
     clearTimeout(timeoutId);
   }
-
-  if (!response.ok) {
-    throw new Error(`sync API failed with ${response.status}`);
-  }
-
-  return response.json();
 }
 
 export function getApiBaseUrl() {
-  return process.env.EXPO_PUBLIC_ATLASTERM_SYNC_URL?.replace(/\/$/, '');
+  const apiBaseUrl = process.env.EXPO_PUBLIC_ATLASTERM_SYNC_URL?.trim().replace(/\/+$/, '');
+
+  return apiBaseUrl || undefined;
 }
 
 export function getApiAuthToken() {
@@ -148,12 +185,15 @@ export function getApiAuthToken() {
   return token || undefined;
 }
 
-function getRequestHeaders(initHeaders?: HeadersInit): Record<string, string> {
+function getRequestHeaders(initHeaders?: HeadersInit, hasBody = false): Record<string, string> {
   const headers: Record<string, string> = {
     Accept: 'application/json',
-    'Content-Type': 'application/json',
   };
   const authToken = getApiAuthToken();
+
+  if (hasBody) {
+    headers['Content-Type'] = 'application/json';
+  }
 
   if (authToken) {
     headers.Authorization = `Bearer ${authToken}`;
@@ -194,7 +234,7 @@ function parseRegisterDeviceResponse(value: unknown): SyncRegisterDeviceResponse
   const response = requireObject(value, 'register');
 
   return {
-    device_id: requireString(response, 'device_id', 'register'),
+    device_id: requireUuidString(response, 'device_id', 'register'),
     server_time: requireString(response, 'server_time', 'register'),
     sync_cursor: requireString(response, 'sync_cursor', 'register'),
   };
@@ -220,7 +260,8 @@ function parsePullResponse(value: unknown): SyncPullResponse {
 
   return {
     changes,
-    device_id: requireString(response, 'device_id', 'pull'),
+    device_id: requireUuidString(response, 'device_id', 'pull'),
+    has_more: requireOptionalBoolean(response, 'has_more', 'pull') ?? false,
     next_cursor: requireString(response, 'next_cursor', 'pull'),
   };
 }
@@ -243,11 +284,39 @@ function requireString(response: Record<string, unknown>, field: string, context
   return value;
 }
 
+function requireUuidString(response: Record<string, unknown>, field: string, context: string): string {
+  const value = requireString(response, field, context);
+
+  if (!isUuidLike(value)) {
+    throw new Error(`invalid sync API ${context} response: ${field} must be a UUID`);
+  }
+
+  return value;
+}
+
 function requireNonNegativeNumber(response: Record<string, unknown>, field: string, context: string): number {
   const value = response[field];
 
-  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
-    throw new Error(`invalid sync API ${context} response: ${field} must be a non-negative number`);
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {
+    throw new Error(`invalid sync API ${context} response: ${field} must be a non-negative integer`);
+  }
+
+  return value;
+}
+
+function requireOptionalBoolean(
+  response: Record<string, unknown>,
+  field: string,
+  context: string,
+): boolean | undefined {
+  const value = response[field];
+
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (typeof value !== 'boolean') {
+    throw new Error(`invalid sync API ${context} response: ${field} must be a boolean`);
   }
 
   return value;
@@ -293,47 +362,29 @@ function getFallbackDevice(request: DeviceRegistrationRequest): RegisteredDevice
   };
 }
 
-export function getFallbackPreview(device: RegisteredDevice, pendingChangeCount = device.connectionQuality === 'offline' ? 2 : 0): SyncPreview {
+export function getFallbackPreview(
+  device: RegisteredDevice,
+  pendingChangeCount = 0,
+): SyncPreview {
   return {
     generatedAt: new Date().toISOString(),
-    profileCount: 3,
-    openSessionCount: 1,
+    profileCount: 0,
+    openSessionCount: 0,
     pendingChangeCount,
     cursor: {
-      workspace: 'C:\\Tools\\agenttool',
-      branch: 'mobile-sync-preview',
-      lastCommand: 'npm run typecheck',
+      workspace: '',
+      branch: '',
+      lastCommand: '',
     },
-    devices: [
-      device,
-      {
-        id: 'desktop-primary',
-        name: 'JoeSSH Desktop',
-        platform: 'windows',
-        registeredAt: new Date(Date.now() - 1000 * 60 * 34).toISOString(),
-        connectionQuality: 'online',
-      },
-    ],
-    emergencyChannels: [
-      {
-        id: 'relay',
-        label: 'Relay Connect',
-        detail: 'Route a short-lived terminal handoff through the last trusted desktop.',
-        availableOffline: false,
-      },
-      {
-        id: 'local-cache',
-        label: 'Cached Key',
-        detail: 'Open cached profiles and recovery notes while the network is down.',
-        availableOffline: true,
-      },
-    ],
+    devices: [device],
+    emergencyChannels: [],
   };
 }
 
-function mapRegisteredDevice(response: SyncRegisterDeviceResponse, request: DeviceRegistrationRequest): RegisteredDevice {
-  rememberedRegisteredDeviceId = response.device_id;
-
+function mapRegisteredDevice(
+  response: SyncRegisterDeviceResponse,
+  request: DeviceRegistrationRequest,
+): RegisteredDevice {
   return {
     id: response.device_id,
     name: request.displayName,
@@ -345,28 +396,40 @@ function mapRegisteredDevice(response: SyncRegisterDeviceResponse, request: Devi
 }
 
 export async function registerDevice(): Promise<RegisteredDevice> {
-  const installId = Constants.sessionId ?? `mobile-${Platform.OS}`;
+  const installId = await getOrCreateInstallId();
   const request: DeviceRegistrationRequest = {
     installId,
     displayName: Constants.deviceName ?? 'JoeSSH Mobile',
     platform: normalizePlatform(Platform.OS),
   };
-  const existingDeviceId = isUuidLike(installId) ? installId : rememberedRegisteredDeviceId ?? installId;
+  const apiBaseUrl = getApiBaseUrl();
+  const storedRegistration = apiBaseUrl ? await getStoredRegistration(apiBaseUrl) : undefined;
+  const existingDeviceId = storedRegistration?.deviceId ?? installId;
 
   await delay(250);
 
   try {
-    const response = parseRegisterDeviceResponse(await requestJson('/v1/devices/register', {
-      body: JSON.stringify({
-        ...(isUuidLike(existingDeviceId) ? { device_id: existingDeviceId } : {}),
-        platform: request.platform,
-        app_version: Constants.expoConfig?.version ?? '0.1.0',
-        display_name: request.displayName,
+    const response = parseRegisterDeviceResponse(
+      await requestJson('/v1/devices/register', {
+        body: JSON.stringify({
+          ...(isUuidLike(existingDeviceId) ? { device_id: existingDeviceId } : {}),
+          platform: request.platform,
+          app_version: Constants.expoConfig?.version ?? '0.1.0',
+          display_name: request.displayName,
+        }),
+        method: 'POST',
       }),
-      method: 'POST',
-    }));
+    );
 
-    return mapRegisteredDevice(response, request);
+    const registeredDevice = mapRegisteredDevice(response, request);
+    const device =
+      storedRegistration?.deviceId === registeredDevice.id
+        ? { ...registeredDevice, syncCursor: storedRegistration.syncCursor }
+        : registeredDevice;
+
+    await persistRegistration(apiBaseUrl, device.id, device.syncCursor ?? '0');
+
+    return device;
   } catch (error) {
     if (!getApiBaseUrl()) {
       return getFallbackDevice(request);
@@ -386,29 +449,34 @@ export async function pushMobilePresenceCheckpoint(device: RegisteredDevice): Pr
   }
 
   try {
-    const response = parsePushResponse(await requestJson('/v1/sync/push', {
-      body: JSON.stringify({
-        device_id: device.id,
-        base_cursor: device.syncCursor ?? '0',
-        changes: [
-          {
-            id: createChangeId(),
-            entity_type: 'mobile_presence',
-            entity_id: device.id,
-            operation: 'update',
-            payload: {
-              client: 'atlasterm-mobile',
-              connection_quality: device.connectionQuality,
-              device_name: device.name,
-              platform: normalizePlatform(device.platform),
-              preview_intent: 'pull_sync_preview',
+    const pendingPresence = await getOrCreatePendingPresence(device);
+    const response = parsePushResponse(
+      await requestJson('/v1/sync/push', {
+        body: JSON.stringify({
+          device_id: device.id,
+          base_cursor: device.syncCursor ?? '0',
+          changes: [
+            {
+              id: pendingPresence.changeId,
+              entity_type: 'mobile_presence',
+              entity_id: device.id,
+              operation: 'update',
+              payload: {
+                client: 'atlasterm-mobile',
+                connection_quality: device.connectionQuality,
+                device_name: device.name,
+                platform: normalizePlatform(device.platform),
+                preview_intent: 'pull_sync_preview',
+              },
+              client_time: pendingPresence.clientTime,
             },
-            client_time: new Date().toISOString(),
-          },
-        ],
+          ],
+        }),
+        method: 'POST',
       }),
-      method: 'POST',
-    }));
+    );
+
+    await clearPendingPresence(pendingPresence);
 
     return {
       accepted: response.accepted,
@@ -424,25 +492,54 @@ export async function fetchSyncPreview(deviceId: string, sinceCursor = '0'): Pro
   await delay(350);
 
   try {
-    const response = parsePullResponse(await requestJson(
-      `/v1/sync/pull?device_id=${encodeURIComponent(deviceId)}&since=${encodeURIComponent(sinceCursor)}`,
-    ));
+    const changes: unknown[] = [];
+    let cursor = sinceCursor;
+    let response: SyncPullResponse | undefined;
+
+    for (let page = 0; page < MAX_PULL_PAGES; page += 1) {
+      response = parsePullResponse(
+        await requestJson(
+          `/v1/sync/pull?device_id=${encodeURIComponent(deviceId)}&since=${encodeURIComponent(cursor)}`,
+        ),
+      );
+
+      if (response.device_id !== deviceId) {
+        throw new Error('invalid sync API pull response: device_id does not match the requested device');
+      }
+
+      changes.push(...response.changes);
+
+      if (!response.has_more) {
+        break;
+      }
+
+      if (response.next_cursor === cursor) {
+        throw new Error('invalid sync API pull response: paginated cursor did not advance');
+      }
+
+      cursor = response.next_cursor;
+      response = undefined;
+    }
+
+    if (!response) {
+      throw new Error(`sync API pull exceeded ${MAX_PULL_PAGES} pages`);
+    }
+
     const liveDevice = getFallbackDevice({
       installId: response.device_id,
       displayName: Constants.deviceName ?? 'JoeSSH Mobile',
       platform: normalizePlatform(Platform.OS),
     });
 
-    return {
-      ...getFallbackPreview({ ...liveDevice, connectionQuality: 'online' }, response.changes.length),
-      cursor: {
-        workspace: 'C:\\Tools\\agenttool',
-        branch: 'sync-api',
-        lastCommand: `next cursor ${response.next_cursor}`,
-      },
+    const preview: SyncPreview = {
+      ...getFallbackPreview({ ...liveDevice, connectionQuality: 'online' }, changes.length),
       generatedAt: new Date().toISOString(),
       syncCursor: response.next_cursor,
     };
+
+    await persistRegistration(getApiBaseUrl(), deviceId, response.next_cursor);
+
+    return preview;
   } catch (error) {
     const fallbackDevice = getFallbackDevice({
       installId: deviceId,
@@ -460,6 +557,169 @@ export async function fetchSyncPreview(deviceId: string, sinceCursor = '0'): Pro
 
 function isUuidLike(value: string) {
   return UUID_PATTERN.test(value);
+}
+
+async function getOrCreateInstallId() {
+  if (rememberedInstallId) {
+    return rememberedInstallId;
+  }
+
+  if (rememberedInstallIdPromise) {
+    return rememberedInstallIdPromise;
+  }
+
+  rememberedInstallIdPromise = (async () => {
+    try {
+      const storedInstallId = await AsyncStorage.getItem(MOBILE_SYNC_INSTALL_ID_STORAGE_KEY);
+
+      if (storedInstallId && isUuidLike(storedInstallId)) {
+        rememberedInstallId = storedInstallId;
+        return storedInstallId;
+      }
+    } catch {
+      // Storage is best effort; a runtime identifier still keeps the flow usable.
+    }
+
+    const installId = createChangeId();
+    rememberedInstallId = installId;
+
+    try {
+      await AsyncStorage.setItem(MOBILE_SYNC_INSTALL_ID_STORAGE_KEY, installId);
+    } catch {
+      // The in-memory ID remains stable for this runtime.
+    }
+
+    return installId;
+  })();
+
+  try {
+    return await rememberedInstallIdPromise;
+  } finally {
+    rememberedInstallIdPromise = undefined;
+  }
+}
+
+async function getStoredRegistration(apiBaseUrl: string) {
+  if (rememberedRegistration?.apiBaseUrl === apiBaseUrl) {
+    return rememberedRegistration;
+  }
+
+  try {
+    const value = await AsyncStorage.getItem(MOBILE_SYNC_REGISTRATION_STORAGE_KEY);
+
+    if (!value) {
+      return undefined;
+    }
+
+    const candidate = JSON.parse(value) as Partial<StoredSyncRegistration>;
+
+    if (
+      candidate.apiBaseUrl !== apiBaseUrl ||
+      typeof candidate.deviceId !== 'string' ||
+      !isUuidLike(candidate.deviceId) ||
+      typeof candidate.syncCursor !== 'string' ||
+      candidate.syncCursor.length === 0
+    ) {
+      return undefined;
+    }
+
+    rememberedRegistration = candidate as StoredSyncRegistration;
+    return rememberedRegistration;
+  } catch {
+    return undefined;
+  }
+}
+
+async function persistRegistration(apiBaseUrl: string | undefined, deviceId: string, syncCursor: string) {
+  if (!apiBaseUrl || !isUuidLike(deviceId) || syncCursor.length === 0) {
+    return;
+  }
+
+  const registration: StoredSyncRegistration = {
+    apiBaseUrl,
+    deviceId,
+    syncCursor,
+  };
+  rememberedRegistration = registration;
+
+  try {
+    await AsyncStorage.setItem(MOBILE_SYNC_REGISTRATION_STORAGE_KEY, JSON.stringify(registration));
+  } catch {
+    // Registration remains available in memory when durable storage is unavailable.
+  }
+}
+
+async function getOrCreatePendingPresence(device: RegisteredDevice): Promise<StoredPendingPresence> {
+  const apiBaseUrl = getApiBaseUrl();
+  const baseCursor = device.syncCursor ?? '0';
+
+  if (!apiBaseUrl) {
+    throw getOfflineError();
+  }
+
+  if (
+    rememberedPendingPresence?.apiBaseUrl === apiBaseUrl &&
+    rememberedPendingPresence.deviceId === device.id &&
+    rememberedPendingPresence.baseCursor === baseCursor
+  ) {
+    return rememberedPendingPresence;
+  }
+
+  try {
+    const value = await AsyncStorage.getItem(MOBILE_SYNC_PENDING_PRESENCE_STORAGE_KEY);
+
+    if (value) {
+      const candidate = JSON.parse(value) as Partial<StoredPendingPresence>;
+
+      if (
+        candidate.apiBaseUrl === apiBaseUrl &&
+        candidate.deviceId === device.id &&
+        candidate.baseCursor === baseCursor &&
+        typeof candidate.changeId === 'string' &&
+        isUuidLike(candidate.changeId) &&
+        typeof candidate.clientTime === 'string' &&
+        !Number.isNaN(Date.parse(candidate.clientTime))
+      ) {
+        rememberedPendingPresence = candidate as StoredPendingPresence;
+        return rememberedPendingPresence;
+      }
+    }
+  } catch {
+    // A fresh in-memory checkpoint can still be sent when storage is unavailable.
+  }
+
+  const pendingPresence: StoredPendingPresence = {
+    apiBaseUrl,
+    baseCursor,
+    changeId: createChangeId(),
+    clientTime: new Date().toISOString(),
+    deviceId: device.id,
+  };
+  rememberedPendingPresence = pendingPresence;
+
+  try {
+    await AsyncStorage.setItem(MOBILE_SYNC_PENDING_PRESENCE_STORAGE_KEY, JSON.stringify(pendingPresence));
+  } catch {
+    // The pending ID remains reusable for retries during this runtime.
+  }
+
+  return pendingPresence;
+}
+
+async function clearPendingPresence(pendingPresence: StoredPendingPresence) {
+  if (rememberedPendingPresence?.changeId === pendingPresence.changeId) {
+    rememberedPendingPresence = undefined;
+  }
+
+  try {
+    const value = await AsyncStorage.getItem(MOBILE_SYNC_PENDING_PRESENCE_STORAGE_KEY);
+
+    if (value && (JSON.parse(value) as Partial<StoredPendingPresence>).changeId === pendingPresence.changeId) {
+      await AsyncStorage.removeItem(MOBILE_SYNC_PENDING_PRESENCE_STORAGE_KEY);
+    }
+  } catch {
+    // An acknowledged checkpoint never needs to block the UI on storage cleanup.
+  }
 }
 
 function createChangeId() {
@@ -480,8 +740,8 @@ function createChangeId() {
 export function getOfflineError(): SyncError {
   return {
     code: 'offline',
-    title: 'Sync service offline',
-    message: 'No live sync endpoint is configured. You can still inspect cached context or open an emergency connection path.',
+    title: 'Sync unavailable',
+    message: 'No live sync endpoint is configured. No live or cached workspace data was loaded.',
     recoverable: true,
   };
 }

@@ -13,12 +13,9 @@ const offlineFallbackNativeSmokeTestIds = [
   'sync-error-offline-fallback',
   'sync-preview-workspace',
   'sync-preview-command',
+  'emergency-channels-empty',
 ];
-const offlineFallbackChannelIds = ['relay', 'local-cache'];
-const offlineFallbackMaestroTestIds = [
-  ...offlineFallbackNativeSmokeTestIds,
-  ...offlineFallbackChannelIds.map((channelId) => `emergency-channel-${channelId}`),
-];
+const offlineFallbackMaestroTestIds = [...offlineFallbackNativeSmokeTestIds];
 const localeSpecificSmokeText = [
   'Offline fallback active',
   'Sync service offline',
@@ -58,7 +55,7 @@ function checkMobileConfig() {
   passIf(expo.slug === 'atlasterm-mobile', 'Expo slug is stable');
   passIf(expo.scheme === 'atlasterm', 'Deep-link scheme is configured');
   passIf(expo.userInterfaceStyle === 'automatic', 'OS light/dark appearance is automatic');
-  passIf(expo.orientation === 'portrait', 'Native smoke uses portrait orientation');
+  passIf(expo.orientation === 'default', 'Native layout supports portrait and landscape orientation');
   passIf(expo.ios?.bundleIdentifier === 'com.atlasterm.mobile', 'iOS bundle identifier is configured');
   passIf(expo.android?.package === 'com.atlasterm.mobile', 'Android package identifier is configured');
   passIf(Array.isArray(expo.plugins) && expo.plugins.includes('expo-router'), 'Expo Router plugin is enabled');
@@ -106,7 +103,10 @@ function checkRuntimeHooks() {
   for (const testId of offlineFallbackNativeSmokeTestIds) {
     passIf(homeScreenSource.includes(testId), `offline fallback native smoke hook '${testId}' exists`);
   }
-  passIf(homeScreenSource.includes('emergency-channel-${channel.id}'), 'Emergency channel rows expose stable native smoke hooks');
+  passIf(
+    homeScreenSource.includes('emergency-channel-${channel.id}'),
+    'Emergency channel rows expose stable native smoke hooks',
+  );
 
   passIf(homeScreenSource.includes('useColorScheme'), 'Home screen reads native color scheme');
 
@@ -139,7 +139,10 @@ function checkNativeSmokeFlowContract() {
   const maestroSmokeSource = readFileSync(maestroSmokePath, 'utf8');
   const hasNoEndpointSyncUrl = !process.env.EXPO_PUBLIC_ATLASTERM_SYNC_URL?.trim();
 
-  passIf(maestroSmokeSource.includes('launchApp:') && maestroSmokeSource.includes('clearState: true'), 'Maestro smoke launches with a clean app state');
+  passIf(
+    maestroSmokeSource.includes('launchApp:') && maestroSmokeSource.includes('clearState: true'),
+    'Maestro smoke launches with a clean app state',
+  );
   passIf(
     appearsBefore(maestroSmokeSource, 'id: "sync-status-panel"', 'id: "sync-primary-action"'),
     'Maestro smoke checks status before the primary action',
@@ -153,8 +156,8 @@ function checkNativeSmokeFlowContract() {
     'Maestro smoke verifies offline fallback status, preview, and recovery routes after tapping',
   );
   passIf(
-    offlineFallbackChannelIds.every((channelId) => containsScrollUntilVisibleFor(maestroSmokeSource, `emergency-channel-${channelId}`)),
-    'Maestro smoke scrolls to below-the-fold recovery routes before asserting them',
+    containsScrollUntilVisibleFor(maestroSmokeSource, 'emergency-channels-empty'),
+    'Maestro smoke scrolls to the honest empty recovery state before asserting it',
   );
   passIf(
     containsScrollUntilVisibleFor(maestroSmokeSource, 'sync-preview-workspace'),
@@ -164,17 +167,32 @@ function checkNativeSmokeFlowContract() {
     localeSpecificSmokeText.every((text) => !maestroSmokeSource.includes(text)),
     'Maestro smoke remains locale-independent by targeting stable native hooks',
   );
-  passIf(homeScreenSource.includes("phase: offlineError ? 'offline' : 'ready'"), 'Home screen maps offline fallback into offline sync phase');
-  passIf(homeScreenSource.includes('getOfflineError()'), 'Home screen renders the offline fallback error panel');
-  passIf(syncServiceSource.includes('return getFallbackDevice(request);'), 'Register device falls back locally without a sync endpoint');
-  passIf(syncServiceSource.includes('return getFallbackPreview(fallbackDevice);'), 'Preview pull falls back locally without a sync endpoint');
   passIf(
-    offlineFallbackChannelIds.every((channelId) => syncServiceSource.includes(`id: '${channelId}'`)),
-    'Fallback preview includes the recovery route IDs asserted by native smoke',
+    /phase:\s*offlineError\s*\?\s*["']offline["']\s*:\s*["']ready["']/.test(homeScreenSource),
+    'Home screen maps offline fallback into offline sync phase',
   );
-  passIf(syncServiceSource.includes('accepted: 0') && syncServiceSource.includes("syncCursor: device.syncCursor ?? '0'"), 'Presence push is skipped without a sync endpoint');
+  passIf(homeScreenSource.includes('getOfflineError()'), 'Home screen renders the offline fallback error panel');
+  passIf(
+    syncServiceSource.includes('return getFallbackDevice(request);'),
+    'Register device falls back locally without a sync endpoint',
+  );
+  passIf(
+    syncServiceSource.includes('return getFallbackPreview(fallbackDevice);'),
+    'Preview pull falls back locally without a sync endpoint',
+  );
+  passIf(
+    syncServiceSource.includes('emergencyChannels: []'),
+    'Fallback preview does not fabricate recovery routes',
+  );
+  passIf(
+    syncServiceSource.includes('accepted: 0') && syncServiceSource.includes("syncCursor: device.syncCursor ?? '0'"),
+    'Presence push is skipped without a sync endpoint',
+  );
   if (!hasNoEndpointSyncUrl) {
-    warn('Native smoke is configured for the no-endpoint offline fallback path', 'EXPO_PUBLIC_ATLASTERM_SYNC_URL is set');
+    warn(
+      'Native smoke is configured for the no-endpoint offline fallback path',
+      'EXPO_PUBLIC_ATLASTERM_SYNC_URL is set',
+    );
   } else {
     passIf(true, 'Native smoke uses the no-endpoint offline fallback path');
   }
@@ -264,7 +282,10 @@ function findCommand(command) {
   const lookup = process.platform === 'win32' ? 'where.exe' : 'which';
 
   try {
-    return execFileSync(lookup, [command], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    return execFileSync(lookup, [command], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
   } catch {
     return '';
   }

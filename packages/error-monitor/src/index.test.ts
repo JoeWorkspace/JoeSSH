@@ -6,6 +6,7 @@ import {
   getFIDRating,
   getCLSRating,
   getFCPRating,
+  getBrowserTelemetryConsentStorage,
   getTTFBRating,
   getINPRating,
   isTelemetryOptedIn,
@@ -91,6 +92,24 @@ describe('createErrorMonitor', () => {
     expect(writeTelemetryConsent(undefined, true)).toBe(false);
   });
 
+  it('reads browser consent storage only when it is available and accessible', () => {
+    expect(getBrowserTelemetryConsentStorage()).toBeUndefined();
+
+    vi.stubGlobal('window', {
+      get localStorage() {
+        throw new Error('storage blocked');
+      },
+    });
+    expect(getBrowserTelemetryConsentStorage()).toBeUndefined();
+
+    const storage = {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+    };
+    vi.stubGlobal('window', { localStorage: storage });
+    expect(getBrowserTelemetryConsentStorage()).toBe(storage);
+  });
+
   it('provides a no-op monitor for telemetry-off application shells', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const monitor = createNoopErrorMonitor();
@@ -144,6 +163,26 @@ describe('createErrorMonitor', () => {
     expect(JSON.parse(fetch.mock.calls[0][1].body)).toMatchObject([{ message: 'allowed after enable' }]);
   });
 
+  it('blocks every state-mutating telemetry API while disabled', () => {
+    const monitor = createErrorMonitor({ app: 'test', version: '1.0.0' });
+    monitor.disable();
+
+    monitor.addBreadcrumb('ssh', 'connect');
+    monitor.setUser('user-1');
+    monitor.setSession('session-1');
+    monitor.setTag('surface', 'desktop');
+    monitor.removeTag('token');
+
+    expect(monitor.install()).toBeUndefined();
+    expect(monitor.trackWebVitals()).toBeUndefined();
+    expect(monitor.getHealthReport()).toMatchObject({
+      breadcrumbCount: 0,
+      queueSize: 0,
+      totalErrors: 0,
+      uniqueGroups: 0,
+    });
+  });
+
   it('redacts sensitive telemetry text before transport', () => {
     const input = [
       'Authorization: Bearer sync-token-123',
@@ -164,6 +203,11 @@ describe('createErrorMonitor', () => {
     expect(redacted).not.toContain('id_ed25519');
     expect(redacted).not.toContain('OPENSSH PRIVATE KEY');
     expect(redacted).toContain('[redacted]');
+  });
+
+  it('redacts Unix paths both at the start of text and after a delimiter', () => {
+    expect(sanitizeTelemetryText('/home/alice/.ssh/id_ed25519')).toBe('[redacted]');
+    expect(sanitizeTelemetryText('open /var/log/auth.log')).toBe('open [redacted]');
   });
 
   it('sanitizes reports, URLs, breadcrumbs, and context values', () => {
@@ -222,6 +266,41 @@ describe('createErrorMonitor', () => {
     expect(payload).toContain('[redacted]');
   });
 
+  it('sanitizes arrays, unsupported values, deep objects, and root URLs', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.stubGlobal('navigator', { userAgent: 'Vitest Browser' });
+    vi.stubGlobal('window', { location: { href: 'https://admin.example.test/' } });
+    const monitor = createErrorMonitor({ app: 'test', version: '1.0.0' });
+
+    monitor.addBreadcrumb('context', 'mixed data', {
+      list: ['safe', 42, true, null, undefined, () => 'private'],
+      nested: {
+        one: {
+          two: {
+            three: {
+              four: {
+                privateValue: 'must not escape',
+              },
+            },
+          },
+        },
+      },
+    });
+    monitor.report('mixed telemetry');
+
+    const report = spy.mock.calls[0][1];
+    expect(report.url).toBe('https://admin.example.test');
+    expect(report.breadcrumbs[0].data.list).toEqual([
+      'safe',
+      42,
+      true,
+      null,
+      undefined,
+      '[redacted]',
+    ]);
+    expect(report.breadcrumbs[0].data.nested.one.two.three.four).toBe('[redacted]');
+  });
+
   it('logs to console when no endpoint is configured', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const monitor = createErrorMonitor({ app: 'test', version: '1.0.0' });
@@ -249,6 +328,18 @@ describe('createErrorMonitor', () => {
     const beaconBody = sendBeacon.mock.calls[0][1];
     expect(beaconBody).toBeInstanceOf(Blob);
     expect((beaconBody as Blob).type).toBe('application/json');
+  });
+
+  it('uses a string beacon body when Blob is unavailable', () => {
+    const sendBeacon = vi.fn().mockReturnValue(true);
+    stubBrowserGlobals({ sendBeacon });
+    vi.stubGlobal('Blob', undefined);
+
+    const monitor = createErrorMonitor({ app: 'test', version: '1.0.0', endpoint });
+    monitor.report('string beacon');
+    monitor.flush();
+
+    expect(sendBeacon).toHaveBeenCalledWith(endpoint, expect.any(String));
   });
 
   it('falls back to fetch when sendBeacon refuses the payload', () => {

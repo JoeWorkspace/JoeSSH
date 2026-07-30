@@ -69,4 +69,31 @@ describe("useCustomConnections", () => {
     const { result } = renderHook(() => useCustomConnections());
     expect(result.current.connections).toEqual([conn("stored")]);
   });
+
+  it("drops hydrated connections that collide with reserved built-ins", () => {
+    localStorage.setItem(
+      CUSTOM_CONNECTIONS_STORAGE_KEY,
+      JSON.stringify([conn("builtin"), conn("personal")]),
+    );
+    const { result } = renderHook(() => useCustomConnections(["builtin"]));
+    expect(result.current.connections).toEqual([conn("personal")]);
+    expect(readStoredCustomConnections()).toEqual([conn("personal")]);
+  });
+
+  it("normalizes fields and rejects invalid additions", () => {
+    const { result } = renderHook(() => useCustomConnections());
+    act(() => {
+      expect(
+        result.current.add({
+          ...conn(" normalized ", " host "),
+          group: " Personal ",
+          tags: [" ssh ", "ssh"],
+        }),
+      ).toBe(true);
+      expect(result.current.add(conn("bad-host", " "))).toBe(false);
+    });
+    expect(result.current.connections).toEqual([
+      conn("normalized", "host"),
+    ]);
+  });
 });

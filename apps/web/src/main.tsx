@@ -1,25 +1,8 @@
-import "./sw-register";
-import {
-  createErrorMonitor,
-  createNoopErrorMonitor,
-  getBrowserTelemetryConsentStorage,
-  isTelemetryOptedIn,
-  readTelemetryConsent,
-  writeTelemetryConsent,
-} from "@atlasterm/error-monitor";
+import './sw-register';
+import { createErrorMonitor, createNoopErrorMonitor, getBrowserTelemetryConsentStorage, isTelemetryOptedIn, readTelemetryConsent, writeTelemetryConsent } from '@atlasterm/error-monitor';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import {
-  Activity,
-  Cloud,
-  Database,
-  FileClock,
-  KeyRound,
-  RefreshCw,
-  ShieldCheck,
-  Smartphone,
-  UsersRound,
-} from 'lucide-react';
+import { Activity, Cloud, Database, FileClock, KeyRound, RefreshCw, ShieldCheck, Smartphone, UsersRound } from 'lucide-react';
 import { SUPPORTED_LOCALES, createLocaleFormatters, type AtlasLocale, type LocaleFormatters } from '@atlasterm/i18n';
 import {
   AdminDataError,
@@ -54,9 +37,11 @@ import {
   formatLastSeen,
   formatClockTime,
   getClockDateTime,
+  formatSnapshotEndpoint,
 } from './helpers';
 import { WebErrorBoundary } from './WebErrorBoundary';
 import './styles.css';
+import './admin-theme.css';
 
 type AdminSnapshotMeta = AdminSnapshotSourceDescriptor & {
   refreshedAt: string;
@@ -69,7 +54,11 @@ type AdminDashboardPendingState = {
 };
 type AdminDashboardState =
   | AdminDashboardPendingState
-  | { phase: 'ready'; meta: AdminSnapshotMeta; snapshot: AdminDashboardSnapshot };
+  | {
+      phase: 'ready';
+      meta: AdminSnapshotMeta;
+      snapshot: AdminDashboardSnapshot;
+    };
 type AdminDashboardNonReadyState = AdminDashboardPendingState;
 type WebTranslator = ReturnType<typeof createWebTranslator>;
 type TelemetryControls = {
@@ -127,11 +116,10 @@ function App({
   telemetry: TelemetryControls;
   t: WebTranslator;
 }) {
-  const [dashboardState, setDashboardState] = React.useState<AdminDashboardState>(() =>
-    createInitialAdminDashboardState(),
-  );
+  const [dashboardState, setDashboardState] = React.useState<AdminDashboardState>(() => createInitialAdminDashboardState());
   const formatters = React.useMemo(() => createLocaleFormatters(locale), [locale]);
   const [activeNavSection, setActiveNavSection] = React.useState<AdminNavSection>(getActiveAdminNavSection);
+  const telemetryDescriptionId = React.useId();
   const refreshTokenRef = React.useRef(0);
   const refreshAbortRef = React.useRef<AbortController | null>(null);
   const dashboardStateRef = React.useRef(dashboardState);
@@ -173,12 +161,7 @@ function App({
 
       setDashboardState({
         lastSuccess,
-        phase:
-          adminErrorCode === 'auth_required'
-            ? 'authRequired'
-            : adminErrorCode === 'empty'
-              ? 'empty'
-              : 'error',
+        phase: adminErrorCode === 'auth_required' ? 'authRequired' : adminErrorCode === 'empty' ? 'empty' : 'error',
         sourceDescriptor,
       });
     } finally {
@@ -224,77 +207,77 @@ function App({
   }
 
   function getNavItemClassName(section: AdminNavSection) {
+    if (dashboardState.phase !== 'ready') {
+      return 'navItem disabled';
+    }
+
     return activeNavSection === section ? 'navItem active' : 'navItem';
   }
 
   const isDashboardLoading = dashboardState.phase === 'loading';
+  const isDashboardReady = dashboardState.phase === 'ready';
+  const unavailableNavigationProps = isDashboardReady
+    ? {}
+    : {
+        'aria-disabled': true as const,
+        onClick: (event: React.MouseEvent<HTMLAnchorElement>) => event.preventDefault(),
+      };
 
   return (
     <div className="shell">
       <a className="skipLink" href="#main-content">
         {t.shared('web.skipToContent')}
       </a>
-      <div className="sidebar">
+      <header className="sidebar">
         <div className="brand">
           <Cloud size={24} aria-hidden="true" />
           <span>JoeSSH</span>
         </div>
         <nav aria-labelledby="admin-navigation-title">
-          <h2 className="visuallyHidden" id="admin-navigation-title">{t.shared('web.adminNavigation')}</h2>
-          <a className={getNavItemClassName('sync')} href="#sync" aria-current={activeNavSection === 'sync' ? 'location' : undefined}>
+          <h2 className="visuallyHidden" id="admin-navigation-title">
+            {t.shared('web.adminNavigation')}
+          </h2>
+          <a className={getNavItemClassName('sync')} href="#sync" aria-current={isDashboardReady && activeNavSection === 'sync' ? 'location' : undefined} {...unavailableNavigationProps}>
             <Activity size={18} aria-hidden="true" />
             {t.local('web.nav.sync')}
           </a>
-          <a className={getNavItemClassName('devices')} href="#devices" aria-current={activeNavSection === 'devices' ? 'location' : undefined}>
+          <a className={getNavItemClassName('devices')} href="#devices" aria-current={isDashboardReady && activeNavSection === 'devices' ? 'location' : undefined} {...unavailableNavigationProps}>
             <Smartphone size={18} aria-hidden="true" />
             {t.local('web.nav.devices')}
           </a>
-          <a className={getNavItemClassName('team')} href="#team" aria-current={activeNavSection === 'team' ? 'location' : undefined}>
+          <a className={getNavItemClassName('team')} href="#team" aria-current={isDashboardReady && activeNavSection === 'team' ? 'location' : undefined} {...unavailableNavigationProps}>
             <UsersRound size={18} aria-hidden="true" />
             {t.local('web.nav.team')}
           </a>
-          <a className={getNavItemClassName('audit')} href="#audit" aria-current={activeNavSection === 'audit' ? 'location' : undefined}>
+          <a className={getNavItemClassName('audit')} href="#audit" aria-current={isDashboardReady && activeNavSection === 'audit' ? 'location' : undefined} {...unavailableNavigationProps}>
             <FileClock size={18} aria-hidden="true" />
             {t.local('web.nav.audit')}
           </a>
-          <a className={getNavItemClassName('storage')} href="#storage" aria-current={activeNavSection === 'storage' ? 'location' : undefined}>
+          <a className={getNavItemClassName('storage')} href="#storage" aria-current={isDashboardReady && activeNavSection === 'storage' ? 'location' : undefined} {...unavailableNavigationProps}>
             <Database size={18} aria-hidden="true" />
             {t.local('web.nav.storage')}
           </a>
         </nav>
-      </div>
+      </header>
 
-      <main
-        className="workspace"
-        id="main-content"
-        aria-busy={isDashboardLoading}
-        aria-labelledby="admin-workspace-title"
-        tabIndex={-1}
-      >
+      <main className="workspace" id="main-content" aria-busy={isDashboardLoading} aria-labelledby="admin-workspace-title" tabIndex={-1}>
         <header className="topbar">
-          <div>
-            <p className="eyebrow">{t.shared('web.adminConsole')}</p>
+          <div className="topbarTitle">
+            <div className="eyebrowRow">
+              <p className="eyebrow">{t.shared('web.adminConsole')}</p>
+              <span className="readOnlyBadge">{t.local('web.scope.viewer')}</span>
+            </div>
             <h1 id="admin-workspace-title">{t.shared('web.teamOperations')}</h1>
           </div>
           <div className="topbarActions">
-            <LanguageSelector
-              currentLocale={locale}
-              languageChoice={languageChoice}
-              onChange={handleLanguageChange}
-              t={t}
-            />
-            <label
-              className="telemetryToggle"
-              title={!telemetry.available ? t.shared('web.telemetryUnavailable') : undefined}
-            >
+            <LanguageSelector currentLocale={locale} languageChoice={languageChoice} onChange={handleLanguageChange} t={t} />
+            <label className="telemetryToggle" title={telemetry.available ? t.shared('desktop.telemetryPrivacyHint') : t.shared('web.telemetryUnavailable')}>
               <span>{t.shared('web.telemetryErrors')}</span>
-              <input
-                checked={telemetry.enabled}
-                disabled={!telemetry.available}
-                onChange={handleTelemetryChange}
-                type="checkbox"
-              />
+              <input aria-describedby={telemetryDescriptionId} checked={telemetry.enabled} disabled={!telemetry.available} onChange={handleTelemetryChange} type="checkbox" />
             </label>
+            <span className="visuallyHidden" id={telemetryDescriptionId}>
+              {telemetry.available ? t.shared('desktop.telemetryPrivacyHint') : t.shared('web.telemetryUnavailable')}
+            </span>
             <button
               className="iconButton"
               type="button"
@@ -321,15 +304,7 @@ function App({
   );
 }
 
-const DashboardContent = React.memo(function DashboardContent({
-  formatters,
-  state,
-  t,
-}: {
-  formatters: LocaleFormatters;
-  state: AdminDashboardState;
-  t: ReturnType<typeof createWebTranslator>;
-}) {
+const DashboardContent = React.memo(function DashboardContent({ formatters, state, t }: { formatters: LocaleFormatters; state: AdminDashboardState; t: ReturnType<typeof createWebTranslator> }) {
   if (state.phase !== 'ready') {
     return (
       <>
@@ -344,35 +319,51 @@ const DashboardContent = React.memo(function DashboardContent({
   return (
     <>
       <AdminSnapshotStatusBar formatters={formatters} state={state} t={t} />
-      <h2 className="visuallyHidden" id="admin-metrics-title">{t.shared('web.teamMetrics')}</h2>
-      <section className="metrics" id="sync" role="list" aria-labelledby="admin-metrics-title">
+      <h2 className="visuallyHidden" id="admin-metrics-title">
+        {t.shared('web.teamMetrics')}
+      </h2>
+      <div className="metrics" id="sync" role="list" aria-labelledby="admin-metrics-title">
         <Metric icon={<UsersRound size={22} />} label={t.shared('web.activeMembers')} value={formatters.number(snapshot.metrics.activeMembers)} />
         <Metric icon={<KeyRound size={22} />} label={t.shared('web.rolesConfigured')} value={formatters.number(snapshot.metrics.rolesConfigured)} />
         <Metric icon={<ShieldCheck size={22} />} label={t.shared('web.healthyDevices')} value={formatters.number(snapshot.metrics.healthyDevices)} />
         <Metric icon={<Activity size={22} />} label={t.shared('web.auditEventsToday')} value={formatters.number(snapshot.metrics.auditEventsToday)} />
-      </section>
+      </div>
 
       <section className="dashboardGrid" id="team" aria-labelledby="admin-team-overview-title">
-        <h2 className="visuallyHidden" id="admin-team-overview-title">{t.shared('web.teamOverview')}</h2>
+        <h2 className="visuallyHidden" id="admin-team-overview-title">
+          {t.shared('web.teamOverview')}
+        </h2>
         <section className="panel" aria-labelledby="admin-members-title" aria-describedby="admin-members-source">
           <div className="panelHeader">
             <h2 id="admin-members-title">{t.shared('web.members')}</h2>
-            <span id="admin-members-source">
-              {t.local(meta.source === 'live' ? 'web.source.live' : 'web.source.fixture')}
-            </span>
+            <span id="admin-members-source">{t.local(meta.source === 'live' ? 'web.source.live' : 'web.source.fixture')}</span>
           </div>
-          <h3 className="visuallyHidden" id="admin-members-table-title">{t.local('web.table.teamMembers')}</h3>
-          <div className="table memberTable" role="table" aria-labelledby="admin-members-table-title" aria-colcount={4} aria-rowcount={snapshot.members.length + 1}>
-            <div className="row headerRow" role="row" aria-rowindex={1}>
-              <span role="columnheader" aria-colindex={1}>{t.shared('web.member')}</span>
-              <span role="columnheader" aria-colindex={2}>{t.shared('web.role')}</span>
-              <span role="columnheader" aria-colindex={3}>{t.shared('web.status')}</span>
-              <span role="columnheader" aria-colindex={4}>{t.shared('web.devices')}</span>
+          <h3 className="visuallyHidden" id="admin-members-table-title">
+            {t.local('web.table.teamMembers')}
+          </h3>
+          {snapshot.members.length === 0 ? (
+            <CollectionEmpty t={t} />
+          ) : (
+            <div className="table memberTable" role="table" aria-labelledby="admin-members-table-title" aria-colcount={4} aria-rowcount={snapshot.members.length + 1}>
+              <div className="row headerRow" role="row" aria-rowindex={1}>
+                <span role="columnheader" aria-colindex={1}>
+                  {t.shared('web.member')}
+                </span>
+                <span role="columnheader" aria-colindex={2}>
+                  {t.shared('web.role')}
+                </span>
+                <span role="columnheader" aria-colindex={3}>
+                  {t.shared('web.status')}
+                </span>
+                <span role="columnheader" aria-colindex={4}>
+                  {t.shared('web.devices')}
+                </span>
+              </div>
+              {snapshot.members.map((member, index) => (
+                <MemberRow formatters={formatters} key={member.id} member={member} rowIndex={index + 2} t={t} />
+              ))}
             </div>
-            {snapshot.members.map((member, index) => (
-              <MemberRow formatters={formatters} key={member.id} member={member} rowIndex={index + 2} t={t} />
-            ))}
-          </div>
+          )}
         </section>
 
         <section className="panel" aria-labelledby="admin-roles-title" aria-describedby="admin-roles-summary">
@@ -380,12 +371,18 @@ const DashboardContent = React.memo(function DashboardContent({
             <h2 id="admin-roles-title">{t.shared('web.roles')}</h2>
             <span id="admin-roles-summary">{t.shared('web.accessModel')}</span>
           </div>
-          <h3 className="visuallyHidden" id="admin-role-permissions-title">{t.shared('web.rolePermissions')}</h3>
-          <div className="roleList" role="list" aria-labelledby="admin-role-permissions-title">
-            {snapshot.roles.map((role) => (
-              <RoleItem formatters={formatters} key={role.id} role={role} t={t} />
-            ))}
-          </div>
+          <h3 className="visuallyHidden" id="admin-role-permissions-title">
+            {t.shared('web.rolePermissions')}
+          </h3>
+          {snapshot.roles.length === 0 ? (
+            <CollectionEmpty t={t} />
+          ) : (
+            <div className="roleList" role="list" aria-labelledby="admin-role-permissions-title">
+              {snapshot.roles.map((role) => (
+                <RoleItem formatters={formatters} key={role.id} role={role} t={t} />
+              ))}
+            </div>
+          )}
         </section>
       </section>
 
@@ -408,24 +405,20 @@ const AdminSnapshotStatusBar = React.memo(function AdminSnapshotStatusBar({
   const sourceDescriptor = state.phase === 'ready' ? state.meta : state.sourceDescriptor;
   const lastSuccess = getDashboardLastSuccess(state);
   const healthKey = getAdminSnapshotHealthKey(state.phase);
-  const sourceLabel =
-    state.phase === 'ready'
-      ? t.local(sourceDescriptor.source === 'live' ? 'web.source.live' : 'web.source.fixture')
-      : t.local(healthKey);
-  const endpointLabel =
-    sourceDescriptor.snapshotUrl === null ? t.local('web.snapshot.fixtureEndpoint') : sourceDescriptor.snapshotUrl;
+  const sourceLabel = state.phase === 'ready' ? t.local(sourceDescriptor.source === 'live' ? 'web.source.live' : 'web.source.fixture') : t.local(healthKey);
+  const endpointLabel = formatSnapshotEndpoint(sourceDescriptor.snapshotUrl, t.local('web.snapshot.fixtureEndpoint'));
   const refreshedAt = state.phase === 'ready' ? state.meta.refreshedAt : lastSuccess?.refreshedAt;
 
   return (
     <section className="snapshotStatus" aria-labelledby={statusTitleId}>
-      <h2 className="visuallyHidden" id={statusTitleId}>{t.local('web.snapshot.status')}</h2>
+      <h2 className="visuallyHidden" id={statusTitleId}>
+        {t.local('web.snapshot.status')}
+      </h2>
       <dl>
         <div>
           <dt>{t.local('web.snapshot.status')}</dt>
           <dd>
-            <mark className={getAdminSnapshotHealthClassName(state.phase)}>
-              {t.local(healthKey)}
-            </mark>
+            <mark className={getAdminSnapshotHealthClassName(state.phase)}>{t.local(healthKey)}</mark>
           </dd>
         </div>
         <div>
@@ -438,13 +431,7 @@ const AdminSnapshotStatusBar = React.memo(function AdminSnapshotStatusBar({
         </div>
         <div>
           <dt>{state.phase === 'ready' ? t.local('web.snapshot.lastRefreshed') : t.local('web.snapshot.lastSuccess')}</dt>
-          <dd>
-            {refreshedAt ? (
-              <time dateTime={refreshedAt}>{formatSnapshotDateTime(refreshedAt, formatters)}</time>
-            ) : (
-              t.local('web.snapshot.notRefreshed')
-            )}
-          </dd>
+          <dd>{refreshedAt ? <time dateTime={refreshedAt}>{formatSnapshotDateTime(refreshedAt, formatters)}</time> : t.local('web.snapshot.notRefreshed')}</dd>
         </div>
       </dl>
     </section>
@@ -461,10 +448,7 @@ const DashboardStatePanel = React.memo(function DashboardStatePanel({
   t: ReturnType<typeof createWebTranslator>;
 }) {
   const panelRef = React.useRef<HTMLElement>(null);
-  const stateCopyByPhase: Record<
-    AdminDashboardNonReadyState['phase'],
-    { labelKey: LocalMessageKey; message: string; titleKey: LocalMessageKey }
-  > = {
+  const stateCopyByPhase: Record<AdminDashboardNonReadyState['phase'], { labelKey: LocalMessageKey; message: string; titleKey: LocalMessageKey }> = {
     authRequired: {
       labelKey: 'web.state.auth.label',
       message: t.local('web.state.auth.message'),
@@ -504,15 +488,14 @@ const DashboardStatePanel = React.memo(function DashboardStatePanel({
 
   return (
     <section className="statePanel" role={stateRole} aria-labelledby={`${labelId} ${titleId}`} aria-describedby={messageId} aria-live={liveMode} aria-atomic="true" tabIndex={-1} ref={panelRef}>
-      <span className="stateBadge" id={labelId}>{label}</span>
+      <span className="stateBadge" id={labelId}>
+        {label}
+      </span>
       <h2 id={titleId}>{title}</h2>
       <p id={messageId}>{stateCopy.message}</p>
       {state.lastSuccess ? (
         <p className="statePanelMeta">
-          {t.local('web.snapshot.lastSuccess')}:{' '}
-          <time dateTime={state.lastSuccess.refreshedAt}>
-            {formatSnapshotDateTime(state.lastSuccess.refreshedAt, formatters)}
-          </time>
+          {t.local('web.snapshot.lastSuccess')}: <time dateTime={state.lastSuccess.refreshedAt}>{formatSnapshotDateTime(state.lastSuccess.refreshedAt, formatters)}</time>
         </p>
       ) : null}
     </section>
@@ -553,7 +536,11 @@ function getAdminSnapshotHealthClassName(phase: AdminDashboardState['phase']) {
 
 function formatSnapshotDateTime(value: string, formatters: LocaleFormatters) {
   try {
-    return formatters.dateTime(value, { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' });
+    return formatters.dateTime(value, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+      timeZone: 'UTC',
+    });
   } catch {
     return value;
   }
@@ -596,20 +583,14 @@ const MemberRow = React.memo(function MemberRow({
           {statusLabel}
         </mark>
       </span>
-      <span id={deviceCountId} role="cell" aria-colindex={4} data-label={t.shared('web.devices')}>{deviceCountLabel}</span>
+      <span id={deviceCountId} role="cell" aria-colindex={4} data-label={t.shared('web.devices')}>
+        {deviceCountLabel}
+      </span>
     </div>
   );
 });
 
-const RoleItem = React.memo(function RoleItem({
-  formatters,
-  role,
-  t,
-}: {
-  formatters: LocaleFormatters;
-  role: RoleRecord;
-  t: ReturnType<typeof createWebTranslator>;
-}) {
+const RoleItem = React.memo(function RoleItem({ formatters, role, t }: { formatters: LocaleFormatters; role: RoleRecord; t: ReturnType<typeof createWebTranslator> }) {
   const nameKey = getRoleMessageKey(role.name);
   const scopeKey = getScopeMessageKey(role.scope);
   const risk = getRoleRiskMeta(role.risk);
@@ -619,33 +600,29 @@ const RoleItem = React.memo(function RoleItem({
   const riskId = React.useId();
 
   return (
-    <article className="roleItem" role="listitem" aria-labelledby={`${nameId} ${scopeId} ${memberCountId} ${riskId}`}>
+    <div className="roleItem" role="listitem" aria-labelledby={`${nameId} ${scopeId} ${memberCountId} ${riskId}`}>
       <div>
         <strong id={nameId}>{nameKey ? t.local(nameKey) : role.name}</strong>
         <span id={scopeId}>
           {scopeKey ? t.local(scopeKey) : role.scope}
-          <small className="stableText" aria-hidden="true">{role.scope}</small>
+          <small className="stableText" aria-hidden="true">
+            {role.scope}
+          </small>
         </span>
       </div>
       <div className="roleMeta">
         <span id={memberCountId}>
           {formatters.number(role.memberCount)} {t.local(role.memberCount === 1 ? 'web.memberCount.one' : 'web.memberCount.other')}
         </span>
-        <mark id={riskId} className={risk.className}>{t.local(risk.key)}</mark>
+        <mark id={riskId} className={risk.className}>
+          {t.local(risk.key)}
+        </mark>
       </div>
-    </article>
+    </div>
   );
 });
 
-const DeviceTable = React.memo(function DeviceTable({
-  devices,
-  formatters,
-  t,
-}: {
-  devices: DeviceRecord[];
-  formatters: LocaleFormatters;
-  t: ReturnType<typeof createWebTranslator>;
-}) {
+const DeviceTable = React.memo(function DeviceTable({ devices, formatters, t }: { devices: DeviceRecord[]; formatters: LocaleFormatters; t: ReturnType<typeof createWebTranslator> }) {
   const rowLabelPrefix = React.useId();
 
   return (
@@ -654,86 +631,110 @@ const DeviceTable = React.memo(function DeviceTable({
         <h2 id="admin-device-status-title">{t.shared('web.deviceStatus')}</h2>
         <span id="admin-device-status-summary">{t.shared('web.managedEndpoints')}</span>
       </div>
-      <h3 className="visuallyHidden" id="admin-storage-title">{t.local('web.nav.storage')}</h3>
-      <h3 className="visuallyHidden" id="admin-managed-devices-title">{t.shared('web.managedDevices')}</h3>
-      <div id="storage" className="table deviceTable" role="table" aria-labelledby="admin-storage-title admin-managed-devices-title" aria-colcount={6} aria-rowcount={devices.length + 1}>
-        <div className="row headerRow" role="row" aria-rowindex={1}>
-          <span role="columnheader" aria-colindex={1}>{t.shared('web.device')}</span>
-          <span role="columnheader" aria-colindex={2}>{t.shared('web.owner')}</span>
-          <span role="columnheader" aria-colindex={3}>{t.shared('web.platform')}</span>
-          <span role="columnheader" aria-colindex={4}>{t.shared('web.cursor')}</span>
-          <span role="columnheader" aria-colindex={5}>{t.shared('web.status')}</span>
-          <span role="columnheader" aria-colindex={6}>{t.shared('web.lastSeen')}</span>
+      <h3 className="visuallyHidden" id="admin-storage-title">
+        {t.local('web.nav.storage')}
+      </h3>
+      <h3 className="visuallyHidden" id="admin-managed-devices-title">
+        {t.shared('web.managedDevices')}
+      </h3>
+      {devices.length === 0 ? (
+        <div id="storage">
+          <CollectionEmpty t={t} />
         </div>
-        {devices.map((device, index) => {
-          const status = getDeviceStatusMeta(device.status);
-          const statusLabel = t.local(status.key);
-          const lastSeenLabel = formatLastSeen(device.lastSeen, formatters, t);
-          const nameId = `${rowLabelPrefix}-${index}-name`;
-          const ownerId = `${rowLabelPrefix}-${index}-owner`;
-          const platformId = `${rowLabelPrefix}-${index}-platform`;
-          const cursorId = `${rowLabelPrefix}-${index}-cursor`;
-          const statusId = `${rowLabelPrefix}-${index}-status`;
-          const lastSeenId = `${rowLabelPrefix}-${index}-last-seen`;
+      ) : (
+        <div id="storage" className="table deviceTable" role="table" aria-labelledby="admin-storage-title admin-managed-devices-title" aria-colcount={6} aria-rowcount={devices.length + 1}>
+          <div className="row headerRow" role="row" aria-rowindex={1}>
+            <span role="columnheader" aria-colindex={1}>
+              {t.shared('web.device')}
+            </span>
+            <span role="columnheader" aria-colindex={2}>
+              {t.shared('web.owner')}
+            </span>
+            <span role="columnheader" aria-colindex={3}>
+              {t.shared('web.platform')}
+            </span>
+            <span role="columnheader" aria-colindex={4}>
+              {t.shared('web.cursor')}
+            </span>
+            <span role="columnheader" aria-colindex={5}>
+              {t.shared('web.status')}
+            </span>
+            <span role="columnheader" aria-colindex={6}>
+              {t.shared('web.lastSeen')}
+            </span>
+          </div>
+          {devices.map((device, index) => {
+            const status = getDeviceStatusMeta(device.status);
+            const statusLabel = t.local(status.key);
+            const lastSeenLabel = formatLastSeen(device.lastSeen, formatters, t);
+            const nameId = `${rowLabelPrefix}-${index}-name`;
+            const ownerId = `${rowLabelPrefix}-${index}-owner`;
+            const platformId = `${rowLabelPrefix}-${index}-platform`;
+            const cursorId = `${rowLabelPrefix}-${index}-cursor`;
+            const statusId = `${rowLabelPrefix}-${index}-status`;
+            const lastSeenId = `${rowLabelPrefix}-${index}-last-seen`;
 
-          return (
-            <div className="row" role="row" aria-rowindex={index + 2} aria-labelledby={`${nameId} ${ownerId} ${platformId} ${cursorId} ${statusId} ${lastSeenId}`} key={device.id}>
-              <span id={nameId} role="rowheader" aria-colindex={1} data-label={t.shared('web.device')}>{device.name}</span>
-              <span id={ownerId} role="cell" aria-colindex={2} data-label={t.shared('web.owner')}>{device.owner}</span>
-              <span id={platformId} role="cell" aria-colindex={3} data-label={t.shared('web.platform')}>{device.platform}</span>
-              <span id={cursorId} role="cell" aria-colindex={4} data-label={t.shared('web.cursor')}>{device.cursor}</span>
-              <span role="cell" aria-colindex={5} data-label={t.shared('web.status')}>
-                <mark id={statusId} className={status.className}>
-                  {statusLabel}
-                  <small className="stableText" aria-hidden="true">{status.stableText}</small>
-                </mark>
-              </span>
-              <span id={lastSeenId} role="cell" aria-colindex={6} data-label={t.shared('web.lastSeen')}>
-                {lastSeenLabel}
-                <small className="stableText" aria-hidden="true">{device.lastSeen}</small>
-              </span>
-            </div>
-          );
-        })}
-      </div>
+            return (
+              <div className="row" role="row" aria-rowindex={index + 2} aria-labelledby={`${nameId} ${ownerId} ${platformId} ${cursorId} ${statusId} ${lastSeenId}`} key={device.id}>
+                <span id={nameId} role="rowheader" aria-colindex={1} data-label={t.shared('web.device')}>
+                  {device.name}
+                </span>
+                <span id={ownerId} role="cell" aria-colindex={2} data-label={t.shared('web.owner')}>
+                  {device.owner}
+                </span>
+                <span id={platformId} role="cell" aria-colindex={3} data-label={t.shared('web.platform')}>
+                  {device.platform}
+                </span>
+                <span id={cursorId} role="cell" aria-colindex={4} data-label={t.shared('web.cursor')}>
+                  {device.cursor}
+                </span>
+                <span role="cell" aria-colindex={5} data-label={t.shared('web.status')}>
+                  <mark id={statusId} className={status.className}>
+                    {statusLabel}
+                    <small className="stableText" aria-hidden="true">
+                      {status.stableText}
+                    </small>
+                  </mark>
+                </span>
+                <span id={lastSeenId} role="cell" aria-colindex={6} data-label={t.shared('web.lastSeen')}>
+                  {lastSeenLabel}
+                  <small className="stableText" aria-hidden="true">
+                    {device.lastSeen}
+                  </small>
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 });
 
-const AuditLog = React.memo(function AuditLog({
-  events,
-  formatters,
-  t,
-}: {
-  events: AuditEvent[];
-  formatters: LocaleFormatters;
-  t: ReturnType<typeof createWebTranslator>;
-}) {
+const AuditLog = React.memo(function AuditLog({ events, formatters, t }: { events: AuditEvent[]; formatters: LocaleFormatters; t: ReturnType<typeof createWebTranslator> }) {
   return (
     <section className="panel" id="audit" aria-labelledby="admin-audit-log-title" aria-describedby="admin-audit-log-summary">
       <div className="panelHeader">
         <h2 id="admin-audit-log-title">{t.shared('web.auditLog')}</h2>
         <span id="admin-audit-log-summary">{t.shared('web.last60Minutes')}</span>
       </div>
-      <h3 className="visuallyHidden" id="admin-recent-audit-events-title">{t.shared('web.recentAuditEvents')}</h3>
-      <ul className="eventList" aria-labelledby="admin-recent-audit-events-title">
-        {events.map((event) => (
-          <AuditEventItem event={event} formatters={formatters} key={event.id} t={t} />
-        ))}
-      </ul>
+      <h3 className="visuallyHidden" id="admin-recent-audit-events-title">
+        {t.shared('web.recentAuditEvents')}
+      </h3>
+      {events.length === 0 ? (
+        <CollectionEmpty t={t} />
+      ) : (
+        <ul className="eventList" aria-labelledby="admin-recent-audit-events-title">
+          {events.map((event) => (
+            <AuditEventItem event={event} formatters={formatters} key={event.id} t={t} />
+          ))}
+        </ul>
+      )}
     </section>
   );
 });
 
-const AuditEventItem = React.memo(function AuditEventItem({
-  event,
-  formatters,
-  t,
-}: {
-  event: AuditEvent;
-  formatters: LocaleFormatters;
-  t: ReturnType<typeof createWebTranslator>;
-}) {
+const AuditEventItem = React.memo(function AuditEventItem({ event, formatters, t }: { event: AuditEvent; formatters: LocaleFormatters; t: ReturnType<typeof createWebTranslator> }) {
   const actionKey = getAuditActionKey(event.action);
   const targetKey = getAuditTargetKey(event.target);
   const timeId = React.useId();
@@ -743,12 +744,16 @@ const AuditEventItem = React.memo(function AuditEventItem({
 
   return (
     <li aria-labelledby={`${timeId} ${actorId} ${actionId} ${targetId}`}>
-      <time id={timeId} dateTime={getClockDateTime(event.time)}>{formatClockTime(event.time, formatters)}</time>
+      <time id={timeId} dateTime={getClockDateTime(event.time)}>
+        {formatClockTime(event.time, formatters)}
+      </time>
       <div>
         <strong id={actorId}>{event.actor}</strong>
         <span id={actionId}>
           {actionKey ? t.local(actionKey) : event.action}
-          <small className="stableText" aria-hidden="true">{event.action}</small>
+          <small className="stableText" aria-hidden="true">
+            {event.action}
+          </small>
         </span>
       </div>
       <em id={targetId}>{targetKey ? t.local(targetKey) : event.target}</em>
@@ -774,12 +779,7 @@ const LanguageSelector = React.memo(function LanguageSelector({
   return (
     <label className="languagePicker">
       <span id={languageLabelId}>{t.shared('language.selectorLabel')}</span>
-      <select
-        value={languageChoice}
-        onChange={onChange}
-        aria-labelledby={languageLabelId}
-        aria-describedby={currentLanguageDescriptionId}
-      >
+      <select value={languageChoice} onChange={onChange} aria-labelledby={languageLabelId} aria-describedby={currentLanguageDescriptionId}>
         <option value="auto">{t.shared('language.autoRegion')}</option>
         {SUPPORTED_LOCALES.map((locale) => (
           <option key={locale.code} value={locale.code}>
@@ -794,20 +794,12 @@ const LanguageSelector = React.memo(function LanguageSelector({
   );
 });
 
-const Metric = React.memo(function Metric({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}) {
+const Metric = React.memo(function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   const labelId = React.useId();
   const valueId = React.useId();
 
   return (
-    <article className="metric" role="listitem" aria-labelledby={`${labelId} ${valueId}`}>
+    <div className="metric" role="listitem" aria-labelledby={`${labelId} ${valueId}`}>
       <div className="metricIcon" aria-hidden="true">
         {icon}
       </div>
@@ -815,10 +807,13 @@ const Metric = React.memo(function Metric({
         <strong id={valueId}>{value}</strong>
         <span id={labelId}>{label}</span>
       </div>
-    </article>
+    </div>
   );
 });
 
+const CollectionEmpty = React.memo(function CollectionEmpty({ t }: { t: ReturnType<typeof createWebTranslator> }) {
+  return <p className="collectionEmpty">{t.local('web.collection.empty')}</p>;
+});
 
 function AppWithBoundary() {
   const [languageChoice, setLanguageChoice] = React.useState<LanguageChoice>(getInitialLanguageChoice);

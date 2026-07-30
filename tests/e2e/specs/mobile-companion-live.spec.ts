@@ -41,17 +41,25 @@ test.describe('JoeSSH mobile companion live sync smoke', () => {
 
     await expect(page.getByTestId('sync-status-panel')).toContainText('Preview ready');
     await expect(page.getByTestId('sync-device-quality')).toContainText('online');
-    await expect(page.getByText('3', { exact: true })).toHaveCount(2);
-    await expect(page.getByText('C:\\Tools\\agenttool')).toBeVisible();
-    await expect(page.getByText('sync-api / next cursor server-42')).toBeVisible();
-    await expect(page.getByText('Relay Connect')).toBeVisible();
-    await expect(page.getByText('Cached Key')).toBeVisible();
+    await expect(page.locator('[aria-label="Profiles: 0"]')).toBeVisible();
+    await expect(page.locator('[aria-label="Open sessions: 0"]')).toBeVisible();
+    await expect(page.locator('[aria-label="Changes pulled: 3"]')).toBeVisible();
+    await expect(page.getByText('No workspace pulled yet')).toBeVisible();
+    await expect(page.getByText('Run preview to load cursor state')).toBeVisible();
+    await expect(page.getByText('No recovery routes are configured for this preview.')).toBeVisible();
+    await expect(page.getByText('C:\\Tools\\agenttool')).toHaveCount(0);
+    await expect(page.getByText('sync-api / next cursor server-42')).toHaveCount(0);
+    await expect(page.getByText('Relay Connect')).toHaveCount(0);
+    await expect(page.getByText('Cached Key')).toHaveCount(0);
+    await expect(page.locator('[data-testid^="emergency-channel-"]')).toHaveCount(0);
     await expectNoDocumentOverflow(page);
 
     await page.getByTestId('sync-primary-action').click();
 
     await expect(page.getByTestId('sync-status-panel')).toContainText('Preview ready');
-    await expect(page.getByText('sync-api / next cursor server-43')).toBeVisible();
+    await expect(page.locator('[aria-label="Changes pulled: 3"]')).toBeVisible();
+    await expect(page.getByText('sync-api / next cursor server-43')).toHaveCount(0);
+    await expect(page.getByText('No workspace pulled yet')).toBeVisible();
     await expectNoDocumentOverflow(page);
 
     expect(registerRequests).toEqual([

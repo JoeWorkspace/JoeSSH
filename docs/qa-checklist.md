@@ -54,7 +54,7 @@
 - Do-not-resurrect warning-shape coverage also rejects CJK stale-session resume wording such as Chinese "do not restore historical session" variants, so localized instructions cannot reopen archived sessions outside the exact stop-warning line.
 - Active stale-session prose coverage also rejects CJK historical-session context wording, collision-note prose, and reverse lifecycle-status wording in the live handoff, so localized or indirect archived-session notes cannot appear above the separator outside the exact stop-warning path.
 - Active stale-session lifecycle coverage also rejects continuation, adoption, following, inheritance, pickup, takeover, derivation, copy, delegation, handover, and transfer wording around historical session/thread/controller context, so active prose cannot implicitly continue retired work outside the exact stop-warning path.
-- Root lint covers application packages and QA scripts (`apps/`, `packages/`, and `scripts/`) so `.mjs`/`.cjs` release helpers stay inside the ordinary QA path.
+- Root lint covers application packages, QA scripts, and Playwright specs (`apps/`, `packages/`, `scripts/`, and `tests/e2e/`) so release helpers and acceptance tests stay inside the ordinary QA path.
 - Bundle-size QA keeps the 250KB startup-path budget enforced by `npm run qa:bundle-size`: the custom chunk checker still scans Web and Desktop build outputs, explicitly skips only the lazy desktop `xterm-*.js` vendor chunk as on-demand terminal code, and the `size-limit` aggregate desktop check excludes that same lazy chunk so the two gates share one budget model.
 - Database-backed durable storage remains required before multi-writer or clustered production sync deployment.
 

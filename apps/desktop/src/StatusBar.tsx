@@ -16,7 +16,9 @@ type StatusBarProps = {
 
 export const StatusBar = memo(function StatusBar({ activeConnection, formatters, hasActiveSession = true, onPanelChange, t, teamAccess }: StatusBarProps) {
   const latencyText = hasActiveSession
-    ? "latencyMs" in activeConnection
+    ? activeConnection.latencyLabelKey === "desktop.sampleDataShort"
+      ? t("desktop.notAvailable")
+      : "latencyMs" in activeConnection
       ? formatters.latency(activeConnection.latencyMs ?? 0)
       : activeConnection.latencyLabelKey
         ? t(activeConnection.latencyLabelKey)
@@ -29,7 +31,7 @@ export const StatusBar = memo(function StatusBar({ activeConnection, formatters,
         <Wifi size={14} aria-hidden="true" /> {hasActiveSession ? t("desktop.sessions") : t("desktop.noSession")}
       </button>
       <button type="button" className="statusbar-item" aria-label={t("desktop.openSftp")} onClick={() => onPanelChange("sftp")}>
-        <GitBranch size={14} aria-hidden="true" /> {hasActiveSession ? t("desktop.syncHealthy") : t("desktop.noSession")}
+        <GitBranch size={14} aria-hidden="true" /> {hasActiveSession ? t("desktop.sftp") : t("desktop.noSession")}
       </button>
       <button type="button" className="statusbar-item" aria-label={t("desktop.latencyHistory")} onClick={() => onPanelChange("inspector")}>
         <Gauge size={14} aria-hidden="true" /> {latencyText}
@@ -38,7 +40,7 @@ export const StatusBar = memo(function StatusBar({ activeConnection, formatters,
         <KeyRound size={14} aria-hidden="true" /> {t("team.summary", {
           active: formatters.number(teamAccess.activeJitMembers),
           pending: formatters.number(teamAccess.pendingVaults),
-        })}
+        })} · {t("desktop.sampleDataShort")}
       </button>
     </footer>
   );

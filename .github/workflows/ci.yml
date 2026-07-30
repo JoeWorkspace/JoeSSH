@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [main]
   schedule:
-    - cron: "23 3 * * 1-5"
+    - cron: "23 3 * * 1"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -20,12 +20,13 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run qa:package-lock-portability
       - run: npm run lint
       - run: npm run qa:handoff-hygiene
       - run: npm run qa:artifact-checksums
@@ -49,8 +50,8 @@ jobs:
     name: Typecheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -61,27 +62,28 @@ jobs:
     name: Unit Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - run: npx vitest run --coverage
       - name: Upload coverage
-        if: always()
-        uses: actions/upload-artifact@v4
+        if: failure()
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-report
           path: coverage/
-          retention-days: 14
+          retention-days: 3
 
   test-mobile:
     name: Mobile Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -93,8 +95,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [lint, typecheck]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -105,22 +107,14 @@ jobs:
       - run: npm run qa:security-headers
       - run: npm run qa:i18n-release
       - run: npm run qa:sync-api-docs
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-dist
-          path: |
-            apps/web/dist/
-            apps/desktop/dist/
-          retention-days: 7
 
   test-e2e:
     name: E2E Tests
     runs-on: ubuntu-latest
     needs: [build]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -128,52 +122,54 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: npm ci
       - name: Cache Playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - run: npx playwright install --with-deps chromium
       - run: npm run qa:e2e:fresh
       - run: npm run qa:e2e:web-real-sync:fresh
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
+        continue-on-error: true
         with:
           name: playwright-report
           path: tests/e2e/playwright-report/
-          retention-days: 7
+          retention-days: 3
 
   visual-qa:
     name: Visual QA
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     needs: [build]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - name: Cache Playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
-          path: ~/.cache/ms-playwright
+          path: ~/AppData/Local/ms-playwright
           key: playwright-visual-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install chromium
       - run: npm run qa:e2e:visual:fresh
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
+        continue-on-error: true
         with:
           name: visual-qa-report
           path: tests/e2e/test-results/
-          retention-days: 7
+          retention-days: 3
 
   security-audit:
     name: Security Audit
     runs-on: ubuntu-latest
     needs: [build]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -184,7 +180,7 @@ jobs:
     name: Rust Service
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
@@ -199,8 +195,8 @@ jobs:
     name: Desktop Real SSH Smoke
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -251,19 +247,20 @@ jobs:
           JOESSH_REAL_SSH_PASSWORD: ${{ secrets.JOESSH_REAL_SSH_PASSWORD || 'joessh-ci-smoke-password' }}
           JOESSH_REAL_SSH_REMOTE_DIR: /home/joessh-smoke
       - name: Upload sshd log
-        if: always()
-        uses: actions/upload-artifact@v4
+        if: failure()
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-real-ssh-smoke-sshd-log
           path: ${{ runner.temp }}/joessh-sshd.log
-          retention-days: 7
+          retention-days: 3
 
   tauri-shell:
     name: Tauri Shell
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -295,8 +292,8 @@ jobs:
         lighthouse,
       ]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -325,16 +322,17 @@ jobs:
     needs: [build]
     if: github.event_name == 'schedule' || github.event_name == 'push' || github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - run: npm run qa:lighthouse
-      - uses: actions/upload-artifact@v4
-        if: always()
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        continue-on-error: true
         with:
           name: lighthouse-report
           path: reports/lighthouse
-          retention-days: 30
+          retention-days: 3

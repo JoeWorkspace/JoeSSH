@@ -2,6 +2,7 @@ import { Fragment, memo } from "react";
 import { Command } from "lucide-react";
 import { Badge, Panel } from "@atlasterm/ui";
 import type { TranslationKey, Translator } from "@atlasterm/i18n";
+import { useFocusTrap } from "./useFocusTrap";
 
 export type PaletteItem = {
   command?: string;
@@ -21,7 +22,6 @@ type CommandPaletteProps = {
   onIndexChange: (index: number) => void;
   onKeyDown: (event: React.KeyboardEvent) => void;
   onSelect: (item: PaletteItem) => void;
-  paletteRef: React.RefObject<HTMLDivElement | null>;
   t: Translator;
 };
 
@@ -42,16 +42,17 @@ export const CommandPalette = memo(function CommandPalette({
   onIndexChange,
   onKeyDown,
   onSelect,
-  paletteRef,
   t,
 }: CommandPaletteProps) {
+  const focusTrapRef = useFocusTrap<HTMLDivElement>(true);
+
   return (
     <div className="palette-scrim" onClick={onClose}>
-      <Panel className="command-palette" role="dialog" aria-modal="true" aria-label={t("desktop.commandPalette")} onClick={(event) => event.stopPropagation()} onKeyDown={onKeyDown} ref={paletteRef}>
+      <Panel className="command-palette" role="dialog" aria-modal="true" aria-label={t("desktop.commandPalette")} onClick={(event) => event.stopPropagation()} onKeyDown={onKeyDown} ref={focusTrapRef}>
         <div className="palette-search">
           <Command size={18} aria-hidden="true" />
           <input
-            autoFocus
+            data-autofocus
             placeholder={t("desktop.palettePlaceholder")}
             aria-label={t("desktop.palettePlaceholder")}
             role="combobox"
@@ -82,6 +83,7 @@ export const CommandPalette = memo(function CommandPalette({
                   className={i === index ? "is-active" : ""}
                   role="option"
                   aria-selected={i === index}
+                  tabIndex={-1}
                   type="button"
                   onMouseEnter={() => onIndexChange(i)}
                   onClick={() => onSelect(item)}

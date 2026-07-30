@@ -1459,7 +1459,8 @@ function checkDesktopForwardingRuntimeSurface() {
         "runtimeRef",
         "backendSeq",
         "inFlightRules.current.has(id)",
-        "inFlightRules.current.add(id)",
+        "inFlightRules.current.set(id, operationId)",
+        "inFlightRules.current.get(id) === operationId",
         "inFlightRules.current.delete(id)",
         "void stop(forwardId).catch(() => {})",
       ],
@@ -1667,12 +1668,10 @@ function checkReleaseDocs() {
       "Dependency risk register",
       "docs/dependency-risk-register.md",
       [
-        "js-yaml",
-        "GHSA-h67p-54hq-rp68",
-        "@opentelemetry/core",
-        "GHSA-8988-4f7v-96qf",
-        "esbuild",
-        "GHSA-g7r4-m6w7-qqqr",
+        "uuid",
+        "GHSA-w5hq-g745-h8pq",
+        "@expo/config-plugins",
+        "xcode",
       ],
     ],
     [
@@ -1727,12 +1726,12 @@ function checkPublicFacingBranding() {
     [
       "Web service worker",
       "apps/web/public/sw.js",
-      ["const CACHE_NAME = 'joessh-admin-v1';"],
+      ["const CACHE_NAME = 'joessh-admin-v2';"],
     ],
     [
       "Desktop service worker",
       "apps/desktop/public/sw.js",
-      ['const CACHE_NAME = "joessh-v1";'],
+      ['const CACHE_NAME = "joessh-v2";'],
     ],
     ["Architecture", "ARCHITECTURE.md", ["npm run qa:prod-audit"]],
   ];

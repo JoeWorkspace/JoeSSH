@@ -45,12 +45,23 @@ function groupReducer(state: GroupState, action: GroupAction): GroupState {
       return { ...state, collapsedGroups: next };
     }
 
-    case "ADD_CUSTOM_GROUP":
-      return { ...state, customGroups: [...state.customGroups, action.name], newGroupName: "" };
+    case "ADD_CUSTOM_GROUP": {
+      const name = action.name.trim();
+      if (!name || state.customGroups.includes(name)) {
+        return { ...state, newGroupName: "" };
+      }
+      return {
+        ...state,
+        customGroups: [...state.customGroups, name],
+        newGroupName: "",
+      };
+    }
 
     case "REMOVE_CUSTOM_GROUP": {
       const nextConnectionGroups = { ...state.connectionGroups };
-      for (const [connectionName, groupName] of Object.entries(nextConnectionGroups)) {
+      for (const [connectionName, groupName] of Object.entries(
+        nextConnectionGroups,
+      )) {
         if (groupName === action.name) {
           nextConnectionGroups[connectionName] = "Production";
         }
@@ -66,15 +77,22 @@ function groupReducer(state: GroupState, action: GroupAction): GroupState {
       // Guard against renaming onto an existing custom group (would create
       // duplicate group entries / React keys); the modal also blocks builtin
       // collisions via isGroupValid.
-      if (action.newName !== action.oldName && state.customGroups.includes(action.newName)) {
+      if (
+        action.newName !== action.oldName &&
+        state.customGroups.includes(action.newName)
+      ) {
         return { ...state, editingGroup: null };
       }
-      const nextCustomGroups = state.customGroups.map((g) => (g === action.oldName ? action.newName : g));
+      const nextCustomGroups = state.customGroups.map((g) =>
+        g === action.oldName ? action.newName : g,
+      );
       const nextConnectionGroups = Object.fromEntries(
-        Object.entries(state.connectionGroups).map(([connectionName, groupName]) => [
-          connectionName,
-          groupName === action.oldName ? action.newName : groupName,
-        ]),
+        Object.entries(state.connectionGroups).map(
+          ([connectionName, groupName]) => [
+            connectionName,
+            groupName === action.oldName ? action.newName : groupName,
+          ],
+        ),
       );
       return {
         ...state,
@@ -87,7 +105,10 @@ function groupReducer(state: GroupState, action: GroupAction): GroupState {
     case "MOVE_CONNECTION":
       return {
         ...state,
-        connectionGroups: { ...state.connectionGroups, [action.connection]: action.group },
+        connectionGroups: {
+          ...state.connectionGroups,
+          [action.connection]: action.group,
+        },
         moveToGroupMenu: null,
       };
 
@@ -98,7 +119,11 @@ function groupReducer(state: GroupState, action: GroupAction): GroupState {
       return { ...state, newGroupName: action.name };
 
     case "START_EDIT_GROUP":
-      return { ...state, editingGroup: action.group, editingGroupName: action.name ?? action.group };
+      return {
+        ...state,
+        editingGroup: action.group,
+        editingGroupName: action.name ?? action.group,
+      };
 
     case "SET_EDITING_GROUP_NAME":
       return { ...state, editingGroupName: action.name };
@@ -120,12 +145,18 @@ function groupReducer(state: GroupState, action: GroupAction): GroupState {
   }
 }
 
-export function useGroupManager(builtinGroupNames: string[], connectionNames: string[]) {
+export function useGroupManager(
+  builtinGroupNames: readonly string[],
+  connectionNames: readonly string[],
+) {
   const [state, dispatch] = useReducer(groupReducer, {
     collapsedGroups: new Set<string>(),
     customGroups: readStoredStringList(GROUPS_STORAGE_KEY),
     connectionGroups: readStoredConnectionGroups({
-      allowedGroups: [...builtinGroupNames, ...readStoredStringList(GROUPS_STORAGE_KEY)],
+      allowedGroups: [
+        ...builtinGroupNames,
+        ...readStoredStringList(GROUPS_STORAGE_KEY),
+      ],
       connectionNames,
     }),
     managerOpen: false,
@@ -143,21 +174,33 @@ export function useGroupManager(builtinGroupNames: string[], connectionNames: st
   // Persist connection group overrides
   useEffect(() => {
     const overrides: Record<string, string> = {};
-    for (const [connectionName, groupName] of Object.entries(state.connectionGroups)) {
-      if (builtinGroupNames.includes(groupName) || state.customGroups.includes(groupName)) {
+    for (const [connectionName, groupName] of Object.entries(
+      state.connectionGroups,
+    )) {
+      if (
+        connectionNames.includes(connectionName) &&
+        (builtinGroupNames.includes(groupName) ||
+          state.customGroups.includes(groupName))
+      ) {
         // Only persist non-default overrides
         overrides[connectionName] = groupName;
       }
     }
     writeStorageJson(CONNECTION_GROUPS_STORAGE_KEY, overrides);
-  }, [state.connectionGroups, builtinGroupNames, state.customGroups]);
+  }, [
+    state.connectionGroups,
+    builtinGroupNames,
+    connectionNames,
+    state.customGroups,
+  ]);
 
   const allGroupNames = useMemo(() => {
     return [...builtinGroupNames, ...state.customGroups].sort();
   }, [builtinGroupNames, state.customGroups]);
 
   const isGroupValid = useCallback(
-    (name: string) => name.trim().length > 0 && !allGroupNames.includes(name.trim()),
+    (name: string) =>
+      name.trim().length > 0 && !allGroupNames.includes(name.trim()),
     [allGroupNames],
   );
 

@@ -17,9 +17,10 @@
   "dependencies": {
     "clsx": "^2.1.1",
     "lucide-react": "^0.468.0",
-    "react": "^19.2.0"
+    "react": "19.2.3"
   },
   "devDependencies": {
+    "@types/node": "^22.20.0",
     "@types/react": "^19.2.7",
     "vitest": "^4.1.9"
   }

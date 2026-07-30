@@ -27,8 +27,9 @@ describe("StatusBar", () => {
       />,
     );
     expect(screen.getByText("desktop.sessions")).toBeTruthy();
-    expect(screen.getByText("desktop.syncHealthy")).toBeTruthy();
+    expect(screen.getByText("desktop.sftp")).toBeTruthy();
     expect(screen.getByText("team.summary", { exact: false })).toBeTruthy();
+    expect(screen.getByText("desktop.sampleDataShort", { exact: false })).toBeTruthy();
   });
 
   it("shows no-session copy instead of live fleet status when disconnected", () => {
@@ -45,7 +46,7 @@ describe("StatusBar", () => {
     expect(screen.getAllByText("desktop.noSession").length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText("desktop.notAvailable")).toBeTruthy();
     expect(screen.queryByText(/42/)).toBeNull();
-    expect(screen.queryByText("desktop.syncHealthy")).toBeNull();
+    expect(screen.queryByText("desktop.sftp")).toBeNull();
   });
 
   it("displays latency when latencyMs is provided", () => {
@@ -171,7 +172,7 @@ describe("StatusBar", () => {
     expect(onPanelChange).toHaveBeenCalledWith("inspector");
   });
 
-  it("calls onPanelChange('sftp') when clicking sync button", () => {
+  it("calls onPanelChange('sftp') when clicking SFTP button", () => {
     const onPanelChange = vi.fn();
     render(
       <StatusBar
@@ -182,7 +183,7 @@ describe("StatusBar", () => {
         teamAccess={defaultTeamAccess}
       />,
     );
-    fireEvent.click(screen.getByText("desktop.syncHealthy"));
+    fireEvent.click(screen.getByText("desktop.sftp"));
     expect(onPanelChange).toHaveBeenCalledWith("sftp");
   });
 
