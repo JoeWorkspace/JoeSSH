@@ -23,17 +23,17 @@
     "expo-linking": "~56.0.16",
     "expo-router": "~56.2.16",
     "expo-status-bar": "~56.0.4",
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
     "react-native": "0.85.3",
-    "react-native-safe-area-context": "~5.7.0",
+    "react-native-safe-area-context": "~5.8.0",
     "react-native-screens": "~4.26.0",
     "react-native-web": "~0.21.2"
   },
   "devDependencies": {
     "@types/react": "^19.1.1",
     "@types/react-test-renderer": "^19.0.0",
-    "react-test-renderer": "19.2.3",
+    "react-test-renderer": "19.2.8",
     "typescript": "~6.0.3",
     "vitest": "4.1.9"
   }
