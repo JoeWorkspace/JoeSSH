@@ -1,33 +1,5 @@
-# Default code owners for the repository
-# These owners will be automatically requested for review on all PRs.
+# JoeSSH is currently maintained by the repository owner.
+* @JoeWorkspace
 
-* @atlasterm/core-team
-
-# Desktop workbench
-/apps/desktop/ @atlasterm/desktop-team
-/packages/ui/ @atlasterm/desktop-team
-
-# Mobile companion
-/apps/mobile/ @atlasterm/mobile-team
-
-# Web admin console
-/apps/web/ @atlasterm/web-team
-
-# Shared packages
-/packages/error-monitor/ @atlasterm/core-team
-/packages/i18n/ @atlasterm/core-team
-
-# Rust core and sync service
-/crates/ @atlasterm/rust-team
-/services/ @atlasterm/rust-team
-
-# E2E and QA
-/tests/ @atlasterm/qa-team
-/docs/ @atlasterm/qa-team
-
-# CI/CD and GitHub config
-/.github/ @atlasterm/devops
-
-# Security-sensitive files
-SECURITY.md @atlasterm/security
-**/csp* @atlasterm/security
+# Keep repository policy and ownership rules explicitly owned.
+/.github/ @JoeWorkspace

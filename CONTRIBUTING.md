@@ -85,7 +85,7 @@ npm run qa
 The following minimums are enforced in CI and must not decrease:
 
 | Metric     | Threshold |
-|------------|-----------|
+| ---------- | --------- |
 | Statements | 100%      |
 | Branches   | 100%      |
 | Functions  | 100%      |
@@ -154,7 +154,11 @@ When adding new code:
 
 ### Reporting Vulnerabilities
 
-Please report security vulnerabilities privately to security@atlasterm.dev.
+Read [SECURITY.md](SECURITY.md) and use the
+[GitHub private vulnerability reporting form](https://github.com/JoeWorkspace/JoeSSH/security/advisories/new).
+Do not include vulnerability details, exploit steps, credentials, private keys,
+tokens, host information, or other sensitive data in a public issue, pull
+request, or discussion.
 
 ### Security Guidelines
 

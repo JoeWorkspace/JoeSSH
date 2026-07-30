@@ -6,6 +6,19 @@ native apps stay in preflight/device-smoke validation until a later beta.
 
 ## Required Before Publishing
 
+- When switching the repository to public, immediately enable GitHub Private
+  Vulnerability Reporting, subscribe the maintainer to Security alerts, and
+  verify in a signed-out browser that the `Report a vulnerability` form is
+  reachable. Do not announce or distribute the release while the private
+  reporting route in `SECURITY.md` and both `security.txt` files is unavailable.
+- Configure public-repository branch protection or a ruleset for `main` that
+  requires the CI release-readiness checks and blocks force pushes and branch
+  deletion. While JoeSSH has one maintainer, do not require a separate
+  CODEOWNER approval that the maintainer cannot provide.
+- Keep repository auto-merge and the
+  `JOESSH_DEPENDABOT_AUTO_MERGE_ENABLED` repository variable disabled until
+  those `main` protections are active. Enable both only after a test Dependabot
+  pull request proves that required checks block the merge until they pass.
 - Work from a healthy Git checkout: `git status`, `git diff`, tags, and CI
   metadata must work. Do not publish from a workspace with missing `.git`
   metadata.

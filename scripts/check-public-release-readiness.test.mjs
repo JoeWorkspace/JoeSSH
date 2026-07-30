@@ -231,8 +231,16 @@ function createFixture(t, overrides = {}) {
     ".github/workflows/ci.yml": ciFixture(),
     ".github/workflows/desktop-release-artifacts.yml":
       "Collect macOS DMG diagnostics desktop-macos-dmg-diagnostics bundle_dmg.sh hdiutil info\n",
-    ".github/workflows/dependabot-auto-merge.yml":
-      "dependency-type\ndirect:development\n",
+    ".github/workflows/dependabot-auto-merge.yml": [
+      "dependency-type",
+      "direct:development",
+      "github.event.pull_request.base.ref == 'main'",
+      "github.ref_protected == true",
+      "vars.JOESSH_DEPENDABOT_AUTO_MERGE_ENABLED == 'true'",
+      'gh pr merge --auto --squash --match-head-commit "$PR_HEAD_SHA"',
+      "PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}",
+      "dependabot/fetch-metadata@21025c705c08248db411dc16f3619e6b5f9ea21a",
+    ].join("\n"),
     "scripts/verify-desktop-release-evidence.mjs":
       "sha256File(fullPath) hash mismatch artifact.sha256 sha256 must match release-evidence-SHA256SUMS.txt missing desktop evidence checksum manifest desktop evidence checksum manifest hash mismatch release-evidence-source.json --require-source workflowRun.headSha must match releaseTagCommit Package Formal Desktop Evidence must mention the artifact path, artifact file name, or artifact sha256\n",
     "scripts/verify-desktop-release-evidence.test.mjs": "",
@@ -580,6 +588,21 @@ test("accepts release readiness when runtime telemetry control evidence is prese
 
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.match(result.stdout, /Public Beta release readiness checks passed/);
+});
+
+test("rejects Dependabot auto-merge without protected-main opt-in and exact head binding", (t) => {
+  const result = runChecker(
+    createFixture(t, {
+      ".github/workflows/dependabot-auto-merge.yml":
+        "dependency-type\ndirect:development\ndependabot/fetch-metadata@21025c705c08248db411dc16f3619e6b5f9ea21a\n",
+    }),
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stdout,
+    /FAIL Dependabot auto-merge requires protected main, explicit opt-in, and an exact PR head/,
+  );
 });
 
 test("accepts the next Public Beta candidate version without rewriting old tags", (t) => {

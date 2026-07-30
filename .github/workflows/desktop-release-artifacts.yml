@@ -40,16 +40,20 @@ jobs:
             bundles: appimage deb
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 22
           cache: npm
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@2c7215f132e9ebf062739d9130488b56d53c060c # master
+        with:
+          toolchain: stable
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with:
           workspaces: |
             .
@@ -172,6 +176,13 @@ jobs:
           echo "APPLE_SIGNING_IDENTITY=${cert_id}" >> "${GITHUB_ENV}"
 
       - name: Build Desktop bundle
+        if: runner.os != 'macOS' || inputs.formal_evidence == false
+        env:
+          ATLASTERM_DESKTOP_RELEASE_BUNDLES: ${{ matrix.bundles }}
+        run: npm run release:desktop:build
+
+      - name: Build formal macOS Desktop bundle
+        if: runner.os == 'macOS' && inputs.formal_evidence
         env:
           ATLASTERM_DESKTOP_RELEASE_BUNDLES: ${{ matrix.bundles }}
           APPLE_ID: ${{ secrets.ATLASTERM_APPLE_ID }}
@@ -218,7 +229,7 @@ jobs:
 
       - name: Upload macOS DMG diagnostics
         if: failure() && runner.os == 'macOS'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: desktop-macos-dmg-diagnostics
           path: desktop-macos-dmg-diagnostics/
@@ -266,7 +277,7 @@ jobs:
             tee macos-notarization-verification.txt
 
       - name: Upload Desktop bundle
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: desktop-bundle-${{ matrix.platform }}
           path: |
@@ -291,16 +302,18 @@ jobs:
     if: inputs.formal_evidence
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 22
           cache: npm
 
       - run: npm ci
 
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           path: desktop-bundles
           pattern: desktop-bundle-*
@@ -340,7 +353,7 @@ jobs:
           npm run release:desktop:verify-evidence
 
       - name: Upload formal Desktop release evidence
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: desktop-release-evidence
           path: reports/release/desktop/
