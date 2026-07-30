@@ -1,7 +1,4 @@
-Contact: mailto:security@atlasterm.dev
+Contact: https://github.com/JoeWorkspace/JoeSSH/security/advisories/new
 Expires: 2027-05-31T00:00:00.000Z
-Encryption: https://atlasterm.dev/.well-known/pgp-key.txt
-Acknowledgments: https://atlasterm.dev/security/acknowledgments
 Preferred-Languages: en, zh
-Canonical: https://atlasterm.dev/.well-known/security.txt
-Policy: https://atlasterm.dev/security/policy
+Policy: https://github.com/JoeWorkspace/JoeSSH/security/policy

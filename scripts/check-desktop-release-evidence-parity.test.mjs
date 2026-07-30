@@ -29,13 +29,7 @@ function createFixture(t, overrides = {}) {
   });
 
   const files = {
-    ".github/workflows/desktop-release-artifacts.yml": [
-      "name: Desktop Release Artifacts",
-      "formal_evidence",
-      "name: Package Formal Desktop Evidence",
-      "name: desktop-release-evidence",
-      ...REQUIRED_SECRETS.map((secret) => `\${{ secrets.${secret} }}`),
-    ].join("\n"),
+    ".github/workflows/desktop-release-artifacts.yml": createWorkflowFixture(),
     "scripts/configure-desktop-release-secrets.mjs": [
       "reports/handoff/desktop/secret-input-template.env",
       "desktop-release-evidence-preflight.mjs",
@@ -99,6 +93,45 @@ function createFixture(t, overrides = {}) {
   return root;
 }
 
+function createWorkflowFixture({ leakAppleCredential = false } = {}) {
+  const windowsSecrets = REQUIRED_SECRETS.filter((secret) => secret.startsWith("ATLASTERM_WINDOWS_"));
+  const appleSecrets = REQUIRED_SECRETS.filter(
+    (secret) => secret.startsWith("ATLASTERM_APPLE_") || secret === "ATLASTERM_KEYCHAIN_PASSWORD",
+  );
+  const notarizationSecrets = [
+    "ATLASTERM_APPLE_ID",
+    "ATLASTERM_APPLE_PASSWORD",
+    "ATLASTERM_APPLE_TEAM_ID",
+  ];
+
+  return [
+    "name: Desktop Release Artifacts",
+    "formal_evidence",
+    "name: Package Formal Desktop Evidence",
+    "name: desktop-release-evidence",
+    "    steps:",
+    "      - name: Prepare Windows signing certificate",
+    "        if: runner.os == 'Windows' && inputs.formal_evidence",
+    "        env:",
+    ...windowsSecrets.map((secret) => `          ${secret}: \${{ secrets.${secret} }}`),
+    "      - name: Prepare macOS signing certificate",
+    "        if: runner.os == 'macOS' && inputs.formal_evidence",
+    "        env:",
+    ...appleSecrets.map((secret) => `          ${secret}: \${{ secrets.${secret} }}`),
+    "      - name: Build Desktop bundle",
+    "        if: runner.os != 'macOS' || inputs.formal_evidence == false",
+    ...(leakAppleCredential
+      ? ["        env:", "          APPLE_PASSWORD: ${{ secrets.ATLASTERM_APPLE_PASSWORD }}"]
+      : []),
+    "        run: npm run release:desktop:build",
+    "      - name: Build formal macOS Desktop bundle",
+    "        if: runner.os == 'macOS' && inputs.formal_evidence",
+    "        env:",
+    ...notarizationSecrets.map((secret) => `          ${secret}: \${{ secrets.${secret} }}`),
+    "        run: npm run release:desktop:build",
+  ].join("\n");
+}
+
 function writeFile(root, relativePath, content) {
   const path = join(root, ...relativePath.split("/"));
   mkdirSync(join(path, ".."), { recursive: true });
@@ -157,4 +190,17 @@ test("fails when release docs drift from the formal evidence artifact name", (t)
 
   assert.equal(result.status, 1);
   assert.match(result.stdout, /FAIL docs\/desktop-distribution\.md documents 'desktop-release-evidence'/);
+});
+
+test("fails when the unsigned Desktop build receives an Apple credential", (t) => {
+  const result = runParity(
+    createFixture(t, {
+      ".github/workflows/desktop-release-artifacts.yml": createWorkflowFixture({
+        leakAppleCredential: true,
+      }),
+    }),
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /FAIL Unsigned Desktop build excludes Apple signing credentials/);
 });

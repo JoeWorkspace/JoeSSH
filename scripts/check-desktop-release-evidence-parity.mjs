@@ -22,6 +22,20 @@ const requiredSecrets = [
   "ATLASTERM_APPLE_TEAM_ID",
   "ATLASTERM_KEYCHAIN_PASSWORD",
 ];
+const appleSigningSecrets = [
+  "ATLASTERM_APPLE_CERTIFICATE",
+  "ATLASTERM_APPLE_CERTIFICATE_PASSWORD",
+  "ATLASTERM_APPLE_ID",
+  "ATLASTERM_APPLE_PASSWORD",
+  "ATLASTERM_APPLE_TEAM_ID",
+  "ATLASTERM_KEYCHAIN_PASSWORD",
+];
+const appleNotarizationSecrets = [
+  "ATLASTERM_APPLE_ID",
+  "ATLASTERM_APPLE_PASSWORD",
+  "ATLASTERM_APPLE_TEAM_ID",
+];
+const formalMacOsCondition = "if: runner.os == 'macOS' && inputs.formal_evidence";
 const checks = [];
 
 checkWorkflowContract();
@@ -52,6 +66,42 @@ function checkWorkflowContract() {
       `Desktop release workflow references GitHub secret ${secret}`,
       workflowFile,
     );
+  }
+
+  const unsignedBuildStep = findNamedWorkflowStep(workflow, "Build Desktop bundle");
+  check(
+    unsignedBuildStep.includes("if: runner.os != 'macOS' || inputs.formal_evidence == false"),
+    "Unsigned Desktop build excludes the formal macOS path",
+    workflowFile,
+  );
+  check(
+    !appleSigningSecrets.some((secret) => unsignedBuildStep.includes(`secrets.${secret}`)),
+    "Unsigned Desktop build excludes Apple signing credentials",
+    workflowFile,
+  );
+
+  const formalMacOsBuildStep = findNamedWorkflowStep(workflow, "Build formal macOS Desktop bundle");
+  check(
+    formalMacOsBuildStep.includes(formalMacOsCondition),
+    "Formal macOS build is restricted to formal macOS evidence",
+    workflowFile,
+  );
+  for (const secret of appleNotarizationSecrets) {
+    check(
+      formalMacOsBuildStep.includes(`secrets.${secret}`),
+      `Formal macOS build receives GitHub secret ${secret}`,
+      workflowFile,
+    );
+  }
+
+  for (const step of findWorkflowSteps(workflow)) {
+    if (appleSigningSecrets.some((secret) => step.includes(`secrets.${secret}`))) {
+      check(
+        step.includes(formalMacOsCondition),
+        "Every step receiving Apple signing credentials is restricted to formal macOS evidence",
+        workflowFile,
+      );
+    }
   }
 }
 
@@ -158,6 +208,15 @@ function readRequiredText(relativePath) {
     return "";
   }
   return readFileSync(path, "utf8");
+}
+
+function findNamedWorkflowStep(workflow, name) {
+  return findWorkflowSteps(workflow).find((step) => step.includes(`- name: ${name}`)) ?? "";
+}
+
+function findWorkflowSteps(workflow) {
+  const starts = Array.from(workflow.matchAll(/^ {6}- (?=(?:name|uses|run):)/gm), (match) => match.index);
+  return starts.map((start, index) => workflow.slice(start, starts[index + 1] ?? workflow.length));
 }
 
 function check(ok, label, detail = "") {

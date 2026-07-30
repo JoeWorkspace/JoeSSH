@@ -22,3 +22,15 @@ tsconfig.tsbuildinfo
 .env.*
 !.env.example
 src-tauri/target/
+
+# Local signing credentials and generated release-signing files
+/certificate/
+/tauri.windows.signing.json
+*.p12
+*.pfx
+*.pem
+*.key
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*

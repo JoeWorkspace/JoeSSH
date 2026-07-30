@@ -923,6 +923,18 @@ function checkDependabotAutoMergePolicy() {
     !workflow.includes("Auto-merge minor and patch updates"),
     "Dependabot auto-merge avoids broad minor/patch production updates",
   );
+  passIf(
+    workflow.includes("github.event.pull_request.base.ref == 'main'") &&
+      workflow.includes("github.ref_protected == true") &&
+      workflow.includes("vars.JOESSH_DEPENDABOT_AUTO_MERGE_ENABLED == 'true'") &&
+      workflow.includes('--match-head-commit "$PR_HEAD_SHA"') &&
+      workflow.includes("PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}"),
+    "Dependabot auto-merge requires protected main, explicit opt-in, and an exact PR head",
+  );
+  passIf(
+    /dependabot\/fetch-metadata@[0-9a-f]{40}\b/.test(workflow),
+    "Dependabot metadata Action is pinned to a full commit SHA",
+  );
 }
 
 function checkTauriDistributionMetadata() {

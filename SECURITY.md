@@ -2,29 +2,33 @@
 
 ## Supported Versions
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 0.1.0-beta.9 | Public Beta |
-| 0.1.x   | :white_check_mark: |
+| Version      | Supported          |
+| ------------ | ------------------ |
+| 0.1.0-beta.9 | Public Beta        |
+| 0.1.x        | :white_check_mark: |
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in JoeSSH, please report it responsibly.
+If you discover a security vulnerability in JoeSSH, report it through the
+[GitHub private vulnerability reporting form](https://github.com/JoeWorkspace/JoeSSH/security/advisories/new).
 
-**Do NOT open a public GitHub issue for security vulnerabilities.**
+**Do not open a public issue, pull request, or discussion for a suspected
+security vulnerability.**
 
-### How to Report
+Include:
 
-1. Email: **security@atlasterm.dev**
-2. Include a description of the vulnerability
-3. Include steps to reproduce the issue
-4. Include the potential impact
+- A description of the vulnerability and its potential impact
+- The affected version, platform, and component
+- Minimal steps or a proof of concept that reproduces the issue
+- Any suggested mitigation, if known
+- Whether and where the issue has already been disclosed
 
 ### What to Expect
 
-- **Acknowledgment** within 48 hours
-- **Status update** within 5 business days
-- **Resolution timeline** within 10 business days
+JoeSSH is maintained by an individual developer on a best-effort basis. The
+maintainer aims to acknowledge actionable reports within 7 calendar days.
+Triage, status updates, and resolution timing depend on severity, complexity,
+and maintainer availability; no fixed remediation SLA is promised.
 
 For Public Beta, critical issues that expose credentials, command output, sync
 tokens, private keys, or remote command execution paths can trigger an immediate
@@ -94,9 +98,10 @@ We appreciate the security research community and will credit reporters (with pe
 - Current mobile React Native/Expo moderate findings do not block the Desktop +
   Web Admin + self-hosted Sync Public Beta unless mobile native apps enter the
   public release scope.
-- Dependabot auto-merge is restricted to direct development dependency updates.
-  Direct production and transitive dependency updates require review and the
-  public release gate before merge.
+- Dependabot auto-merge is disabled by default. It may be enabled only for
+  direct development dependency updates after `main` protection and required
+  release-readiness checks are active. Direct production and transitive
+  dependency updates require review and the public release gate before merge.
 
 ## Public Beta Telemetry Policy
 

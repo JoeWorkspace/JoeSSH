@@ -11,6 +11,9 @@ const productionSources = import.meta.glob<string>(['./**/*.{ts,tsx}', '!./**/*.
 });
 
 const webRootPath = fileURLToPath(new URL('..', import.meta.url));
+const desktopSecurityTxtPath = fileURLToPath(
+  new URL('../../desktop/public/.well-known/security.txt', import.meta.url),
+);
 const shellSourceExtensionlessFiles = new Set(['_headers']);
 const shellSourceExtensions = new Set(['.html', '.js', '.json', '.svg', '.txt']);
 
@@ -236,13 +239,10 @@ const staticHumansTxtExpectedSource = [
   'Software: VS Code, Figma',
 ].join('\n');
 const staticSecurityTxtExpectedSource = [
-  'Contact: mailto:security@atlasterm.dev',
+  'Contact: https://github.com/JoeWorkspace/JoeSSH/security/advisories/new',
   'Expires: 2027-05-31T00:00:00.000Z',
-  'Encryption: https://atlasterm.dev/.well-known/pgp-key.txt',
-  'Acknowledgments: https://atlasterm.dev/security/acknowledgments',
   'Preferred-Languages: en, zh',
-  'Canonical: https://atlasterm.dev/.well-known/security.txt',
-  'Policy: https://atlasterm.dev/security/policy',
+  'Policy: https://github.com/JoeWorkspace/JoeSSH/security/policy',
 ].join('\n');
 const staticShellExpectedSourcePaths = [
   '../index.html',
@@ -1558,6 +1558,10 @@ describe('web admin accessibility contracts', () => {
       productionShellSources['../public/.well-known/security.txt'].replace(/\r\n/g, '\n').trim(),
       '../public/.well-known/security.txt static security contact baseline',
     ).toBe(staticSecurityTxtExpectedSource);
+    expect(
+      readFileSync(desktopSecurityTxtPath, 'utf8'),
+      'Desktop and Web security.txt source parity',
+    ).toBe(productionShellSources['../public/.well-known/security.txt']);
     const staticServiceWorkerSource = productionShellSources['../public/sw.js'].replace(/\r\n/g, '\n');
     expect(
       Array.from(staticServiceWorkerSource.matchAll(/self\.addEventListener\('([^']+)'/g), ([, eventType]) => eventType),
