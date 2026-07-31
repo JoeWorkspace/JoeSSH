@@ -16,6 +16,7 @@ import test from "node:test";
 import {
   buildCargoCycloneDx,
   canonicalizeNpmCycloneDx,
+  inspectCanonicalCargoCycloneDx,
 } from "./release-sbom-contract.mjs";
 
 const CHECKER_PATH = fileURLToPath(
@@ -557,14 +558,59 @@ checksum = "${"c".repeat(64)}"
     { ...options, rootPath: "C:\\work\\JoeSSH-ui-finalize" },
   );
   const second = buildCargoCycloneDx(
-    makeMetadata("/home/runner/work/joessh-release"),
+    makeMetadata("/home/runner/work/JoeSSH/JoeSSH"),
     lock,
-    { ...options, rootPath: "/home/runner/work/joessh-release" },
+    { ...options, rootPath: "/home/runner/work/JoeSSH/JoeSSH" },
   );
 
   assert.equal(first, second);
   assert.match(first, /runtime-crate/);
   assert.doesNotMatch(first, /dev-crate|JoeSSH-ui-finalize|\/home\/runner/);
+});
+
+test("canonical Cargo SBOM still rejects noncanonical property names containing the hosted checkout", () => {
+  const rootPath = "/home/runner/work/JoeSSH/JoeSSH";
+  const boundary = "runtime dependencies";
+  const packageName = "atlasterm-rust-workspace";
+  const packageVersion = "0.1.0-beta.10";
+  const workspaceId =
+    "path+file:///home/runner/work/JoeSSH/JoeSSH/crates/core#atlasterm-core@0.1.0-beta.10";
+  const sbom = JSON.parse(
+    buildCargoCycloneDx(
+      JSON.stringify({
+        packages: [
+          {
+            id: workspaceId,
+            license: "MIT",
+            name: "atlasterm-core",
+            source: null,
+            version: packageVersion,
+          },
+        ],
+        resolve: {
+          nodes: [{ deps: [], id: workspaceId }],
+        },
+        version: 1,
+        workspace_members: [workspaceId],
+      }),
+      "version = 4\n",
+      { boundary, packageName, packageVersion, rootPath },
+    ),
+  );
+  sbom.components[0].properties[0].name = "joessh:cargo:source-JoeSSH";
+
+  const errors = inspectCanonicalCargoCycloneDx(
+    `${JSON.stringify(sbom, null, 2)}\n`,
+    { boundary, packageName, packageVersion, rootPath },
+  );
+
+  assert.ok(
+    errors.some((error) =>
+      /\$\.components\[0\]\.properties\[0\]\.name contains checkout name JoeSSH/.test(
+        error,
+      ),
+    ),
+  );
 });
 
 test("rejects malformed CycloneDX SBOMs", (t) => {

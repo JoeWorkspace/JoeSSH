@@ -1,5 +1,10 @@
 import { basename, resolve } from "node:path";
 
+const PUBLIC_CARGO_PROPERTY_NAMES = new Set([
+  "joessh:cargo:dependency-boundary",
+  "joessh:cargo:source",
+]);
+
 export function canonicalizeNpmCycloneDx(
   input,
   { label = "npm CycloneDX SBOM", packageName, rootPath },
@@ -501,14 +506,16 @@ function findLocalPathLeaks(json, { packageName, rootPath }) {
     ) {
       leaks.add(`${jsonPath} contains an absolute local path`);
     }
-    // npm copies the source-controlled package description into this field. A
-    // public product name may legitimately equal the hosted checkout basename.
-    const isRootComponentDescription =
-      jsonPath === "$.metadata.component.description";
+    // Public product metadata may legitimately contain the repository name
+    // when a hosted checkout uses that same name.
+    const isPublicNameCollision =
+      jsonPath === "$.metadata.component.description" ||
+      (/\.properties\[\d+\]\.name$/.test(jsonPath) &&
+        PUBLIC_CARGO_PROPERTY_NAMES.has(value));
     if (
       rootName &&
       rootName !== packageName &&
-      !isRootComponentDescription &&
+      !isPublicNameCollision &&
       normalized
         .toLocaleLowerCase("en-US")
         .includes(rootName.toLocaleLowerCase("en-US"))
