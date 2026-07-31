@@ -984,6 +984,8 @@ function checkReleaseToolingFiles() {
   const rcAudit = readTextIfExists("scripts/audit-public-beta-rc.mjs") ?? "";
   passIf(
     rcAudit.includes("public-beta-rc-audit.json") &&
+      rcAudit.includes('"handoff"') &&
+      rcAudit.includes("RC audit evidence is internal handoff material") &&
       rcAudit.includes("desktop-formal-signing-disabled") &&
       rcAudit.includes("FORMAL_SIGNING_DISABLED") &&
       rcAudit.includes("desktop-dogfood") &&
@@ -996,6 +998,8 @@ function checkReleaseToolingFiles() {
 
   const releasePublishPreflight =
     readTextIfExists("scripts/release-publish-preflight.mjs") ?? "";
+  const releaseCandidateContract =
+    readTextIfExists("scripts/release-candidate-github-contract.mjs") ?? "";
   passIf(
     releasePublishPreflight.includes("verify-artifact-checksums.mjs") &&
       releasePublishPreflight.includes("--all-release"),
@@ -1022,6 +1026,32 @@ function checkReleaseToolingFiles() {
   passIf(
     releasePublishPreflight.includes("verify-release-provenance.mjs"),
     "Publish preflight verifies release provenance",
+  );
+  passIf(
+    releasePublishPreflight.includes("verifyCanonicalReleaseCandidate") &&
+      releaseDraft.includes("verifyCanonicalReleaseCandidate") &&
+      releaseCandidateContract.includes("branches/${canonicalBranch}") &&
+      releaseCandidateContract.includes("check-runs?") &&
+      releaseCandidateContract.includes("Public Release Readiness") &&
+      releaseCandidateContract.includes("appId: 15368") &&
+      releaseCandidateContract.includes("total_count") &&
+      releaseCandidateContract.includes("readStableCheckRuns") &&
+      releaseCandidateContract.includes("stableProjection") &&
+      releaseCandidateContract.includes("page === 1") &&
+      releaseCandidateContract.includes("compareCheckRecency") &&
+      releaseCandidateContract.includes("started_at") &&
+      releaseCandidateContract.includes('check.status !== "completed"') &&
+      releaseCandidateContract.includes('check.conclusion !== "success"'),
+    "Publish entry points share the protected-main successful-readiness candidate contract",
+  );
+  passIf(
+    releasePublishPreflight.includes("verify-third-party-licenses.mjs") &&
+      releaseDraft.includes("verify-third-party-licenses.mjs") &&
+      !releasePublishPreflight.includes("--artifact-only") &&
+      !releaseDraft.includes("--artifact-only") &&
+      !releasePublishPreflight.includes("ATLASTERM_RELEASE_LICENSE_VERIFIER") &&
+      !releaseDraft.includes("ATLASTERM_RELEASE_LICENSE_VERIFIER"),
+    "Publish entry points require lock-bound third-party license verification",
   );
   passIf(
     releasePublishPreflight.includes("verify-desktop-release-evidence.mjs") &&

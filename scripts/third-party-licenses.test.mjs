@@ -357,6 +357,56 @@ test("artifact-only verifier validates the self-contained published bundle", (t)
   assert.match(tampered.stderr, /does not exactly render/);
 });
 
+test("full verifier rejects self-consistent forged upstream text", (t) => {
+  const root = createFixture(t);
+  assert.equal(run(generator, root).status, 0);
+  const manifestPath = join(
+    root,
+    "reports",
+    "release",
+    "third-party-licenses",
+    "manifest.json",
+  );
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+  const npmPackage = manifest.packages.find(
+    ({ ecosystem }) => ecosystem === "npm",
+  );
+  assert(npmPackage);
+  const upstream = npmPackage.licenseTexts.find(
+    ({ kind }) => kind === "upstream",
+  );
+  assert(upstream);
+  const originalHash = upstream.sha256;
+  const forgedText = mitText("forged npm license package");
+  const forgedHash = sha256Text(forgedText);
+  upstream.sha256 = forgedHash;
+  const referencedHashes = new Set([
+    manifest.productLicense.licenseText.sha256,
+    ...manifest.packages.flatMap((packageEntry) =>
+      [...packageEntry.licenseTexts, ...packageEntry.notices].map(
+        ({ sha256 }) => sha256,
+      ),
+    ),
+  ]);
+  manifest.texts = manifest.texts
+    .filter(
+      ({ sha256 }) => sha256 !== originalHash || referencedHashes.has(sha256),
+    )
+    .concat({ content: forgedText, sha256: forgedHash })
+    .sort((left, right) => left.sha256.localeCompare(right.sha256));
+  writePublishedBundle(root, {
+    manifestText: `${JSON.stringify(manifest, null, 2)}\n`,
+    noticesText: renderThirdPartyNotices(manifest),
+  });
+
+  const selfContained = run(verifier, root, ["--artifact-only"]);
+  assert.equal(selfContained.status, 0, selfContained.stderr);
+
+  const sourceBound = run(verifier, root);
+  assert.notEqual(sourceBound.status, 0);
+  assert.match(sourceBound.stderr, /stale or tampered/);
+});
+
 test("artifact-only verifier rejects the previous self-consistent forged fixture", (t) => {
   const root = createFixture(t);
   writePublishedBundle(root, publishedLicenseBundleFixture("1.2.3"));

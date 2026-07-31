@@ -70,7 +70,7 @@ function writeTemplate(path) {
       desktopSmoke: "reports/smoke/desktop/real-ssh-smoke.json",
       webRelease: `reports/release/web/joessh-web-admin-${expectedVersion}.zip`,
       syncRelease: `reports/release/sync/joessh-sync-${expectedVersion}-win32-x64.exe`,
-      rcAudit: "reports/release/public-beta-rc-audit.json",
+      rcAudit: "reports/handoff/release/public-beta-rc-audit.json",
     },
     tasks: requiredTasks.map((id) => ({
       id,

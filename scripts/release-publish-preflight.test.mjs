@@ -14,10 +14,12 @@ import { delimiter, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { buildCargoCycloneDx } from "./release-sbom-contract.mjs";
+import { verifyCanonicalReleaseCandidate } from "./release-candidate-github-contract.mjs";
+import { buildThirdPartyLicenseBundle } from "./third-party-license-contract.mjs";
 import {
   canonicalNpmSbomFixture,
   canonicalNpmPackageLockEntryFixture,
-  publishedLicenseBundleFixture,
+  materializeThirdPartyLicenseSourceArchives,
   writePublishedLicenseSourceInputFixture,
 } from "./release-sbom-test-fixtures.mjs";
 
@@ -92,6 +94,7 @@ function createReleaseFixture(t) {
     "# JoeSSH 0.1.0-beta.1\n",
   );
   writeReleaseSbomFixture(root);
+  materializeThirdPartyLicenseSourceArchives(root);
   writeSourceCommandFixtures(root);
   writePublishedLicenseFixture(root);
 
@@ -330,7 +333,8 @@ function writeReleaseSbomFixture(root) {
 
 function writePublishedLicenseFixture(root) {
   writePublishedLicenseSourceInputFixture(root);
-  const { manifestText, noticesText } = publishedLicenseBundleFixture({ root });
+  const { checksumText, manifestText, noticesText } =
+    buildThirdPartyLicenseBundle(root);
   writeFile(
     root,
     "reports/release/third-party-licenses/manifest.json",
@@ -341,13 +345,11 @@ function writePublishedLicenseFixture(root) {
     "reports/release/third-party-licenses/THIRD-PARTY-NOTICES.txt",
     noticesText,
   );
-  writeManifest(root, "reports/release/THIRD-PARTY-LICENSES-SHA256SUMS.txt", [
-    [
-      noticesText,
-      "reports/release/third-party-licenses/THIRD-PARTY-NOTICES.txt",
-    ],
-    [manifestText, "reports/release/third-party-licenses/manifest.json"],
-  ]);
+  writeFile(
+    root,
+    "reports/release/THIRD-PARTY-LICENSES-SHA256SUMS.txt",
+    checksumText,
+  );
 }
 
 function cyclonedxFixture(name) {
@@ -685,6 +687,15 @@ function createFakeGitCommands(root, options = {}) {
     duplicateRelease: false,
     dirtyStatus: "",
     ghAuthFails: false,
+    mainCommit: "abc123",
+    releaseCheckAppId: 15368,
+    releaseCheckConclusion: "success",
+    releaseCheckHeadSha: "abc123",
+    releaseCheckMissing: false,
+    releaseCheckPages: null,
+    releaseCheckStatus: "completed",
+    releaseCheckTotalCount: null,
+    releaseChecks: null,
     remoteTagCommit: "abc123",
     remoteTagMissing: false,
     remoteTagObjectSha: "fedcba",
@@ -765,8 +776,45 @@ if (key === "api --method GET repos/JoeWorkspace/JoeSSH/git/ref/tags/v0.1.0-beta
   }
   respond({ object: { type: "tag", sha: state.remoteTagObjectSha } });
 }
-if (key === "api --method GET repos/JoeWorkspace/JoeSSH/git/tags/" + state.remoteTagObjectSha) {
-  respond({ object: { type: "commit", sha: state.remoteTagCommit } });
+  if (key === "api --method GET repos/JoeWorkspace/JoeSSH/git/tags/" + state.remoteTagObjectSha) {
+    respond({ object: { type: "commit", sha: state.remoteTagCommit } });
+  }
+  if (key === "api --method GET repos/JoeWorkspace/JoeSSH/branches/main") {
+    respond({
+      commit: { sha: state.mainCommit },
+      name: "main",
+      protected: true,
+    });
+  }
+const releaseChecksPrefix =
+  "api --method GET repos/JoeWorkspace/JoeSSH/commits/abc123/check-runs?check_name=Public%20Release%20Readiness&filter=latest&per_page=100";
+if (key === releaseChecksPrefix || key.startsWith(releaseChecksPrefix + "&page=")) {
+  const pageMatch = key.match(/&page=([0-9]+)$/);
+  const page = pageMatch ? Number(pageMatch[1]) : 1;
+  const defaultChecks = state.releaseCheckMissing
+    ? []
+    : state.releaseChecks ?? [
+        {
+          app: { id: state.releaseCheckAppId },
+          conclusion: state.releaseCheckConclusion,
+          head_sha: state.releaseCheckHeadSha,
+          id: 123456789,
+          name: "Public Release Readiness",
+          started_at: "2026-07-31T08:00:00Z",
+          status: state.releaseCheckStatus,
+        },
+      ];
+  const checkRuns = state.releaseCheckPages
+    ? state.releaseCheckPages[page - 1] ?? []
+    : page === 1
+      ? defaultChecks
+      : [];
+  const totalCount =
+    state.releaseCheckTotalCount ??
+    (state.releaseCheckPages
+      ? state.releaseCheckPages.flat().length
+      : defaultChecks.length);
+  respond({ check_runs: checkRuns, total_count: totalCount });
 }
 if (key === "release view v0.1.0-beta.1 --repo JoeWorkspace/JoeSSH --json url") {
   if (state.duplicateRelease) {
@@ -783,8 +831,8 @@ if (key === "release view v0.1.0-beta.1 --repo JoeWorkspace/JoeSSH --json url") 
 if (key === "api repos/JoeWorkspace/JoeSSH") {
   respond({ default_branch: "main", private: false, visibility: "public" });
 }
-if (key === "api repos/JoeWorkspace/JoeSSH/branches/main") {
-  respond({ name: "main", protected: true });
+  if (key === "api repos/JoeWorkspace/JoeSSH/branches/main") {
+    respond({ commit: { sha: state.mainCommit }, name: "main", protected: true });
 }
 if (key === "api repos/JoeWorkspace/JoeSSH/branches/main/protection") {
   respond({
@@ -911,7 +959,7 @@ test("publish preflight verifies checksums, evidence, SBOM, provenance, and rele
   assert.match(result.stdout, /Verify GitHub CLI publish readiness/);
   assert.match(
     result.stdout,
-    /Verified GitHub CLI authentication, remote v0\.1\.0-beta\.1 at abc123, and no existing release in JoeWorkspace\/JoeSSH/,
+    /Verified GitHub CLI authentication, remote v0\.1\.0-beta\.1 at abc123, protected main, successful Public Release Readiness check, and no existing release in JoeWorkspace\/JoeSSH/,
   );
   assert.match(result.stdout, /Verify GitHub release controls/);
   assert.match(result.stdout, /GitHub release controls: PASS/);
@@ -927,6 +975,23 @@ test("publish preflight verifies checksums, evidence, SBOM, provenance, and rele
     /Release draft dry run passed for v0\.1\.0-beta\.1/,
   );
   assert.match(result.stdout, /Public release publish preflight passed/);
+});
+
+test("publish preflight blocks when lock-bound license source evidence fails", (t) => {
+  const root = createReleaseFixture(t);
+  writeFile(root, "node_modules/desktop-dependency/LICENSE", "tampered\n");
+
+  const result = runPreflight(root);
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stderr,
+    /does not byte-match its lockfile-bound source archive/,
+  );
+  assert.match(
+    result.stderr,
+    /Public release publish preflight failed: Verify third-party license bundle/,
+  );
 });
 
 test("publish preflight rejects missing Git checkout metadata", (t) => {
@@ -1026,6 +1091,121 @@ test("publish preflight rejects a remote release tag at another commit", (t) => 
   );
 });
 
+test("publish preflight rejects a topic-branch commit that is not protected main", (t) => {
+  const root = createReleaseFixture(t);
+  const result = runPreflight(
+    root,
+    createFakeGitCommands(root, { mainCommit: "def456" }),
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stderr,
+    /Release candidate abc123 must exactly equal protected main commit def456/,
+  );
+});
+
+test("publish preflight requires the exact successful release-readiness check", async (t) => {
+  const cases = [
+    ["missing", { releaseCheckMissing: true }, /must have a latest/],
+    [
+      "pending",
+      { releaseCheckConclusion: null, releaseCheckStatus: "in_progress" },
+      /completed\/success; received in_progress\/unreadable/,
+    ],
+    [
+      "failed",
+      { releaseCheckConclusion: "failure" },
+      /completed\/success; received completed\/failure/,
+    ],
+    ["wrong app", { releaseCheckAppId: 42 }, /GitHub Actions App 15368/],
+    [
+      "wrong SHA",
+      { releaseCheckHeadSha: "def456" },
+      /check run is bound to def456; expected release candidate abc123/,
+    ],
+  ];
+
+  for (const [name, options, diagnostic] of cases) {
+    await t.test(name, (subtest) => {
+      const root = createReleaseFixture(subtest);
+      const result = runPreflight(root, createFakeGitCommands(root, options));
+      assert.equal(result.status, 1);
+      assert.match(result.stderr, diagnostic);
+    });
+  }
+});
+
+test("publish preflight selects the newest readiness check across check suites", (t) => {
+  const root = createReleaseFixture(t);
+  const result = runPreflight(
+    root,
+    createFakeGitCommands(root, {
+      releaseChecks: [
+        {
+          app: { id: 15368 },
+          conclusion: "failure",
+          head_sha: "abc123",
+          id: 123456788,
+          name: "Public Release Readiness",
+          started_at: "2026-07-31T07:00:00Z",
+          status: "completed",
+        },
+        {
+          app: { id: 15368 },
+          conclusion: "success",
+          head_sha: "abc123",
+          id: 123456789,
+          name: "Public Release Readiness",
+          started_at: "2026-07-31T08:00:00Z",
+          status: "completed",
+        },
+      ],
+    }),
+  );
+
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+});
+
+test("publish preflight rejects a newer unsuccessful readiness check", async (t) => {
+  for (const [name, status, conclusion, diagnostic] of [
+    ["pending", "in_progress", null, /in_progress\/unreadable/],
+    ["failed", "completed", "failure", /completed\/failure/],
+  ]) {
+    await t.test(name, (subtest) => {
+      const root = createReleaseFixture(subtest);
+      const result = runPreflight(
+        root,
+        createFakeGitCommands(root, {
+          releaseChecks: [
+            {
+              app: { id: 15368 },
+              conclusion: "success",
+              head_sha: "abc123",
+              id: 123456788,
+              name: "Public Release Readiness",
+              started_at: "2026-07-31T07:00:00Z",
+              status: "completed",
+            },
+            {
+              app: { id: 15368 },
+              conclusion,
+              head_sha: "abc123",
+              id: 123456789,
+              name: "Public Release Readiness",
+              started_at: "2026-07-31T08:00:00Z",
+              status,
+            },
+          ],
+        }),
+      );
+
+      assert.equal(result.status, 1);
+      assert.match(result.stderr, diagnostic);
+    });
+  }
+});
+
 test("publish preflight rejects duplicate GitHub releases", (t) => {
   const root = createReleaseFixture(t);
   const result = runPreflight(
@@ -1123,3 +1303,267 @@ test("publish preflight rejects Desktop evidence without workflow source provena
     /Public release publish preflight failed: Verify Desktop signing\/distribution evidence/,
   );
 });
+
+test("release candidate contract verifies complete stable pagination boundaries", async (t) => {
+  for (const count of [0, 1, 100, 101, 200, 201]) {
+    await t.test(String(count), () => {
+      const checks = contractCheckSet(count);
+      if (count === 0) {
+        assert.throws(
+          () => verifyContractResponses(stableContractResponses(checks)),
+          /must have a latest Public Release Readiness check run/,
+        );
+        return;
+      }
+
+      const result = verifyContractResponses(stableContractResponses(checks));
+      assert.equal(result.checkRunId, 1);
+    });
+  }
+});
+
+test("release candidate contract rechecks protected main after readiness", () => {
+  assert.throws(
+    () =>
+      verifyContractResponses(stableContractResponses(contractCheckSet(1)), [
+        "abc123",
+        "def456",
+      ]),
+    /Release candidate abc123 must exactly equal protected main commit def456/,
+  );
+});
+
+test("release candidate contract selects the newest check from later pages", async (t) => {
+  for (const [name, status, conclusion, diagnostic] of [
+    ["success", "completed", "success", null],
+    ["pending", "in_progress", null, /in_progress\/unreadable/],
+    ["failure", "completed", "failure", /completed\/failure/],
+  ]) {
+    await t.test(name, () => {
+      const checks = paginatedContractChecks({ conclusion, status });
+      if (diagnostic === null) {
+        const result = verifyContractResponses(stableContractResponses(checks));
+        assert.equal(result.checkRunId, 101);
+        return;
+      }
+      assert.throws(
+        () => verifyContractResponses(stableContractResponses(checks)),
+        diagnostic,
+      );
+    });
+  }
+});
+
+test("release candidate contract rejects incomplete or unstable pagination", async (t) => {
+  const firstPage = contractCheckSet(100);
+  const laterSuccess = contractCheck(101, {
+    appId: 15368,
+    startedAt: "2026-07-31T08:00:00Z",
+  });
+  const cases = [
+    [
+      "changing total_count",
+      [
+        contractResponse(1, firstPage, 101),
+        contractResponse(2, [laterSuccess], 102),
+      ],
+      /total_count changed during pagination/,
+    ],
+    [
+      "duplicate across pages",
+      [
+        contractResponse(1, firstPage, 101),
+        contractResponse(2, [firstPage.at(-1)], 101),
+      ],
+      /check run ID 100 was repeated during pagination/,
+    ],
+    [
+      "empty middle page",
+      [contractResponse(1, firstPage, 201), contractResponse(2, [], 201)],
+      /page 2 contained 0 entries; expected 100/,
+    ],
+    [
+      "short final page",
+      [
+        contractResponse(1, firstPage, 200),
+        contractResponse(2, contractCheckSet(99, 101), 200),
+      ],
+      /page 2 contained 99 entries; expected 100/,
+    ],
+    [
+      "later request failure",
+      [
+        contractResponse(1, firstPage, 101),
+        { error: new Error("page 2 unavailable"), page: 2 },
+      ],
+      /page 2 unavailable/,
+    ],
+  ];
+
+  for (const [name, responses, diagnostic] of cases) {
+    await t.test(name, () => {
+      assert.throws(() => verifyContractResponses(responses), diagnostic);
+    });
+  }
+});
+
+test("release candidate contract rejects a changed second pagination pass", () => {
+  const firstPass = paginatedContractChecks({
+    conclusion: "success",
+    status: "completed",
+  });
+  const secondPass = paginatedContractChecks({
+    conclusion: null,
+    status: "in_progress",
+  });
+
+  assert.throws(
+    () =>
+      verifyContractResponses([
+        ...contractResponses(firstPass),
+        ...contractResponses(secondPass),
+      ]),
+    /check runs changed while GitHub pagination was being verified/,
+  );
+});
+
+test("release candidate contract rejects invalid counts and duplicate page entries", async (t) => {
+  const duplicatePage = contractCheckSet(100);
+  duplicatePage[99] = duplicatePage[98];
+  const cases = [
+    ["negative total", [contractResponse(1, [], -1)], /invalid total_count/],
+    ["fractional total", [contractResponse(1, [], 1.5)], /invalid total_count/],
+    [
+      "too many pages",
+      [contractResponse(1, contractCheckSet(100), 10_001)],
+      /too many Public Release Readiness check runs/,
+    ],
+    [
+      "duplicate within page",
+      [contractResponse(1, duplicatePage, 100)],
+      /check run ID 99 was repeated during pagination/,
+    ],
+  ];
+
+  for (const [name, responses, diagnostic] of cases) {
+    await t.test(name, () => {
+      assert.throws(() => verifyContractResponses(responses), diagnostic);
+    });
+  }
+});
+
+test("publish preflight rejects a newer pending readiness check hidden on page two", (t) => {
+  const root = createReleaseFixture(t);
+  const result = runPreflight(
+    root,
+    createFakeGitCommands(root, {
+      releaseCheckPages: contractResponses(
+        paginatedContractChecks({ conclusion: null, status: "in_progress" }),
+      ).map(({ check_runs: checkRuns }) => checkRuns),
+    }),
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /in_progress\/unreadable/);
+  assert.match(
+    result.stderr,
+    /Public release publish preflight failed: Verify GitHub CLI publish readiness/,
+  );
+});
+
+function contractCheck(id, options = {}) {
+  return {
+    app: { id: options.appId ?? 42 },
+    conclusion: "conclusion" in options ? options.conclusion : "success",
+    head_sha: options.headSha ?? "abc123",
+    id,
+    name: "Public Release Readiness",
+    started_at:
+      options.startedAt ??
+      new Date(Date.UTC(2026, 6, 31, 0, 0, id)).toISOString(),
+    status: options.status ?? "completed",
+  };
+}
+
+function contractCheckSet(count, firstId = 1) {
+  const checks = Array.from({ length: count }, (_, index) =>
+    contractCheck(firstId + index),
+  );
+  if (firstId === 1 && checks.length > 0) {
+    checks[0] = contractCheck(1, {
+      appId: 15368,
+      startedAt: "2026-07-31T07:00:00Z",
+    });
+  }
+  return checks;
+}
+
+function paginatedContractChecks({ conclusion, status }) {
+  return [
+    ...contractCheckSet(100),
+    contractCheck(101, {
+      appId: 15368,
+      conclusion,
+      startedAt: "2026-07-31T08:00:00Z",
+      status,
+    }),
+  ];
+}
+
+function contractResponse(page, checkRuns, totalCount) {
+  return { check_runs: checkRuns, page, total_count: totalCount };
+}
+
+function contractResponses(checkRuns) {
+  const pageCount = Math.max(1, Math.ceil(checkRuns.length / 100));
+  return Array.from({ length: pageCount }, (_, index) => {
+    const page = index + 1;
+    return contractResponse(
+      page,
+      checkRuns.slice(index * 100, page * 100),
+      checkRuns.length,
+    );
+  });
+}
+
+function stableContractResponses(checkRuns) {
+  const responses = contractResponses(checkRuns);
+  return responses.length === 1 ? responses : [...responses, ...responses];
+}
+
+function verifyContractResponses(responses, branchCommits = ["abc123"]) {
+  let branchIndex = 0;
+  let responseIndex = 0;
+  return verifyCanonicalReleaseCandidate({
+    candidateCommit: "abc123",
+    readGithubJson(endpoint) {
+      if (endpoint === "repos/JoeWorkspace/JoeSSH/branches/main") {
+        const commit =
+          branchCommits[Math.min(branchIndex, branchCommits.length - 1)];
+        branchIndex += 1;
+        return {
+          commit: { sha: commit },
+          name: "main",
+          protected: true,
+        };
+      }
+
+      const response = responses[responseIndex];
+      assert.ok(response, `unexpected check-runs request: ${endpoint}`);
+      responseIndex += 1;
+      const expectedEndpoint =
+        "repos/JoeWorkspace/JoeSSH/commits/abc123/check-runs?" +
+        "check_name=Public%20Release%20Readiness&filter=latest&per_page=100" +
+        (response.page === 1 ? "" : `&page=${response.page}`);
+      assert.equal(endpoint, expectedEndpoint);
+      if (response.error) {
+        throw response.error;
+      }
+      return {
+        check_runs: response.check_runs,
+        total_count: response.total_count,
+      };
+    },
+    repository: "JoeWorkspace/JoeSSH",
+  });
+}

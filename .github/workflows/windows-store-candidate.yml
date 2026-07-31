@@ -604,6 +604,7 @@ jobs:
           $noticeSha256 = (
             Get-FileHash -Algorithm SHA256 -LiteralPath $noticePath
           ).Hash.ToLowerInvariant()
+          $noticeSizeBytes = (Get-Item -LiteralPath $noticePath).Length
           $licenseManifestSha256 = (
             Get-FileHash -Algorithm SHA256 -LiteralPath $licenseManifestPath
           ).Hash.ToLowerInvariant()
@@ -617,6 +618,16 @@ jobs:
             $candidate.legalNotices.sourcePath -cne $noticePath -or
             $candidate.legalNotices.bundleResourcePath -cne "legal/THIRD-PARTY-NOTICES.txt" -or
             $candidate.legalNotices.sha256 -cne $noticeSha256 -or
+            $candidate.legalNotices.sizeBytes -ne $noticeSizeBytes -or
+            $candidate.gates.thirdPartyNoticesBundled -isnot [bool] -or
+            $candidate.gates.thirdPartyNoticesBundled -ne $true -or
+            $candidate.verification.bundledThirdPartyNotices.path -cne "legal/THIRD-PARTY-NOTICES.txt" -or
+            $candidate.verification.bundledThirdPartyNotices.path -cne $candidate.legalNotices.bundleResourcePath -or
+            $candidate.verification.bundledThirdPartyNotices.status -cne "exact-match" -or
+            $candidate.verification.bundledThirdPartyNotices.sizeBytes -ne $noticeSizeBytes -or
+            $candidate.verification.bundledThirdPartyNotices.sizeBytes -ne $candidate.legalNotices.sizeBytes -or
+            $candidate.verification.bundledThirdPartyNotices.sha256 -cne $noticeSha256 -or
+            $candidate.verification.bundledThirdPartyNotices.sha256 -cne $candidate.legalNotices.sha256 -or
             $candidate.legalNotices.licenseManifest -cne $licenseManifestPath -or
             $candidate.legalNotices.licenseManifestSha256 -cne $licenseManifestSha256 -or
             $candidate.legalNotices.checksumManifest -cne $licenseChecksumsPath -or

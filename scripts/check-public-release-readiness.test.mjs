@@ -7,7 +7,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
@@ -268,7 +268,9 @@ verify-desktop-release-evidence.mjs;
 --require-source;
 verify-artifact-checksums.mjs;
 --all-release;
-verify-release-provenance.mjs;
+  verify-release-provenance.mjs;
+  verify-third-party-licenses.mjs;
+  verifyCanonicalReleaseCandidate;
 Verify GitHub CLI publish readiness;
 ATLASTERM_RELEASE_GH_COMMAND;
 function verifyGithubPublishReadiness() {
@@ -420,12 +422,14 @@ function createFixture(t, overrides = {}) {
       "source.repository git fsck --strict release notes hash mismatch artifact hash mismatch requiredChecksumManifests release-evidence-source.json verify-desktop-release-evidence.mjs --require-source unexpected Public Beta checksum manifest is staged\n",
     "scripts/verify-release-provenance.test.mjs": "",
     "scripts/audit-public-beta-rc.mjs":
-      "public-beta-rc-audit.json desktop-formal-signing-disabled FORMAL_SIGNING_DISABLED desktop-dogfood release-desktop-stale-artifacts publish-preflight github-ci check-runs/${checkRunId}/annotations\n",
+      'public-beta-rc-audit.json "handoff" RC audit evidence is internal handoff material desktop-formal-signing-disabled FORMAL_SIGNING_DISABLED desktop-dogfood release-desktop-stale-artifacts publish-preflight github-ci check-runs/${checkRunId}/annotations\n',
     "scripts/audit-public-beta-rc.test.mjs": "",
     "scripts/release-publish-preflight.mjs": releasePublishPreflightSource(),
     "scripts/release-publish-preflight.test.mjs": "",
+    "scripts/release-candidate-github-contract.mjs":
+      'branches/${canonicalBranch} check-runs? Public Release Readiness appId: 15368 total_count readStableCheckRuns stableProjection page === 1 compareCheckRecency started_at check.status !== "completed" check.conclusion !== "success"\n',
     "scripts/create-github-release-draft.mjs":
-      'collectFiles(resolve(root, "reports", "release"))\nprovenanceVerificationArgs\nif (dryRun)\nprovenanceVerificationArgs.push("--skip-current-git-check")\n',
+      'collectFiles(resolve(root, "reports", "release"))\nprovenanceVerificationArgs\nif (dryRun)\nprovenanceVerificationArgs.push("--skip-current-git-check")\nverifyCanonicalReleaseCandidate\nverify-third-party-licenses.mjs\n',
     "scripts/create-github-release-draft.test.mjs":
       "non-dry-run rejects release provenance from a different Git source\n",
     "apps/desktop/src-tauri/capabilities/main.json": JSON.stringify({
@@ -1121,6 +1125,64 @@ test("rejects GitHub publish preflight that does not resolve the canonical remot
     result.stdout,
     /FAIL Publish preflight verifies GitHub CLI auth and duplicate-release state without mutating GitHub/,
   );
+});
+
+test("rejects release entry points without the shared protected-main candidate contract", (t) => {
+  const result = runChecker(
+    createFixture(t, {
+      "scripts/release-candidate-github-contract.mjs": "",
+    }),
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stdout,
+    /FAIL Publish entry points share the protected-main successful-readiness candidate contract/,
+  );
+});
+
+test("rejects artifact-only license verification in either publish entry point", async (t) => {
+  for (const path of [
+    "scripts/release-publish-preflight.mjs",
+    "scripts/create-github-release-draft.mjs",
+  ]) {
+    await t.test(path, (subtest) => {
+      const root = createFixture(subtest);
+      const source = readFileSync(resolve(root, path), "utf8");
+      writeFile(root, path, `${source}\n--artifact-only\n`);
+      const result = runChecker(root);
+
+      assert.equal(result.status, 1);
+      assert.match(
+        result.stdout,
+        /FAIL Publish entry points require lock-bound third-party license verification/,
+      );
+    });
+  }
+});
+
+test("rejects replaceable license verifiers in either publish entry point", async (t) => {
+  for (const path of [
+    "scripts/release-publish-preflight.mjs",
+    "scripts/create-github-release-draft.mjs",
+  ]) {
+    await t.test(path, (subtest) => {
+      const root = createFixture(subtest);
+      const source = readFileSync(resolve(root, path), "utf8");
+      writeFile(
+        root,
+        path,
+        `${source}\nATLASTERM_RELEASE_LICENSE_VERIFIER_COMMAND\n`,
+      );
+      const result = runChecker(root);
+
+      assert.equal(result.status, 1);
+      assert.match(
+        result.stdout,
+        /FAIL Publish entry points require lock-bound third-party license verification/,
+      );
+    });
+  }
 });
 
 test("rejects public release scripts without Lighthouse release-machine gate", (t) => {

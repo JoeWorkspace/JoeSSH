@@ -13,8 +13,8 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
+import { buildThirdPartyLicenseBundle } from "./third-party-license-contract.mjs";
 import {
-  publishedLicenseBundleFixture,
   sourceBoundReleaseSbomEnvironment,
   writeSourceBoundReleaseSbomFixture,
   writePublishedLicenseSourceInputFixture,
@@ -222,7 +222,8 @@ function writeReleaseSbomFixture(root) {
 
 function writePublishedLicenseFixture(root) {
   writePublishedLicenseSourceInputFixture(root);
-  const { manifestText, noticesText } = publishedLicenseBundleFixture({ root });
+  const { checksumText, manifestText, noticesText } =
+    buildThirdPartyLicenseBundle(root);
   writeFile(
     root,
     "reports/release/third-party-licenses/manifest.json",
@@ -233,13 +234,11 @@ function writePublishedLicenseFixture(root) {
     "reports/release/third-party-licenses/THIRD-PARTY-NOTICES.txt",
     noticesText,
   );
-  writeManifest(root, "reports/release/THIRD-PARTY-LICENSES-SHA256SUMS.txt", [
-    [
-      noticesText,
-      "reports/release/third-party-licenses/THIRD-PARTY-NOTICES.txt",
-    ],
-    [manifestText, "reports/release/third-party-licenses/manifest.json"],
-  ]);
+  writeFile(
+    root,
+    "reports/release/THIRD-PARTY-LICENSES-SHA256SUMS.txt",
+    checksumText,
+  );
 }
 
 function writeArtifact(root, relativePath, content) {
@@ -410,10 +409,24 @@ function createFakeReleaseMachineCommands(root, options = {}) {
     fixtureRoot: root,
     ghAuthFails: false,
     githubControlsFail: false,
+    mainCommit: "abc123",
+    mainCommitAfterCreate: null,
+    mainCommitAfterReadinessAfterCreate: null,
     releaseDeleteConfirmationUnknownFails: false,
     releaseDeleteFails: false,
     releaseCreateFails: false,
     releaseId: 424242,
+    releaseCheckAppId: 15368,
+    releaseCheckConclusion: "success",
+    releaseCheckHeadSha: "abc123",
+    releaseCheckMissing: false,
+    releaseCheckPages: null,
+    releaseCheckPagesAfterCreate: null,
+    releaseCheckStatus: "completed",
+    releaseCheckTotalCount: null,
+    releaseCheckTotalCountAfterCreate: null,
+    releaseChecks: null,
+    releaseChecksAfterCreate: null,
     releaseViewUnknownFails: false,
     remoteTagCommit: options.remoteTagCommit ?? options.tagCommit ?? "abc123",
     remoteTagCommitAfterCreate: null,
@@ -481,6 +494,7 @@ const remoteStatePath = path.join(
   "fake-github-release-state.json",
 );
 const deletionMarkerPath = remoteStatePath + ".deleted";
+const mainAdvanceMarkerPath = remoteStatePath + ".main-advanced";
 
 function digest(buffer) {
   return "sha256:" + crypto.createHash("sha256").update(buffer).digest("hex");
@@ -796,7 +810,71 @@ if (args[0] === "api") {
       visibility: state.githubControlsFail ? "private" : "public",
     };
   } else if (method === "GET" && endpoint === controlsRoot + "/branches/main") {
-    controlsResponse = { name: "main", protected: true };
+    const mainAdvancedAfterReadiness =
+      state.mainCommitAfterReadinessAfterCreate &&
+      fs.existsSync(mainAdvanceMarkerPath);
+    controlsResponse = {
+      commit: {
+        sha:
+          state.mainCommitAfterCreate && readRemoteRelease() !== null
+            ? state.mainCommitAfterCreate
+            : mainAdvancedAfterReadiness
+              ? state.mainCommitAfterReadinessAfterCreate
+            : state.mainCommit,
+      },
+      name: "main",
+      protected: true,
+    };
+  } else if (
+    method === "GET" &&
+    (endpoint ===
+      controlsRoot +
+        "/commits/abc123/check-runs?check_name=Public%20Release%20Readiness&filter=latest&per_page=100" ||
+      endpoint.startsWith(
+        controlsRoot +
+          "/commits/abc123/check-runs?check_name=Public%20Release%20Readiness&filter=latest&per_page=100&page=",
+      ))
+  ) {
+    const afterCreate = readRemoteRelease() !== null;
+    if (afterCreate && state.mainCommitAfterReadinessAfterCreate) {
+      fs.writeFileSync(mainAdvanceMarkerPath, "advanced-after-readiness\\n", "utf8");
+    }
+    const pageMatch = endpoint.match(/&page=([0-9]+)$/);
+    const page = pageMatch ? Number(pageMatch[1]) : 1;
+    const configuredChecks =
+      afterCreate && state.releaseChecksAfterCreate !== null
+        ? state.releaseChecksAfterCreate
+        : state.releaseChecks;
+    const defaultChecks = state.releaseCheckMissing
+      ? []
+      : configuredChecks ?? [
+          {
+            app: { id: state.releaseCheckAppId },
+            conclusion: state.releaseCheckConclusion,
+            head_sha: state.releaseCheckHeadSha,
+            id: 123456789,
+            name: "Public Release Readiness",
+            started_at: "2026-07-31T08:00:00Z",
+            status: state.releaseCheckStatus,
+          },
+        ];
+    const configuredPages =
+      afterCreate && state.releaseCheckPagesAfterCreate !== null
+        ? state.releaseCheckPagesAfterCreate
+        : state.releaseCheckPages;
+    const checkRuns = configuredPages
+      ? configuredPages[page - 1] ?? []
+      : page === 1
+        ? defaultChecks
+        : [];
+    const configuredTotal =
+      afterCreate && state.releaseCheckTotalCountAfterCreate !== null
+        ? state.releaseCheckTotalCountAfterCreate
+        : state.releaseCheckTotalCount;
+    const totalCount =
+      configuredTotal ??
+      (configuredPages ? configuredPages.flat().length : defaultChecks.length);
+    controlsResponse = { check_runs: checkRuns, total_count: totalCount };
   } else if (
     method === "GET" &&
     endpoint === controlsRoot + "/branches/main/protection"
@@ -898,7 +976,6 @@ console.log(versions[tool] ?? "");
 process.exit(versions[tool] ? 0 : 2);
 `,
   );
-
   return {
     ...sourceBoundReleaseSbomEnvironment(root),
     ATLASTERM_RELEASE_GH_ARGS: JSON.stringify([fakeGhPath]),
@@ -937,6 +1014,20 @@ test("dry run verifies artifacts and prints the GitHub release command", (t) => 
     result.stdout,
     /reports\/release\/desktop\/JoeSSH_0\.1\.0-beta\.1_x64-setup\.exe/,
   );
+});
+
+test("dry run blocks when lock-bound license source evidence fails", (t) => {
+  const root = createReleaseFixture(t);
+  writeFile(root, "node_modules/desktop-dependency/LICENSE", "tampered\n");
+
+  const result = runDraft(root);
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stderr,
+    /does not byte-match its lockfile-bound source archive/,
+  );
+  assert.doesNotMatch(result.stdout, /Release draft dry run passed/);
 });
 
 test("dry run rejects missing release notes", (t) => {
@@ -1248,6 +1339,80 @@ test("non-dry-run rejects a missing or mismatched remote release tag", async (t)
   }
 });
 
+test("non-dry-run rejects a candidate outside protected main", (t) => {
+  const root = createReleaseFixture(t);
+  const result = runPublishDraft(
+    root,
+    createFakeReleaseMachineCommands(root, { mainCommit: "def456" }),
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stderr,
+    /Release candidate abc123 must exactly equal protected main commit def456/,
+  );
+  assert.equal(existsSync(join(root, "fake-github-release-state.json")), false);
+});
+
+test("non-dry-run rejects a failed or incorrectly sourced readiness check", async (t) => {
+  const cases = [
+    ["missing", { releaseCheckMissing: true }, /must have a latest/],
+    [
+      "failed",
+      { releaseCheckConclusion: "failure" },
+      /completed\/success; received completed\/failure/,
+    ],
+    ["wrong app", { releaseCheckAppId: 42 }, /GitHub Actions App 15368/],
+  ];
+
+  for (const [name, options, diagnostic] of cases) {
+    await t.test(name, (subtest) => {
+      const root = createReleaseFixture(subtest);
+      const result = runPublishDraft(
+        root,
+        createFakeReleaseMachineCommands(root, options),
+      );
+      assert.equal(result.status, 1);
+      assert.match(result.stderr, diagnostic);
+      assert.equal(
+        existsSync(join(root, "fake-github-release-state.json")),
+        false,
+      );
+    });
+  }
+});
+
+test("non-dry-run accepts multiple suites when the newest readiness check succeeds", (t) => {
+  const root = createReleaseFixture(t);
+  const result = runPublishDraft(
+    root,
+    createFakeReleaseMachineCommands(root, {
+      releaseChecks: [
+        {
+          app: { id: 15368 },
+          conclusion: "failure",
+          head_sha: "abc123",
+          id: 123456788,
+          name: "Public Release Readiness",
+          started_at: "2026-07-31T07:00:00Z",
+          status: "completed",
+        },
+        {
+          app: { id: 15368 },
+          conclusion: "success",
+          head_sha: "abc123",
+          id: 123456789,
+          name: "Public Release Readiness",
+          started_at: "2026-07-31T08:00:00Z",
+          status: "completed",
+        },
+      ],
+    }),
+  );
+
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+});
+
 test("deletes a new draft if the remote tag moves during creation", (t) => {
   const root = createReleaseFixture(t);
   const cleanupPath = join(root, "moved-tag-release-cleanup.json");
@@ -1263,6 +1428,54 @@ test("deletes a new draft if the remote tag moves during creation", (t) => {
   assert.match(
     result.stderr,
     /Remote release tag v0\.1\.0-beta\.1 points at def456/,
+  );
+  assert.match(
+    result.stderr,
+    /was deleted by exact ID and its absence was confirmed by both ID and tag/,
+  );
+  assert.equal(JSON.parse(readFileSync(cleanupPath, "utf8")).deletedId, 424242);
+  assert.equal(existsSync(join(root, "fake-github-release-state.json")), false);
+});
+
+test("deletes a new draft if protected main moves during creation", (t) => {
+  const root = createReleaseFixture(t);
+  const cleanupPath = join(root, "moved-main-release-cleanup.json");
+  const result = runPublishDraft(
+    root,
+    createFakeReleaseMachineCommands(root, {
+      captureReleaseCleanupPath: cleanupPath,
+      mainCommitAfterCreate: "def456",
+    }),
+  );
+
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.match(
+    result.stderr,
+    /Release candidate abc123 must exactly equal protected main commit def456/,
+  );
+  assert.match(
+    result.stderr,
+    /was deleted by exact ID and its absence was confirmed by both ID and tag/,
+  );
+  assert.equal(JSON.parse(readFileSync(cleanupPath, "utf8")).deletedId, 424242);
+  assert.equal(existsSync(join(root, "fake-github-release-state.json")), false);
+});
+
+test("deletes a new draft if protected main moves while readiness is rechecked", (t) => {
+  const root = createReleaseFixture(t);
+  const cleanupPath = join(root, "readiness-main-move-release-cleanup.json");
+  const result = runPublishDraft(
+    root,
+    createFakeReleaseMachineCommands(root, {
+      captureReleaseCleanupPath: cleanupPath,
+      mainCommitAfterReadinessAfterCreate: "def456",
+    }),
+  );
+
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.match(
+    result.stderr,
+    /Release candidate abc123 must exactly equal protected main commit def456/,
   );
   assert.match(
     result.stderr,
@@ -1439,6 +1652,22 @@ test("dry run rejects local-only handoff files in the release upload tree", (t) 
   );
 });
 
+test("dry run ignores repeatable internal RC audit handoff evidence", (t) => {
+  const root = createReleaseFixture(t);
+  const audit = '{"decision":"go"}\n';
+  writeFile(root, "reports/handoff/release/public-beta-rc-audit.json", audit);
+  writeFile(
+    root,
+    "reports/handoff/release/public-beta-rc-audit-SHA256SUMS.txt",
+    `${sha256(audit)}  reports/handoff/release/public-beta-rc-audit.json\n`,
+  );
+
+  const first = runDraft(root);
+  const second = runDraft(root);
+  assert.equal(first.status, 0, first.stdout + first.stderr);
+  assert.equal(second.status, 0, second.stdout + second.stderr);
+});
+
 test("dry run uploads only staged reports release artifacts", (t) => {
   const root = createReleaseFixture(t);
   writeFile(
@@ -1492,3 +1721,101 @@ test("dry run rejects desktop release evidence without workflow source provenanc
   assert.equal(result.status, 1);
   assert.match(result.stderr, /missing desktop evidence source sidecar/);
 });
+
+test("non-dry-run rejects a newer pending readiness check hidden on page two", (t) => {
+  const root = createReleaseFixture(t);
+  const result = runPublishDraft(
+    root,
+    createFakeReleaseMachineCommands(root, {
+      releaseCheckPages: draftPaginatedReadinessChecks({
+        conclusion: null,
+        status: "in_progress",
+      }),
+    }),
+  );
+
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.match(result.stderr, /in_progress\/unreadable/);
+  assert.equal(existsSync(join(root, "fake-github-release-state.json")), false);
+});
+
+test("deletes a new draft by exact ID when readiness changes during creation", async (t) => {
+  for (const [name, status, conclusion, diagnostic] of [
+    ["pending", "in_progress", null, /in_progress\/unreadable/],
+    ["failed", "completed", "failure", /completed\/failure/],
+  ]) {
+    await t.test(name, (subtest) => {
+      const root = createReleaseFixture(subtest);
+      const cleanupPath = join(root, `${name}-readiness-release-cleanup.json`);
+      const result = runPublishDraft(
+        root,
+        createFakeReleaseMachineCommands(root, {
+          captureReleaseCleanupPath: cleanupPath,
+          releaseChecksAfterCreate: [
+            draftReadinessCheck(123456789, {
+              appId: 15368,
+              startedAt: "2026-07-31T08:00:00Z",
+            }),
+            draftReadinessCheck(123456790, {
+              appId: 15368,
+              conclusion,
+              startedAt: "2026-07-31T09:00:00Z",
+              status,
+            }),
+          ],
+        }),
+      );
+
+      assert.equal(result.status, 1, result.stdout + result.stderr);
+      assert.match(result.stderr, diagnostic);
+      assert.match(
+        result.stderr,
+        /was deleted by exact ID and its absence was confirmed by both ID and tag/,
+      );
+      assert.deepEqual(JSON.parse(readFileSync(cleanupPath, "utf8")), {
+        deletedId: 424242,
+        endpoint: "repos/JoeWorkspace/JoeSSH/releases/424242",
+        tag: "v0.1.0-beta.1",
+      });
+      assert.equal(
+        existsSync(join(root, "fake-github-release-state.json")),
+        false,
+      );
+    });
+  }
+});
+
+function draftReadinessCheck(id, options = {}) {
+  return {
+    app: { id: options.appId ?? 42 },
+    conclusion: "conclusion" in options ? options.conclusion : "success",
+    head_sha: "abc123",
+    id,
+    name: "Public Release Readiness",
+    started_at:
+      options.startedAt ??
+      new Date(Date.UTC(2026, 6, 31, 0, 0, id)).toISOString(),
+    status: options.status ?? "completed",
+  };
+}
+
+function draftPaginatedReadinessChecks({ conclusion, status }) {
+  const firstPage = Array.from({ length: 100 }, (_, index) =>
+    draftReadinessCheck(index + 1),
+  );
+  firstPage[0] = draftReadinessCheck(1, {
+    appId: 15368,
+    startedAt: "2026-07-31T07:00:00Z",
+  });
+  return [
+    firstPage,
+    [
+      draftReadinessCheck(101, {
+        appId: 15368,
+        conclusion,
+        startedAt: "2026-07-31T08:00:00Z",
+        status,
+      }),
+    ],
+  ];
+}

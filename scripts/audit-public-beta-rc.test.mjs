@@ -3,6 +3,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  readdirSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -177,18 +178,30 @@ function runAudit(root, fakePath, statePath, extraArgs = []) {
 
 test("writes a Go audit report when release evidence and gates pass", (t) => {
   const { fakePath, root, statePath } = createFixture(t);
+  const releaseFilesBefore = listFiles(join(root, "reports", "release"));
   const result = runAudit(root, fakePath, statePath);
 
   assert.equal(result.status, 0);
   assert.match(result.stdout, /GO \(0 blockers\)/);
   const report = JSON.parse(
     readFileSync(
-      join(root, "reports/release/public-beta-rc-audit.json"),
+      join(root, "reports/handoff/release/public-beta-rc-audit.json"),
       "utf8",
     ),
   );
   assert.equal(report.decision, "go");
   assert.equal(report.blockers.length, 0);
+  assert.deepEqual(
+    listFiles(join(root, "reports", "release")),
+    releaseFilesBefore,
+  );
+
+  const repeated = runAudit(root, fakePath, statePath);
+  assert.equal(repeated.status, 0, repeated.stdout + repeated.stderr);
+  assert.deepEqual(
+    listFiles(join(root, "reports", "release")),
+    releaseFilesBefore,
+  );
 });
 
 test("rejects stale, dirty, weak, or failed Desktop dogfood evidence", async (t) => {
@@ -215,7 +228,7 @@ test("rejects stale, dirty, weak, or failed Desktop dogfood evidence", async (t)
       assert.equal(result.status, 0);
       const report = JSON.parse(
         readFileSync(
-          join(root, "reports/release/public-beta-rc-audit.json"),
+          join(root, "reports/handoff/release/public-beta-rc-audit.json"),
           "utf8",
         ),
       );
@@ -242,7 +255,7 @@ test("records No-Go blockers without hiding GitHub billing annotations", (t) => 
   assert.match(result.stdout, /NO-GO/);
   const report = JSON.parse(
     readFileSync(
-      join(root, "reports/release/public-beta-rc-audit.json"),
+      join(root, "reports/handoff/release/public-beta-rc-audit.json"),
       "utf8",
     ),
   );
@@ -278,7 +291,7 @@ test("blocks when a repository signing mutation path is reintroduced", (t) => {
   assert.equal(result.status, 0);
   const report = JSON.parse(
     readFileSync(
-      join(root, "reports/release/public-beta-rc-audit.json"),
+      join(root, "reports/handoff/release/public-beta-rc-audit.json"),
       "utf8",
     ),
   );
@@ -301,7 +314,7 @@ test("rejects checksum manifest entries outside the release root", (t) => {
   assert.equal(result.status, 0);
   const report = JSON.parse(
     readFileSync(
-      join(root, "reports/release/public-beta-rc-audit.json"),
+      join(root, "reports/handoff/release/public-beta-rc-audit.json"),
       "utf8",
     ),
   );
@@ -323,7 +336,7 @@ test("rejects an SBOM manifest that omits the public Cargo SBOMs", (t) => {
   assert.equal(result.status, 0);
   const report = JSON.parse(
     readFileSync(
-      join(root, "reports/release/public-beta-rc-audit.json"),
+      join(root, "reports/handoff/release/public-beta-rc-audit.json"),
       "utf8",
     ),
   );
@@ -346,7 +359,7 @@ test("flags staged Desktop artifacts that do not match the package version", (t)
   assert.equal(result.status, 0);
   const report = JSON.parse(
     readFileSync(
-      join(root, "reports/release/public-beta-rc-audit.json"),
+      join(root, "reports/handoff/release/public-beta-rc-audit.json"),
       "utf8",
     ),
   );
@@ -357,6 +370,26 @@ test("flags staged Desktop artifacts that do not match the package version", (t)
   assert.match(blocker.detail, /0\.1\.0-beta\.1/);
   assert.match(blocker.detail, /0\.1\.0-beta\.0/);
 });
+
+test("rejects an RC audit output inside the public release upload tree", (t) => {
+  const { fakePath, root, statePath } = createFixture(t);
+  const output = join(root, "reports", "release", "rc-audit.json");
+  const result = runAudit(root, fakePath, statePath, ["--output", output]);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /must stay outside reports\/release/);
+});
+
+function listFiles(path, prefix = "") {
+  return readdirSync(path, { withFileTypes: true })
+    .flatMap((entry) => {
+      const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name;
+      return entry.isDirectory()
+        ? listFiles(join(path, entry.name), relativePath)
+        : [relativePath];
+    })
+    .sort();
+}
 
 function writeDogfood(
   root,

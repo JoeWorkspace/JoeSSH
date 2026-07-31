@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { basename, resolve } from "node:path";
+import { verifyCanonicalReleaseCandidate } from "./release-candidate-github-contract.mjs";
 
 const scriptRoot = resolve(import.meta.dirname, "..");
 const { root } = parseArgs(process.argv.slice(2));
@@ -87,7 +88,6 @@ const steps = [
       resolve(scriptRoot, "scripts", "verify-third-party-licenses.mjs"),
       "--root",
       root,
-      "--artifact-only",
     ],
   },
   {
@@ -241,6 +241,21 @@ function verifyGithubPublishReadiness() {
     };
   }
 
+  let candidate;
+  try {
+    candidate = verifyCanonicalReleaseCandidate({
+      candidateCommit: head.stdout.trim(),
+      readGithubJson: readRequiredGithubApiJson,
+      repository: releaseRepository,
+    });
+  } catch (error) {
+    return {
+      status: 1,
+      stdout: "",
+      stderr: `${error instanceof Error ? error.message : String(error)}\n`,
+    };
+  }
+
   const release = runGh([
     "release",
     "view",
@@ -269,9 +284,17 @@ function verifyGithubPublishReadiness() {
 
   return {
     status: 0,
-    stdout: `Verified GitHub CLI authentication, remote ${releaseTag} at ${remoteTag.commit}, and no existing release in ${releaseRepository}.\n`,
+    stdout: `Verified GitHub CLI authentication, remote ${releaseTag} at ${remoteTag.commit}, protected ${candidate.branch}, successful Public Release Readiness check, and no existing release in ${releaseRepository}.\n`,
     stderr: "",
   };
+}
+
+function readRequiredGithubApiJson(endpoint, label) {
+  const result = readGithubApiJson(endpoint, label);
+  if (!result.ok) {
+    throw new Error(result.detail);
+  }
+  return result.value;
 }
 
 function resolveRemoteReleaseTagCommit() {

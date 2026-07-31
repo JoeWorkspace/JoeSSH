@@ -119,11 +119,13 @@ export async function prepareWindowsStoreCandidate(
             architecture: options.architecture,
             expectedSigner: options.expectedSigner,
             identity,
+            legalNotices,
             temporaryRoot,
           })
         : verifyMsixCandidate({
             artifactSnapshot,
             identity,
+            legalNotices,
             options,
             temporaryRoot,
           });
@@ -724,6 +726,7 @@ function verifyExeCandidate({
   artifactSnapshot,
   expectedSigner,
   identity,
+  legalNotices,
   temporaryRoot,
 }) {
   inspectPortableExecutable(artifactSnapshot.data);
@@ -776,10 +779,16 @@ function verifyExeCandidate({
     );
   }
 
+  let bundledThirdPartyNotices;
   let payload;
   let mainExecutableMachine;
   let verificationError = null;
   try {
+    bundledThirdPartyNotices = verifyInstalledThirdPartyNotices(
+      installRoot,
+      legalNotices,
+      temporaryRoot,
+    );
     const payloadFiles = collectPortableExecutables(installRoot);
     const payloadSnapshots = payloadFiles.map((path, index) => ({
       relativePath: relative(installRoot, path).replaceAll("\\", "/"),
@@ -865,6 +874,7 @@ function verifyExeCandidate({
       installedMainExecutable: "JoeSSH.exe",
       peMachine: mainExecutableMachine,
     },
+    bundledThirdPartyNotices,
     format: WINDOWS_STORE_FORMATS.EXE,
     install: {
       arpIdentity: {
@@ -902,25 +912,45 @@ export function combineVerificationErrors(verificationError, cleanupError) {
   return verificationError ?? cleanupError ?? null;
 }
 
-function verifyMsixCandidate({
-  artifactSnapshot,
-  identity,
-  options,
-  temporaryRoot,
-}) {
+const defaultMsixCandidateRuntime = Object.freeze({
+  crossCheckPartnerCenterPackageFamily,
+  inspectAuthenticode,
+  resolveWindowsSdkTool,
+  runRequiredCommand,
+  verifyUnpackedThirdPartyNotices,
+});
+
+export function verifyMsixCandidate(
+  { artifactSnapshot, identity, legalNotices, options, temporaryRoot },
+  runtime = defaultMsixCandidateRuntime,
+) {
+  const {
+    crossCheckPartnerCenterPackageFamily:
+      crossCheckPartnerCenterPackageFamilyForCandidate,
+    inspectAuthenticode: inspectAuthenticodeForCandidate,
+    resolveWindowsSdkTool: resolveWindowsSdkToolForCandidate,
+    runRequiredCommand: runRequiredCommandForCandidate,
+    verifyUnpackedThirdPartyNotices:
+      verifyUnpackedThirdPartyNoticesForCandidate,
+  } = runtime;
   const partnerIdentity = validatePartnerCenterIdentity(
     readJson(options.partnerIdentity, "Partner Center identity"),
   );
   assertPartnerCenterLegalPublisher(partnerIdentity, identity.publisher);
   const unpackRoot = resolve(temporaryRoot, "msix-unpacked");
   mkdirSync(unpackRoot);
-  const makeAppx = resolveWindowsSdkTool("makeappx.exe");
-  runRequiredCommand(
+  const makeAppx = resolveWindowsSdkToolForCandidate("makeappx.exe");
+  runRequiredCommandForCandidate(
     makeAppx,
     ["unpack", "/p", artifactSnapshot.path, "/d", unpackRoot, "/o", "/v"],
     "MakeAppx semantic validation and unpack failed.",
   );
   validateUnpackedTree(unpackRoot);
+  const bundledThirdPartyNotices = verifyUnpackedThirdPartyNoticesForCandidate(
+    unpackRoot,
+    legalNotices,
+    temporaryRoot,
+  );
   const manifestPath = resolveUnpackedPackageFile(
     unpackRoot,
     "AppxManifest.xml",
@@ -932,7 +962,7 @@ function verifyMsixCandidate({
   const manifest = manifestContract.identity;
   assertMsixIdentityMatches(manifest, partnerIdentity);
   const partnerIdentityCrossCheck =
-    crossCheckPartnerCenterPackageFamily(partnerIdentity);
+    crossCheckPartnerCenterPackageFamilyForCandidate(partnerIdentity);
   const expectedVersion = deriveMsixVersion(identity.version);
   if (manifest.version !== expectedVersion) {
     throw new Error(
@@ -964,7 +994,7 @@ function verifyMsixCandidate({
     );
   }
 
-  const signature = inspectAuthenticode(artifactSnapshot.path);
+  const signature = inspectAuthenticodeForCandidate(artifactSnapshot.path);
   let signatureState;
   if (signature.status === "Valid") {
     verifyWithSignTool(artifactSnapshot.path);
@@ -982,6 +1012,7 @@ function verifyMsixCandidate({
     );
   }
   return {
+    bundledThirdPartyNotices,
     format: WINDOWS_STORE_FORMATS.MSIX,
     makeAppx: {
       executable: basename(makeAppx),
@@ -1009,6 +1040,27 @@ function verifyMsixCandidate({
   };
 }
 
+export function assertBundledThirdPartyNoticesMatch(
+  verification,
+  expectedEvidence,
+) {
+  const bundledNotices = verification?.bundledThirdPartyNotices;
+  if (
+    bundledNotices?.status !== "exact-match" ||
+    bundledNotices.path !== expectedEvidence?.bundleResourcePath ||
+    bundledNotices.sizeBytes !== expectedEvidence?.sizeBytes ||
+    bundledNotices.sha256 !== expectedEvidence?.sha256
+  ) {
+    throw new Error(
+      "Candidate verification must prove an exact match for the bundled third-party notices.",
+    );
+  }
+  return {
+    ...bundledNotices,
+    thirdPartyNoticesBundled: true,
+  };
+}
+
 function writeCandidateEvidence({
   artifactSnapshot,
   artifactSourceCommit,
@@ -1021,6 +1073,10 @@ function writeCandidateEvidence({
   sourceIntegrity,
   verification,
 }) {
+  const verifiedBundledNotices = assertBundledThirdPartyNoticesMatch(
+    verification,
+    legalNotices,
+  );
   if (existsSync(outputDir)) {
     throw new Error(`Refusing to overwrite candidate evidence: ${outputDir}`);
   }
@@ -1127,7 +1183,7 @@ function writeCandidateEvidence({
       sourcePath: legalNotices.sourcePath,
       textCount: legalNotices.textCount,
       verification:
-        "self-contained license bundle verification, exact Tauri resource mapping, and four checksum-bound public SBOMs",
+        "self-contained license bundle verification, exact Tauri resource mapping, exact installed or unpacked candidate payload match, and four checksum-bound public SBOMs",
     },
     attestations: {
       authenticatedProvenance: {
@@ -1174,7 +1230,7 @@ function writeCandidateEvidence({
         : "not-applicable",
       offlineWebView2Config: isExe ? true : "not-applicable",
       publicSbomsBound: true,
-      thirdPartyNoticesBundled: true,
+      thirdPartyNoticesBundled: verifiedBundledNotices.thirdPartyNoticesBundled,
       partnerCenterUploadCandidate: false,
       storePublicationReady: false,
       windowsAppCertificationKit: "not-run",
@@ -1693,6 +1749,118 @@ function validateUnpackedTree(root) {
       }
     }
   }
+}
+
+export function verifyInstalledThirdPartyNotices(
+  installRoot,
+  expectedEvidence,
+  temporaryRoot,
+) {
+  return verifyPayloadThirdPartyNotices(
+    installRoot,
+    expectedEvidence,
+    "Installed EXE payload third-party notices",
+    temporaryRoot,
+    "installed-third-party-notices.txt",
+  );
+}
+
+export function verifyUnpackedThirdPartyNotices(
+  unpackRoot,
+  expectedEvidence,
+  temporaryRoot,
+) {
+  return verifyPayloadThirdPartyNotices(
+    unpackRoot,
+    expectedEvidence,
+    "Unpacked MSIX third-party notices",
+    temporaryRoot,
+    "unpacked-third-party-notices.txt",
+  );
+}
+
+function verifyPayloadThirdPartyNotices(
+  payloadRoot,
+  expectedEvidence,
+  label,
+  temporaryRoot,
+  snapshotName,
+) {
+  if (
+    expectedEvidence?.bundleResourcePath !== BUNDLED_THIRD_PARTY_NOTICES_PATH ||
+    typeof expectedEvidence?.sha256 !== "string" ||
+    !/^[a-f0-9]{64}$/.test(expectedEvidence.sha256) ||
+    !Number.isSafeInteger(expectedEvidence?.sizeBytes) ||
+    expectedEvidence.sizeBytes <= 0 ||
+    expectedEvidence.sizeBytes > THIRD_PARTY_NOTICES_MAX_BYTES
+  ) {
+    throw new Error(
+      `${label} requires exact source path, size, and SHA-256 evidence.`,
+    );
+  }
+
+  const resolvedRoot = resolve(payloadRoot);
+  if (!existsSync(resolvedRoot)) {
+    throw new Error(`${label} root is missing.`);
+  }
+  const rootLink = lstatSync(resolvedRoot);
+  if (!rootLink.isDirectory() || rootLink.isSymbolicLink()) {
+    throw new Error(`${label} root must be a direct directory.`);
+  }
+  const realRoot = realpathSync(resolvedRoot);
+  if (realRoot.toLowerCase() !== resolvedRoot.toLowerCase()) {
+    throw new Error(`${label} root must not resolve through an alias.`);
+  }
+
+  const expectedPath = resolve(
+    realRoot,
+    ...BUNDLED_THIRD_PARTY_NOTICES_PATH.split("/"),
+  );
+  assertInside(realRoot, expectedPath, label);
+  if (!existsSync(expectedPath)) {
+    throw new Error(
+      `${label} is missing at ${BUNDLED_THIRD_PARTY_NOTICES_PATH}.`,
+    );
+  }
+  const link = lstatSync(expectedPath);
+  if (
+    !link.isFile() ||
+    link.isSymbolicLink() ||
+    link.nlink !== 1 ||
+    link.size <= 0 ||
+    link.size > THIRD_PARTY_NOTICES_MAX_BYTES
+  ) {
+    throw new Error(`${label} must be a direct, regular, single-link file.`);
+  }
+  const realPath = realpathSync(expectedPath);
+  assertInside(realRoot, realPath, label);
+  if (realPath.toLowerCase() !== expectedPath.toLowerCase()) {
+    throw new Error(`${label} must not resolve through an alias.`);
+  }
+
+  const snapshot = capturePrivateSnapshot(
+    realPath,
+    label,
+    temporaryRoot,
+    snapshotName,
+  );
+  if (snapshot.size !== expectedEvidence.sizeBytes) {
+    throw new Error(
+      `${label} size does not match the verified source notices.`,
+    );
+  }
+  if (snapshot.sha256 !== expectedEvidence.sha256) {
+    throw new Error(
+      `${label} SHA-256 does not match the verified source notices.`,
+    );
+  }
+
+  return {
+    path: BUNDLED_THIRD_PARTY_NOTICES_PATH,
+    sha256: snapshot.sha256,
+    sizeBytes: snapshot.size,
+    status: "exact-match",
+  };
 }
 
 function resolveUnpackedPackageFile(root, packageRelativePath, label) {

@@ -18,6 +18,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, isAbsolute, join, relative, resolve } from "node:path";
+import { verifyCanonicalReleaseCandidate } from "./release-candidate-github-contract.mjs";
 
 const scriptRoot = resolve(import.meta.dirname, "..");
 const { dryRun, notesFile, root } = parseArgs(process.argv.slice(2));
@@ -174,7 +175,6 @@ const licenseVerification = spawnSync(
     resolve(scriptRoot, "scripts", "verify-third-party-licenses.mjs"),
     "--root",
     root,
-    "--artifact-only",
   ],
   {
     cwd: scriptRoot,
@@ -247,6 +247,8 @@ try {
   } else {
     assertSourceEvidenceUnchanged(sourceArtifactEvidence, releaseNotesEvidence);
     assertPrivateSnapshotUnchanged(privateSnapshot);
+    assertRemoteReleaseTagMatchesCommit(releaseCommit);
+    assertCanonicalGithubReleaseCandidate(releaseCommit);
     const result = spawnSync(
       ghCommand,
       [...ghCommandPrefixArgs, ...releaseArgs],
@@ -660,6 +662,7 @@ function verifyNewGithubDraft(snapshot, expectedCommit) {
   try {
     createdDraft = requireCreatedGithubDraftByTag();
     assertRemoteReleaseTagMatchesCommit(expectedCommit);
+    assertCanonicalGithubReleaseCandidate(expectedCommit);
     assertRemoteDraftAssets(createdDraft, snapshot);
 
     const releaseById = lookupGithubRelease(
@@ -977,6 +980,22 @@ function assertRemoteReleaseTagMatchesCommit(expectedCommit) {
       `Remote release tag ${tag} points at ${actualCommit}; expected reviewed commit ${expectedCommit}.`,
     );
   }
+}
+
+function assertCanonicalGithubReleaseCandidate(expectedCommit) {
+  verifyCanonicalReleaseCandidate({
+    candidateCommit: expectedCommit,
+    readGithubJson: readRequiredGithubApiJson,
+    repository: releaseRepository,
+  });
+}
+
+function readRequiredGithubApiJson(endpoint, label) {
+  const value = lookupGithubRelease(endpoint, label);
+  if (value === null) {
+    throw new Error(`GitHub returned HTTP 404 for ${label}.`);
+  }
+  return value;
 }
 
 function resolveRemoteReleaseTagCommit() {
@@ -1319,6 +1338,7 @@ function assertReleaseMachineReady() {
   });
   try {
     assertRemoteReleaseTagMatchesCommit(head);
+    assertCanonicalGithubReleaseCandidate(head);
   } catch (error) {
     fail(error instanceof Error ? error.message : String(error));
   }

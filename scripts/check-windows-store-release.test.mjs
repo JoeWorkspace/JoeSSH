@@ -605,6 +605,59 @@ test("workflow requires legal resources, exact SBOMs, Store surface, and pending
   }
 });
 
+test("hosted recheck requires exact bundled third-party notices evidence", () => {
+  const workflow = readWorkflow();
+  const missingGate = workflow.replace(
+    "$candidate.gates.thirdPartyNoticesBundled -ne $true -or",
+    "$false -or",
+  );
+  const wrongPath = workflow.replace(
+    '$candidate.verification.bundledThirdPartyNotices.path -cne "legal/THIRD-PARTY-NOTICES.txt" -or',
+    '$candidate.verification.bundledThirdPartyNotices.path -cne "legal/OTHER.txt" -or',
+  );
+  const unboundPath = workflow.replace(
+    "$candidate.verification.bundledThirdPartyNotices.path -cne $candidate.legalNotices.bundleResourcePath -or",
+    "$false -or",
+  );
+  const wrongStatus = workflow.replace(
+    '$candidate.verification.bundledThirdPartyNotices.status -cne "exact-match" -or',
+    '$candidate.verification.bundledThirdPartyNotices.status -cne "unchecked" -or',
+  );
+  const uncheckedSize = workflow.replace(
+    "$candidate.verification.bundledThirdPartyNotices.sizeBytes -ne $noticeSizeBytes -or",
+    "$false -or",
+  );
+  const unboundSize = workflow.replace(
+    "$candidate.verification.bundledThirdPartyNotices.sizeBytes -ne $candidate.legalNotices.sizeBytes -or",
+    "$false -or",
+  );
+  const uncheckedSha256 = workflow.replace(
+    "$candidate.verification.bundledThirdPartyNotices.sha256 -cne $noticeSha256 -or",
+    "$false -or",
+  );
+  const unboundSha256 = workflow.replace(
+    "$candidate.verification.bundledThirdPartyNotices.sha256 -cne $candidate.legalNotices.sha256 -or",
+    "$false -or",
+  );
+
+  for (const insecure of [
+    missingGate,
+    wrongPath,
+    unboundPath,
+    wrongStatus,
+    uncheckedSize,
+    unboundSize,
+    uncheckedSha256,
+    unboundSha256,
+  ]) {
+    assert.notEqual(insecure, workflow);
+    assertHasFailure(
+      checkWindowsStoreWorkflowSecurity(insecure),
+      "rechecks hosted bytes, identity, legal resources, SBOMs, and Store surface",
+    );
+  }
+});
+
 test("verify rejects post-recheck and pre-upload evidence tampering steps", () => {
   const workflow = readWorkflow();
   const afterRecheck = workflow.replace(

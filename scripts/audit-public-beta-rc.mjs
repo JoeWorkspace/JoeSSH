@@ -805,11 +805,17 @@ function parseArgs(args) {
   outputPath ??= resolve(
     root,
     "reports",
+    "handoff",
     "release",
     "public-beta-rc-audit.json",
   );
   if (!isInsideRoot(outputPath, root)) {
     fail("--output must stay inside --root.");
+  }
+  if (isInsideRoot(outputPath, resolve(root, "reports", "release"))) {
+    fail(
+      "--output must stay outside reports/release because RC audit evidence is internal handoff material.",
+    );
   }
 
   return { noFail, outputPath, repo, root, skipGithub };

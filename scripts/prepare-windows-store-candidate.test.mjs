@@ -17,6 +17,7 @@ import {
   validateVersionedHttpsUrl,
 } from "./windows-store-contract.mjs";
 import {
+  assertBundledThirdPartyNoticesMatch,
   assertInstalledProductIdentity,
   assertSignerMatchesExpected,
   capturePrivateSnapshot,
@@ -26,14 +27,19 @@ import {
   validateExpectedSigner,
   validateHostedRetentionAttestation,
   validateHttpsArtifactUrl,
+  verifyInstalledThirdPartyNotices,
+  verifyMsixCandidate,
+  verifyUnpackedThirdPartyNotices,
   verifyAuthenticode,
 } from "./prepare-windows-store-candidate.mjs";
 import {
   existsSync,
+  linkSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -285,6 +291,88 @@ function completeMsixManifest(overrides = {}) {
       <Applications>${application}</Applications>
       <Capabilities>${capabilities}</Capabilities>
     </Package>`;
+}
+
+function createMsixCandidateVerificationFixture(t, verifyNotices) {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "joessh-msix-wiring-"));
+  t.after(() => rmSync(temporaryRoot, { force: true, recursive: true }));
+
+  const partnerIdentityPath = join(temporaryRoot, "partner-identity.json");
+  writeFileSync(
+    partnerIdentityPath,
+    JSON.stringify({
+      schemaVersion: 1,
+      source: "partner-center",
+      productId: "9N1234567890",
+      packageIdentityName: "JoeSSH.Store.Assigned",
+      publisher: "CN=Store Publisher",
+      publisherDisplayName: "JoeSSH Publisher",
+      publisherId: "8wekyb3d8bbwe",
+      packageFamilyName: "JoeSSH.Store.Assigned_8wekyb3d8bbwe",
+      reservedAt: "2026-07-30T00:00:00.000Z",
+    }),
+    "utf8",
+  );
+
+  const artifactPath = join(temporaryRoot, "candidate.msix");
+  writeFileSync(artifactPath, "fixture artifact", { flag: "wx" });
+  const unpackRoot = resolve(temporaryRoot, "msix-unpacked");
+  const executableFixture = readFileSync(
+    resolve(
+      import.meta.dirname,
+      "../node_modules/fb-dotslash/bin/windows/dotslash.exe",
+    ),
+  );
+  const legalNotices = Object.freeze({
+    bundleResourcePath: "legal/THIRD-PARTY-NOTICES.txt",
+    sha256: SHA256,
+    sizeBytes: 42,
+  });
+  const input = {
+    artifactSnapshot: { path: artifactPath },
+    identity: {
+      publisher: "JoeSSH Publisher",
+      version: "0.1.0-beta.10",
+    },
+    legalNotices,
+    options: { partnerIdentity: partnerIdentityPath },
+    temporaryRoot,
+  };
+  const runtime = {
+    resolveWindowsSdkTool(fileName) {
+      assert.equal(fileName, "makeappx.exe");
+      return "fixture-makeappx.exe";
+    },
+    runRequiredCommand(command, args) {
+      assert.equal(command, "fixture-makeappx.exe");
+      assert.equal(args[0], "unpack");
+      assert.equal(args[4], unpackRoot);
+      writeFixtureFile(
+        unpackRoot,
+        "AppxManifest.xml",
+        completeMsixManifest({
+          identity: `<Identity Publisher="CN=Store Publisher" Version="0.1.0.10"
+      Name="JoeSSH.Store.Assigned" ProcessorArchitecture="x64" />`,
+        }),
+      );
+      writeFileSync(resolve(unpackRoot, "JoeSSH.exe"), executableFixture, {
+        flag: "wx",
+      });
+    },
+    verifyUnpackedThirdPartyNotices: verifyNotices,
+    crossCheckPartnerCenterPackageFamily: () => ({
+      method: "fixture",
+      packageIdentityName: "JoeSSH.Store.Assigned",
+      publisherId: "8wekyb3d8bbwe",
+      status: "matched",
+    }),
+    inspectAuthenticode: (path) => {
+      assert.equal(path, artifactPath);
+      return { status: "NotSigned" };
+    },
+  };
+
+  return { input, runtime, unpackRoot };
 }
 
 test("accepts only the reviewed offline NSIS Store config", () => {
@@ -560,6 +648,257 @@ test("candidate verification uses a private byte snapshot, not the mutable sourc
   } finally {
     rmSync(temporaryRoot, { force: true, recursive: true });
   }
+});
+
+for (const [format, verifyPayloadNotices] of [
+  ["EXE install", verifyInstalledThirdPartyNotices],
+  ["MSIX package", verifyUnpackedThirdPartyNotices],
+]) {
+  test(`${format} accepts exact bundled third-party notices`, (t) => {
+    const temporaryRoot = mkdtempSync(
+      join(tmpdir(), "joessh-store-payload-legal-"),
+    );
+    const payloadRoot = join(temporaryRoot, "payload");
+    mkdirSync(payloadRoot);
+    t.after(() => rmSync(temporaryRoot, { force: true, recursive: true }));
+
+    const content = "Reviewed third-party notices.\n";
+    writeFixtureFile(payloadRoot, "legal/THIRD-PARTY-NOTICES.txt", content);
+    assert.deepEqual(
+      verifyPayloadNotices(
+        payloadRoot,
+        {
+          bundleResourcePath: "legal/THIRD-PARTY-NOTICES.txt",
+          sha256: sha256Text(content),
+          sizeBytes: Buffer.byteLength(content),
+        },
+        temporaryRoot,
+      ),
+      {
+        path: "legal/THIRD-PARTY-NOTICES.txt",
+        sha256: sha256Text(content),
+        sizeBytes: Buffer.byteLength(content),
+        status: "exact-match",
+      },
+    );
+  });
+
+  test(`${format} rejects missing bundled third-party notices`, (t) => {
+    const temporaryRoot = mkdtempSync(
+      join(tmpdir(), "joessh-store-payload-legal-"),
+    );
+    const payloadRoot = join(temporaryRoot, "payload");
+    mkdirSync(payloadRoot);
+    t.after(() => rmSync(temporaryRoot, { force: true, recursive: true }));
+
+    const content = "Reviewed third-party notices.\n";
+    assert.throws(
+      () =>
+        verifyPayloadNotices(
+          payloadRoot,
+          {
+            bundleResourcePath: "legal/THIRD-PARTY-NOTICES.txt",
+            sha256: sha256Text(content),
+            sizeBytes: Buffer.byteLength(content),
+          },
+          temporaryRoot,
+        ),
+      /third-party notices is missing/i,
+    );
+  });
+
+  test(`${format} rejects an illegal bundled notices resource path`, (t) => {
+    const temporaryRoot = mkdtempSync(
+      join(tmpdir(), "joessh-store-payload-legal-"),
+    );
+    const payloadRoot = join(temporaryRoot, "payload");
+    mkdirSync(payloadRoot);
+    t.after(() => rmSync(temporaryRoot, { force: true, recursive: true }));
+
+    const content = "Reviewed third-party notices.\n";
+    writeFixtureFile(payloadRoot, "legal/THIRD-PARTY-NOTICES.txt", content);
+    assert.throws(
+      () =>
+        verifyPayloadNotices(
+          payloadRoot,
+          {
+            bundleResourcePath: "../THIRD-PARTY-NOTICES.txt",
+            sha256: sha256Text(content),
+            sizeBytes: Buffer.byteLength(content),
+          },
+          temporaryRoot,
+        ),
+      /requires exact source path, size, and SHA-256 evidence/i,
+    );
+  });
+
+  test(`${format} rejects symlinked bundled third-party notices`, (t) => {
+    const temporaryRoot = mkdtempSync(
+      join(tmpdir(), "joessh-store-payload-legal-"),
+    );
+    const payloadRoot = join(temporaryRoot, "payload");
+    const legalRoot = join(payloadRoot, "legal");
+    mkdirSync(legalRoot, { recursive: true });
+    t.after(() => rmSync(temporaryRoot, { force: true, recursive: true }));
+
+    const content = "Reviewed third-party notices.\n";
+    const sourcePath = join(temporaryRoot, "symlink-source-notices.txt");
+    const noticesPath = join(legalRoot, "THIRD-PARTY-NOTICES.txt");
+    writeFileSync(sourcePath, content, { flag: "wx" });
+    try {
+      symlinkSync(sourcePath, noticesPath, "file");
+    } catch (error) {
+      if (skipUnavailableLink(t, "File symlink", error)) {
+        return;
+      }
+      throw error;
+    }
+
+    assert.throws(
+      () =>
+        verifyPayloadNotices(
+          payloadRoot,
+          {
+            bundleResourcePath: "legal/THIRD-PARTY-NOTICES.txt",
+            sha256: sha256Text(content),
+            sizeBytes: Buffer.byteLength(content),
+          },
+          temporaryRoot,
+        ),
+      /must be a direct, regular, single-link file/i,
+    );
+  });
+
+  test(`${format} rejects hard-linked bundled third-party notices`, (t) => {
+    const temporaryRoot = mkdtempSync(
+      join(tmpdir(), "joessh-store-payload-legal-"),
+    );
+    const payloadRoot = join(temporaryRoot, "payload");
+    const legalRoot = join(payloadRoot, "legal");
+    mkdirSync(legalRoot, { recursive: true });
+    t.after(() => rmSync(temporaryRoot, { force: true, recursive: true }));
+
+    const content = "Reviewed third-party notices.\n";
+    const sourcePath = join(temporaryRoot, "hardlink-source-notices.txt");
+    const noticesPath = join(legalRoot, "THIRD-PARTY-NOTICES.txt");
+    writeFileSync(sourcePath, content, { flag: "wx" });
+    try {
+      linkSync(sourcePath, noticesPath);
+    } catch (error) {
+      if (skipUnavailableLink(t, "Hard link", error)) {
+        return;
+      }
+      throw error;
+    }
+
+    assert.throws(
+      () =>
+        verifyPayloadNotices(
+          payloadRoot,
+          {
+            bundleResourcePath: "legal/THIRD-PARTY-NOTICES.txt",
+            sha256: sha256Text(content),
+            sizeBytes: Buffer.byteLength(content),
+          },
+          temporaryRoot,
+        ),
+      /must be a direct, regular, single-link file/i,
+    );
+  });
+
+  test(`${format} rejects wrong-size bundled third-party notices`, (t) => {
+    const temporaryRoot = mkdtempSync(
+      join(tmpdir(), "joessh-store-payload-legal-"),
+    );
+    const payloadRoot = join(temporaryRoot, "payload");
+    mkdirSync(payloadRoot);
+    t.after(() => rmSync(temporaryRoot, { force: true, recursive: true }));
+
+    const reviewed = "Reviewed third-party notices.\n";
+    writeFixtureFile(
+      payloadRoot,
+      "legal/THIRD-PARTY-NOTICES.txt",
+      `${reviewed}extra\n`,
+    );
+    assert.throws(
+      () =>
+        verifyPayloadNotices(
+          payloadRoot,
+          {
+            bundleResourcePath: "legal/THIRD-PARTY-NOTICES.txt",
+            sha256: sha256Text(reviewed),
+            sizeBytes: Buffer.byteLength(reviewed),
+          },
+          temporaryRoot,
+        ),
+      /size does not match the verified source notices/i,
+    );
+  });
+
+  test(`${format} rejects tampered bundled third-party notices`, (t) => {
+    const temporaryRoot = mkdtempSync(
+      join(tmpdir(), "joessh-store-payload-legal-"),
+    );
+    const payloadRoot = join(temporaryRoot, "payload");
+    mkdirSync(payloadRoot);
+    t.after(() => rmSync(temporaryRoot, { force: true, recursive: true }));
+
+    const reviewed = "Reviewed third-party notices.\n";
+    const tampered = `X${reviewed.slice(1)}`;
+    writeFixtureFile(payloadRoot, "legal/THIRD-PARTY-NOTICES.txt", tampered);
+    assert.equal(Buffer.byteLength(tampered), Buffer.byteLength(reviewed));
+    assert.throws(
+      () =>
+        verifyPayloadNotices(
+          payloadRoot,
+          {
+            bundleResourcePath: "legal/THIRD-PARTY-NOTICES.txt",
+            sha256: sha256Text(reviewed),
+            sizeBytes: Buffer.byteLength(reviewed),
+          },
+          temporaryRoot,
+        ),
+      /SHA-256 does not match the verified source notices/i,
+    );
+  });
+}
+
+test("candidate evidence requires an exact bundled notices result", () => {
+  const content = "Reviewed third-party notices.\n";
+  const expectedEvidence = {
+    bundleResourcePath: "legal/THIRD-PARTY-NOTICES.txt",
+    sha256: sha256Text(content),
+    sizeBytes: Buffer.byteLength(content),
+  };
+  const verification = {
+    bundledThirdPartyNotices: {
+      path: expectedEvidence.bundleResourcePath,
+      sha256: expectedEvidence.sha256,
+      sizeBytes: expectedEvidence.sizeBytes,
+      status: "exact-match",
+    },
+  };
+
+  assert.deepEqual(
+    assertBundledThirdPartyNoticesMatch(verification, expectedEvidence),
+    {
+      ...verification.bundledThirdPartyNotices,
+      thirdPartyNoticesBundled: true,
+    },
+  );
+  assert.throws(
+    () =>
+      assertBundledThirdPartyNoticesMatch(
+        {
+          bundledThirdPartyNotices: {
+            ...verification.bundledThirdPartyNotices,
+            sha256: "0".repeat(64),
+          },
+        },
+        expectedEvidence,
+      ),
+    /must prove an exact match/i,
+  );
 });
 
 test("MSIX preflight rejects missing or placeholder Partner Center identity", () => {
@@ -858,6 +1197,82 @@ test("payload and cleanup failures are both preserved", () => {
   assert.deepEqual(combined.errors, [payloadError, cleanupError]);
 });
 
+test("EXE notices verification failure remains wired to silent cleanup", () => {
+  const source = readFileSync(
+    resolve(import.meta.dirname, "prepare-windows-store-candidate.mjs"),
+    "utf8",
+  );
+  assert.doesNotThrow(() => assertExeNoticesCleanupWiring(source));
+
+  const shortCircuitedCleanup = source.replace(
+    "  } catch (error) {\n    verificationError = error;\n  }\n\n  let uninstall = null;",
+    "  } catch (error) {\n    throw error;\n  }\n\n  let uninstall = null;",
+  );
+  assert.notEqual(shortCircuitedCleanup, source);
+  assert.throws(
+    () => assertExeNoticesCleanupWiring(shortCircuitedCleanup),
+    /must capture notices failures before silent cleanup/i,
+  );
+});
+
+test("MSIX candidate returns notices evidence produced from its unpacked payload", (t) => {
+  const calls = [];
+  const bundledThirdPartyNotices = Object.freeze({
+    path: "legal/THIRD-PARTY-NOTICES.txt",
+    sha256: SHA256,
+    sizeBytes: 42,
+    status: "exact-match",
+  });
+  const fixture = createMsixCandidateVerificationFixture(t, (...args) => {
+    calls.push(args);
+    return bundledThirdPartyNotices;
+  });
+
+  const verification = verifyMsixCandidate(fixture.input, fixture.runtime);
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0][0], fixture.unpackRoot);
+  assert.strictEqual(calls[0][1], fixture.input.legalNotices);
+  assert.equal(calls[0][2], fixture.input.temporaryRoot);
+  assert.strictEqual(
+    verification.bundledThirdPartyNotices,
+    bundledThirdPartyNotices,
+  );
+});
+
+test("MSIX candidate propagates unpacked notices verification failures", (t) => {
+  const noticesError = new Error("unpacked notices mismatch");
+  const fixture = createMsixCandidateVerificationFixture(t, () => {
+    throw noticesError;
+  });
+
+  assert.throws(
+    () => verifyMsixCandidate(fixture.input, fixture.runtime),
+    (error) => error === noticesError,
+  );
+});
+
+function assertExeNoticesCleanupWiring(source) {
+  const verifyStart = source.indexOf("function verifyExeCandidate({");
+  const verifyEnd = source.indexOf(
+    "export function combineVerificationErrors",
+    verifyStart,
+  );
+  assert.ok(verifyStart >= 0 && verifyEnd > verifyStart);
+  const verifyExeSource = source.slice(verifyStart, verifyEnd);
+
+  assert.match(
+    verifyExeSource,
+    /let verificationError = null;\s*try \{\s*bundledThirdPartyNotices = verifyInstalledThirdPartyNotices\([\s\S]*?\}\s*catch \(error\) \{\s*verificationError = error;\s*\}\s*let uninstall = null;\s*let cleanupError = null;\s*try \{\s*uninstall = verifySilentUninstall\(/u,
+    "EXE verification must capture notices failures before silent cleanup.",
+  );
+  assert.match(
+    verifyExeSource,
+    /const combinedError = combineVerificationErrors\(\s*verificationError,\s*cleanupError,\s*\);\s*if \(combinedError\) \{\s*throw combinedError;\s*\}/u,
+    "EXE verification must combine payload and cleanup failures after cleanup.",
+  );
+}
+
 test(
   "real Authenticode verifier rejects an installed unsigned PE fixture",
   { skip: process.platform !== "win32" },
@@ -877,3 +1292,21 @@ test(
     );
   },
 );
+
+function skipUnavailableLink(t, kind, error) {
+  const unavailableCodes = new Set([
+    "EACCES",
+    "EINVAL",
+    "ENOSYS",
+    "ENOTSUP",
+    "EPERM",
+    "EROFS",
+  ]);
+  if (!unavailableCodes.has(error?.code)) {
+    return false;
+  }
+  t.skip(
+    `${kind} creation is unavailable on ${process.platform} (${error.code}): ${error.message}`,
+  );
+  return true;
+}

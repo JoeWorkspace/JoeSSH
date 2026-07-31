@@ -51,7 +51,7 @@ const VERIFY_STEP_SHA256 = [
   "ef00ff6c8edf782194cc26cc2c150ce8afad52b68365f15b9e3779e39e48d49b",
   "abdab7328529d5e9909d3cf597d08ad122fbcbd9274878c0a1201d4b21ff2968",
   "5ff5cbe9ee62b6b7ae82f4afd9fe01f3e80522f11ef9eb6eb28165128f7e6c96",
-  "bd400d5103d2cf98a773d059ff447821fb627e135beaa2b531e7676e867ae2f1",
+  "55e0395a16db39eb3c83eaf753139f64d047b5805c0ed2afba90e9f900f59983",
   "0e42f9d952b2540e6d759fbd5886d0eba8287dfbb687c22a9c653902f1e1c02b",
   "cd12365def71f1c5492b69ac738404a42bd6deb3b9bf55b9b670176dce22f4b6",
   "6083cc0b5c4c32cf6dffff667a1508db408b59f2bb6435c5d25e12391901a286",
@@ -169,6 +169,10 @@ export function checkWindowsStoreRelease(rootPath = defaultRoot) {
     results,
     preflight.includes("collectBundledThirdPartyNoticesEvidence") &&
       preflight.includes("verifyPublishedThirdPartyLicenseBundle") &&
+      preflight.includes("verifyInstalledThirdPartyNotices") &&
+      preflight.includes("verifyUnpackedThirdPartyNotices") &&
+      preflight.includes("assertBundledThirdPartyNoticesMatch") &&
+      preflight.includes('status: "exact-match"') &&
       preflight.includes("thirdPartyNoticesSha256") &&
       preflight.includes("thirdPartyNoticesBundled: true") &&
       PUBLIC_SBOM_PATHS.every((path) => preflight.includes(path)),
@@ -609,6 +613,17 @@ export function checkWindowsStoreWorkflowSecurity(workflowText) {
         "thirdPartyLicenseChecksumManifestSha256",
         "sbomChecksumManifestSha256",
         "$candidate.gates.publicSbomsBound -ne $true",
+        "$noticeSizeBytes = (Get-Item -LiteralPath $noticePath).Length",
+        "$candidate.legalNotices.sizeBytes -ne $noticeSizeBytes",
+        "$candidate.gates.thirdPartyNoticesBundled -isnot [bool]",
+        "$candidate.gates.thirdPartyNoticesBundled -ne $true",
+        '$candidate.verification.bundledThirdPartyNotices.path -cne "legal/THIRD-PARTY-NOTICES.txt"',
+        "$candidate.verification.bundledThirdPartyNotices.path -cne $candidate.legalNotices.bundleResourcePath",
+        '$candidate.verification.bundledThirdPartyNotices.status -cne "exact-match"',
+        "$candidate.verification.bundledThirdPartyNotices.sizeBytes -ne $noticeSizeBytes",
+        "$candidate.verification.bundledThirdPartyNotices.sizeBytes -ne $candidate.legalNotices.sizeBytes",
+        "$candidate.verification.bundledThirdPartyNotices.sha256 -cne $noticeSha256",
+        "$candidate.verification.bundledThirdPartyNotices.sha256 -cne $candidate.legalNotices.sha256",
         "pending-microsoft-store-signing",
         '$candidate.storeSubmission.status -cne "not-submitted"',
         "joessh-release-surface-profile",
