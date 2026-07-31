@@ -433,6 +433,57 @@ test("canonical npm SBOM output is independent of UUID, timestamp, and checkout 
   assert.match(first, /"name": "atlasterm"/);
 });
 
+test("canonical npm SBOM accepts a product name matching the hosted checkout", () => {
+  const description =
+    "JoeSSH monorepo for a local-first SSH, terminal, SFTP, forwarding, sync, and team workspace product.";
+  const rawSbom = JSON.stringify({
+    bomFormat: "CycloneDX",
+    components: [{ name: "dependency", version: "1.0.0" }],
+    metadata: {
+      component: {
+        description,
+        name: "JoeSSH",
+        version: "1.2.3",
+      },
+    },
+    specVersion: "1.5",
+  });
+
+  const canonical = canonicalizeNpmCycloneDx(rawSbom, {
+    packageName: "atlasterm",
+    rootPath: "/home/runner/work/JoeSSH/JoeSSH",
+  });
+
+  assert.equal(
+    JSON.parse(canonical).metadata.component.description,
+    description,
+  );
+});
+
+test("canonical npm SBOM still rejects a hosted checkout name outside the root description", () => {
+  const rawSbom = JSON.stringify({
+    bomFormat: "CycloneDX",
+    components: [{ name: "dependency", version: "1.0.0" }],
+    metadata: {
+      component: {
+        name: "JoeSSH",
+        properties: [{ name: "build-worktree", value: "JoeSSH" }],
+        version: "1.2.3",
+      },
+    },
+    specVersion: "1.5",
+  });
+
+  assert.throws(
+    () =>
+      canonicalizeNpmCycloneDx(rawSbom, {
+        packageName: "atlasterm",
+        rootPath: "/home/runner/work/JoeSSH/JoeSSH",
+      }),
+    /\$\.metadata\.component\.properties\[0\]\.value contains checkout name JoeSSH/,
+  );
+});
+
 test("canonical Cargo SBOM is independent of checkout paths and excludes dev-only packages", () => {
   const makeMetadata = (rootPath) => {
     const workspaceId = `path+file:///${rootPath.replaceAll("\\", "/")}/crates/core#atlasterm-core@0.1.0-beta.10`;

@@ -501,9 +501,14 @@ function findLocalPathLeaks(json, { packageName, rootPath }) {
     ) {
       leaks.add(`${jsonPath} contains an absolute local path`);
     }
+    // npm copies the source-controlled package description into this field. A
+    // public product name may legitimately equal the hosted checkout basename.
+    const isRootComponentDescription =
+      jsonPath === "$.metadata.component.description";
     if (
       rootName &&
       rootName !== packageName &&
+      !isRootComponentDescription &&
       normalized
         .toLocaleLowerCase("en-US")
         .includes(rootName.toLocaleLowerCase("en-US"))
