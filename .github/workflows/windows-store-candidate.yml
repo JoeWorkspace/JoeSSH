@@ -240,6 +240,7 @@ jobs:
             }
           }
 
+          $repositoryMetadata = Get-GitHubJson "/repos/$($env:REPOSITORY)"
           $environment = Get-GitHubJson "/repos/$($env:REPOSITORY)/environments/windows-release-stage-b"
           $reviewRules = @(
             $environment.protection_rules |
@@ -267,8 +268,30 @@ jobs:
                 $_.app_id -eq $requiredStatusCheckAppId
               }
           )
-          $bypass = $protection.required_pull_request_reviews.bypass_pull_request_allowances
-          $bypassCount = @($bypass.users).Count + @($bypass.teams).Count + @($bypass.apps).Count
+          $pullRequestReviews = $protection.required_pull_request_reviews
+          $bypassProperty = $pullRequestReviews.PSObject.Properties["bypass_pull_request_allowances"]
+          if ($null -eq $bypassProperty) {
+            if ($repositoryMetadata.owner.type -cne "User") {
+              throw "Bypass allowances are unreadable for a non-user-owned repository."
+            }
+            $bypassCount = 0
+          } else {
+            $bypass = $bypassProperty.Value
+            if ($null -eq $bypass) {
+              throw "Bypass allowances must be an object when present."
+            }
+            $bypassUsers = $bypass.PSObject.Properties["users"]
+            $bypassTeams = $bypass.PSObject.Properties["teams"]
+            $bypassApps = $bypass.PSObject.Properties["apps"]
+            if (
+              $null -eq $bypassUsers -or
+              $null -eq $bypassTeams -or
+              $null -eq $bypassApps
+            ) {
+              throw "Bypass allowance actor lists are unreadable."
+            }
+            $bypassCount = @($bypassUsers.Value).Count + @($bypassTeams.Value).Count + @($bypassApps.Value).Count
+          }
           if (
             $protection.required_status_checks.strict -ne $true -or
             $requiredStatusCheckMatches.Count -ne 1 -or

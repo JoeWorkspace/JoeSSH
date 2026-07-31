@@ -89,8 +89,8 @@ const repository = resolveRepository(scriptArgs.repo);
 report.repository = repository;
 
 if (repository) {
-  auditRepositoryVisibility(repository);
-  auditMainProtection(repository);
+  const repositoryMetadata = auditRepositoryVisibility(repository);
+  auditMainProtection(repository, repositoryMetadata);
   auditPrivateVulnerabilityReporting(repository);
   for (const contract of REQUIRED_ENVIRONMENT_CONTRACTS) {
     auditEnvironment(repository, contract);
@@ -230,7 +230,7 @@ function auditRepositoryVisibility(repository) {
   return result.value;
 }
 
-function auditMainProtection(repository) {
+function auditMainProtection(repository, repositoryMetadata) {
   const branch = apiJson(`repos/${repository}/branches/main`);
   if (!branch.ok) {
     addCheck(
@@ -257,7 +257,10 @@ function auditMainProtection(repository) {
   );
   if (
     directProtection.ok &&
-    branchProtectionMeetsReleaseBar(directProtection.value)
+    branchProtectionMeetsReleaseBar(
+      directProtection.value,
+      repositoryMetadata?.owner?.type,
+    )
   ) {
     addCheck(
       "main-protection",
@@ -853,7 +856,7 @@ function activeRulesetProtectsMain(ruleset) {
   );
 }
 
-function branchProtectionMeetsReleaseBar(value) {
+function branchProtectionMeetsReleaseBar(value, repositoryOwnerType) {
   if (!isNonEmptyObject(value) || value?.message) {
     return false;
   }
@@ -870,13 +873,19 @@ function branchProtectionMeetsReleaseBar(value) {
     pullRequestReviews?.require_last_push_approval === true &&
     hasNoPullRequestBypassAllowances(
       pullRequestReviews?.bypass_pull_request_allowances,
+      repositoryOwnerType,
     ) &&
     value.allow_force_pushes?.enabled === false &&
     value.allow_deletions?.enabled === false
   );
 }
 
-function hasNoPullRequestBypassAllowances(allowances) {
+function hasNoPullRequestBypassAllowances(allowances, repositoryOwnerType) {
+  if (allowances === undefined && repositoryOwnerType === "User") {
+    // GitHub omits organization-only bypass actor restrictions for user-owned repositories.
+    return true;
+  }
+
   return (
     isNonEmptyObject(allowances) &&
     ["users", "teams", "apps"].every(

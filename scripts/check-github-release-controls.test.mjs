@@ -226,6 +226,9 @@ function createFixture(t, overrides = {}) {
     repoMetadata: {
       default_branch: "main",
       id: 123456,
+      owner: {
+        type: "Organization",
+      },
       private: false,
       visibility: "public",
     },
@@ -977,6 +980,61 @@ test("rejects direct branch protection with pull-request bypass allowances", (t)
   assert.equal(result.status, 1);
   assert.match(result.stdout, /FAIL main-protection/);
   assert.match(result.stdout, /zero pull-request bypass allowances/);
+});
+
+test("rejects null bypass allowances for every repository owner type", (t) => {
+  for (const ownerType of ["User", "Organization", null]) {
+    const protection = validDirectProtection();
+    protection.required_pull_request_reviews.bypass_pull_request_allowances =
+      null;
+    const repoMetadata = {
+      default_branch: "main",
+      id: 123456,
+      private: false,
+      visibility: "public",
+    };
+    if (ownerType !== null) {
+      repoMetadata.owner = { type: ownerType };
+    }
+    const fixture = createFixture(t, {
+      directProtection: protection,
+      repoMetadata,
+    });
+    const result = runChecker(
+      ["--repo", REPOSITORY, "--confirm-billing-ready"],
+      fixture.env,
+    );
+
+    assert.equal(result.status, 1);
+    assert.match(result.stdout, /FAIL main-protection/);
+    assert.match(result.stdout, /zero pull-request bypass allowances/);
+  }
+});
+
+test("accepts omitted bypass allowances only for personal repositories", (t) => {
+  const protection = validDirectProtection();
+  delete protection.required_pull_request_reviews
+    .bypass_pull_request_allowances;
+  const fixture = createFixture(t, {
+    directProtection: protection,
+    repoMetadata: {
+      default_branch: "main",
+      id: 123456,
+      owner: {
+        type: "User",
+      },
+      private: false,
+      visibility: "public",
+    },
+  });
+  const result = runChecker(
+    ["--repo", REPOSITORY, "--confirm-billing-ready"],
+    fixture.env,
+  );
+
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /PASS main-protection/);
+  assert.match(result.stdout, /GitHub release controls: PASS/);
 });
 
 test("fails direct branch protection closed when bypass allowances are unreadable", (t) => {

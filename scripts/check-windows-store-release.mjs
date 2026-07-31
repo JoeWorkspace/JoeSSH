@@ -33,7 +33,7 @@ const POLICY_JOB_METADATA_SHA256 =
   "12f268209b9e1b3ba4f5a3b8f833d70494348ff1702969b6f699d32a8fbd4eeb";
 const POLICY_STEP_SHA256 = [
   "d7dea33a7dd5710c349d77cba02b912c1bb0f7a32883d630e9f9f130775d7b11",
-  "3cfd6982c9afc620a42a5fa74f9030704044ff3bcc2689d4da03f2b8b6bbae83",
+  "1d4312333b085411091897df55ab74adfbbc6338e33d6860a13698bfa66aa14e",
 ];
 const VERIFY_JOB_METADATA_SHA256 =
   "b05a185846fd627b48f062be0edb9bb099d65773778b9b5ad417295722bd1a3f";
@@ -440,6 +440,7 @@ export function checkWindowsStoreWorkflowSecurity(workflowText) {
   add(
     results,
     executablePowerShellIncludes(livePolicyRun, [
+      '$repositoryMetadata = Get-GitHubJson "/repos/$($env:REPOSITORY)"',
       "/environments/windows-release-stage-b",
       "/branches/main/protection",
       "required_reviewers",
@@ -449,6 +450,9 @@ export function checkWindowsStoreWorkflowSecurity(workflowText) {
       "custom_branch_policies -ne $false",
       "required_status_checks.strict -ne $true",
       "enforce_admins.enabled -ne $true",
+      '$bypassProperty = $pullRequestReviews.PSObject.Properties["bypass_pull_request_allowances"]',
+      '$repositoryMetadata.owner.type -cne "User"',
+      "Bypass allowances must be an object when present.",
       "bypassCount -ne 0",
       "allow_force_pushes.enabled -ne $false",
       "allow_deletions.enabled -ne $false",

@@ -1,15 +1,20 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import test from "node:test";
 import {
   checkMicrosoftStoreListingDraft,
   checkWindowsStoreRelease,
   checkWindowsStoreWorkflowSecurity,
+  inspectWindowsStoreWorkflowStructure,
 } from "./check-windows-store-release.mjs";
 
 const CHECKOUT_ACTION =
   "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1";
+const POWERSHELL_COMMAND =
+  process.platform === "win32" ? "powershell.exe" : "pwsh";
 
 test("repository keeps the hosted-only Windows Store release contract fail-closed", () => {
   const root = resolve(import.meta.dirname, "..");
@@ -726,6 +731,153 @@ test("policy markers cannot be satisfied by comments or literal dead code", () =
     );
   }
 });
+
+test("live policy accepts an omitted bypass field only for user-owned repositories", () => {
+  const personal = runLivePolicy({ ownerType: "User" });
+  assert.equal(personal.status, 0, commandOutput(personal));
+
+  for (const ownerType of ["Organization", null]) {
+    const result = runLivePolicy({ ownerType });
+    assert.notEqual(result.status, 0, commandOutput(result));
+  }
+});
+
+test("live policy rejects null and non-empty bypass allowances", () => {
+  for (const ownerType of ["User", "Organization", null]) {
+    const result = runLivePolicy({ bypassAllowances: null, ownerType });
+    assert.notEqual(result.status, 0, commandOutput(result));
+    assert.match(
+      commandOutput(result),
+      /Bypass allowances must be an object when present/,
+    );
+  }
+
+  const nonEmpty = runLivePolicy({
+    bypassAllowances: {
+      apps: [],
+      teams: [],
+      users: [{ id: 1, login: "release-admin" }],
+    },
+    ownerType: "Organization",
+  });
+  assert.notEqual(nonEmpty.status, 0, commandOutput(nonEmpty));
+  assert.match(
+    commandOutput(nonEmpty),
+    /Direct classic main protection does not match the release contract/,
+  );
+});
+
+test("live policy accepts explicit empty bypass actor arrays", () => {
+  const result = runLivePolicy({
+    bypassAllowances: {
+      apps: [],
+      teams: [],
+      users: [],
+    },
+    ownerType: "Organization",
+  });
+
+  assert.equal(result.status, 0, commandOutput(result));
+});
+
+function runLivePolicy({ bypassAllowances, ownerType } = {}) {
+  const workflow = inspectWindowsStoreWorkflowStructure(readWorkflow());
+  const livePolicyRun = workflow.jobs.policy.steps.find(
+    (step) =>
+      step.name ===
+      "Read live direct main, environment, and format identity policy",
+  )?.run;
+  assert.equal(typeof livePolicyRun, "string");
+
+  const repositoryMetadata = {
+    owner: ownerType === null ? {} : { type: ownerType ?? "User" },
+  };
+  const protection = {
+    allow_deletions: { enabled: false },
+    allow_force_pushes: { enabled: false },
+    enforce_admins: { enabled: true },
+    required_pull_request_reviews: {
+      require_last_push_approval: true,
+      required_approving_review_count: 1,
+    },
+    required_status_checks: {
+      checks: [{ app_id: 15368, context: "Public Release Readiness" }],
+      strict: true,
+    },
+  };
+  if (bypassAllowances !== undefined) {
+    protection.required_pull_request_reviews.bypass_pull_request_allowances =
+      bypassAllowances;
+  }
+
+  const environment = {
+    can_admins_bypass: false,
+    deployment_branch_policy: {
+      custom_branch_policies: false,
+      protected_branches: true,
+    },
+    name: "windows-release-stage-b",
+    protection_rules: [
+      {
+        prevent_self_review: true,
+        reviewers: [{ reviewer: { id: 1 }, type: "User" }],
+        type: "required_reviewers",
+      },
+    ],
+  };
+  const wrapper = `
+function Invoke-RestMethod {
+  param([object] $Headers, [string] $Method, [string] $Uri)
+  if ($Uri -ceq "https://api.github.com/repos/$($env:REPOSITORY)") {
+    return $env:MOCK_REPOSITORY_METADATA | ConvertFrom-Json
+  }
+  if ($Uri -ceq "https://api.github.com/repos/$($env:REPOSITORY)/environments/windows-release-stage-b") {
+    return $env:MOCK_ENVIRONMENT | ConvertFrom-Json
+  }
+  if ($Uri -ceq "https://api.github.com/repos/$($env:REPOSITORY)/branches/main/protection") {
+    return $env:MOCK_PROTECTION | ConvertFrom-Json
+  }
+  if ($Uri -ceq "https://api.github.com/repos/$($env:REPOSITORY)/environments/windows-release-stage-b/variables/ATLASTERM_WINDOWS_LEGAL_PUBLISHER") {
+    return $env:MOCK_LEGAL_PUBLISHER | ConvertFrom-Json
+  }
+  throw "Unexpected mock API URI: $Uri"
+}
+${livePolicyRun}
+`;
+  const root = mkdtempSync(join(tmpdir(), "windows-store-live-policy-"));
+  try {
+    return spawnSync(
+      POWERSHELL_COMMAND,
+      ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", wrapper],
+      {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          CANDIDATE_FORMAT: "msix",
+          GITHUB_OUTPUT: join(root, "github-output.txt"),
+          MOCK_ENVIRONMENT: JSON.stringify(environment),
+          MOCK_LEGAL_PUBLISHER: JSON.stringify({
+            name: "ATLASTERM_WINDOWS_LEGAL_PUBLISHER",
+            value: "JoeWorkspace",
+          }),
+          MOCK_PROTECTION: JSON.stringify(protection),
+          MOCK_REPOSITORY_METADATA: JSON.stringify(repositoryMetadata),
+          POLICY_READ_TOKEN: "fixture-read-token",
+          REPOSITORY: "JoeWorkspace/JoeSSH",
+        },
+        timeout: 30_000,
+      },
+    );
+  } finally {
+    rmSync(root, { force: true, recursive: true });
+  }
+}
+
+function commandOutput(result) {
+  return [result.stdout, result.stderr, result.error?.message]
+    .filter(Boolean)
+    .join("\n");
+}
 
 function readWorkflow() {
   return readFileSync(
