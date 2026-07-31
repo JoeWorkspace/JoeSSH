@@ -24,6 +24,7 @@
     "allow-pty-write",
     "allow-pty-resize",
     "allow-pty-close",
-    "allow-test-connection"
+    "allow-test-connection",
+    "allow-third-party-notices"
   ]
 }

@@ -2,12 +2,16 @@ export const id = {
   "desktop.demoScopeSummary": "Data demo — tidak ada sesi SSH nyata",
   "desktop.demoShell": "Shell sampel",
   "desktop.noSession": "Tidak ada sesi SSH",
-  "desktop.noSessionActionDetail": "Hubungkan ke host sebenarnya sebelum menjalankan aksi terminal, SFTP, atau penerusan.",
+  "desktop.noSessionActionDetail":
+    "Hubungkan ke host sebenarnya sebelum menjalankan aksi terminal, SFTP, atau penerusan.",
   "desktop.sampleDataShort": "Data sampel",
-  "desktop.terminalSessionConnectRequired": "Gunakan Hubungkan untuk membuka sesi SSH nyata sebelum menjalankan perintah.",
-  "desktop.terminalSessionSample": "Ini hanya profil koneksi sampel. Tidak ada sesi SSH aktif.",
+  "desktop.terminalSessionConnectRequired":
+    "Gunakan Hubungkan untuk membuka sesi SSH nyata sebelum menjalankan perintah.",
+  "desktop.terminalSessionSample":
+    "Ini hanya profil koneksi sampel. Tidak ada sesi SSH aktif.",
   "desktop.sftp": "SFTP",
-  "desktop.manifestDescription": "Terminal SSH, SFTP, akses tim, dan manajemen sesi.",
+  "desktop.manifestDescription":
+    "Terminal SSH, SFTP, penerusan port, dan manajemen sesi lokal.",
   "language.selectorLabel": "Bahasa tampilan",
   "language.autoRegion": "Otomatis berdasarkan wilayah",
   "language.worldReady": "Bahasa global siap",
@@ -50,29 +54,41 @@ export const id = {
   "desktop.terminalAutocompleteNavigate": "untuk berpindah",
   "desktop.terminalSessionConnected": "Terhubung ke {name} ({group})",
   "desktop.terminalSessionReady": "Sesi siap.",
-  "desktop.terminalSessionMfaRequired": "Verifikasi MFA diperlukan sebelum menjalankan perintah.",
+  "desktop.terminalSessionMfaRequired":
+    "Verifikasi MFA diperlukan sebelum menjalankan perintah.",
   "desktop.mfaRequiredShort": "MFA diperlukan",
   "desktop.commandAccepted": "Perintah diterima",
-  "desktop.commandAcceptedDetail": "Lulus prapemeriksaan keamanan lokal dan masuk antrean eksekutor terminal.",
+  "desktop.commandAcceptedDetail":
+    "Lulus prapemeriksaan keamanan lokal dan masuk antrean eksekutor terminal.",
   "desktop.commandBlocked": "Perintah diblokir",
   "desktop.commandBlockedDetail": "Cocok dengan {pattern}: {reason}",
   "desktop.safetyReasonRmRoot": "menghapus root sistem file secara rekursif",
   "desktop.safetyReasonMkfs": "memformat sistem file",
   "desktop.safetyReasonForkBomb": "fork bomb",
   "desktop.safetyReasonRawDiskCopy": "salinan disk mentah dapat merusak data",
-  "desktop.safetyReasonChmodRoot": "membuka izin terlalu luas dari root sistem file",
-  "desktop.safetyReasonTeeBlockDevice": "menulis output mentah ke perangkat blok",
-  "desktop.safetyReasonRedirectBlockDevice": "mengalihkan output ke perangkat blok mentah dan merusak isinya",
-  "desktop.safetyReasonFindRootDelete": "menghapus file secara rekursif dari jalur root",
-  "desktop.safetyReasonDiskWipe": "menghapus tabel partisi atau isi perangkat blok secara permanen",
+  "desktop.safetyReasonChmodRoot":
+    "membuka izin terlalu luas dari root sistem file",
+  "desktop.safetyReasonTeeBlockDevice":
+    "menulis output mentah ke perangkat blok",
+  "desktop.safetyReasonRedirectBlockDevice":
+    "mengalihkan output ke perangkat blok mentah dan merusak isinya",
+  "desktop.safetyReasonFindRootDelete":
+    "menghapus file secara rekursif dari jalur root",
+  "desktop.safetyReasonDiskWipe":
+    "menghapus tabel partisi atau isi perangkat blok secara permanen",
   "desktop.safetyReasonFirewallFlush": "mengosongkan aturan firewall",
-  "desktop.safetyReasonRemoteShellPipe": "menyalurkan konten jarak jauh langsung ke shell",
-  "desktop.safetyReasonRootDownloadOverwrite": "menimpa jalur root dengan konten unduhan",
+  "desktop.safetyReasonRemoteShellPipe":
+    "menyalurkan konten jarak jauh langsung ke shell",
+  "desktop.safetyReasonRootDownloadOverwrite":
+    "menimpa jalur root dengan konten unduhan",
   "desktop.safetyReasonHostShutdown": "menghentikan host segera",
-  "desktop.safetyReasonWindowsDestructive": "perintah destruktif Windows menargetkan file, disk, atau status host",
-  "desktop.safetyReasonPowershellDestructive": "perintah destruktif PowerShell menargetkan drive, jalur sistem, disk, atau status daya host",
+  "desktop.safetyReasonWindowsDestructive":
+    "perintah destruktif Windows menargetkan file, disk, atau status host",
+  "desktop.safetyReasonPowershellDestructive":
+    "perintah destruktif PowerShell menargetkan drive, jalur sistem, disk, atau status daya host",
   "desktop.safetyReasonDropDatabase": "menghapus database",
-  "desktop.safetyReasonCommandSubstitution": "menyisipkan sub-perintah yang dapat menjalankan apa saja",
+  "desktop.safetyReasonCommandSubstitution":
+    "menyisipkan sub-perintah yang dapat menjalankan apa saja",
   "desktop.context": "Konteks",
   "desktop.team": "Tim",
   "desktop.settings": "Pengaturan",
@@ -108,9 +124,10 @@ export const id = {
   "desktop.recordTerminal": "Rekam sesi terminal",
   "desktop.requiredProduction": "Wajib untuk cakupan produksi",
   "desktop.syncEncrypted": "Sinkronkan cuplikan terenkripsi",
-  "desktop.availableProBusiness": "Tersedia di Pro dan Business",
+  "desktop.plannedUnavailable": "Direncanakan; saat ini belum tersedia",
   "desktop.telemetryErrors": "Laporan kesalahan opsional",
-  "desktop.telemetryErrorsHint": "Kirim ringkasan crash dan error yang disunting.",
+  "desktop.telemetryErrorsHint":
+    "Kirim ringkasan crash dan error yang disunting.",
   "desktop.businessLayer": "Lapisan bisnis",
   "desktop.sharedVaults": "Brankas bersama",
   "desktop.auditExport": "Ekspor audit",
@@ -121,16 +138,19 @@ export const id = {
   "desktop.splitTerminal": "Pisahkan terminal saat ini ke kanan",
   "desktop.uploadToSession": "Unggah file ke sesi aktif",
   "desktop.requestElevated": "Minta akses ditingkatkan",
-  "desktop.palettePlaceholder": "Jalankan perintah, buka host, mulai alur kerja",
+  "desktop.palettePlaceholder":
+    "Jalankan perintah, buka host, mulai alur kerja",
   "desktop.paletteEmptyTitle": "Tidak ada hasil di palet",
-  "desktop.paletteEmptyHint": "Coba host, perintah terbaru, atau kata kunci alur kerja.",
+  "desktop.paletteEmptyHint":
+    "Coba host, perintah terbaru, atau kata kunci alur kerja.",
   "team.access": "Akses tim",
   "team.accessSummary": "Ringkasan akses tim",
   "team.business": "Business",
   "team.jitActive": "JIT aktif",
   "team.auditEvents": "Peristiwa audit",
   "team.productionElevation": "Peningkatan akses produksi",
-  "team.roleExpires": "Peran berakhir dalam 42 menit dengan perekaman sesi aktif",
+  "team.roleExpires":
+    "Peran berakhir dalam 42 menit dengan perekaman sesi aktif",
   "team.review": "Tinjau",
   "team.approve": "Setujui",
   "team.reject": "Tolak",
@@ -167,7 +187,8 @@ export const id = {
   "desktop.forwardActive": "Aktif",
   "desktop.forwardInactive": "Tidak aktif",
   "desktop.forwardNoRules": "Belum ada aturan forwarding",
-  "desktop.forwardNoRulesHint": "Tambahkan aturan untuk menerowongkan port TCP lokal melalui SSH.",
+  "desktop.forwardNoRulesHint":
+    "Tambahkan aturan untuk menerowongkan port TCP lokal melalui SSH.",
   "desktop.sftpEmpty": "Folder ini kosong",
   "desktop.sftpEmptyHint": "Unggah berkas atau buka folder lain.",
   "desktop.groupProduction": "Produksi",
@@ -215,10 +236,12 @@ export const id = {
   "desktop.passphrase": "Frasa sandi (opsional)",
   "desktop.pinnedFingerprint": "Kunci host yang disematkan (opsional)",
   "desktop.hostKeyConfirmTitle": "Confirm host key",
-  "desktop.hostKeyConfirmDetail": "Verify this SHA-256 fingerprint before authenticating.",
+  "desktop.hostKeyConfirmDetail":
+    "Verify this SHA-256 fingerprint before authenticating.",
   "desktop.hostKeyPresentedFingerprint": "Presented fingerprint",
   "desktop.hostKeyVerificationFailed": "Host key verification failed",
-  "desktop.hostKeyChangedDetail": "Stored host key mismatch for {host}:{port}. Expected {stored}, presented {presented}.",
+  "desktop.hostKeyChangedDetail":
+    "Stored host key mismatch for {host}:{port}. Expected {stored}, presented {presented}.",
   "desktop.trustHostKeyAndConnect": "Trust and connect",
   "desktop.connectAction": "Hubungkan",
   "desktop.connecting": "Menghubungkan…",
@@ -227,20 +250,23 @@ export const id = {
   "desktop.connectionSwitched": "Beralih ke {name}",
   "desktop.connectionMoved": "{connection} dipindahkan ke {group}",
   "desktop.connectionsImported": "{count} koneksi diimpor",
-  "desktop.connectionsImportFailed": "Could not import connections. Choose a valid JoeSSH connections JSON file.",
+  "desktop.connectionsImportFailed":
+    "Could not import connections. Choose a valid JoeSSH connections JSON file.",
   "desktop.connectionConnectToast": "Hubungkan: {name}",
   "desktop.connectionCreated": "Koneksi {name} dibuat",
   "desktop.connectionTestResult": "Tes koneksi: {result}",
-  "desktop.builtinConnectionEditUnavailable": "Koneksi demo bawaan tidak dapat diedit",
-  "desktop.builtinConnectionDeleteUnavailable": "Koneksi demo bawaan tidak dapat dihapus",
+  "desktop.builtinConnectionEditUnavailable":
+    "Koneksi demo bawaan tidak dapat diedit",
+  "desktop.builtinConnectionDeleteUnavailable":
+    "Koneksi demo bawaan tidak dapat dihapus",
   "desktop.connectionCopyName": "{name} salinan",
   "desktop.connectionCopyNameNumbered": "{name} salinan {number}",
   "desktop.connectionDuplicated": "{name} diduplikasi",
   "desktop.connectionDeleted": "{name} dihapus",
   "desktop.connectionEdited": "{name} diedit",
-  "desktop.groupCreatedToast": "Grup \"{name}\" dibuat",
-  "desktop.groupDeletedToast": "Grup \"{name}\" dihapus",
-  "desktop.groupRenamedToast": "Grup diganti nama menjadi \"{name}\"",
+  "desktop.groupCreatedToast": 'Grup "{name}" dibuat',
+  "desktop.groupDeletedToast": 'Grup "{name}" dihapus',
+  "desktop.groupRenamedToast": 'Grup diganti nama menjadi "{name}"',
   "desktop.sftpUploadComplete": "{name} diunggah",
   "desktop.sftpOverwriteTitle": "Ganti file yang ada?",
   "desktop.sftpOverwriteDetail": "File bernama {name} sudah ada di folder ini.",
@@ -269,7 +295,8 @@ export const id = {
   "team.auditCommandRecorded": "Command recorded",
   "team.auditAccessRequestApproved": "Access request approved",
   "team.auditAccessRequestRejected": "Access request rejected",
-  "team.productionElevationDetail": "Incident commander role for gateway triage",
+  "team.productionElevationDetail":
+    "Incident commander role for gateway triage",
   "web.adminNavigation": "Navigasi admin JoeSSH",
   "web.adminConsole": "Konsol admin",
   "web.skipToContent": "Lompat ke konten utama",
@@ -308,17 +335,23 @@ export const id = {
   "web.storage": "Penyimpanan",
   "mobile.kicker": "JoeSSH Mobile",
   "mobile.title": "Sinkronisasi dan akses darurat",
-  "mobile.subtitle": "Daftarkan ponsel ini, pratinjau konteks terminal, dan simpan jalur pemulihan tetap dekat.",
+  "mobile.subtitle":
+    "Daftarkan ponsel ini, pratinjau konteks terminal, dan simpan jalur pemulihan tetap dekat.",
   "mobile.registering": "Mendaftarkan perangkat",
-  "mobile.registeringMessage": "Membuat identitas seluler untuk sinkronisasi dan serah-terima darurat.",
+  "mobile.registeringMessage":
+    "Membuat identitas seluler untuk sinkronisasi dan serah-terima darurat.",
   "mobile.previewing": "Menarik pratinjau sinkronisasi",
-  "mobile.previewingMessage": "Mengambil profil, sesi, status kursor, dan rute pemulihan tepercaya.",
+  "mobile.previewingMessage":
+    "Mengambil profil, sesi, status kursor, dan rute pemulihan tepercaya.",
   "mobile.ready": "Pratinjau siap",
-  "mobile.readyMessage": "Perangkat ini terdaftar dan respons sinkronisasi terbaru tersedia.",
+  "mobile.readyMessage":
+    "Perangkat ini terdaftar dan respons sinkronisasi terbaru tersedia.",
   "mobile.offline": "Cadangan offline aktif",
-  "mobile.offlineMessage": "Sinkronisasi langsung tidak tersedia. Tidak ada data ruang kerja langsung atau cache yang diterima.",
+  "mobile.offlineMessage":
+    "Sinkronisasi langsung tidak tersedia. Tidak ada data ruang kerja langsung atau cache yang diterima.",
   "mobile.readyToConnect": "Siap terhubung",
-  "mobile.readyToConnectMessage": "Mulai dengan mendaftarkan ponsel ini dan menarik pratinjau aman dari sinkronisasi JoeSSH.",
+  "mobile.readyToConnectMessage":
+    "Mulai dengan mendaftarkan ponsel ini dan menarik pratinjau aman dari sinkronisasi JoeSSH.",
   "mobile.profiles": "Profil",
   "mobile.openSessions": "Sesi terbuka",
   "mobile.pendingChanges": "Perubahan ditarik",
@@ -331,17 +364,20 @@ export const id = {
   "mobile.noWorkspace": "Belum ada ruang kerja yang ditarik",
   "mobile.runPreview": "Jalankan pratinjau untuk memuat status kursor",
   "mobile.emergencyConnection": "Koneksi darurat",
-  "mobile.emptyRoutes": "Tidak ada rute pemulihan yang dikonfigurasi untuk pratinjau ini.",
+  "mobile.emptyRoutes":
+    "Tidak ada rute pemulihan yang dikonfigurasi untuk pratinjau ini.",
   "mobile.offlineBadge": "Offline",
   "mobile.liveBadge": "Langsung",
   "mobile.preparing": "Menyiapkan pratinjau",
   "mobile.registerPull": "Daftar dan tarik pratinjau",
   "desktop.error.boundary.title": "Terjadi kesalahan",
   "desktop.error.boundary.reload": "Muat ulang",
-  "desktop.error.boundary.message": "Muat ulang JoeSSH atau hubungi dukungan jika masalah berlanjut.",
+  "desktop.error.boundary.message":
+    "Muat ulang JoeSSH atau hubungi dukungan jika masalah berlanjut.",
   "mobile.error.boundary.title": "Terjadi kesalahan",
   "mobile.error.boundary.reload": "Muat ulang",
-  "mobile.error.boundary.message": "Muat ulang JoeSSH atau hubungi dukungan jika masalah berlanjut.",
+  "mobile.error.boundary.message":
+    "Muat ulang JoeSSH atau hubungi dukungan jika masalah berlanjut.",
   "desktop.paletteRecent": "Terbaru",
   "desktop.paletteRecentBadge": "Terbaru",
   "desktop.paletteConnections": "Koneksi",
@@ -392,7 +428,15 @@ export const id = {
   "team.accessRequestStatus": "Status permintaan akses tim",
   "desktop.restoreWorkbench": "Pulihkan ruang kerja",
   "desktop.gettingStarted": "Mulai menggunakan",
-  "desktop.surfaceGuide": "Desktop membuka sesi SSH; Web Admin memantau Sync dan tim; Mobile adalah aplikasi pendamping.",
-  "desktop.telemetryPrivacyHint": "Opsional dan nonaktif secara bawaan. Tidak pernah mengirim host, nama pengguna, perintah, kunci, token, jalur, atau keluaran terminal.",
-  "team.reviewedBy": "ditinjau oleh {reviewer}"
+  "desktop.surfaceGuide":
+    "Desktop membuka sesi SSH dan SFTP lokal; Web Admin menampilkan snapshot Sync hanya-baca; Mobile adalah pratinjau Sync dan tidak menjalankan SSH atau SFTP.",
+  "desktop.telemetryPrivacyHint":
+    "Opsional dan nonaktif secara bawaan. Tidak pernah mengirim host, nama pengguna, perintah, kunci, token, jalur, atau keluaran terminal.",
+  "desktop.thirdPartyNotices": "Lisensi dan pemberitahuan",
+  "desktop.thirdPartyNoticesHint":
+    "Tinjau teks lisensi dan pemberitahuan yang disertakan dalam build aplikasi ini.",
+  "desktop.thirdPartyNoticesLoading": "Memuat lisensi…",
+  "desktop.thirdPartyNoticesUnavailable":
+    "Pemberitahuan lisensi tidak tersedia dalam build ini.",
+  "team.reviewedBy": "ditinjau oleh {reviewer}",
 } as const;

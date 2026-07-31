@@ -6,7 +6,10 @@
 // web build and unit tests dependency-free; we call the injected global that
 // Tauri v2 exposes in the desktop webview.
 
-type TauriInvoke = (cmd: string, args?: Record<string, unknown>) => Promise<unknown>;
+type TauriInvoke = (
+  cmd: string,
+  args?: Record<string, unknown>,
+) => Promise<unknown>;
 
 interface TauriInternals {
   invoke: TauriInvoke;
@@ -14,7 +17,9 @@ interface TauriInternals {
 
 function getTauriInvoke(): TauriInvoke | undefined {
   if (typeof window === "undefined") return undefined;
-  const internals = (window as unknown as { __TAURI_INTERNALS__?: TauriInternals }).__TAURI_INTERNALS__;
+  const internals = (
+    window as unknown as { __TAURI_INTERNALS__?: TauriInternals }
+  ).__TAURI_INTERNALS__;
   return internals?.invoke;
 }
 
@@ -23,10 +28,15 @@ export function isDesktopRuntime(): boolean {
   return getTauriInvoke() !== undefined;
 }
 
-async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
+async function invoke<T>(
+  cmd: string,
+  args?: Record<string, unknown>,
+): Promise<T> {
   const tauriInvoke = getTauriInvoke();
   if (!tauriInvoke) {
-    throw new Error(`IPC command "${cmd}" is unavailable outside the desktop runtime`);
+    throw new Error(
+      `IPC command "${cmd}" is unavailable outside the desktop runtime`,
+    );
   }
   return (await tauriInvoke(cmd, args)) as T;
 }
@@ -128,11 +138,17 @@ export function knownHostsClear(): Promise<void> {
   return invoke<void>("known_hosts_clear");
 }
 
-export function sshExec(sessionId: string, command: string): Promise<ExecOutput> {
+export function sshExec(
+  sessionId: string,
+  command: string,
+): Promise<ExecOutput> {
   return invoke<ExecOutput>("ssh_exec", { sessionId, command });
 }
 
-export function sftpList(sessionId: string, path: string): Promise<SftpEntry[]> {
+export function sftpList(
+  sessionId: string,
+  path: string,
+): Promise<SftpEntry[]> {
   return invoke<SftpEntry[]>("sftp_list", { sessionId, path });
 }
 
@@ -140,7 +156,11 @@ export function sftpRead(sessionId: string, path: string): Promise<number[]> {
   return invoke<number[]>("sftp_read", { sessionId, path });
 }
 
-export function sftpWrite(sessionId: string, path: string, data: number[]): Promise<void> {
+export function sftpWrite(
+  sessionId: string,
+  path: string,
+  data: number[],
+): Promise<void> {
   return invoke<void>("sftp_write", { sessionId, path, data });
 }
 
@@ -173,13 +193,26 @@ export interface ProbeResult {
 }
 
 /// Test TCP reachability/latency to a host:port (no session needed).
-export function testConnection(host: string, port: number, timeoutMs?: number): Promise<ProbeResult> {
+export function testConnection(
+  host: string,
+  port: number,
+  timeoutMs?: number,
+): Promise<ProbeResult> {
   return invoke<ProbeResult>("test_connection", { host, port, timeoutMs });
+}
+
+/** Read the third-party notices embedded in this exact desktop app build. */
+export function thirdPartyNotices(): Promise<string> {
+  return invoke<string>("third_party_notices");
 }
 
 // --- Interactive PTY (desktop runtime only) ---
 
-export function ptyOpen(sessionId: string, cols: number, rows: number): Promise<string> {
+export function ptyOpen(
+  sessionId: string,
+  cols: number,
+  rows: number,
+): Promise<string> {
   return invoke<string>("pty_open", { sessionId, cols, rows });
 }
 
@@ -187,7 +220,11 @@ export function ptyWrite(ptyId: string, data: number[]): Promise<void> {
   return invoke<void>("pty_write", { ptyId, data });
 }
 
-export function ptyResize(ptyId: string, cols: number, rows: number): Promise<void> {
+export function ptyResize(
+  ptyId: string,
+  cols: number,
+  rows: number,
+): Promise<void> {
   return invoke<void>("pty_resize", { ptyId, cols, rows });
 }
 
@@ -209,9 +246,12 @@ export async function onPtyOutput(
 ): Promise<Unlisten> {
   if (!isDesktopRuntime()) return () => {};
   const { listen } = await import("@tauri-apps/api/event");
-  const unlistenData = await listen<{ data: number[] }>(`pty://output/${ptyId}`, (event) => {
-    onData(event.payload.data);
-  });
+  const unlistenData = await listen<{ data: number[] }>(
+    `pty://output/${ptyId}`,
+    (event) => {
+      onData(event.payload.data);
+    },
+  );
   const unlistenExit = await listen<number>(`pty://exit/${ptyId}`, (event) => {
     onExit(event.payload);
   });

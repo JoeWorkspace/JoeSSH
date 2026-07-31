@@ -7,7 +7,7 @@ target
 **/target
 dist
 **/dist
-reports/release
+reports
 coverage
 **/coverage
 .env

@@ -1,26 +1,39 @@
-const CACHE_NAME = 'joessh-admin-v2';
+const CACHE_NAME = "joessh-admin-v3";
 const MAX_CACHE_ENTRIES = 100;
-const STATIC_ASSETS = ['/', '/index.html', '/manifest.json', '/favicon.svg', '/offline.html'];
+const STATIC_ASSETS = [
+  "/",
+  "/index.html",
+  "/manifest.json",
+  "/favicon.svg",
+  "/offline.html",
+];
 
-self.addEventListener('install', (event) => {
+self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS)).then(() => self.skipWaiting()),
+    caches
+      .open(CACHE_NAME)
+      .then((cache) => cache.addAll(STATIC_ASSETS))
+      .then(() => self.skipWaiting()),
   );
 });
 
-self.addEventListener('activate', (event) => {
+self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))))
+      .then((keys) =>
+        Promise.all(
+          keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)),
+        ),
+      )
       .then(() => self.clients.claim()),
   );
 });
 
-self.addEventListener('fetch', (event) => {
+self.addEventListener("fetch", (event) => {
   const { request } = event;
 
-  if (request.method !== 'GET') {
+  if (request.method !== "GET") {
     return;
   }
 
@@ -33,14 +46,17 @@ self.addEventListener('fetch', (event) => {
 
   // Never place authenticated API responses in Cache Storage, even when a
   // route happens to end in an asset-like extension.
-  if (url.pathname === '/api' || url.pathname.startsWith('/api/')) {
+  if (url.pathname === "/api" || url.pathname.startsWith("/api/")) {
     return;
   }
 
   // Only cache static assets and navigation.
-  const isStaticAsset = /\.(?:js|css|svg|png|jpg|jpeg|gif|webp|woff2?|ttf|eot|ico)(?:\?|$)/.test(url.pathname);
-  const isNavigation = request.mode === 'navigate';
-  const isManifest = url.pathname === '/manifest.json';
+  const isStaticAsset =
+    /\.(?:js|css|svg|png|jpg|jpeg|gif|webp|woff2?|ttf|eot|ico)(?:\?|$)/.test(
+      url.pathname,
+    );
+  const isNavigation = request.mode === "navigate";
+  const isManifest = url.pathname === "/manifest.json";
 
   if (!isStaticAsset && !isNavigation && !isManifest) {
     return;
@@ -59,13 +75,15 @@ self.addEventListener('fetch', (event) => {
 async function staleWhileRevalidate(request) {
   const cache = await caches.open(CACHE_NAME);
   const cached = await cache.match(request);
-  const fetchPromise = fetch(request).then((response) => {
-    if (isCacheableResponse(response)) {
-      cache.put(request, response.clone());
-      trimCache(cache);
-    }
-    return response;
-  }).catch(() => cached || offlineResponse());
+  const fetchPromise = fetch(request)
+    .then((response) => {
+      if (isCacheableResponse(response)) {
+        cache.put(request, response.clone());
+        trimCache(cache);
+      }
+      return response;
+    })
+    .catch(() => cached || offlineResponse());
 
   return cached || fetchPromise;
 }
@@ -86,27 +104,27 @@ async function networkFirstNavigation(request) {
   } catch {
     return (
       (await caches.match(request)) ||
-      (await caches.match('/')) ||
-      (await caches.match('/offline.html')) ||
+      (await caches.match("/")) ||
+      (await caches.match("/offline.html")) ||
       offlineResponse()
     );
   }
 }
 
 function isCacheableResponse(response) {
-  const cacheControl = response.headers.get('Cache-Control') || '';
+  const cacheControl = response.headers.get("Cache-Control") || "";
   return (
     response.ok &&
-    response.type === 'basic' &&
+    response.type === "basic" &&
     !response.redirected &&
     !/(?:^|,)\s*(?:private|no-store)\b/i.test(cacheControl)
   );
 }
 
 function offlineResponse() {
-  return new Response('Offline', {
+  return new Response("Offline", {
     status: 503,
-    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
   });
 }
 

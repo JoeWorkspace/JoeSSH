@@ -2,12 +2,14 @@ export const zhCN = {
   "desktop.demoScopeSummary": "演示数据 · 尚未连接真实 SSH",
   "desktop.demoShell": "示例终端",
   "desktop.noSession": "未连接 SSH",
-  "desktop.noSessionActionDetail": "请先连接真实主机，再使用终端、SFTP 或端口转发。",
+  "desktop.noSessionActionDetail":
+    "请先连接真实主机，再使用终端、SFTP 或端口转发。",
   "desktop.sampleDataShort": "演示数据",
-  "desktop.terminalSessionConnectRequired": "请点击“连接”建立真实 SSH 会话后再执行命令。",
+  "desktop.terminalSessionConnectRequired":
+    "请点击“连接”建立真实 SSH 会话后再执行命令。",
   "desktop.terminalSessionSample": "当前仅为演示连接配置，尚未建立 SSH 会话。",
   "desktop.sftp": "SFTP",
-  "desktop.manifestDescription": "SSH 终端、SFTP、团队访问和会话管理。",
+  "desktop.manifestDescription": "SSH 终端、SFTP、端口转发和本地会话管理。",
   "language.selectorLabel": "显示语言",
   "language.autoRegion": "按地区自动显示",
   "language.worldReady": "全球语言已就绪",
@@ -75,7 +77,8 @@ export const zhCN = {
   "desktop.hostKeyConfirmDetail": "认证前请核对这个 SHA-256 指纹。",
   "desktop.hostKeyPresentedFingerprint": "当前指纹",
   "desktop.hostKeyVerificationFailed": "主机密钥验证失败",
-  "desktop.hostKeyChangedDetail": "已存储的 {host}:{port} 主机密钥不匹配。预期 {stored}，当前 {presented}。",
+  "desktop.hostKeyChangedDetail":
+    "已存储的 {host}:{port} 主机密钥不匹配。预期 {stored}，当前 {presented}。",
   "desktop.trustHostKeyAndConnect": "信任并连接",
   "desktop.connectAction": "连接",
   "desktop.connecting": "连接中…",
@@ -84,7 +87,8 @@ export const zhCN = {
   "desktop.connectionSwitched": "已切换到{name}",
   "desktop.connectionMoved": "已将{connection}移动到{group}",
   "desktop.connectionsImported": "已导入{count}个连接",
-  "desktop.connectionsImportFailed": "Could not import connections. Choose a valid JoeSSH connections JSON file.",
+  "desktop.connectionsImportFailed":
+    "Could not import connections. Choose a valid JoeSSH connections JSON file.",
   "desktop.connectionConnectToast": "连接：{name}",
   "desktop.connectionCreated": "连接{name}已创建",
   "desktop.connectionTestResult": "连接测试：{result}",
@@ -121,7 +125,8 @@ export const zhCN = {
   "desktop.terminalSessionMfaRequired": "执行命令前需要完成 MFA 验证。",
   "desktop.mfaRequiredShort": "需要 MFA",
   "desktop.commandAccepted": "命令已加入会话",
-  "desktop.commandAcceptedDetail": "已通过本地安全预检，等待真实终端执行器接入。",
+  "desktop.commandAcceptedDetail":
+    "已通过本地安全预检，等待真实终端执行器接入。",
   "desktop.commandBlocked": "命令已被安全策略阻止",
   "desktop.commandBlockedDetail": "匹配 {pattern}: {reason}",
   "desktop.safetyReasonRmRoot": "会递归删除文件系统根目录",
@@ -130,15 +135,18 @@ export const zhCN = {
   "desktop.safetyReasonRawDiskCopy": "原始磁盘复制可能破坏数据",
   "desktop.safetyReasonChmodRoot": "会从文件系统根目录放宽权限",
   "desktop.safetyReasonTeeBlockDevice": "会将原始输出写入块设备",
-  "desktop.safetyReasonRedirectBlockDevice": "会把输出重定向到原始块设备并破坏内容",
+  "desktop.safetyReasonRedirectBlockDevice":
+    "会把输出重定向到原始块设备并破坏内容",
   "desktop.safetyReasonFindRootDelete": "会从根路径递归删除文件",
   "desktop.safetyReasonDiskWipe": "会不可逆地清除分区表或块设备内容",
   "desktop.safetyReasonFirewallFlush": "会清空防火墙规则",
   "desktop.safetyReasonRemoteShellPipe": "会把远程内容直接管道到 shell",
   "desktop.safetyReasonRootDownloadOverwrite": "会用下载内容覆盖根路径",
   "desktop.safetyReasonHostShutdown": "会立即停止主机",
-  "desktop.safetyReasonWindowsDestructive": "Windows 破坏性命令会影响文件、磁盘或主机状态",
-  "desktop.safetyReasonPowershellDestructive": "PowerShell 破坏性命令会影响驱动器、系统路径、磁盘或主机电源状态",
+  "desktop.safetyReasonWindowsDestructive":
+    "Windows 破坏性命令会影响文件、磁盘或主机状态",
+  "desktop.safetyReasonPowershellDestructive":
+    "PowerShell 破坏性命令会影响驱动器、系统路径、磁盘或主机电源状态",
   "desktop.safetyReasonDropDatabase": "会删除数据库",
   "desktop.safetyReasonCommandSubstitution": "会嵌入可执行任意内容的子命令",
   "desktop.context": "上下文",
@@ -176,7 +184,7 @@ export const zhCN = {
   "desktop.recordTerminal": "录制终端会话",
   "desktop.requiredProduction": "生产范围必须开启",
   "desktop.syncEncrypted": "同步加密片段",
-  "desktop.availableProBusiness": "专业版与团队版可用",
+  "desktop.plannedUnavailable": "规划中，当前不可用",
   "desktop.telemetryErrors": "可选错误报告",
   "desktop.telemetryErrorsHint": "发送已脱敏的崩溃和错误摘要。",
   "desktop.businessLayer": "商业能力",
@@ -318,7 +326,8 @@ export const zhCN = {
   "mobile.offline": "离线回退已启用",
   "mobile.offlineMessage": "实时同步不可用，未收到实时或缓存的工作区数据。",
   "mobile.readyToConnect": "准备连接",
-  "mobile.readyToConnectMessage": "先注册这台手机，并从 JoeSSH 同步拉取安全预览。",
+  "mobile.readyToConnectMessage":
+    "先注册这台手机，并从 JoeSSH 同步拉取安全预览。",
   "mobile.profiles": "配置",
   "mobile.openSessions": "打开会话",
   "mobile.pendingChanges": "本次拉取",
@@ -338,10 +347,12 @@ export const zhCN = {
   "mobile.registerPull": "注册并拉取预览",
   "desktop.error.boundary.title": "出现错误",
   "desktop.error.boundary.reload": "重新加载",
-  "desktop.error.boundary.message": "请重新加载 JoeSSH；如果问题仍然存在，请联系支持团队。",
+  "desktop.error.boundary.message":
+    "请重新加载 JoeSSH；如果问题仍然存在，请联系支持团队。",
   "mobile.error.boundary.title": "出现错误",
   "mobile.error.boundary.reload": "重新加载",
-  "mobile.error.boundary.message": "请重新加载 JoeSSH；如果问题仍然存在，请联系支持团队。",
+  "mobile.error.boundary.message":
+    "请重新加载 JoeSSH；如果问题仍然存在，请联系支持团队。",
   "desktop.paletteRecent": "最近",
   "desktop.paletteRecentBadge": "最近",
   "desktop.paletteRecentCommands": "最近命令",
@@ -392,7 +403,14 @@ export const zhCN = {
   "team.accessRequestStatus": "访问请求状态",
   "desktop.restoreWorkbench": "恢复工作区",
   "desktop.gettingStarted": "新手引导",
-  "desktop.surfaceGuide": "桌面端用于建立 SSH 会话；Web 管理台用于监控同步与团队；移动端是配套工具。",
-  "desktop.telemetryPrivacyHint": "可选且默认关闭。绝不会发送主机、用户名、命令、密钥、令牌、路径或终端输出。",
-  "team.reviewedBy": "{reviewer} 已审核"
+  "desktop.surfaceGuide":
+    "桌面端用于本地 SSH 与 SFTP 会话；Web 管理台仅显示只读同步快照；移动端是同步预览，不执行 SSH 或 SFTP。",
+  "desktop.telemetryPrivacyHint":
+    "可选且默认关闭。绝不会发送主机、用户名、命令、密钥、令牌、路径或终端输出。",
+  "desktop.thirdPartyNotices": "开源许可与第三方声明",
+  "desktop.thirdPartyNoticesHint":
+    "查看与此应用版本一同打包的许可证和声明全文。",
+  "desktop.thirdPartyNoticesLoading": "正在加载许可证…",
+  "desktop.thirdPartyNoticesUnavailable": "此版本中无法读取许可证声明。",
+  "team.reviewedBy": "{reviewer} 已审核",
 } as const;

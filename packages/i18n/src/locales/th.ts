@@ -1,13 +1,18 @@
 export const th = {
-  "desktop.demoScopeSummary": "ข้อมูลตัวอย่างสำหรับสาธิต — ไม่มีเซสชัน SSH จริง",
+  "desktop.demoScopeSummary":
+    "ข้อมูลตัวอย่างสำหรับสาธิต — ไม่มีเซสชัน SSH จริง",
   "desktop.demoShell": "เชลล์ตัวอย่าง",
   "desktop.noSession": "ไม่มีเซสชัน SSH",
-  "desktop.noSessionActionDetail": "เชื่อมต่อกับโฮสต์จริงก่อนใช้งานเทอร์มินัล, SFTP หรือการส่งต่อพอร์ต",
+  "desktop.noSessionActionDetail":
+    "เชื่อมต่อกับโฮสต์จริงก่อนใช้งานเทอร์มินัล, SFTP หรือการส่งต่อพอร์ต",
   "desktop.sampleDataShort": "ข้อมูลตัวอย่าง",
-  "desktop.terminalSessionConnectRequired": "ใช้ “เชื่อมต่อ” เพื่อเปิดเซสชัน SSH จริงก่อนเรียกใช้คำสั่ง",
-  "desktop.terminalSessionSample": "นี่เป็นเพียงโปรไฟล์การเชื่อมต่อตัวอย่าง ไม่มีเซสชัน SSH ที่ใช้งานอยู่",
+  "desktop.terminalSessionConnectRequired":
+    "ใช้ “เชื่อมต่อ” เพื่อเปิดเซสชัน SSH จริงก่อนเรียกใช้คำสั่ง",
+  "desktop.terminalSessionSample":
+    "นี่เป็นเพียงโปรไฟล์การเชื่อมต่อตัวอย่าง ไม่มีเซสชัน SSH ที่ใช้งานอยู่",
   "desktop.sftp": "SFTP",
-  "desktop.manifestDescription": "เทอร์มินัล SSH, SFTP, การเข้าถึงทีม และการจัดการเซสชัน",
+  "desktop.manifestDescription":
+    "เทอร์มินัล SSH, SFTP, การส่งต่อพอร์ต และการจัดการเซสชันภายในเครื่อง",
   "language.selectorLabel": "ภาษาที่แสดง",
   "language.autoRegion": "อัตโนมัติตามภูมิภาค",
   "language.worldReady": "ภาษาทั่วโลกพร้อมแล้ว",
@@ -53,7 +58,8 @@ export const th = {
   "desktop.terminalSessionMfaRequired": "ต้องยืนยัน MFA ก่อนเรียกใช้คำสั่ง",
   "desktop.mfaRequiredShort": "ต้องใช้ MFA",
   "desktop.commandAccepted": "ยอมรับคำสั่งแล้ว",
-  "desktop.commandAcceptedDetail": "ผ่านการตรวจสอบความปลอดภัยในเครื่อง และเข้าคิวสำหรับตัวดำเนินการเทอร์มินัลแล้ว",
+  "desktop.commandAcceptedDetail":
+    "ผ่านการตรวจสอบความปลอดภัยในเครื่อง และเข้าคิวสำหรับตัวดำเนินการเทอร์มินัลแล้ว",
   "desktop.commandBlocked": "คำสั่งถูกบล็อก",
   "desktop.commandBlockedDetail": "ตรงกับ {pattern}: {reason}",
   "desktop.safetyReasonRmRoot": "ลบรูทของระบบไฟล์แบบเรียกซ้ำ",
@@ -62,17 +68,23 @@ export const th = {
   "desktop.safetyReasonRawDiskCopy": "การคัดลอกดิสก์แบบดิบอาจทำลายข้อมูล",
   "desktop.safetyReasonChmodRoot": "เปิดสิทธิ์กว้างจากรูทของระบบไฟล์",
   "desktop.safetyReasonTeeBlockDevice": "เขียนเอาต์พุตดิบไปยังอุปกรณ์บล็อก",
-  "desktop.safetyReasonRedirectBlockDevice": "เปลี่ยนทิศทางเอาต์พุตไปยังอุปกรณ์บล็อกดิบและทำลายเนื้อหา",
+  "desktop.safetyReasonRedirectBlockDevice":
+    "เปลี่ยนทิศทางเอาต์พุตไปยังอุปกรณ์บล็อกดิบและทำลายเนื้อหา",
   "desktop.safetyReasonFindRootDelete": "ลบไฟล์แบบเรียกซ้ำจากพาธราก",
-  "desktop.safetyReasonDiskWipe": "ล้างตารางพาร์ทิชันหรือเนื้อหาอุปกรณ์บล็อกอย่างย้อนกลับไม่ได้",
+  "desktop.safetyReasonDiskWipe":
+    "ล้างตารางพาร์ทิชันหรือเนื้อหาอุปกรณ์บล็อกอย่างย้อนกลับไม่ได้",
   "desktop.safetyReasonFirewallFlush": "ล้างกฎไฟร์วอลล์",
   "desktop.safetyReasonRemoteShellPipe": "ส่งเนื้อหาระยะไกลตรงเข้า shell",
-  "desktop.safetyReasonRootDownloadOverwrite": "เขียนทับพาธรากด้วยเนื้อหาที่ดาวน์โหลด",
+  "desktop.safetyReasonRootDownloadOverwrite":
+    "เขียนทับพาธรากด้วยเนื้อหาที่ดาวน์โหลด",
   "desktop.safetyReasonHostShutdown": "หยุดโฮสต์ทันที",
-  "desktop.safetyReasonWindowsDestructive": "คำสั่งทำลายล้างของ Windows มุ่งเป้าไฟล์ ดิสก์ หรือสถานะโฮสต์",
-  "desktop.safetyReasonPowershellDestructive": "คำสั่งทำลายล้างของ PowerShell มุ่งเป้าไดรฟ์ พาธระบบ ดิสก์ หรือสถานะพลังงานของโฮสต์",
+  "desktop.safetyReasonWindowsDestructive":
+    "คำสั่งทำลายล้างของ Windows มุ่งเป้าไฟล์ ดิสก์ หรือสถานะโฮสต์",
+  "desktop.safetyReasonPowershellDestructive":
+    "คำสั่งทำลายล้างของ PowerShell มุ่งเป้าไดรฟ์ พาธระบบ ดิสก์ หรือสถานะพลังงานของโฮสต์",
   "desktop.safetyReasonDropDatabase": "ลบฐานข้อมูล",
-  "desktop.safetyReasonCommandSubstitution": "ฝังคำสั่งย่อยที่อาจเรียกใช้อะไรก็ได้",
+  "desktop.safetyReasonCommandSubstitution":
+    "ฝังคำสั่งย่อยที่อาจเรียกใช้อะไรก็ได้",
   "desktop.context": "บริบท",
   "desktop.team": "ทีม",
   "desktop.settings": "การตั้งค่า",
@@ -108,7 +120,7 @@ export const th = {
   "desktop.recordTerminal": "บันทึกเซสชันเทอร์มินัล",
   "desktop.requiredProduction": "จำเป็นสำหรับขอบเขต production",
   "desktop.syncEncrypted": "ซิงค์ส่วนย่อยที่เข้ารหัส",
-  "desktop.availableProBusiness": "ใช้ได้ใน Pro และ Business",
+  "desktop.plannedUnavailable": "อยู่ในแผน; ยังไม่พร้อมใช้งาน",
   "desktop.telemetryErrors": "รายงานข้อผิดพลาด (ไม่บังคับ)",
   "desktop.telemetryErrorsHint": "ส่งสรุปข้อขัดข้องและข้อผิดพลาดที่แก้ไขแล้ว",
   "desktop.businessLayer": "เลเยอร์ธุรกิจ",
@@ -167,7 +179,8 @@ export const th = {
   "desktop.forwardActive": "ใช้งานอยู่",
   "desktop.forwardInactive": "ไม่ใช้งาน",
   "desktop.forwardNoRules": "ยังไม่มีกฎการส่งต่อ",
-  "desktop.forwardNoRulesHint": "เพิ่มกฎเพื่อทำทันเนลพอร์ต TCP ในเครื่องผ่าน SSH",
+  "desktop.forwardNoRulesHint":
+    "เพิ่มกฎเพื่อทำทันเนลพอร์ต TCP ในเครื่องผ่าน SSH",
   "desktop.sftpEmpty": "โฟลเดอร์นี้ว่างเปล่า",
   "desktop.sftpEmptyHint": "อัปโหลดไฟล์หรือไปยังโฟลเดอร์อื่น",
   "desktop.groupProduction": "โพรดักชัน",
@@ -215,10 +228,12 @@ export const th = {
   "desktop.passphrase": "วลีรหัสผ่าน (ไม่บังคับ)",
   "desktop.pinnedFingerprint": "คีย์โฮสต์ที่ปักหมุด (ไม่บังคับ)",
   "desktop.hostKeyConfirmTitle": "Confirm host key",
-  "desktop.hostKeyConfirmDetail": "Verify this SHA-256 fingerprint before authenticating.",
+  "desktop.hostKeyConfirmDetail":
+    "Verify this SHA-256 fingerprint before authenticating.",
   "desktop.hostKeyPresentedFingerprint": "Presented fingerprint",
   "desktop.hostKeyVerificationFailed": "Host key verification failed",
-  "desktop.hostKeyChangedDetail": "Stored host key mismatch for {host}:{port}. Expected {stored}, presented {presented}.",
+  "desktop.hostKeyChangedDetail":
+    "Stored host key mismatch for {host}:{port}. Expected {stored}, presented {presented}.",
   "desktop.trustHostKeyAndConnect": "Trust and connect",
   "desktop.connectAction": "เชื่อมต่อ",
   "desktop.connecting": "กำลังเชื่อมต่อ…",
@@ -227,20 +242,22 @@ export const th = {
   "desktop.connectionSwitched": "สลับไปยัง {name} แล้ว",
   "desktop.connectionMoved": "ย้าย {connection} ไปยัง {group} แล้ว",
   "desktop.connectionsImported": "นำเข้าการเชื่อมต่อ {count} รายการแล้ว",
-  "desktop.connectionsImportFailed": "Could not import connections. Choose a valid JoeSSH connections JSON file.",
+  "desktop.connectionsImportFailed":
+    "Could not import connections. Choose a valid JoeSSH connections JSON file.",
   "desktop.connectionConnectToast": "เชื่อมต่อ: {name}",
   "desktop.connectionCreated": "สร้างการเชื่อมต่อ {name} แล้ว",
   "desktop.connectionTestResult": "ทดสอบการเชื่อมต่อ: {result}",
-  "desktop.builtinConnectionEditUnavailable": "แก้ไขการเชื่อมต่อเดโมในตัวไม่ได้",
+  "desktop.builtinConnectionEditUnavailable":
+    "แก้ไขการเชื่อมต่อเดโมในตัวไม่ได้",
   "desktop.builtinConnectionDeleteUnavailable": "ลบการเชื่อมต่อเดโมในตัวไม่ได้",
   "desktop.connectionCopyName": "{name} สำเนา",
   "desktop.connectionCopyNameNumbered": "{name} สำเนา {number}",
   "desktop.connectionDuplicated": "ทำซ้ำ {name} แล้ว",
   "desktop.connectionDeleted": "ลบ {name} แล้ว",
   "desktop.connectionEdited": "แก้ไข {name} แล้ว",
-  "desktop.groupCreatedToast": "สร้างกลุ่ม \"{name}\" แล้ว",
-  "desktop.groupDeletedToast": "ลบกลุ่ม \"{name}\" แล้ว",
-  "desktop.groupRenamedToast": "เปลี่ยนชื่อกลุ่มเป็น \"{name}\" แล้ว",
+  "desktop.groupCreatedToast": 'สร้างกลุ่ม "{name}" แล้ว',
+  "desktop.groupDeletedToast": 'ลบกลุ่ม "{name}" แล้ว',
+  "desktop.groupRenamedToast": 'เปลี่ยนชื่อกลุ่มเป็น "{name}" แล้ว',
   "desktop.sftpUploadComplete": "อัปโหลด {name} แล้ว",
   "desktop.sftpOverwriteTitle": "แทนที่ไฟล์ที่มีอยู่หรือไม่",
   "desktop.sftpOverwriteDetail": "มีไฟล์ชื่อ {name} อยู่ในโฟลเดอร์นี้แล้ว",
@@ -269,7 +286,8 @@ export const th = {
   "team.auditCommandRecorded": "Command recorded",
   "team.auditAccessRequestApproved": "Access request approved",
   "team.auditAccessRequestRejected": "Access request rejected",
-  "team.productionElevationDetail": "Incident commander role for gateway triage",
+  "team.productionElevationDetail":
+    "Incident commander role for gateway triage",
   "web.adminNavigation": "การนำทางผู้ดูแล JoeSSH",
   "web.adminConsole": "คอนโซลผู้ดูแล",
   "web.skipToContent": "ข้ามไปยังเนื้อหาหลัก",
@@ -308,17 +326,23 @@ export const th = {
   "web.storage": "พื้นที่จัดเก็บ",
   "mobile.kicker": "JoeSSH Mobile",
   "mobile.title": "ซิงค์และการเข้าถึงฉุกเฉิน",
-  "mobile.subtitle": "ลงทะเบียนโทรศัพท์นี้ ดูตัวอย่างบริบทเทอร์มินัล และเก็บเส้นทางกู้คืนไว้ใกล้มือ",
+  "mobile.subtitle":
+    "ลงทะเบียนโทรศัพท์นี้ ดูตัวอย่างบริบทเทอร์มินัล และเก็บเส้นทางกู้คืนไว้ใกล้มือ",
   "mobile.registering": "กำลังลงทะเบียนอุปกรณ์",
-  "mobile.registeringMessage": "กำลังสร้างตัวตนมือถือสำหรับซิงค์และส่งต่อฉุกเฉิน",
+  "mobile.registeringMessage":
+    "กำลังสร้างตัวตนมือถือสำหรับซิงค์และส่งต่อฉุกเฉิน",
   "mobile.previewing": "กำลังดึงตัวอย่างซิงค์",
-  "mobile.previewingMessage": "กำลังดึงโปรไฟล์ เซสชัน สถานะเคอร์เซอร์ และเส้นทางกู้คืนที่เชื่อถือได้",
+  "mobile.previewingMessage":
+    "กำลังดึงโปรไฟล์ เซสชัน สถานะเคอร์เซอร์ และเส้นทางกู้คืนที่เชื่อถือได้",
   "mobile.ready": "ตัวอย่างพร้อมแล้ว",
-  "mobile.readyMessage": "อุปกรณ์นี้ลงทะเบียนแล้ว และการตอบกลับการซิงค์ล่าสุดพร้อมใช้งาน",
+  "mobile.readyMessage":
+    "อุปกรณ์นี้ลงทะเบียนแล้ว และการตอบกลับการซิงค์ล่าสุดพร้อมใช้งาน",
   "mobile.offline": "เปิดใช้ fallback ออฟไลน์แล้ว",
-  "mobile.offlineMessage": "ซิงค์สดไม่พร้อมใช้งาน ไม่ได้รับข้อมูลพื้นที่ทำงานแบบสดหรือแบบแคช",
+  "mobile.offlineMessage":
+    "ซิงค์สดไม่พร้อมใช้งาน ไม่ได้รับข้อมูลพื้นที่ทำงานแบบสดหรือแบบแคช",
   "mobile.readyToConnect": "พร้อมเชื่อมต่อ",
-  "mobile.readyToConnectMessage": "เริ่มด้วยการลงทะเบียนโทรศัพท์นี้และดึงตัวอย่างที่ปลอดภัยจากการซิงค์ JoeSSH",
+  "mobile.readyToConnectMessage":
+    "เริ่มด้วยการลงทะเบียนโทรศัพท์นี้และดึงตัวอย่างที่ปลอดภัยจากการซิงค์ JoeSSH",
   "mobile.profiles": "โปรไฟล์",
   "mobile.openSessions": "เซสชันที่เปิดอยู่",
   "mobile.pendingChanges": "การเปลี่ยนแปลงที่ดึงมา",
@@ -338,10 +362,12 @@ export const th = {
   "mobile.registerPull": "ลงทะเบียนและดึงตัวอย่าง",
   "desktop.error.boundary.title": "เกิดข้อผิดพลาด",
   "desktop.error.boundary.reload": "โหลดใหม่",
-  "desktop.error.boundary.message": "โหลด JoeSSH ใหม่ หรือติดต่อฝ่ายสนับสนุนหากปัญหายังคงอยู่",
+  "desktop.error.boundary.message":
+    "โหลด JoeSSH ใหม่ หรือติดต่อฝ่ายสนับสนุนหากปัญหายังคงอยู่",
   "mobile.error.boundary.title": "เกิดข้อผิดพลาด",
   "mobile.error.boundary.reload": "โหลดใหม่",
-  "mobile.error.boundary.message": "โหลด JoeSSH ใหม่ หรือติดต่อฝ่ายสนับสนุนหากปัญหายังคงอยู่",
+  "mobile.error.boundary.message":
+    "โหลด JoeSSH ใหม่ หรือติดต่อฝ่ายสนับสนุนหากปัญหายังคงอยู่",
   "desktop.paletteRecent": "ล่าสุด",
   "desktop.paletteRecentBadge": "ล่าสุด",
   "desktop.paletteConnections": "การเชื่อมต่อ",
@@ -392,7 +418,15 @@ export const th = {
   "team.accessRequestStatus": "สถานะคำขอเข้าถึง",
   "desktop.restoreWorkbench": "คืนค่าพื้นที่ทำงาน",
   "desktop.gettingStarted": "เริ่มต้นใช้งาน",
-  "desktop.surfaceGuide": "Desktop ใช้เปิดเซสชัน SSH; Web Admin ใช้ตรวจสอบ Sync และทีม; Mobile เป็นแอปคู่หู",
-  "desktop.telemetryPrivacyHint": "เป็นตัวเลือกและปิดไว้โดยค่าเริ่มต้น ไม่ส่งโฮสต์ ชื่อผู้ใช้ คำสั่ง คีย์ โทเคน เส้นทาง หรือเอาต์พุตเทอร์มินัล",
-  "team.reviewedBy": "ตรวจสอบโดย {reviewer}"
+  "desktop.surfaceGuide":
+    "Desktop เปิดเซสชัน SSH และ SFTP ภายในเครื่อง; Web Admin แสดงสแนปช็อต Sync แบบอ่านอย่างเดียว; Mobile เป็นตัวอย่าง Sync และไม่เรียกใช้ SSH หรือ SFTP",
+  "desktop.telemetryPrivacyHint":
+    "เป็นตัวเลือกและปิดไว้โดยค่าเริ่มต้น ไม่ส่งโฮสต์ ชื่อผู้ใช้ คำสั่ง คีย์ โทเคน เส้นทาง หรือเอาต์พุตเทอร์มินัล",
+  "desktop.thirdPartyNotices": "สัญญาอนุญาตและประกาศ",
+  "desktop.thirdPartyNoticesHint":
+    "ดูข้อความสัญญาอนุญาตและประกาศที่รวมอยู่กับแอปเวอร์ชันนี้",
+  "desktop.thirdPartyNoticesLoading": "กำลังโหลดสัญญาอนุญาต…",
+  "desktop.thirdPartyNoticesUnavailable":
+    "ประกาศสัญญาอนุญาตไม่พร้อมใช้งานในเวอร์ชันนี้",
+  "team.reviewedBy": "ตรวจสอบโดย {reviewer}",
 } as const;

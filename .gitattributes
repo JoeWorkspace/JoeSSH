@@ -1,0 +1,51 @@
+* text=auto eol=lf
+
+# Release, policy, and source inputs must hash identically on every checkout.
+.gitattributes text eol=lf
+.nvmrc text eol=lf
+.gitleaks.toml text eol=lf
+.gitleaksignore text eol=lf
+*.lock text eol=lf
+*.json text eol=lf
+*.toml text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.mjs text eol=lf
+*.cjs text eol=lf
+*.js text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.sh text eol=lf
+*.ps1 text eol=lf
+
+# Preserve byte-pinned SPDX license-list-data text, including upstream spaces.
+scripts/spdx-license-texts/** whitespace=-blank-at-eol
+
+# Never run line-ending conversion or textual merge drivers over artifacts.
+*.png binary
+*.ico binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.zip binary
+*.gz binary
+*.tgz binary
+*.pfx binary
+*.p12 binary
+*.cer binary
+*.der binary
+*.exe binary
+*.dll binary
+*.msi binary
+*.msix binary
+*.dmg binary
+*.pkg binary
+*.AppImage binary
+*.deb binary
+*.rpm binary
+*.woff binary
+*.woff2 binary

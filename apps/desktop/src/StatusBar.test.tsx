@@ -9,7 +9,12 @@ const t = ((key: string, values?: Record<string, string | number>) => {
   return key;
 }) as any;
 
-const defaultTeamAccess = { activeJitMembers: 3, pendingAccessRequests: 0, pendingVaults: 1, recordedEvents: 2 };
+const defaultTeamAccess = {
+  activeJitMembers: 3,
+  pendingAccessRequests: 0,
+  pendingVaults: 1,
+  recordedEvents: 2,
+};
 
 afterEach(() => {
   cleanup();
@@ -29,7 +34,9 @@ describe("StatusBar", () => {
     expect(screen.getByText("desktop.sessions")).toBeTruthy();
     expect(screen.getByText("desktop.sftp")).toBeTruthy();
     expect(screen.getByText("team.summary", { exact: false })).toBeTruthy();
-    expect(screen.getByText("desktop.sampleDataShort", { exact: false })).toBeTruthy();
+    expect(
+      screen.getByText("desktop.sampleDataShort", { exact: false }),
+    ).toBeTruthy();
   });
 
   it("shows no-session copy instead of live fleet status when disconnected", () => {
@@ -43,7 +50,9 @@ describe("StatusBar", () => {
         teamAccess={defaultTeamAccess}
       />,
     );
-    expect(screen.getAllByText("desktop.noSession").length).toBeGreaterThanOrEqual(2);
+    expect(
+      screen.getAllByText("desktop.noSession").length,
+    ).toBeGreaterThanOrEqual(2);
     expect(screen.getByText("desktop.notAvailable")).toBeTruthy();
     expect(screen.queryByText(/42/)).toBeNull();
     expect(screen.queryByText("desktop.sftp")).toBeNull();
@@ -117,7 +126,10 @@ describe("StatusBar", () => {
   it("prioritizes numeric latency over latencyLabelKey", () => {
     render(
       <StatusBar
-        activeConnection={{ latencyMs: 12, latencyLabelKey: "desktop.mfaRequiredShort" }}
+        activeConnection={{
+          latencyMs: 12,
+          latencyLabelKey: "desktop.mfaRequiredShort",
+        }}
         formatters={createLocaleFormatters("en")}
         onPanelChange={vi.fn()}
         t={t}
@@ -224,9 +236,30 @@ describe("StatusBar", () => {
         formatters={createLocaleFormatters("en")}
         onPanelChange={vi.fn()}
         t={t}
-        teamAccess={{ activeJitMembers: 5, pendingAccessRequests: 1, pendingVaults: 2, recordedEvents: 4 }}
+        teamAccess={{
+          activeJitMembers: 5,
+          pendingAccessRequests: 1,
+          pendingVaults: 2,
+          recordedEvents: 4,
+        }}
       />,
     );
     expect(screen.getByText("team.summary", { exact: false })).toBeTruthy();
+  });
+
+  it("hides the unfinished team surface for release builds", () => {
+    render(
+      <StatusBar
+        activeConnection={{ latencyMs: 10 }}
+        formatters={createLocaleFormatters("en")}
+        onPanelChange={vi.fn()}
+        showTeamAccess={false}
+        t={t}
+        teamAccess={defaultTeamAccess}
+      />,
+    );
+
+    expect(screen.queryByLabelText("team.accessSummary")).toBeNull();
+    expect(screen.queryByText("team.summary", { exact: false })).toBeNull();
   });
 });

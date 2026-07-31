@@ -26,7 +26,7 @@ const UNSIGNED_PE_PATH = resolve(
   import.meta.dirname,
   "../node_modules/fb-dotslash/bin/windows/dotslash.exe",
 );
-const VERSION = "0.1.0-beta.9";
+const VERSION = "0.1.0-beta.10";
 const gitHead = spawnSync("git", ["rev-parse", "HEAD"], {
   cwd: resolve(import.meta.dirname, ".."),
   encoding: "utf8",

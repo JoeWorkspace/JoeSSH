@@ -11,6 +11,7 @@ import {
 import { basename, dirname, isAbsolute, relative, resolve } from "node:path";
 
 const scriptRoot = resolve(import.meta.dirname, "..");
+const FORMAL_SIGNING_DISABLED = "FORMAL_SIGNING_DISABLED";
 const {
   noFail,
   outputPath,
@@ -20,7 +21,9 @@ const {
   workflow,
 } = parseArgs(process.argv.slice(2));
 const gitCommand = process.env.ATLASTERM_RELEASE_GIT_COMMAND ?? "git";
-const gitCommandPrefixArgs = parseCommandPrefixArgs("ATLASTERM_RELEASE_GIT_ARGS");
+const gitCommandPrefixArgs = parseCommandPrefixArgs(
+  "ATLASTERM_RELEASE_GIT_ARGS",
+);
 const ghCommand = process.env.ATLASTERM_RELEASE_GH_COMMAND ?? "gh";
 const ghCommandPrefixArgs = parseCommandPrefixArgs("ATLASTERM_RELEASE_GH_ARGS");
 const powershellCommand =
@@ -28,33 +31,12 @@ const powershellCommand =
 const powershellCommandPrefixArgs = parseCommandPrefixArgs(
   "ATLASTERM_RELEASE_POWERSHELL_ARGS",
 );
-const packageJson = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
+const packageJson = JSON.parse(
+  readFileSync(resolve(root, "package.json"), "utf8"),
+);
 const releaseRef = ref ?? `v${packageJson.version}`;
 const repo = explicitRepo ?? resolveRepoFromOrigin();
 const desktopReleaseDir = resolve(root, "reports", "release", "desktop");
-const requiredSecretGroups = [
-  {
-    label: "Windows signing",
-    names: [
-      "ATLASTERM_WINDOWS_CERTIFICATE",
-      "ATLASTERM_WINDOWS_CERTIFICATE_PASSWORD",
-      "ATLASTERM_WINDOWS_CERTIFICATE_THUMBPRINT",
-      "ATLASTERM_WINDOWS_TIMESTAMP_URL",
-    ],
-  },
-  {
-    label: "macOS signing/notarization",
-    names: [
-      "ATLASTERM_APPLE_CERTIFICATE",
-      "ATLASTERM_APPLE_CERTIFICATE_PASSWORD",
-      "ATLASTERM_APPLE_ID",
-      "ATLASTERM_APPLE_PASSWORD",
-      "ATLASTERM_APPLE_TEAM_ID",
-      "ATLASTERM_KEYCHAIN_PASSWORD",
-    ],
-  },
-];
-
 const report = buildReport();
 mkdirSync(dirname(outputPath), { recursive: true });
 writeFileSync(outputPath, `${JSON.stringify(report, null, 2)}\n`);
@@ -75,6 +57,13 @@ function buildReport() {
   const desktop = inspectDesktopReleaseFiles();
   const github = inspectGitHub(git.head);
   const blockers = [
+    {
+      id: "desktop-formal-signing-disabled",
+      label: "Desktop formal signing boundary",
+      detail:
+        `${FORMAL_SIGNING_DISABLED}: repository-managed signing, credential inventory, and workflow dispatch are intentionally unavailable. ` +
+        "A future formal release requires an approved externally managed isolated signer and independently verified evidence.",
+    },
     ...git.blockers,
     ...desktop.blockers,
     ...github.blockers,
@@ -93,7 +82,10 @@ function buildReport() {
     },
     decision: blockers.length === 0 ? "go" : "no-go",
     blockers,
-    requiredGitHubSecrets: requiredSecretGroups.flatMap((group) => group.names),
+    formalSigning: {
+      repositoryAutomation: FORMAL_SIGNING_DISABLED,
+      requiredBoundary: "approved externally managed isolated signer",
+    },
     localEvidence: desktop.localEvidence,
     github: github.summary,
     unblockSteps: buildUnblockSteps(blockers),
@@ -113,7 +105,8 @@ function inspectGit() {
   }
 
   const tagResult = runGit(["rev-parse", "--verify", `${releaseRef}^{}`]);
-  const releaseTagCommit = tagResult.status === 0 ? tagResult.stdout.trim() : null;
+  const releaseTagCommit =
+    tagResult.status === 0 ? tagResult.stdout.trim() : null;
   if (!releaseTagCommit) {
     blockers.push({
       id: "release-tag",
@@ -269,16 +262,28 @@ function inspectDesktopReleaseFiles() {
       signature: inspectSignature(path),
     }))
     .sort((left, right) => left.path.localeCompare(right.path));
-  const stagedPlatforms = [...new Set(artifacts.map((artifact) => artifact.platform))].sort();
+  const stagedPlatforms = [
+    ...new Set(artifacts.map((artifact) => artifact.platform)),
+  ].sort();
   const staleArtifacts = artifacts.filter(
-    (artifact) => !artifactFileName(artifact.path).includes(packageJson.version),
+    (artifact) =>
+      !artifactFileName(artifact.path).includes(packageJson.version),
   );
 
   const manifestEntries = readChecksumManifestIfPresent(manifestPath);
-  const evidenceChecksumEntries = readChecksumManifestIfPresent(evidenceChecksumPath);
+  const evidenceChecksumEntries =
+    readChecksumManifestIfPresent(evidenceChecksumPath);
   const missingFiles = [
-    [manifestPath, "release-desktop", "Desktop signed release checksum manifest"],
-    [evidencePath, "release-desktop-evidence", "Desktop formal release evidence"],
+    [
+      manifestPath,
+      "release-desktop",
+      "Desktop signed release checksum manifest",
+    ],
+    [
+      evidencePath,
+      "release-desktop-evidence",
+      "Desktop formal release evidence",
+    ],
     [
       evidenceSourcePath,
       "release-desktop-evidence-source",
@@ -321,7 +326,8 @@ function inspectDesktopReleaseFiles() {
 
   const missingSourceCoverage = existsSync(evidenceChecksumPath)
     ? !evidenceChecksumEntries.some(
-        (entry) => entry.path === "reports/release/desktop/release-evidence-source.json",
+        (entry) =>
+          entry.path === "reports/release/desktop/release-evidence-source.json",
       )
     : false;
   if (missingSourceCoverage) {
@@ -381,7 +387,7 @@ function inspectGitHub(head) {
   const blockers = [];
   const summary = {
     auth: "unknown",
-    secrets: null,
+    formalSigning: FORMAL_SIGNING_DISABLED,
     workflow: null,
     desktopWorkflowRuns: [],
     ci: null,
@@ -392,7 +398,10 @@ function inspectGitHub(head) {
     blockers.push({
       id: "github-cli",
       label: "GitHub CLI",
-      detail: commandDiagnostic("GitHub CLI is required for Desktop formal evidence diagnostics.", version),
+      detail: commandDiagnostic(
+        "GitHub CLI is required for Desktop formal evidence diagnostics.",
+        version,
+      ),
     });
     summary.auth = "unavailable";
     return { blockers, summary };
@@ -410,17 +419,13 @@ function inspectGitHub(head) {
   }
   summary.auth = "ok";
 
-  const secrets = inspectGitHubSecrets();
-  summary.secrets = secrets.summary;
-  blockers.push(...secrets.blockers);
-
   const workflowResult = runGh(["workflow", "view", workflow, "--repo", repo]);
   if (workflowResult.status !== 0) {
     blockers.push({
       id: "desktop-formal-workflow",
-      label: "Desktop formal evidence workflow",
+      label: "Desktop release artifacts workflow visibility",
       detail: commandDiagnostic(
-        `GitHub Actions workflow is required before generating Desktop formal evidence: ${workflow}.`,
+        `Unable to inspect the unsigned Desktop release artifacts workflow: ${workflow}.`,
         workflowResult,
       ),
     });
@@ -434,18 +439,21 @@ function inspectGitHub(head) {
   if (desktopRuns.error) {
     blockers.push({
       id: "desktop-formal-workflow-runs",
-      label: "Desktop formal evidence workflow runs",
+      label: "Desktop release artifacts workflow runs",
       detail: desktopRuns.error,
     });
   } else if (
     head &&
     !desktopRuns.runs.some(
-      (run) => run.headSha === head && run.status === "completed" && run.conclusion === "success",
+      (run) =>
+        run.headSha === head &&
+        run.status === "completed" &&
+        run.conclusion === "success",
     )
   ) {
     blockers.push({
       id: "desktop-formal-workflow-run",
-      label: "Desktop formal evidence workflow run for HEAD",
+      label: "Desktop release artifacts workflow run for HEAD",
       detail:
         "No successful Desktop Release Artifacts workflow run was found for the current HEAD.",
     });
@@ -456,54 +464,6 @@ function inspectGitHub(head) {
   blockers.push(...ci.blockers);
 
   return { blockers, summary };
-}
-
-function inspectGitHubSecrets() {
-  const result = runGh(["api", `repos/${repo}/actions/secrets`, "--jq", ".secrets[].name"]);
-  if (result.status !== 0) {
-    return {
-      blockers: [
-        {
-          id: "desktop-signing-secrets",
-          label: "Desktop signing/notarization secret preflight",
-          detail: commandDiagnostic("Unable to list GitHub Actions secret names.", result),
-        },
-      ],
-      summary: { availableCount: null, missing: requiredSecretGroups },
-    };
-  }
-
-  const available = new Set(
-    result.stdout
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean),
-  );
-  const missingGroups = requiredSecretGroups
-    .map((group) => ({
-      label: group.label,
-      names: group.names.filter((name) => !available.has(name)),
-    }))
-    .filter((group) => group.names.length > 0);
-
-  return {
-    blockers:
-      missingGroups.length === 0
-        ? []
-        : [
-            {
-              id: "desktop-signing-secrets",
-              label: "Desktop signing/notarization secret preflight",
-              detail: `Missing GitHub Actions secret(s) required for formal Desktop evidence:\n${missingGroups
-                .map((group) => `- ${group.label}: ${group.names.join(", ")}`)
-                .join("\n")}`,
-            },
-          ],
-    summary: {
-      availableCount: available.size,
-      missing: missingGroups,
-    },
-  };
 }
 
 function listWorkflowRuns(workflowName, limit) {
@@ -608,7 +568,15 @@ function collectRunFailureDiagnostics(runId) {
   if (!runId) {
     return [];
   }
-  const result = runGh(["run", "view", String(runId), "--repo", repo, "--json", "jobs"]);
+  const result = runGh([
+    "run",
+    "view",
+    String(runId),
+    "--repo",
+    repo,
+    "--json",
+    "jobs",
+  ]);
   if (result.status !== 0) {
     return [];
   }
@@ -620,7 +588,9 @@ function collectRunFailureDiagnostics(runId) {
       continue;
     }
     const jobName = job.name ?? "unknown job";
-    lines.push(`${jobName}: ${job.status ?? "unknown"}/${job.conclusion ?? "unknown"}`);
+    lines.push(
+      `${jobName}: ${job.status ?? "unknown"}/${job.conclusion ?? "unknown"}`,
+    );
     if (job.databaseId) {
       for (const annotation of collectCheckRunAnnotations(job.databaseId)) {
         lines.push(`${jobName}: ${annotation}`);
@@ -631,7 +601,10 @@ function collectRunFailureDiagnostics(runId) {
 }
 
 function collectCheckRunAnnotations(checkRunId) {
-  const result = runGh(["api", `repos/${repo}/check-runs/${checkRunId}/annotations`]);
+  const result = runGh([
+    "api",
+    `repos/${repo}/check-runs/${checkRunId}/annotations`,
+  ]);
   if (result.status !== 0) {
     return [];
   }
@@ -642,9 +615,12 @@ function collectCheckRunAnnotations(checkRunId) {
 
   return annotations
     .map((annotation) => {
-      const path = typeof annotation?.path === "string" ? annotation.path.trim() : "";
+      const path =
+        typeof annotation?.path === "string" ? annotation.path.trim() : "";
       const message =
-        typeof annotation?.message === "string" ? annotation.message.trim() : "";
+        typeof annotation?.message === "string"
+          ? annotation.message.trim()
+          : "";
       return [path, message].filter(Boolean).join(": ");
     })
     .filter(Boolean);
@@ -668,9 +644,9 @@ function buildUnblockSteps(blockers) {
       "Resolve GitHub Actions billing/spending-limit or runner availability, then rerun CI for the candidate HEAD.",
     );
   }
-  if (ids.has("desktop-signing-secrets")) {
+  if (ids.has("desktop-formal-signing-disabled")) {
     steps.push(
-      "Fill reports/handoff/desktop/secret-input-template.env locally and run npm run release:desktop:configure-secrets -- --repo <owner/name>.",
+      "Keep repository signing automation disabled. Establish a separately approved, externally managed isolated signer and an independently verified evidence handoff before any formal release.",
     );
   }
   if (
@@ -679,7 +655,7 @@ function buildUnblockSteps(blockers) {
     ids.has("release-desktop-evidence-verify")
   ) {
     steps.push(
-      `Run npm run release:desktop:evidence-workflow -- --repo ${repo} --ref ${releaseRef}, wait for success, then import it with npm run release:desktop:evidence-download -- --repo ${repo} --run-id <run-id>.`,
+      `After the approved external signer produces independently verified evidence for ${repo}, import the historical-compatible evidence bundle with npm run release:desktop:evidence-download -- --repo ${repo} --run-id <external-run-id>.`,
     );
   }
   steps.push(
@@ -702,7 +678,12 @@ function readChecksumManifestIfPresent(path) {
       if (!match) {
         return [];
       }
-      return [{ path: match[2].replaceAll("\\", "/"), sha256: match[1].toLowerCase() }];
+      return [
+        {
+          path: match[2].replaceAll("\\", "/"),
+          sha256: match[1].toLowerCase(),
+        },
+      ];
     });
 }
 
@@ -745,7 +726,10 @@ function inspectSignature(path) {
   if (result.status !== 0) {
     return {
       status: "unknown",
-      detail: commandDiagnostic("Unable to inspect Windows Authenticode signature.", result),
+      detail: commandDiagnostic(
+        "Unable to inspect Windows Authenticode signature.",
+        result,
+      ),
     };
   }
   const parsed = parseJsonOr(null, result.stdout);
@@ -781,7 +765,11 @@ function classifyArtifact(path) {
   if (/\.(exe|msi|msix)$/.test(lower)) {
     return { platform: "windows" };
   }
-  if (lower.endsWith(".dmg") || lower.endsWith(".pkg") || lower.endsWith(".app.tar.gz")) {
+  if (
+    lower.endsWith(".dmg") ||
+    lower.endsWith(".pkg") ||
+    lower.endsWith(".app.tar.gz")
+  ) {
     return { platform: "macos" };
   }
   if (lower.endsWith(".appimage")) {
@@ -805,9 +793,13 @@ function resolveRepoFromOrigin() {
   if (origin.status !== 0) {
     fail(commandDiagnostic("Unable to read Git origin URL.", origin));
   }
-  const match = origin.stdout.trim().match(/github\.com[:/](?<owner>[^/\s]+)\/(?<repo>[^/\s]+?)(?:\.git)?$/i);
+  const match = origin.stdout
+    .trim()
+    .match(/github\.com[:/](?<owner>[^/\s]+)\/(?<repo>[^/\s]+?)(?:\.git)?$/i);
   if (!match?.groups) {
-    fail(`Unable to infer GitHub repository from origin URL: ${origin.stdout.trim()}`);
+    fail(
+      `Unable to infer GitHub repository from origin URL: ${origin.stdout.trim()}`,
+    );
   }
   return validateRepo(`${match.groups.owner}/${match.groups.repo}`);
 }
@@ -915,7 +907,11 @@ function parseArgs(args) {
 
   return {
     noFail,
-    outputPath: resolve(root, outputPath ?? "reports/handoff/desktop/formal-evidence-unblock-report.json"),
+    outputPath: resolve(
+      root,
+      outputPath ??
+        "reports/handoff/desktop/formal-evidence-unblock-report.json",
+    ),
     ref,
     repo,
     root,
@@ -946,7 +942,10 @@ function parseCommandPrefixArgs(envName) {
 
   try {
     const value = JSON.parse(raw);
-    if (Array.isArray(value) && value.every((entry) => typeof entry === "string")) {
+    if (
+      Array.isArray(value) &&
+      value.every((entry) => typeof entry === "string")
+    ) {
       return value;
     }
   } catch {

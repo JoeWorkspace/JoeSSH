@@ -29,6 +29,7 @@ const messages: Partial<Record<TranslationKey, string>> = {
   "desktop.connections": "Connections",
   "desktop.connectionsOnline": "Online",
   "desktop.connectionStatusOnline": "Online",
+  "desktop.close": "Close",
   "desktop.groupProduction": "Production group",
   "desktop.runbook": "Runbook",
   "desktop.attached": "Attached",
@@ -46,7 +47,13 @@ const messages: Partial<Record<TranslationKey, string>> = {
   "desktop.telemetryErrorsHint": "Send redacted crash and error summaries.",
   "desktop.telemetryPrivacyHint":
     "Optional and off by default. Never sends sensitive SSH data.",
-  "desktop.availableProBusiness": "Available on Pro and Business",
+  "desktop.thirdPartyNotices": "Third-party licenses",
+  "desktop.thirdPartyNoticesHint":
+    "Review the notices bundled with this exact app build.",
+  "desktop.thirdPartyNoticesLoading": "Loading licenses…",
+  "desktop.thirdPartyNoticesUnavailable":
+    "License notices are unavailable in this build.",
+  "desktop.plannedUnavailable": "Planned; not currently available",
   "desktop.businessLayer": "Business Layer",
   "desktop.team": "Team",
   "desktop.sharedVaults": "Shared vaults",
@@ -281,6 +288,35 @@ describe("panel event handlers", () => {
     });
 
     expect(onChange).toHaveBeenCalledWith(true);
+  });
+
+  it("loads and closes the third-party notices bundled with the desktop build", async () => {
+    vi.useRealTimers();
+    const loadThirdPartyNotices = vi
+      .fn()
+      .mockResolvedValue("Dependency fixture\nMIT License\n");
+    render(
+      <SettingsPanel
+        legal={{ available: true, loadThirdPartyNotices }}
+        t={t}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Third-party licenses" }),
+    );
+
+    expect(loadThirdPartyNotices).toHaveBeenCalledOnce();
+    const dialog = await screen.findByRole("dialog", {
+      name: "Third-party licenses",
+    });
+    expect(dialog.textContent).toContain("Dependency fixture");
+    expect(dialog.textContent).toContain("MIT License");
+
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(
+      screen.queryByRole("dialog", { name: "Third-party licenses" }),
+    ).toBeNull();
   });
 
   it("handles file input change with no files selected", async () => {

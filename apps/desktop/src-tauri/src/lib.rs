@@ -33,6 +33,9 @@ const SFTP_REMOTE_PATH_UNSAFE: &str = "sftp remote path is unsafe";
 const SSH_EXEC_COMMAND_BLOCKED: &str = "ssh exec command blocked by desktop safety policy";
 const PTY_COMMAND_BLOCKED: &str = "pty input blocked by desktop safety policy";
 const PTY_COMMAND_BUFFER_MAX_BYTES: usize = 16 * 1024;
+const THIRD_PARTY_NOTICES_RESOURCE: &str = "legal/THIRD-PARTY-NOTICES.txt";
+const THIRD_PARTY_NOTICES_MAX_BYTES: u64 = 8 * 1024 * 1024;
+const THIRD_PARTY_NOTICES_UNAVAILABLE: &str = "third-party license notices are unavailable";
 const FORWARD_BIND_ADDR_UNSAFE: &str =
     "port forward bind address must use a loopback host such as 127.0.0.1, localhost, or [::1]";
 
@@ -674,6 +677,42 @@ fn parse_id(value: &str) -> Result<Uuid, String> {
     Uuid::parse_str(value).map_err(|_| "invalid id".to_string())
 }
 
+#[tauri::command]
+fn third_party_notices(app: tauri::AppHandle) -> Result<String, String> {
+    let resource_dir = app
+        .path()
+        .resource_dir()
+        .map_err(|_| THIRD_PARTY_NOTICES_UNAVAILABLE.to_string())?;
+    read_bundled_third_party_notices(&resource_dir)
+}
+
+fn read_bundled_third_party_notices(resource_dir: &Path) -> Result<String, String> {
+    let root = std::fs::canonicalize(resource_dir)
+        .map_err(|_| THIRD_PARTY_NOTICES_UNAVAILABLE.to_string())?;
+    let path = resource_dir.join(THIRD_PARTY_NOTICES_RESOURCE);
+    let metadata = std::fs::symlink_metadata(&path)
+        .map_err(|_| THIRD_PARTY_NOTICES_UNAVAILABLE.to_string())?;
+    if metadata.file_type().is_symlink()
+        || !metadata.is_file()
+        || metadata.len() == 0
+        || metadata.len() > THIRD_PARTY_NOTICES_MAX_BYTES
+    {
+        return Err(THIRD_PARTY_NOTICES_UNAVAILABLE.to_string());
+    }
+    let canonical_path =
+        std::fs::canonicalize(&path).map_err(|_| THIRD_PARTY_NOTICES_UNAVAILABLE.to_string())?;
+    if !canonical_path.starts_with(&root) {
+        return Err(THIRD_PARTY_NOTICES_UNAVAILABLE.to_string());
+    }
+    let bytes =
+        std::fs::read(canonical_path).map_err(|_| THIRD_PARTY_NOTICES_UNAVAILABLE.to_string())?;
+    let text = String::from_utf8(bytes).map_err(|_| THIRD_PARTY_NOTICES_UNAVAILABLE.to_string())?;
+    if text.trim().is_empty() || text.contains('\0') {
+        return Err(THIRD_PARTY_NOTICES_UNAVAILABLE.to_string());
+    }
+    Ok(text)
+}
+
 /// Build and run the Tauri application.
 pub fn run() {
     tauri::Builder::default()
@@ -697,6 +736,7 @@ pub fn run() {
             pty_resize,
             pty_close,
             test_connection,
+            third_party_notices,
         ])
         .run(tauri::generate_context!())
         .expect("error while running JoeSSH desktop shell");
@@ -1030,6 +1070,26 @@ mod tests {
         std::env::temp_dir()
             .join(format!("joessh-known-hosts-{}", Uuid::new_v4()))
             .join(KNOWN_HOSTS_FILE)
+    }
+
+    #[test]
+    fn reads_only_non_empty_bundled_third_party_notices() {
+        let root = std::env::temp_dir().join(format!("joessh-legal-{}", Uuid::new_v4()));
+        let path = root.join(THIRD_PARTY_NOTICES_RESOURCE);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, "Dependency fixture\nMIT License\n").unwrap();
+
+        assert_eq!(
+            read_bundled_third_party_notices(&root).unwrap(),
+            "Dependency fixture\nMIT License\n"
+        );
+
+        std::fs::write(&path, " \n").unwrap();
+        assert_eq!(
+            read_bundled_third_party_notices(&root).unwrap_err(),
+            THIRD_PARTY_NOTICES_UNAVAILABLE
+        );
+        let _ = std::fs::remove_dir_all(root);
     }
 
     #[test]

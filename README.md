@@ -6,20 +6,25 @@
 [![Node.js](https://img.shields.io/badge/Node.js-22+-green.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7+-3178c6.svg)](https://www.typescriptlang.org/)
 
-JoeSSH is a local-first remote connection workbench for SSH, local terminals, SFTP, port forwarding, encrypted sync, and team access workflows.
+JoeSSH is a local-first Desktop workbench for SSH, local terminals, SFTP, port
+forwarding, and an optional self-hosted change ledger. This repository also
+contains a preview-only Mobile shell and a read-only Web Admin companion.
+Mobile is outside the current public distribution scope; Web Admin remains an
+evaluation/community surface rather than a hosted or mutating team service.
 
 ## Workspaces
 
 - `apps/desktop`: React + TypeScript desktop workbench, wrapped as a native app by `apps/desktop/src-tauri` (Tauri 2). In the desktop runtime it drives the real Rust engine over IPC; in the browser preview it falls back to demo data.
 - `apps/desktop/src-tauri`: Tauri 2 shell (own Cargo workspace) exposing the `atlasterm-core` SSH/SFTP/forward engine to the frontend as IPC commands (`ssh_connect`, `ssh_exec`, `sftp_list`, `sftp_read`, `forward_start`, `forward_stop`, `ssh_disconnect`).
-- `apps/mobile`: React Native/Expo companion shell for mobile sync and emergency access.
-- `apps/web`: Web Admin console for live Sync snapshots, fleet health, team operations, and release/admin visibility.
+- `apps/mobile`: React Native/Expo sync preview shell. It can register a preview device and pull non-secret preview state, but does not currently provide public mobile SSH/SFTP or emergency-access execution.
+- `apps/web`: Read-only Web Admin viewer for live Sync team, device, role, and audit snapshots. Hosted SaaS and mutating team operations are not currently shipped.
 - `crates/core`: Rust engine with a real `tokio` TCP port-forwarder, a real `russh` 0.61 SSH client (handshake, host-key verification, password/key auth, `exec`), interactive PTY shell sessions, SFTP (list/download/upload) via `russh-sftp`, and an SSH `direct-tcpip` forward bridge, plus the domain models, vault redaction, known-hosts, and safety helpers.
 - `services/sync`: Rust Axum sync service with an in-memory or JSON-backed device/change ledger.
 - `packages/error-monitor`: Shared browser error reporting with beacon/fetch transport.
 - `packages/i18n`: Shared locale catalogs and translation completeness gate.
 - `packages/ui`: Shared design tokens and UI primitives.
-- `tests/e2e`: Playwright acceptance skeleton.
+- `tests/e2e`: Playwright acceptance, release-surface, responsive, accessibility,
+  and visual-regression suites.
 
 > **Verification note:** the TCP port-forwarder is covered end-to-end by loopback integration tests. The SSH/PTY/SFTP/`direct-tcpip` paths are exercised by unit tests for their deterministic logic (host-key policy, fingerprinting) and verified to compile against the real `russh` API; a live handshake requires a reachable SSH server, and the Tauri GUI requires a desktop WebView2 runtime. Building `apps/desktop/src-tauri` requires NASM on `PATH` (the `russh` `ring` crypto backend assembles primitives at build time).
 
@@ -38,11 +43,18 @@ docs-contract QA lanes do not invoke Cargo unless explicitly requested.
 The sync service listens on `ATLASTERM_SYNC_BIND`, defaulting to
 `127.0.0.1:4100`. Set `ATLASTERM_SYNC_AUTH_TOKEN` before exposing `/v1` sync
 routes beyond localhost; `GET /healthz` remains public for process probes.
-Environment-provided sync/admin bearer tokens must be at least 32 characters,
-contain no whitespace/control characters, and be distinct.
-Set `ATLASTERM_SYNC_STORAGE_PATH` to a JSON file path to persist registered
-devices, processed change IDs, accepted changes, and the latest cursor across
-service restarts. When unset, the service keeps the fast process-local ledger.
+
+> **Confidentiality boundary:** Public Beta Sync accepts and stores JSON payloads
+> as provided; it does not currently provide end-to-end payload encryption. Put
+> TLS and an authenticating reverse proxy in front of every non-loopback
+> deployment, do not sync private keys, passwords, tokens, or other secrets, and
+> encrypt sensitive application fields before submission. “Encrypted snippets”
+> in the UI is a disabled future capability, not a shipped security guarantee.
+> Environment-provided sync/admin bearer tokens must be at least 32 characters,
+> contain no whitespace/control characters, and be distinct.
+> Set `ATLASTERM_SYNC_STORAGE_PATH` to a JSON file path to persist registered
+> devices, processed change IDs, accepted changes, and the latest cursor across
+> service restarts. When unset, the service keeps the fast process-local ledger.
 
 Browser CORS is closed by default. Use `ATLASTERM_SYNC_CORS_ORIGINS` for
 comma-separated HTTP(S) CORS origins, or set
@@ -70,8 +82,8 @@ Use the scoped commands when multiple agents are moving different product areas 
 
 ```bash
 npm run dev:desktop      # desktop workbench
-npm run dev:web          # team/admin console
-npm run dev:mobile       # Expo mobile shell
+npm run dev:web          # read-only team/admin snapshot viewer
+npm run dev:mobile       # Expo mobile sync preview shell
 
 npm run qa:desktop       # UI + desktop typecheck, Vitest, and production build
 npm run qa:web           # web typecheck, Vitest, and production build
@@ -94,9 +106,9 @@ npm run test:i18n-strict -w @atlasterm/e2e
 
 Recommended parallel ownership:
 
-- `apps/desktop` and `packages/ui`: desktop workbench, team access, terminal UX.
-- `apps/mobile`: mobile sync, emergency SSH/SFTP flows, offline states.
-- `apps/web`: team admin, roles, audit, billing/admin surfaces.
+- `apps/desktop` and `packages/ui`: desktop workbench, terminal UX, and evaluation-only team-access UI.
+- `apps/mobile`: mobile sync preview and offline/error states; SSH/SFTP execution remains future work.
+- `apps/web`: read-only team, role, device, and audit snapshots; mutations and billing remain future work.
 - `crates/core` and `services/sync`: Rust core, sync service, protocol boundaries.
 - `tests/e2e` and `docs`: acceptance coverage, QA checklist, release readiness.
 
@@ -123,7 +135,9 @@ plus Maestro and mobile device tooling on the host.
 
 `npm run qa` includes lint, the Sync API docs contract check, handoff hygiene,
 production SRI verification, security-header checks, bundle-size budget checks,
-and Playwright acceptance tests.
+Playwright acceptance tests, and the real full-history secret scan. The latter
+requires Gitleaks `8.30.1` on `PATH`; see
+[`docs/release-preparation.md`](docs/release-preparation.md).
 `npm run qa:rust` remains separate because it requires Cargo on `PATH`.
 
 Use `npm run qa:e2e:fresh` when local Vite or Expo Web servers may already be
@@ -143,7 +157,9 @@ JoeSSH implements defense-in-depth security across all client apps:
 - **Subresource Integrity (SRI)** - All production builds include SHA-384 hashes for CSS and JS assets.
 - **Service Workers** - Cache-first for static assets, network-first for navigation, API requests bypassed.
 - **Bearer Token Auth** - Constant-time token comparison on sync service endpoints.
-- **CORS** - Explicit CORS origin `allowlist`, no wildcards.
+- **CORS** - Non-loopback deployments require an explicit origin allowlist;
+  permissive browser CORS is accepted only for loopback development when
+  explicitly enabled.
 - **Error Monitoring** - `@atlasterm/error-monitor` package with beacon-based reporting, breadcrumbs, deduplication, and rate limiting.
 - **Automated Verification** - Security headers, SRI, and bundle size checked in CI pipeline.
 
@@ -169,11 +185,17 @@ GitHub Actions runs on push, PR, and a weekly Monday schedule:
 - [CONTRIBUTING.md](CONTRIBUTING.md) - Development workflow, code style, and commit conventions
 - [SECURITY.md](SECURITY.md) - Vulnerability reporting and security measures
 - [CHANGELOG.md](CHANGELOG.md) - Release history and notable changes
+- [SUPPORT.md](SUPPORT.md) - Community support scope and safe reporting guidance
+- [PRIVACY.md](PRIVACY.md) - Local-first privacy policy and fail-closed hosted/paid disclosures
 - [docs/product-excellence-plan.md](docs/product-excellence-plan.md) - World-class product completion plan and operating cadence
+- [docs/release-preparation.md](docs/release-preparation.md) - Windows-first beta.10 release operator runbook and external blockers
 - [docs/windows-invite-beta.md](docs/windows-invite-beta.md) - 90-day Windows Desktop invite-only Beta playbook, safety boundaries, and success gates
+- [docs/windows-store-release.md](docs/windows-store-release.md) - Separate Store EXE and external-MSIX candidate paths
+- [docs/microsoft-store-listing-draft.md](docs/microsoft-store-listing-draft.md) - Fail-closed en-US/zh-CN Store copy, asset plan, and submission-field checklist
+- [docs/commercialization-and-signing.md](docs/commercialization-and-signing.md) - Solo-developer monetization and signing strategy
+- [docs/commercial-release-readiness.md](docs/commercial-release-readiness.md) - Fail-closed funding and paid-offer checklist
 - [docs/sync-api.md](docs/sync-api.md) - Sync service REST API reference
 - [docs/qa-checklist.md](docs/qa-checklist.md) - Release QA checklist
-
 - [docs/release-checklist.md](docs/release-checklist.md) - Public Beta release checklist
 - [docs/repository-release-handoff.md](docs/repository-release-handoff.md) - Healthy checkout recovery and release handoff
 - [docs/desktop-distribution.md](docs/desktop-distribution.md) - Desktop signing and distribution
@@ -189,16 +211,16 @@ The repository includes a lint-staged config that teams can wire into their
 preferred local hook runner:
 
 ```bash
-npx lint-staged
-# *.{ts,tsx}: eslint --fix + vitest related --run
-# *.json: prettier --write
+npx --no-install lint-staged
+# *.{ts,tsx}: eslint --fix
+# *.{json,md,yml,yaml,css}: prettier --write
 ```
 
 ## Testing
 
 ```bash
 npm run test           # all workspace unit tests
-npx vitest run --coverage  # tests with coverage report
+npx --no-install vitest run --coverage  # tests with coverage report
 npm run typecheck      # strict TypeScript checks
 npm run qa:e2e         # Playwright acceptance tests
 ```

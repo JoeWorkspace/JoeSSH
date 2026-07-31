@@ -25,7 +25,7 @@ import {
 const formatters = createLocaleFormatters("en");
 const messages: Partial<Record<TranslationKey, string>> = {
   "desktop.auditExport": "Audit export",
-  "desktop.availableProBusiness": "Available on Pro and Business",
+  "desktop.plannedUnavailable": "Planned; not currently available",
   "desktop.businessLayer": "Business Layer",
   "desktop.close": "Close",
   "desktop.contextDelete": "Delete",
@@ -97,6 +97,12 @@ const messages: Partial<Record<TranslationKey, string>> = {
   "desktop.telemetryErrorsHint": "Send redacted crash and error summaries.",
   "desktop.telemetryPrivacyHint":
     "Optional and off by default. Never sends sensitive SSH data.",
+  "desktop.thirdPartyNotices": "Third-party licenses",
+  "desktop.thirdPartyNoticesHint":
+    "Review the notices bundled with this exact app build.",
+  "desktop.thirdPartyNoticesLoading": "Loading licenses…",
+  "desktop.thirdPartyNoticesUnavailable":
+    "License notices are unavailable in this build.",
   "desktop.team": "Team",
   "desktop.upload": "Upload",
   "desktop.workspaceSettings": "Workspace Settings",
@@ -779,9 +785,16 @@ describe("extracted desktop panels", () => {
 
     expect(html).toContain("Workspace Settings");
     expect(html).toContain("Record terminal sessions");
+    expect(html).toContain("Planned; not currently available");
     expect(html).toContain("Export connections");
     expect(html).toContain("Import connections");
+    expect(html).toContain("Third-party licenses");
+    expect(html).toContain("License notices are unavailable in this build.");
     expect(html).toContain("Business Layer");
+    const { container } = render(<SettingsPanel t={t} />);
+    expect(
+      container.querySelector(".commercial-card > header")?.textContent,
+    ).toContain("Planned; not currently available");
     expect(html).toContain('disabled=""');
   });
 
@@ -792,11 +805,25 @@ describe("extracted desktop panels", () => {
     );
     expect(policyToggles).toHaveLength(2);
     expect(policyToggles.every((toggle) => toggle.disabled)).toBe(true);
+    expect(policyToggles.every((toggle) => !toggle.checked)).toBe(true);
 
     const managePlan = Array.from(container.querySelectorAll("button")).find(
       (button) => button.textContent?.includes("Manage plan"),
     ) as HTMLButtonElement;
     expect(managePlan.disabled).toBe(true);
+  });
+
+  it("hides recording, Sync, and Business placeholders for release builds", () => {
+    const html = renderToStaticMarkup(
+      <SettingsPanel showFutureProductSurfaces={false} t={t} />,
+    );
+
+    expect(html).toContain("Workspace Settings");
+    expect(html).toContain("Third-party licenses");
+    expect(html).not.toContain("Record terminal sessions");
+    expect(html).not.toContain("Sync encrypted snippets");
+    expect(html).not.toContain("Business Layer");
+    expect(html).not.toContain("Manage plan");
   });
 
   it("renders telemetry consent control and wires changes", () => {

@@ -24,10 +24,12 @@ const shortcuts = [
 export const ShortcutsOverlay = memo(function ShortcutsOverlay({
   desktopRuntime = true,
   onClose,
+  showFutureProductSurfaces = true,
   t,
 }: {
   desktopRuntime?: boolean;
   onClose: () => void;
+  showFutureProductSurfaces?: boolean;
   t: Translator;
 }) {
   const focusTrapRef = useFocusTrap<HTMLDivElement>(true);
@@ -43,19 +45,33 @@ export const ShortcutsOverlay = memo(function ShortcutsOverlay({
         }
       }}
     >
-      <Panel className="command-palette shortcuts-overlay" ref={focusTrapRef} role="dialog" aria-modal="true" aria-label={t("desktop.keyboardShortcuts")} tabIndex={-1} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+      <Panel
+        className="command-palette shortcuts-overlay"
+        ref={focusTrapRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t("desktop.keyboardShortcuts")}
+        tabIndex={-1}
+        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+      >
         <div className="palette-search">
           <Command size={16} aria-hidden="true" />
           <strong>{t("desktop.keyboardShortcuts")}</strong>
           <Badge>Esc</Badge>
         </div>
         <div className="shortcuts-grid">
-          {shortcuts.filter(([key]) => desktopRuntime || key !== "Ctrl+Shift+C").map(([key, messageKey]) => (
-            <div className="shortcut-row" key={key}>
-              <kbd>{key}</kbd>
-              <span>{t(messageKey)}</span>
-            </div>
-          ))}
+          {shortcuts
+            .filter(
+              ([key]) =>
+                (desktopRuntime || key !== "Ctrl+Shift+C") &&
+                (showFutureProductSurfaces || key !== "Ctrl+3"),
+            )
+            .map(([key, messageKey]) => (
+              <div className="shortcut-row" key={key}>
+                <kbd>{key}</kbd>
+                <span>{t(messageKey)}</span>
+              </div>
+            ))}
         </div>
       </Panel>
     </div>

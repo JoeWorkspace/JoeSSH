@@ -2,6 +2,12 @@
 
 Base URL for local development: `http://127.0.0.1:4100`.
 
+The Public Beta protocol does not provide end-to-end payload encryption. The
+service persists and returns each JSON `payload` as submitted. Use TLS for every
+non-loopback deployment, never submit private keys, passwords, bearer tokens,
+terminal output, or other secrets, and encrypt sensitive fields client-side
+before submission.
+
 Device-specific sync endpoints require prior registration. Requests for unknown
 devices return `404 Not Found` with `code: "unknown_device"`.
 
@@ -363,20 +369,20 @@ Web Admin treats that valid shape as its empty state.
 
 ### Device status values
 
-| Status | Meaning |
-|--------|---------|
-| `current` | Device cursor matches the latest sequence, or no changes exist yet |
-| `catching_up` | Activity within the last 60 seconds but cursor is behind |
-| `degraded` | Last activity 60–600 seconds ago |
-| `offline` | Last activity more than 600 seconds ago |
+| Status        | Meaning                                                            |
+| ------------- | ------------------------------------------------------------------ |
+| `current`     | Device cursor matches the latest sequence, or no changes exist yet |
+| `catching_up` | Activity within the last 60 seconds but cursor is behind           |
+| `degraded`    | Last activity 60–600 seconds ago                                   |
+| `offline`     | Last activity more than 600 seconds ago                            |
 
 ### Member status values
 
-| Status | Meaning |
-|--------|---------|
-| `active` | Member is actively participating in sync |
-| `invited` | Member has been invited but has not yet joined |
-| `suspended` | Member access has been suspended |
+| Status      | Meaning                                        |
+| ----------- | ---------------------------------------------- |
+| `active`    | Member is actively participating in sync       |
+| `invited`   | Member has been invited but has not yet joined |
+| `suspended` | Member access has been suspended               |
 
 ## Notes For Future Implementation
 

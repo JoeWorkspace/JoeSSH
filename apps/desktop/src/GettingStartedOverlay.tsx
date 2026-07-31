@@ -1,5 +1,14 @@
 import { memo } from "react";
-import { CircleHelp, Cloud, Info, Monitor, Plus, ShieldCheck, Smartphone, X } from "lucide-react";
+import {
+  CircleHelp,
+  Cloud,
+  Info,
+  Monitor,
+  Plus,
+  ShieldCheck,
+  Smartphone,
+  X,
+} from "lucide-react";
 import { Badge, Button, IconButton, Panel } from "@atlasterm/ui";
 import type { Translator } from "@atlasterm/i18n";
 import { useFocusTrap } from "./useFocusTrap";
@@ -8,11 +17,13 @@ export const GettingStartedOverlay = memo(function GettingStartedOverlay({
   desktopRuntime,
   onClose,
   onCreateConnection,
+  showCompanionProductSurfaces = true,
   t,
 }: {
   desktopRuntime: boolean;
   onClose: () => void;
   onCreateConnection: () => void;
+  showCompanionProductSurfaces?: boolean;
   t: Translator;
 }) {
   const focusTrapRef = useFocusTrap<HTMLDivElement>(true);
@@ -38,7 +49,9 @@ export const GettingStartedOverlay = memo(function GettingStartedOverlay({
         role="dialog"
       >
         <header className="getting-started-header">
-          <span className="getting-started-mark"><CircleHelp size={20} aria-hidden="true" /></span>
+          <span className="getting-started-mark">
+            <CircleHelp size={20} aria-hidden="true" />
+          </span>
           <div>
             <Badge>JoeSSH</Badge>
             <h2>{t("desktop.gettingStarted")}</h2>
@@ -48,7 +61,9 @@ export const GettingStartedOverlay = memo(function GettingStartedOverlay({
           </IconButton>
         </header>
 
-        <p className="getting-started-summary">{t("desktop.surfaceGuide")}</p>
+        {showCompanionProductSurfaces ? (
+          <p className="getting-started-summary">{t("desktop.surfaceGuide")}</p>
+        ) : null}
 
         <div className="getting-started-surfaces">
           <section>
@@ -58,20 +73,24 @@ export const GettingStartedOverlay = memo(function GettingStartedOverlay({
               <span>{t("desktop.noSessionActionDetail")}</span>
             </div>
           </section>
-          <section>
-            <Cloud size={18} aria-hidden="true" />
-            <div>
-              <strong>{t("web.adminConsole")}</strong>
-              <span>{t("web.teamOverview")}</span>
-            </div>
-          </section>
-          <section>
-            <Smartphone size={18} aria-hidden="true" />
-            <div>
-              <strong>{t("mobile.kicker")}</strong>
-              <span>{t("mobile.subtitle")}</span>
-            </div>
-          </section>
+          {showCompanionProductSurfaces ? (
+            <>
+              <section>
+                <Cloud size={18} aria-hidden="true" />
+                <div>
+                  <strong>{t("web.adminConsole")}</strong>
+                  <span>{t("web.teamOverview")}</span>
+                </div>
+              </section>
+              <section>
+                <Smartphone size={18} aria-hidden="true" />
+                <div>
+                  <strong>{t("mobile.kicker")}</strong>
+                  <span>{t("mobile.subtitle")}</span>
+                </div>
+              </section>
+            </>
+          ) : null}
         </div>
 
         <div className="getting-started-notes">
@@ -97,7 +116,9 @@ export const GettingStartedOverlay = memo(function GettingStartedOverlay({
               <Plus size={15} aria-hidden="true" /> {t("desktop.newConnection")}
             </Button>
           ) : null}
-          <Button variant="ghost" onClick={onClose}>{t("desktop.close")}</Button>
+          <Button variant="ghost" onClick={onClose}>
+            {t("desktop.close")}
+          </Button>
         </footer>
       </Panel>
     </div>

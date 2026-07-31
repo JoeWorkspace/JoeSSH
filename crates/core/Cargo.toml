@@ -3,6 +3,7 @@ name = "atlasterm-core"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+rust-version.workspace = true
 
 [lib]
 name = "atlasterm_core"

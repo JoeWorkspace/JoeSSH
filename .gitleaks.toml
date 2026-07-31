@@ -1,0 +1,4 @@
+title = "JoeSSH Gitleaks configuration"
+
+[extend]
+useDefault = true

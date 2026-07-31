@@ -1,9 +1,9 @@
 # Desktop Distribution
 
 JoeSSH Desktop Public Beta uses Tauri 2 with the public app identifier
-`dev.atlasterm.joessh`. The release scripts are intentionally split so CI can
-validate the shell without requiring signing credentials, while release machines
-can build signed installers.
+`dev.atlasterm.joessh`. The repository workflow builds reviewable unsigned
+staging bundles. Public installers still require a separate, approved signing
+and notarization boundary before they can be distributed.
 
 The public installer metadata contract lives in
 `docs/desktop-release-metadata.json`. Public release readiness checks that the
@@ -22,8 +22,9 @@ npm run release:desktop:verify-evidence
 
 `qa:tauri` compiles the Tauri shell with `cargo build --release`. It does not
 produce installers. `release:desktop:build` runs `tauri build` from the desktop
-workspace and expects platform signing configuration to be available on the
-release machine. `release:desktop:package` copies supported Tauri bundle
+workspace; the current repository workflow invokes it without signing
+configuration and treats every output as unsigned. `release:desktop:package`
+copies supported Tauri bundle
 artifacts into `reports/release/desktop/`, writes `SHA256SUMS.txt`, writes
 `release-evidence.json` with each artifact sha256, and writes
 `release-evidence-SHA256SUMS.txt` for the evidence file itself from explicit
@@ -38,119 +39,130 @@ readiness also checks
 `apps/desktop/src-tauri/permissions/*.toml` so missing, wildcard, remote-source,
 or stale IPC command permissions block the release.
 
+## Current automation status: unsigned staging only
+
+**Automated formal signing is paused.** It remains paused until an
+**isolated signing principal** exists outside the repository build job. The
+principal must have a separate identity and approval boundary, accept only
+hash-bound outputs from an unprivileged builder, and have no ability to check
+out or execute repository source.
+
+The manual **Desktop Release Artifacts** workflow in
+`.github/workflows/desktop-release-artifacts.yml` retains the
+`formal_evidence` input for compatibility. Its first fixed
+`ubuntu-24.04` policy job rejects `formal_evidence=true` before checkout with
+the stable marker `FORMAL_SIGNING_DISABLED`. With `formal_evidence=false`, the
+following fixed Windows, macOS, and Linux matrix generates only:
+
+- `desktop-unsigned-bundle-windows`
+- `desktop-unsigned-bundle-macos`
+- `desktop-unsigned-bundle-linux`
+
+These are **unsigned staging** artifacts for installation smoke tests and review.
+They are not public release artifacts, formal evidence, or inputs that may be
+attached to a GitHub Release. The workflow has no protected environment,
+`id-token` permission, GitHub signing secret, signing/notarization step, or
+formal-evidence aggregation job.
+
+Retired formal configurator and preflight entry points are fail-closed
+compatibility guards, not credential inventory or signer setup tools. The only
+configuration action creates a local gitignored template with no secret fields;
+historical evidence download/verifiers remain for independently produced
+external evidence. Running them cannot bypass `FORMAL_SIGNING_DISABLED`, and
+the current workflow never creates `desktop-release-evidence` or a
+`Package Formal Desktop Evidence` job.
+
 ## Desktop Artifact Workflow
 
-Run the manual **Desktop Release Artifacts** GitHub Actions workflow to build
-platform bundles on Windows, macOS, and Linux release runners. The default mode
-uploads staging bundles only; staging bundles are not public release evidence and
-must not be uploaded to a GitHub Release.
+Dispatch `Desktop Release Artifacts` only with `formal_evidence=false`. The
+policy job validates the disabled-formal boundary and the requested retention
+period before the build matrix starts. The matrix uses `windows-2025`,
+`macos-15` on arm64, and `ubuntu-24.04` on x86_64. It also pins Node.js
+`22.22.2`, npm `10.9.7`, Rust `1.96.0`, every action to a full commit SHA, and
+checkout to the dispatched commit with persisted Git credentials disabled.
 
-When `formal_evidence` is enabled, the workflow fails closed unless platform
-verification succeeds first:
+Each matrix leg:
 
-- Windows runs `signtool verify /pa /v` against the built installer and stores
-  that output as the Windows signature evidence.
-- macOS runs `codesign --verify --deep --strict` and `spctl --assess` against
-  the built download and stores those outputs as signing and notarization
-  evidence.
-- The aggregation job downloads all three platform bundles, passes the captured
-  verification output into `scripts/package-desktop-release.mjs`, requires
-  `windows,macos,linux`, and then runs `release:desktop:verify-evidence`.
+1. verifies the runner architecture before checkout;
+2. installs exact reviewed toolchains and locked npm dependencies;
+3. runs `npm run release:desktop:legal-resource` before packaging;
+4. runs `npm run release:desktop:build` without signing credentials; and
+5. uploads only the platform-specific `desktop-unsigned-bundle-*` artifact,
+   including the generated legal-resource sidecars.
 
-If any platform build, signature check, notarization assessment, checksum, or
-evidence binding fails, the workflow does not produce
-`desktop-release-evidence`.
+There is no formal aggregate job. A workflow success proves only that the
+unsigned packages were produced on the reviewed runners; it does not prove
+publisher identity, Windows Authenticode, Apple Developer ID signing,
+notarization, or suitability for public distribution.
 
-When the macOS DMG bundler fails, the workflow uploads a
-`desktop-macos-dmg-diagnostics` artifact with disk-image state, mounted volumes,
-the bundle directory listing, and the generated `bundle_dmg.sh` content. Use
-that artifact to distinguish a transient GitHub runner disk-image failure from a
-bundle configuration regression before retrying formal evidence.
+### Required future isolated signing boundary
 
-Formal Desktop evidence requires these GitHub Actions secrets:
+Automated formal signing may be restored only after a reviewed design provides
+all of these independent stages:
 
-- Windows: `ATLASTERM_WINDOWS_CERTIFICATE`,
-  `ATLASTERM_WINDOWS_CERTIFICATE_PASSWORD`,
-  `ATLASTERM_WINDOWS_CERTIFICATE_THUMBPRINT`, and
-  `ATLASTERM_WINDOWS_TIMESTAMP_URL`.
-- macOS: `ATLASTERM_APPLE_CERTIFICATE`,
-  `ATLASTERM_APPLE_CERTIFICATE_PASSWORD`, `ATLASTERM_APPLE_ID`,
-  `ATLASTERM_APPLE_PASSWORD`, `ATLASTERM_APPLE_TEAM_ID`, and
-  `ATLASTERM_KEYCHAIN_PASSWORD`.
+1. An unprivileged builder checks out the exact commit, generates legal
+   resources, builds unsigned platform bundles, and emits a hash-bound handoff.
+2. An isolated signing principal receives only the reviewed artifacts and their
+   hashes. It cannot check out source, install repository dependencies, or run
+   repository build scripts. Its certificate/notarization credentials require a
+   separate approval and are unavailable to the build job.
+3. An independent verifier validates Windows signer identity and timestamp,
+   macOS Developer ID identity, stapled notarization and Gatekeeper assessment,
+   Linux package metadata, checksums, source commit, and signer output before
+   formal evidence can be assembled.
 
-The Windows certificate must be a base64-encoded `.pfx`. The macOS certificate
-must be a base64-encoded `.p12` with a Developer ID Application identity that can
-be imported into the temporary CI keychain.
+Do not re-add `environment`, `id-token`, `secrets.*`, certificate import,
+`signtool`, `codesign`, or `notarytool` access to the repository build matrix.
+Do not rename unsigned outputs so they resemble formal evidence.
 
-To set the required GitHub Actions secrets without exposing values in command
-arguments or logs, provide the text values as environment variables and the raw
-certificate files through `*_FILE` variables, then run:
+### Offline signing and evidence tools
 
-```bash
-export ATLASTERM_WINDOWS_CERTIFICATE_FILE=/secure/path/windows.pfx
-export ATLASTERM_APPLE_CERTIFICATE_FILE=/secure/path/developer-id-application.p12
-# Export the remaining password, thumbprint, timestamp, Apple ID, app password,
-# team ID, and keychain password variables listed above.
-npm run release:desktop:configure-secrets -- --repo JoeWorkspace/JoeSSH
-```
+Repository-managed formal signing automation is disabled. The package exposes
+no command that writes GitHub secrets, inventories a signing environment, or
+dispatches a formal-signing workflow. Direct use of the retired configurator
+without its template-only option, or of the compatibility preflight guard,
+fails closed with `FORMAL_SIGNING_DISABLED` before reading local inputs or
+calling GitHub.
 
-`release:desktop:configure-secrets` accepts either each exact secret name or a
-matching `*_FILE` variable. Certificate files are base64-encoded locally before
-being sent to GitHub. Text `*_FILE` inputs have one trailing newline removed so
-secrets copied from password manager files do not accidentally include the file
-line ending. The script verifies the resulting secret names with the formal
-evidence preflight before it exits.
-
-Before triggering formal evidence, verify that the repository has the required
-secret names and that the workflow is available:
+The only retained configurator action creates an offline, local, gitignored,
+non-secret handoff template:
 
 ```bash
-npm run release:desktop:evidence-preflight -- --repo JoeWorkspace/JoeSSH
-npm run release:desktop:evidence-workflow -- --repo JoeWorkspace/JoeSSH --ref v0.1.0-beta.9
+npm run release:desktop:secret-template
 ```
 
-The preflight checks GitHub CLI authentication, lists repository secret names
-without reading secret values, verifies `.github/workflows/desktop-release-artifacts.yml`,
-requires the requested release ref to resolve to the current healthy checkout
-`HEAD`, requires that ref to be published to the canonical remote, and only
-dispatches the workflow when all required signing and notarization secret names
-exist.
+It writes
+`reports/handoff/desktop/external-signer-input-template.env`. Never source,
+import, upload, copy, or pass this file to GitHub, and never put certificates,
+passwords, tokens, private keys, or signing identities in it. Any future formal
+release requires separate approval and an externally managed isolated signer
+whose credential store is outside this repository and every GitHub
+environment.
 
-When the release is still No-Go, generate a repeatable unblock report instead
-of hand-assembling status notes:
+Use the non-mutating diagnostics command to record the current No-Go state:
 
 ```bash
 npm run release:desktop:evidence-diagnostics -- --repo JoeWorkspace/JoeSSH
 ```
 
-The diagnostics command writes
-`reports/handoff/desktop/formal-evidence-unblock-report.json` without mutating
-GitHub. It records the release tag/HEAD relationship, remote ref publication,
-upstream divergence, staged Desktop artifacts, Windows Authenticode status when
-available, formal evidence/source-sidecar coverage, missing signing secrets,
-Desktop workflow visibility, latest workflow runs, and CI failure annotations
-such as account billing/spending-limit messages. The report is handoff-only and
-must not be copied into the final `reports/release/` upload tree.
+It writes
+`reports/handoff/desktop/formal-evidence-unblock-report.json` with release-ref,
+artifact, workflow visibility, disabled-boundary, and CI status. This is a
+handoff report, not a public release artifact.
 
-After the formal workflow succeeds, import the `desktop-release-evidence`
-artifact from that run into the release workspace:
+The download and verification tools retain only the historical/external
+evidence contract for an artifact named `desktop-release-evidence`, a successful
+`Package Formal Desktop Evidence` job, and these files:
 
-```bash
-npm run release:desktop:evidence-download -- --repo JoeWorkspace/JoeSSH --run-id <run-id>
-```
+- `reports/release/desktop/release-evidence-source.json`
+- `reports/release/desktop/release-evidence-SHA256SUMS.txt`
 
-The download step refuses ambiguous run selection, requires the run to match the
-current release tag commit, requires the `Package Formal Desktop Evidence` job
-to have passed, refuses expired artifacts, writes only under
-`reports/release/desktop/`, and immediately runs
-`release:desktop:verify-evidence` in formal source mode. It also writes
-`reports/release/desktop/release-evidence-source.json`, recording the repository,
-release ref, workflow run id, workflow id, run head SHA, and formal evidence job
-status, then covers that sidecar in
-`reports/release/desktop/release-evidence-SHA256SUMS.txt`. When a workflow run
-fails before evidence can be imported, it includes failed job names and GitHub
-check-run annotations, such as account billing/spending-limit failures, in the
-error output.
+Their presence supports independent review of already-produced external
+evidence. It does not provide a runnable signing, credential, or workflow chain.
+
+The current workflow cannot satisfy that contract. Use those tools only after an
+isolated signing pipeline has been separately reviewed and has produced
+equivalent hash-bound evidence.
 
 ## Signing And Platform Rules
 
@@ -234,7 +246,7 @@ error output.
 After installers and checksums are present, run:
 
 ```bash
-git tag -a v0.1.0-beta.9 -m "JoeSSH 0.1.0-beta.9"
+git tag -a v0.1.0-beta.10 -m "JoeSSH 0.1.0-beta.10"
 npm run release:provenance
 npm run release:provenance:verify
 npm run release:publish-preflight
@@ -246,7 +258,7 @@ signing/notarization evidence, SBOM coverage, release provenance, a healthy Git
 checkout, a clean working tree outside `reports/release/`, a release tag that
 points at `HEAD`, GitHub CLI availability/authentication, no existing GitHub
 Release for the same tag, and the GitHub Release draft dry-run. The draft
-command then requires `docs/release-notes/0.1.0-beta.9.md`, staged release artifacts under
+command then requires `docs/release-notes/0.1.0-beta.10.md`, staged release artifacts under
 `reports/release/`, fresh checksums, and complete desktop release evidence whose
 artifact sha256 values match the checksum manifest and actual files, with
 `release-evidence-SHA256SUMS.txt` binding the evidence JSON itself. Raw Tauri bundle outputs are inputs to

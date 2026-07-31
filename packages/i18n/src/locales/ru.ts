@@ -11,7 +11,8 @@ export const ru = {
   "desktop.terminalSessionSample":
     "Это только пример профиля подключения. Активного сеанса SSH нет.",
   "desktop.sftp": "SFTP",
-  "desktop.manifestDescription": "SSH-терминал, SFTP, командный доступ и управление сеансами.",
+  "desktop.manifestDescription":
+    "SSH-терминал, SFTP, перенаправление портов и управление локальными сеансами.",
   "language.selectorLabel": "Язык интерфейса",
   "language.autoRegion": "Автоматически по региону",
   "language.worldReady": "Глобальные языки готовы",
@@ -20,7 +21,8 @@ export const ru = {
   "desktop.searchPlaceholder": "Поиск хостов, тегов, пользователей",
   "desktop.searchMatches": "{count} совпадений",
   "desktop.searchEmptyTitle": "Нет подходящих подключений",
-  "desktop.searchEmptyHint": "Попробуйте другое ключевое слово или сбросьте фильтры тегов.",
+  "desktop.searchEmptyHint":
+    "Попробуйте другое ключевое слово или сбросьте фильтры тегов.",
   "desktop.new": "Создать",
   "desktop.connections": "Подключения",
   "desktop.filterByTag": "Фильтр по тегу",
@@ -54,29 +56,42 @@ export const ru = {
   "desktop.terminalAutocompleteNavigate": "для навигации",
   "desktop.terminalSessionConnected": "Подключено к {name} ({group})",
   "desktop.terminalSessionReady": "Сеанс готов.",
-  "desktop.terminalSessionMfaRequired": "Перед выполнением команд требуется проверка MFA.",
+  "desktop.terminalSessionMfaRequired":
+    "Перед выполнением команд требуется проверка MFA.",
   "desktop.mfaRequiredShort": "Требуется MFA",
   "desktop.commandAccepted": "Команда принята",
-  "desktop.commandAcceptedDetail": "Локальная проверка безопасности пройдена, команда поставлена в очередь исполнителя терминала.",
+  "desktop.commandAcceptedDetail":
+    "Локальная проверка безопасности пройдена, команда поставлена в очередь исполнителя терминала.",
   "desktop.commandBlocked": "Команда заблокирована",
   "desktop.commandBlockedDetail": "Совпало с {pattern}: {reason}",
   "desktop.safetyReasonRmRoot": "рекурсивно удаляет корень файловой системы",
   "desktop.safetyReasonMkfs": "форматирует файловую систему",
   "desktop.safetyReasonForkBomb": "fork bomb",
-  "desktop.safetyReasonRawDiskCopy": "низкоуровневое копирование диска может уничтожить данные",
-  "desktop.safetyReasonChmodRoot": "широко открывает права от корня файловой системы",
-  "desktop.safetyReasonTeeBlockDevice": "записывает сырой вывод в блочное устройство",
-  "desktop.safetyReasonRedirectBlockDevice": "перенаправляет вывод в сырое блочное устройство и уничтожает его содержимое",
-  "desktop.safetyReasonFindRootDelete": "рекурсивно удаляет файлы из корневого пути",
-  "desktop.safetyReasonDiskWipe": "необратимо стирает таблицы разделов или содержимое блочных устройств",
+  "desktop.safetyReasonRawDiskCopy":
+    "низкоуровневое копирование диска может уничтожить данные",
+  "desktop.safetyReasonChmodRoot":
+    "широко открывает права от корня файловой системы",
+  "desktop.safetyReasonTeeBlockDevice":
+    "записывает сырой вывод в блочное устройство",
+  "desktop.safetyReasonRedirectBlockDevice":
+    "перенаправляет вывод в сырое блочное устройство и уничтожает его содержимое",
+  "desktop.safetyReasonFindRootDelete":
+    "рекурсивно удаляет файлы из корневого пути",
+  "desktop.safetyReasonDiskWipe":
+    "необратимо стирает таблицы разделов или содержимое блочных устройств",
   "desktop.safetyReasonFirewallFlush": "очищает правила файрвола",
-  "desktop.safetyReasonRemoteShellPipe": "передаёт удалённый контент напрямую в shell",
-  "desktop.safetyReasonRootDownloadOverwrite": "перезаписывает корневой путь загруженным содержимым",
+  "desktop.safetyReasonRemoteShellPipe":
+    "передаёт удалённый контент напрямую в shell",
+  "desktop.safetyReasonRootDownloadOverwrite":
+    "перезаписывает корневой путь загруженным содержимым",
   "desktop.safetyReasonHostShutdown": "немедленно останавливает хост",
-  "desktop.safetyReasonWindowsDestructive": "разрушительная команда Windows затрагивает файлы, диски или состояние хоста",
-  "desktop.safetyReasonPowershellDestructive": "разрушительная команда PowerShell затрагивает диск, системный путь, носитель или состояние питания хоста",
+  "desktop.safetyReasonWindowsDestructive":
+    "разрушительная команда Windows затрагивает файлы, диски или состояние хоста",
+  "desktop.safetyReasonPowershellDestructive":
+    "разрушительная команда PowerShell затрагивает диск, системный путь, носитель или состояние питания хоста",
   "desktop.safetyReasonDropDatabase": "удаляет базу данных",
-  "desktop.safetyReasonCommandSubstitution": "встраивает подкоманду, которая может выполнить что угодно",
+  "desktop.safetyReasonCommandSubstitution":
+    "встраивает подкоманду, которая может выполнить что угодно",
   "desktop.context": "Контекст",
   "desktop.team": "Команда",
   "desktop.settings": "Настройки",
@@ -112,9 +127,10 @@ export const ru = {
   "desktop.recordTerminal": "Записывать сеансы терминала",
   "desktop.requiredProduction": "Обязательно для production-областей",
   "desktop.syncEncrypted": "Синхронизировать зашифрованные фрагменты",
-  "desktop.availableProBusiness": "Доступно в Pro и Business",
+  "desktop.plannedUnavailable": "Запланировано; сейчас недоступно",
   "desktop.telemetryErrors": "Необязательные отчёты об ошибках",
-  "desktop.telemetryErrorsHint": "Отправлять отредактированные сводки сбоев и ошибок.",
+  "desktop.telemetryErrorsHint":
+    "Отправлять отредактированные сводки сбоев и ошибок.",
   "desktop.businessLayer": "Бизнес-уровень",
   "desktop.sharedVaults": "Общие хранилища",
   "desktop.auditExport": "Экспорт аудита",
@@ -125,9 +141,11 @@ export const ru = {
   "desktop.splitTerminal": "Разделить текущий терминал вправо",
   "desktop.uploadToSession": "Загрузить файл в активный сеанс",
   "desktop.requestElevated": "Запросить повышенный доступ",
-  "desktop.palettePlaceholder": "Выполнить команду, открыть хост, запустить workflow",
+  "desktop.palettePlaceholder":
+    "Выполнить команду, открыть хост, запустить workflow",
   "desktop.paletteEmptyTitle": "Нет совпадений в палитре",
-  "desktop.paletteEmptyHint": "Попробуйте хост, недавнюю команду или ключевое слово рабочего процесса.",
+  "desktop.paletteEmptyHint":
+    "Попробуйте хост, недавнюю команду или ключевое слово рабочего процесса.",
   "team.access": "Командный доступ",
   "team.accessSummary": "Сводка командного доступа",
   "team.business": "Business",
@@ -171,7 +189,8 @@ export const ru = {
   "desktop.forwardActive": "Активно",
   "desktop.forwardInactive": "Неактивно",
   "desktop.forwardNoRules": "Правил перенаправления пока нет",
-  "desktop.forwardNoRulesHint": "Добавьте правило для туннелирования локального TCP-порта через SSH.",
+  "desktop.forwardNoRulesHint":
+    "Добавьте правило для туннелирования локального TCP-порта через SSH.",
   "desktop.sftpEmpty": "Эта папка пуста",
   "desktop.sftpEmptyHint": "Загрузите файл или перейдите в другую папку.",
   "desktop.groupProduction": "Продакшен",
@@ -219,10 +238,12 @@ export const ru = {
   "desktop.passphrase": "Кодовая фраза (необязательно)",
   "desktop.pinnedFingerprint": "Закреплённый ключ хоста (необязательно)",
   "desktop.hostKeyConfirmTitle": "Confirm host key",
-  "desktop.hostKeyConfirmDetail": "Verify this SHA-256 fingerprint before authenticating.",
+  "desktop.hostKeyConfirmDetail":
+    "Verify this SHA-256 fingerprint before authenticating.",
   "desktop.hostKeyPresentedFingerprint": "Presented fingerprint",
   "desktop.hostKeyVerificationFailed": "Host key verification failed",
-  "desktop.hostKeyChangedDetail": "Stored host key mismatch for {host}:{port}. Expected {stored}, presented {presented}.",
+  "desktop.hostKeyChangedDetail":
+    "Stored host key mismatch for {host}:{port}. Expected {stored}, presented {presented}.",
   "desktop.trustHostKeyAndConnect": "Trust and connect",
   "desktop.connectAction": "Подключить",
   "desktop.connecting": "Подключение…",
@@ -231,23 +252,27 @@ export const ru = {
   "desktop.connectionSwitched": "Переключено на {name}",
   "desktop.connectionMoved": "{connection} перемещено в {group}",
   "desktop.connectionsImported": "Импортировано подключений: {count}",
-  "desktop.connectionsImportFailed": "Could not import connections. Choose a valid JoeSSH connections JSON file.",
+  "desktop.connectionsImportFailed":
+    "Could not import connections. Choose a valid JoeSSH connections JSON file.",
   "desktop.connectionConnectToast": "Подключить: {name}",
   "desktop.connectionCreated": "Подключение {name} создано",
   "desktop.connectionTestResult": "Проверка подключения: {result}",
-  "desktop.builtinConnectionEditUnavailable": "Встроенные демонстрационные подключения нельзя редактировать",
-  "desktop.builtinConnectionDeleteUnavailable": "Встроенные демонстрационные подключения нельзя удалить",
+  "desktop.builtinConnectionEditUnavailable":
+    "Встроенные демонстрационные подключения нельзя редактировать",
+  "desktop.builtinConnectionDeleteUnavailable":
+    "Встроенные демонстрационные подключения нельзя удалить",
   "desktop.connectionCopyName": "{name} копия",
   "desktop.connectionCopyNameNumbered": "{name} копия {number}",
   "desktop.connectionDuplicated": "{name} продублировано",
   "desktop.connectionDeleted": "{name} удалено",
   "desktop.connectionEdited": "{name} изменено",
-  "desktop.groupCreatedToast": "Группа \"{name}\" создана",
-  "desktop.groupDeletedToast": "Группа \"{name}\" удалена",
-  "desktop.groupRenamedToast": "Группа переименована в \"{name}\"",
+  "desktop.groupCreatedToast": 'Группа "{name}" создана',
+  "desktop.groupDeletedToast": 'Группа "{name}" удалена',
+  "desktop.groupRenamedToast": 'Группа переименована в "{name}"',
   "desktop.sftpUploadComplete": "{name} загружен",
   "desktop.sftpOverwriteTitle": "Заменить существующий файл?",
-  "desktop.sftpOverwriteDetail": "Файл с именем {name} уже существует в этой папке.",
+  "desktop.sftpOverwriteDetail":
+    "Файл с именем {name} уже существует в этой папке.",
   "desktop.sftpOverwriteCancel": "Отмена",
   "desktop.sftpOverwriteConfirm": "Перезаписать",
   "desktop.sshCommandCopied": "SSH-команда для {name} скопирована",
@@ -273,7 +298,8 @@ export const ru = {
   "team.auditCommandRecorded": "Command recorded",
   "team.auditAccessRequestApproved": "Access request approved",
   "team.auditAccessRequestRejected": "Access request rejected",
-  "team.productionElevationDetail": "Incident commander role for gateway triage",
+  "team.productionElevationDetail":
+    "Incident commander role for gateway triage",
   "web.adminNavigation": "Навигация администрирования JoeSSH",
   "web.adminConsole": "Консоль администратора",
   "web.skipToContent": "Перейти к основному содержанию",
@@ -312,17 +338,23 @@ export const ru = {
   "web.storage": "Хранилище",
   "mobile.kicker": "JoeSSH Mobile",
   "mobile.title": "Синхронизация и аварийный доступ",
-  "mobile.subtitle": "Зарегистрируйте этот телефон, просмотрите контекст терминала и держите путь восстановления под рукой.",
+  "mobile.subtitle":
+    "Зарегистрируйте этот телефон, просмотрите контекст терминала и держите путь восстановления под рукой.",
   "mobile.registering": "Регистрация устройства",
-  "mobile.registeringMessage": "Создается мобильная идентичность для синхронизации и аварийной передачи.",
+  "mobile.registeringMessage":
+    "Создается мобильная идентичность для синхронизации и аварийной передачи.",
   "mobile.previewing": "Получение предпросмотра синхронизации",
-  "mobile.previewingMessage": "Получаются профили, сеансы, состояние курсора и доверенные маршруты восстановления.",
+  "mobile.previewingMessage":
+    "Получаются профили, сеансы, состояние курсора и доверенные маршруты восстановления.",
   "mobile.ready": "Предпросмотр готов",
-  "mobile.readyMessage": "Это устройство зарегистрировано, последний ответ синхронизации доступен.",
+  "mobile.readyMessage":
+    "Это устройство зарегистрировано, последний ответ синхронизации доступен.",
   "mobile.offline": "Офлайн-резерв активен",
-  "mobile.offlineMessage": "Живая синхронизация недоступна. Данные рабочей области в реальном времени или из кэша не получены.",
+  "mobile.offlineMessage":
+    "Живая синхронизация недоступна. Данные рабочей области в реальном времени или из кэша не получены.",
   "mobile.readyToConnect": "Готово к подключению",
-  "mobile.readyToConnectMessage": "Сначала зарегистрируйте этот телефон и получите безопасный предпросмотр из синхронизации JoeSSH.",
+  "mobile.readyToConnectMessage":
+    "Сначала зарегистрируйте этот телефон и получите безопасный предпросмотр из синхронизации JoeSSH.",
   "mobile.profiles": "Профили",
   "mobile.openSessions": "Открытые сеансы",
   "mobile.pendingChanges": "Получено изменений",
@@ -333,19 +365,23 @@ export const ru = {
   "mobile.waiting": "ожидание",
   "mobile.pullPreview": "Получить предпросмотр",
   "mobile.noWorkspace": "Рабочая область еще не получена",
-  "mobile.runPreview": "Запустите предпросмотр, чтобы загрузить состояние курсора",
+  "mobile.runPreview":
+    "Запустите предпросмотр, чтобы загрузить состояние курсора",
   "mobile.emergencyConnection": "Аварийное подключение",
-  "mobile.emptyRoutes": "Для этого предпросмотра маршруты восстановления не настроены.",
+  "mobile.emptyRoutes":
+    "Для этого предпросмотра маршруты восстановления не настроены.",
   "mobile.offlineBadge": "Офлайн",
   "mobile.liveBadge": "В реальном времени",
   "mobile.preparing": "Подготовка предпросмотра",
   "mobile.registerPull": "Зарегистрировать и получить предпросмотр",
   "desktop.error.boundary.title": "Произошла ошибка",
   "desktop.error.boundary.reload": "Перезагрузить",
-  "desktop.error.boundary.message": "Перезагрузите JoeSSH или обратитесь в поддержку, если проблема повторяется.",
+  "desktop.error.boundary.message":
+    "Перезагрузите JoeSSH или обратитесь в поддержку, если проблема повторяется.",
   "mobile.error.boundary.title": "Произошла ошибка",
   "mobile.error.boundary.reload": "Перезагрузить",
-  "mobile.error.boundary.message": "Перезагрузите JoeSSH или обратитесь в поддержку, если проблема повторяется.",
+  "mobile.error.boundary.message":
+    "Перезагрузите JoeSSH или обратитесь в поддержку, если проблема повторяется.",
   "desktop.paletteRecent": "Недавние",
   "desktop.paletteRecentBadge": "Недавнее",
   "desktop.paletteConnections": "Подключения",
@@ -396,7 +432,15 @@ export const ru = {
   "team.accessRequestStatus": "Статус запроса доступа команды",
   "desktop.restoreWorkbench": "Восстановить рабочую область",
   "desktop.gettingStarted": "Начало работы",
-  "desktop.surfaceGuide": "Desktop открывает SSH-сеансы; Web Admin контролирует Sync и команды; Mobile служит приложением-компаньоном.",
-  "desktop.telemetryPrivacyHint": "Необязательно и по умолчанию выключено. Никогда не отправляет хосты, имена пользователей, команды, ключи, токены, пути или вывод терминала.",
-  "team.reviewedBy": "Проверил {reviewer}"
+  "desktop.surfaceGuide":
+    "Desktop открывает локальные сеансы SSH и SFTP; Web Admin показывает снимки Sync только для чтения; Mobile — предварительный просмотр Sync без выполнения SSH или SFTP.",
+  "desktop.telemetryPrivacyHint":
+    "Необязательно и по умолчанию выключено. Никогда не отправляет хосты, имена пользователей, команды, ключи, токены, пути или вывод терминала.",
+  "desktop.thirdPartyNotices": "Лицензии и уведомления",
+  "desktop.thirdPartyNoticesHint":
+    "Просмотрите лицензии и уведомления, включённые именно в эту сборку приложения.",
+  "desktop.thirdPartyNoticesLoading": "Загрузка лицензий…",
+  "desktop.thirdPartyNoticesUnavailable":
+    "Уведомления о лицензиях недоступны в этой сборке.",
+  "team.reviewedBy": "Проверил {reviewer}",
 } as const;

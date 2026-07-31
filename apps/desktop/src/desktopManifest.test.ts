@@ -14,8 +14,6 @@ const labels: Record<string, string> = {
   "desktop.connectAction": "Localized connect",
   "desktop.openSftp": "Localized SFTP action",
   "desktop.sftp": "Localized SFTP",
-  "team.access": "Localized team access",
-  "desktop.team": "Localized team",
   "desktop.openForwarding": "Localized open forwarding",
   "desktop.forwarding": "Localized forwarding",
   "desktop.settings": "Localized settings",
@@ -61,7 +59,6 @@ describe("desktop manifest metadata", () => {
     ).toEqual([
       ["Localized quick connect", "Localized connect"],
       ["Localized SFTP action", "Localized SFTP"],
-      ["Localized team access", "Localized team"],
       ["Localized open forwarding", "Localized forwarding"],
       ["Localized settings", "Localized settings"],
     ]);
@@ -115,7 +112,7 @@ describe("desktop manifest metadata", () => {
     expect(manifest.name).toBe("JoeSSH Workbench");
     expect(manifest.short_name).toBe("JoeSSH");
     expect(manifest.description).toBe(
-      "SSH terminal, SFTP, team access, and session management.",
+      "SSH terminal, SFTP, port forwarding, and local session management.",
     );
     expect(Object.keys(manifest.description_localized).sort()).toEqual(
       [...supportedLocales].sort(),
@@ -149,10 +146,12 @@ describe("desktop manifest metadata", () => {
     ).toEqual([
       "/?action=connect",
       "/?panel=sftp",
-      "/?panel=team",
       "/?panel=forwarding",
       "/?panel=settings",
     ]);
+    expect(JSON.stringify(manifest)).not.toMatch(
+      /team access|team management|\/\?panel=team/i,
+    );
 
     for (const shortcut of manifest.shortcuts as Array<
       Record<string, unknown>
@@ -212,8 +211,8 @@ describe("desktop manifest metadata", () => {
     expect(html).toContain('href="/icons/icon-32.png"');
     expect(html).toContain('href="/icons/apple-touch-icon-180.png"');
     expect(html).not.toContain("favicon.svg");
-    expect(serviceWorker).toContain('CACHE_NAME = "joessh-v2"');
-    expect(serviceWorker).not.toContain('CACHE_NAME = "joessh-v1"');
+    expect(serviceWorker).toContain('CACHE_NAME = "joessh-v3"');
+    expect(serviceWorker).not.toContain('CACHE_NAME = "joessh-v2"');
     expect(fs.existsSync(path.join(desktopRoot, "public/favicon.svg"))).toBe(
       false,
     );

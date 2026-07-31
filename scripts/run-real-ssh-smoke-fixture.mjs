@@ -14,19 +14,41 @@ import { spawn, spawnSync } from "node:child_process";
 
 const root = resolve(import.meta.dirname, "..");
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
-const sshdCommand = process.env.JOESSH_REAL_SSH_FIXTURE_SSHD ?? findCommand("sshd");
-const sshKeygenCommand = process.env.JOESSH_REAL_SSH_FIXTURE_SSH_KEYGEN ?? findCommand("ssh-keygen");
-const sftpServerCommand = process.env.JOESSH_REAL_SSH_FIXTURE_SFTP_SERVER ?? findCommand("sftp-server");
-const outputPath = resolve(root, "reports", "smoke", "desktop", "real-ssh-smoke.json");
-const checksumPath = resolve(root, "reports", "smoke", "desktop", "real-ssh-smoke-SHA256SUMS.txt");
+const sshdCommand =
+  process.env.JOESSH_REAL_SSH_FIXTURE_SSHD ?? findCommand("sshd");
+const sshKeygenCommand =
+  process.env.JOESSH_REAL_SSH_FIXTURE_SSH_KEYGEN ?? findCommand("ssh-keygen");
+const sftpServerCommand =
+  process.env.JOESSH_REAL_SSH_FIXTURE_SFTP_SERVER ?? findCommand("sftp-server");
+const outputPath = resolve(
+  root,
+  "reports",
+  "smoke",
+  "desktop",
+  "real-ssh-smoke.json",
+);
+const checksumPath = resolve(
+  root,
+  "reports",
+  "smoke",
+  "desktop",
+  "real-ssh-smoke-SHA256SUMS.txt",
+);
 const wrappedCommand = parseWrappedCommand(process.argv.slice(2));
+const packageVersion = JSON.parse(
+  readFileSync(resolve(root, "package.json"), "utf8"),
+).version;
 
 if (process.platform !== "win32") {
-  fail("The local OpenSSH fixture runner currently supports Windows release machines. Use the CI loopback OpenSSH fixture on Linux.");
+  fail(
+    "The local OpenSSH fixture runner currently supports Windows release machines. Use the CI loopback OpenSSH fixture on Linux.",
+  );
 }
 
 if (!sshdCommand || !sshKeygenCommand || !sftpServerCommand) {
-  fail("OpenSSH sshd, ssh-keygen, and sftp-server must be available to run the local real SSH smoke fixture.");
+  fail(
+    "OpenSSH sshd, ssh-keygen, and sftp-server must be available to run the local real SSH smoke fixture.",
+  );
 }
 
 const startedAt = new Date();
@@ -49,7 +71,16 @@ try {
     exitCode = wrappedResult.status ?? 1;
   }
 
-  writeEvidence(fixture, startedAt, new Date(), smokeResult, wrappedResult);
+  const evidencePassed = writeEvidence(
+    fixture,
+    startedAt,
+    new Date(),
+    smokeResult,
+    wrappedResult,
+  );
+  if (!evidencePassed && exitCode === 0) {
+    exitCode = 1;
+  }
 } catch (error) {
   errorMessage = error instanceof Error ? error.message : String(error);
   writeEvidence(null, startedAt, new Date(), {
@@ -77,8 +108,28 @@ function prepareFixture(directory) {
   const stderrLog = join(directory, "sshd.err.log");
   const port = findOpenPort();
 
-  runChecked(sshKeygenCommand, ["-q", "-t", "ed25519", "-N", "", "-f", hostKey, "-C", "joessh-fixture-host"]);
-  runChecked(sshKeygenCommand, ["-q", "-t", "ed25519", "-N", "", "-f", userKey, "-C", "joessh-fixture-user"]);
+  runChecked(sshKeygenCommand, [
+    "-q",
+    "-t",
+    "ed25519",
+    "-N",
+    "",
+    "-f",
+    hostKey,
+    "-C",
+    "joessh-fixture-host",
+  ]);
+  runChecked(sshKeygenCommand, [
+    "-q",
+    "-t",
+    "ed25519",
+    "-N",
+    "",
+    "-f",
+    userKey,
+    "-C",
+    "joessh-fixture-user",
+  ]);
   copyFileSync(`${userKey}.pub`, authorizedKeys);
   hardenWindowsAcl(authorizedKeys, "R");
   hardenWindowsAcl(userKey, "R");
@@ -155,7 +206,8 @@ function runFixtureCommand(fixture, commandSpec) {
     JOESSH_REAL_SSH_USERNAME: process.env.USERNAME ?? process.env.USER ?? "",
     JOESSH_REAL_SSH_PRIVATE_KEY_PATH: fixture.userKey,
     JOESSH_REAL_SSH_REMOTE_DIR: toSshPath(fixture.directory),
-    JOESSH_REAL_SSH_EXEC_COMMAND: "powershell -NoProfile -Command \"[Console]::Write('joessh-exec-ok')\"",
+    JOESSH_REAL_SSH_EXEC_COMMAND:
+      "powershell -NoProfile -Command \"[Console]::Write('joessh-exec-ok')\"",
     JOESSH_REAL_SSH_EXEC_EXPECTED: "joessh-exec-ok",
     JOESSH_REAL_SSH_PTY_COMMAND: "echo joessh-pty-ok\\nexit\\n",
     JOESSH_REAL_SSH_PTY_EXPECTED: "joessh-pty-ok",
@@ -172,7 +224,24 @@ function runFixtureCommand(fixture, commandSpec) {
   });
 }
 
-function writeEvidence(fixture, started, finished, result, wrappedResult = null) {
+function writeEvidence(
+  fixture,
+  started,
+  finished,
+  result,
+  wrappedResult = null,
+) {
+  const sourceState = captureSourceState();
+  const wrappedGate = classifyWrappedGate(wrappedCommand);
+  const smokePassed = result.status === 0 && !result.error;
+  const wrappedPassed =
+    !wrappedCommand || (wrappedResult?.status === 0 && !wrappedResult.error);
+  const sourceBound =
+    !wrappedCommand ||
+    (wrappedGate !== "custom" &&
+      sourceState.gitCommit !== null &&
+      sourceState.gitDirty === false);
+  const passed = smokePassed && wrappedPassed && sourceBound;
   const evidence = {
     auth: "private-key",
     checks: [
@@ -188,23 +257,37 @@ function writeEvidence(fixture, started, finished, result, wrappedResult = null)
     platform: process.platform,
     port: fixture?.port ?? null,
     startedAt: started.toISOString(),
-    status: result.status === 0 ? "passed" : "failed",
-    stderrTail: tail(result.error ? `${result.stderr ?? ""}\n${result.error.message}` : (result.stderr ?? "")),
+    status: passed ? "passed" : "failed",
+    stderrTail: tail(
+      result.error
+        ? `${result.stderr ?? ""}\n${result.error.message}`
+        : (result.stderr ?? ""),
+    ),
     stdoutTail: tail(result.stdout ?? ""),
+    version: packageVersion,
+    ...sourceState,
   };
 
   if (wrappedCommand) {
     evidence.wrappedCommand = {
+      gate: wrappedGate,
       provided: true,
-      status: wrappedResult?.status ?? null,
-      stderrTail: tail(wrappedResult?.error ? `${wrappedResult.stderr ?? ""}\n${wrappedResult.error.message}` : (wrappedResult?.stderr ?? "")),
+      status: wrappedResult?.error ? null : (wrappedResult?.status ?? null),
+      stderrTail: tail(
+        wrappedResult?.error
+          ? `${wrappedResult.stderr ?? ""}\n${wrappedResult.error.message}`
+          : (wrappedResult?.stderr ?? ""),
+      ),
       stdoutTail: tail(wrappedResult?.stdout ?? ""),
     };
   }
 
   mkdirSync(dirname(outputPath), { recursive: true });
   writeFileSync(outputPath, `${JSON.stringify(evidence, null, 2)}\n`);
-  writeFileSync(checksumPath, `${sha256(outputPath)}  ${toReleasePath(outputPath)}\n`);
+  writeFileSync(
+    checksumPath,
+    `${sha256(outputPath)}  ${toReleasePath(outputPath)}\n`,
+  );
 
   process.stdout.write(result.stdout ?? "");
   process.stderr.write(result.stderr ?? "");
@@ -214,6 +297,64 @@ function writeEvidence(fixture, started, finished, result, wrappedResult = null)
   }
   console.log(`Wrote ${toReleasePath(outputPath)}`);
   console.log(`Wrote ${toReleasePath(checksumPath)}`);
+  return passed;
+}
+
+function captureSourceState() {
+  const commit = spawnSync("git", ["rev-parse", "HEAD"], {
+    cwd: root,
+    encoding: "utf8",
+    shell: false,
+    stdio: ["ignore", "pipe", "pipe"],
+    windowsHide: true,
+  });
+  const status = spawnSync(
+    "git",
+    [
+      "status",
+      "--porcelain=v1",
+      "--untracked-files=all",
+      "--",
+      ".",
+      ":(exclude)reports",
+    ],
+    {
+      cwd: root,
+      encoding: "utf8",
+      shell: false,
+      stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
+    },
+  );
+  const gitCommit =
+    commit.status === 0 && !commit.error ? commit.stdout.trim() : null;
+  return {
+    gitCommit: gitCommit || null,
+    gitDirty:
+      status.status !== 0 ||
+      Boolean(status.error) ||
+      status.stdout.trim() !== "",
+  };
+}
+
+function classifyWrappedGate(commandSpec) {
+  if (!commandSpec) {
+    return null;
+  }
+  const executable = basename(commandSpec.command)
+    .toLowerCase()
+    .replace(/\.(?:cmd|exe)$/u, "");
+  if (
+    executable === "npm" &&
+    commandSpec.args.length === 2 &&
+    commandSpec.args[0] === "run" &&
+    ["qa:beta:windows:source", "qa:release:public"].includes(
+      commandSpec.args[1],
+    )
+  ) {
+    return commandSpec.args[1];
+  }
+  return "custom";
 }
 
 function hardenWindowsAcl(path, rights) {
@@ -234,11 +375,15 @@ function hardenWindowsAcl(path, rights) {
 function cleanupTempRoot(path) {
   try {
     const user = runChecked("whoami", []).stdout.trim();
-    spawnSync("icacls", [path, "/grant:r", `${user}:F`, `${user}:(OI)(CI)(F)`, "/T", "/C"], {
-      cwd: root,
-      encoding: "utf8",
-      stdio: ["ignore", "ignore", "ignore"],
-    });
+    spawnSync(
+      "icacls",
+      [path, "/grant:r", `${user}:F`, `${user}:(OI)(CI)(F)`, "/T", "/C"],
+      {
+        cwd: root,
+        encoding: "utf8",
+        stdio: ["ignore", "ignore", "ignore"],
+      },
+    );
   } catch {
     // Best effort: cleanup should not hide the real smoke result.
   }
@@ -274,7 +419,9 @@ function runChecked(command, args) {
   });
   if (result.status !== 0) {
     const diagnostic = `${result.stdout}\n${result.stderr}`.trim();
-    throw new Error(diagnostic ? `${command} failed: ${diagnostic}` : `${command} failed`);
+    throw new Error(
+      diagnostic ? `${command} failed: ${diagnostic}` : `${command} failed`,
+    );
   }
   return result;
 }
@@ -301,7 +448,9 @@ function waitForPort(port) {
       socket.once("error", () => {
         socket.destroy();
         if (Date.now() > deadline) {
-          rejectPromise(new Error(`Timed out waiting for OpenSSH fixture on port ${port}.`));
+          rejectPromise(
+            new Error(`Timed out waiting for OpenSSH fixture on port ${port}.`),
+          );
           return;
         }
         setTimeout(tryConnect, 100);
@@ -317,26 +466,38 @@ function findCommand(name) {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "ignore"],
   });
-  return result.status === 0 ? result.stdout.split(/\r?\n/).find((line) => line.trim())?.trim() : null;
+  return result.status === 0
+    ? result.stdout
+        .split(/\r?\n/)
+        .find((line) => line.trim())
+        ?.trim()
+    : null;
 }
 
 function parseWrappedCommand(args) {
   const separator = args.indexOf("--");
   if (separator === -1) {
     if (args.length > 0) {
-      fail("Usage: node scripts/run-real-ssh-smoke-fixture.mjs [-- <command> ...]");
+      fail(
+        "Usage: node scripts/run-real-ssh-smoke-fixture.mjs [-- <command> ...]",
+      );
     }
     return null;
   }
 
   const command = args[separator + 1];
   if (!command) {
-    fail("-- must be followed by a command to run with the local OpenSSH fixture environment.");
+    fail(
+      "-- must be followed by a command to run with the local OpenSSH fixture environment.",
+    );
   }
 
   return {
     args: args.slice(separator + 2),
-    command: process.platform === "win32" && command.toLowerCase() === "npm" ? npmCommand : command,
+    command:
+      process.platform === "win32" && command.toLowerCase() === "npm"
+        ? npmCommand
+        : command,
   };
 }
 
@@ -345,7 +506,9 @@ function toSshPath(path) {
 }
 
 function toReleasePath(path) {
-  return path.startsWith(root) ? path.slice(root.length + 1).replace(/\\/g, "/") : path.replace(/\\/g, "/");
+  return path.startsWith(root)
+    ? path.slice(root.length + 1).replace(/\\/g, "/")
+    : path.replace(/\\/g, "/");
 }
 
 function sha256(path) {

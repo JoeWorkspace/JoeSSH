@@ -289,6 +289,12 @@ export function checkWindowsInviteBeta(rootPath = defaultRoot) {
       workflow.includes("release:desktop:package:windows-invite:stage-a") &&
       workflow.includes("reports/handoff/desktop/windows-invite") &&
       workflow.includes("cargo-audit --version 0.22.2 --locked") &&
+      workflow.includes("node-version: 22.22.2") &&
+      workflow.includes(
+        "npm install --global --ignore-scripts --no-audit --no-fund npm@10.9.7",
+      ) &&
+      workflow.includes('test "$(npm --version)" = "10.9.7"') &&
+      workflow.includes("npx --no-install playwright install chromium") &&
       !workflow.includes("path: reports/release") &&
       !workflow.includes("package-desktop-release") &&
       !workflow.includes("release:publish"),

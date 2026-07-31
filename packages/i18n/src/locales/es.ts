@@ -10,7 +10,8 @@ export const es = {
   "desktop.terminalSessionSample":
     "Solo es un perfil de conexión de ejemplo. No hay ninguna sesión SSH activa.",
   "desktop.sftp": "SFTP",
-  "desktop.manifestDescription": "Terminal SSH, SFTP, acceso de equipo y gestión de sesiones.",
+  "desktop.manifestDescription":
+    "Terminal SSH, SFTP, reenvío de puertos y gestión de sesiones locales.",
   "language.selectorLabel": "Idioma de visualización",
   "language.autoRegion": "Automático por región",
   "language.worldReady": "Idiomas globales listos",
@@ -19,7 +20,8 @@ export const es = {
   "desktop.searchPlaceholder": "Buscar hosts, etiquetas, usuarios",
   "desktop.searchMatches": "{count} coincidencias",
   "desktop.searchEmptyTitle": "Sin conexiones coincidentes",
-  "desktop.searchEmptyHint": "Prueba otra palabra clave o borra los filtros de etiqueta.",
+  "desktop.searchEmptyHint":
+    "Prueba otra palabra clave o borra los filtros de etiqueta.",
   "desktop.new": "Nuevo",
   "desktop.connections": "Conexiones",
   "desktop.filterByTag": "Filtrar por etiqueta",
@@ -53,29 +55,43 @@ export const es = {
   "desktop.terminalAutocompleteNavigate": "para navegar",
   "desktop.terminalSessionConnected": "Conectado a {name} ({group})",
   "desktop.terminalSessionReady": "Sesión lista.",
-  "desktop.terminalSessionMfaRequired": "Se requiere verificación MFA antes de ejecutar comandos.",
+  "desktop.terminalSessionMfaRequired":
+    "Se requiere verificación MFA antes de ejecutar comandos.",
   "desktop.mfaRequiredShort": "MFA requerida",
   "desktop.commandAccepted": "Comando aceptado",
-  "desktop.commandAcceptedDetail": "Pasó la verificación local de seguridad y quedó en cola para el ejecutor del terminal.",
+  "desktop.commandAcceptedDetail":
+    "Pasó la verificación local de seguridad y quedó en cola para el ejecutor del terminal.",
   "desktop.commandBlocked": "Comando bloqueado",
   "desktop.commandBlockedDetail": "Coincidió con {pattern}: {reason}",
-  "desktop.safetyReasonRmRoot": "elimina recursivamente la raíz del sistema de archivos",
+  "desktop.safetyReasonRmRoot":
+    "elimina recursivamente la raíz del sistema de archivos",
   "desktop.safetyReasonMkfs": "formatea un sistema de archivos",
   "desktop.safetyReasonForkBomb": "bomba fork",
-  "desktop.safetyReasonRawDiskCopy": "la copia sin procesar de disco puede destruir datos",
-  "desktop.safetyReasonChmodRoot": "abre permisos ampliamente desde la raíz del sistema de archivos",
-  "desktop.safetyReasonTeeBlockDevice": "escribe salida sin procesar en un dispositivo de bloques",
-  "desktop.safetyReasonRedirectBlockDevice": "redirige la salida a un dispositivo de bloques sin procesar y destruye su contenido",
-  "desktop.safetyReasonFindRootDelete": "elimina archivos recursivamente desde una ruta raíz",
-  "desktop.safetyReasonDiskWipe": "borra irreversiblemente tablas de particiones o contenido de dispositivos de bloques",
+  "desktop.safetyReasonRawDiskCopy":
+    "la copia sin procesar de disco puede destruir datos",
+  "desktop.safetyReasonChmodRoot":
+    "abre permisos ampliamente desde la raíz del sistema de archivos",
+  "desktop.safetyReasonTeeBlockDevice":
+    "escribe salida sin procesar en un dispositivo de bloques",
+  "desktop.safetyReasonRedirectBlockDevice":
+    "redirige la salida a un dispositivo de bloques sin procesar y destruye su contenido",
+  "desktop.safetyReasonFindRootDelete":
+    "elimina archivos recursivamente desde una ruta raíz",
+  "desktop.safetyReasonDiskWipe":
+    "borra irreversiblemente tablas de particiones o contenido de dispositivos de bloques",
   "desktop.safetyReasonFirewallFlush": "vacía las reglas del firewall",
-  "desktop.safetyReasonRemoteShellPipe": "canaliza contenido remoto directamente a una shell",
-  "desktop.safetyReasonRootDownloadOverwrite": "sobrescribe una ruta raíz con contenido descargado",
+  "desktop.safetyReasonRemoteShellPipe":
+    "canaliza contenido remoto directamente a una shell",
+  "desktop.safetyReasonRootDownloadOverwrite":
+    "sobrescribe una ruta raíz con contenido descargado",
   "desktop.safetyReasonHostShutdown": "detiene el host de inmediato",
-  "desktop.safetyReasonWindowsDestructive": "comando destructivo de Windows que afecta archivos, discos o estado del host",
-  "desktop.safetyReasonPowershellDestructive": "comando destructivo de PowerShell que afecta una unidad, ruta del sistema, disco o estado de energía del host",
+  "desktop.safetyReasonWindowsDestructive":
+    "comando destructivo de Windows que afecta archivos, discos o estado del host",
+  "desktop.safetyReasonPowershellDestructive":
+    "comando destructivo de PowerShell que afecta una unidad, ruta del sistema, disco o estado de energía del host",
   "desktop.safetyReasonDropDatabase": "elimina una base de datos",
-  "desktop.safetyReasonCommandSubstitution": "incrusta un subcomando que podría ejecutar cualquier contenido",
+  "desktop.safetyReasonCommandSubstitution":
+    "incrusta un subcomando que podría ejecutar cualquier contenido",
   "desktop.context": "Contexto",
   "desktop.team": "Equipo",
   "desktop.settings": "Configuración",
@@ -111,9 +127,10 @@ export const es = {
   "desktop.recordTerminal": "Grabar sesiones de terminal",
   "desktop.requiredProduction": "Requerido para alcances de producción",
   "desktop.syncEncrypted": "Sincronizar fragmentos cifrados",
-  "desktop.availableProBusiness": "Disponible en Pro y Business",
+  "desktop.plannedUnavailable": "Planificado; no disponible actualmente",
   "desktop.telemetryErrors": "Informes de errores opcionales",
-  "desktop.telemetryErrorsHint": "Enviar resúmenes de fallos y errores redactados.",
+  "desktop.telemetryErrorsHint":
+    "Enviar resúmenes de fallos y errores redactados.",
   "desktop.businessLayer": "Capa empresarial",
   "desktop.sharedVaults": "Bóvedas compartidas",
   "desktop.auditExport": "Exportación de auditoría",
@@ -124,9 +141,11 @@ export const es = {
   "desktop.splitTerminal": "Dividir el terminal actual a la derecha",
   "desktop.uploadToSession": "Subir archivo a la sesión activa",
   "desktop.requestElevated": "Solicitar acceso elevado",
-  "desktop.palettePlaceholder": "Ejecutar comando, abrir host, iniciar flujo de trabajo",
+  "desktop.palettePlaceholder":
+    "Ejecutar comando, abrir host, iniciar flujo de trabajo",
   "desktop.paletteEmptyTitle": "Sin coincidencias en la paleta",
-  "desktop.paletteEmptyHint": "Prueba un host, un comando reciente o una palabra clave de flujo de trabajo.",
+  "desktop.paletteEmptyHint":
+    "Prueba un host, un comando reciente o una palabra clave de flujo de trabajo.",
   "team.access": "Acceso del equipo",
   "team.accessSummary": "Resumen de acceso del equipo",
   "team.business": "Business",
@@ -170,7 +189,8 @@ export const es = {
   "desktop.forwardActive": "Activo",
   "desktop.forwardInactive": "Inactivo",
   "desktop.forwardNoRules": "Sin reglas de reenvío aún",
-  "desktop.forwardNoRulesHint": "Agrega una regla para crear un túnel de un puerto TCP local por SSH.",
+  "desktop.forwardNoRulesHint":
+    "Agrega una regla para crear un túnel de un puerto TCP local por SSH.",
   "desktop.sftpEmpty": "Esta carpeta está vacía",
   "desktop.sftpEmptyHint": "Sube un archivo o ve a otra carpeta.",
   "desktop.groupProduction": "Producción",
@@ -209,7 +229,8 @@ export const es = {
   "desktop.knownHostActionFailed": "Could not update known hosts",
   "desktop.sftpTransferring": "Transfiriendo…",
   "desktop.sftpTransferError": "Error de transferencia",
-  "desktop.sftpTransferTooLarge": "El archivo supera el límite de transferencia de {limit}.",
+  "desktop.sftpTransferTooLarge":
+    "El archivo supera el límite de transferencia de {limit}.",
   "desktop.connectTitle": "Conectar al host",
   "desktop.port": "Puerto",
   "desktop.authMethod": "Autenticación",
@@ -218,10 +239,12 @@ export const es = {
   "desktop.passphrase": "Frase de contraseña (opcional)",
   "desktop.pinnedFingerprint": "Clave de host fijada (opcional)",
   "desktop.hostKeyConfirmTitle": "Confirm host key",
-  "desktop.hostKeyConfirmDetail": "Verify this SHA-256 fingerprint before authenticating.",
+  "desktop.hostKeyConfirmDetail":
+    "Verify this SHA-256 fingerprint before authenticating.",
   "desktop.hostKeyPresentedFingerprint": "Presented fingerprint",
   "desktop.hostKeyVerificationFailed": "Host key verification failed",
-  "desktop.hostKeyChangedDetail": "Stored host key mismatch for {host}:{port}. Expected {stored}, presented {presented}.",
+  "desktop.hostKeyChangedDetail":
+    "Stored host key mismatch for {host}:{port}. Expected {stored}, presented {presented}.",
   "desktop.trustHostKeyAndConnect": "Trust and connect",
   "desktop.connectAction": "Conectar",
   "desktop.connecting": "Conectando…",
@@ -230,23 +253,27 @@ export const es = {
   "desktop.connectionSwitched": "Cambiado a {name}",
   "desktop.connectionMoved": "{connection} movido a {group}",
   "desktop.connectionsImported": "{count} conexiones importadas",
-  "desktop.connectionsImportFailed": "Could not import connections. Choose a valid JoeSSH connections JSON file.",
+  "desktop.connectionsImportFailed":
+    "Could not import connections. Choose a valid JoeSSH connections JSON file.",
   "desktop.connectionConnectToast": "Conectar: {name}",
   "desktop.connectionCreated": "Conexión {name} creada",
   "desktop.connectionTestResult": "Prueba de conexión: {result}",
-  "desktop.builtinConnectionEditUnavailable": "Las conexiones de demostración integradas no se pueden editar",
-  "desktop.builtinConnectionDeleteUnavailable": "Las conexiones de demostración integradas no se pueden eliminar",
+  "desktop.builtinConnectionEditUnavailable":
+    "Las conexiones de demostración integradas no se pueden editar",
+  "desktop.builtinConnectionDeleteUnavailable":
+    "Las conexiones de demostración integradas no se pueden eliminar",
   "desktop.connectionCopyName": "{name} copia",
   "desktop.connectionCopyNameNumbered": "{name} copia {number}",
   "desktop.connectionDuplicated": "{name} duplicada",
   "desktop.connectionDeleted": "{name} eliminada",
   "desktop.connectionEdited": "{name} editada",
-  "desktop.groupCreatedToast": "Grupo \"{name}\" creado",
-  "desktop.groupDeletedToast": "Grupo \"{name}\" eliminado",
-  "desktop.groupRenamedToast": "Grupo renombrado a \"{name}\"",
+  "desktop.groupCreatedToast": 'Grupo "{name}" creado',
+  "desktop.groupDeletedToast": 'Grupo "{name}" eliminado',
+  "desktop.groupRenamedToast": 'Grupo renombrado a "{name}"',
   "desktop.sftpUploadComplete": "{name} subido",
   "desktop.sftpOverwriteTitle": "¿Reemplazar archivo existente?",
-  "desktop.sftpOverwriteDetail": "Ya existe un archivo llamado {name} en esta carpeta.",
+  "desktop.sftpOverwriteDetail":
+    "Ya existe un archivo llamado {name} en esta carpeta.",
   "desktop.sftpOverwriteCancel": "Cancelar",
   "desktop.sftpOverwriteConfirm": "Sobrescribir",
   "desktop.sshCommandCopied": "Comando SSH de {name} copiado",
@@ -272,14 +299,16 @@ export const es = {
   "team.auditCommandRecorded": "Command recorded",
   "team.auditAccessRequestApproved": "Access request approved",
   "team.auditAccessRequestRejected": "Access request rejected",
-  "team.productionElevationDetail": "Incident commander role for gateway triage",
+  "team.productionElevationDetail":
+    "Incident commander role for gateway triage",
   "web.adminNavigation": "Navegación de administración de JoeSSH",
   "web.adminConsole": "Consola de administración",
   "web.skipToContent": "Ir al contenido principal",
   "web.teamOperations": "Operaciones del equipo",
   "web.refreshTeamDashboard": "Actualizar panel del equipo",
   "web.telemetryErrors": "Informes de errores opcionales",
-  "web.telemetryUnavailable": "La telemetría no está activada en esta compilación.",
+  "web.telemetryUnavailable":
+    "La telemetría no está activada en esta compilación.",
   "web.teamMetrics": "Métricas de operaciones del equipo",
   "web.activeMembers": "Miembros activos",
   "web.rolesConfigured": "Roles configurados",
@@ -311,17 +340,23 @@ export const es = {
   "web.storage": "Almacenamiento",
   "mobile.kicker": "JoeSSH móvil",
   "mobile.title": "Sincronización y acceso de emergencia",
-  "mobile.subtitle": "Registra este teléfono, previsualiza el contexto del terminal y mantén cerca una ruta de recuperación.",
+  "mobile.subtitle":
+    "Registra este teléfono, previsualiza el contexto del terminal y mantén cerca una ruta de recuperación.",
   "mobile.registering": "Registrando dispositivo",
-  "mobile.registeringMessage": "Creando una identidad móvil para sincronización y traspaso de emergencia.",
+  "mobile.registeringMessage":
+    "Creando una identidad móvil para sincronización y traspaso de emergencia.",
   "mobile.previewing": "Obteniendo vista previa de sincronización",
-  "mobile.previewingMessage": "Obteniendo perfiles, sesiones, estado del cursor y rutas de recuperación confiables.",
+  "mobile.previewingMessage":
+    "Obteniendo perfiles, sesiones, estado del cursor y rutas de recuperación confiables.",
   "mobile.ready": "Vista previa lista",
-  "mobile.readyMessage": "Este dispositivo está registrado y la última respuesta de sincronización está disponible.",
+  "mobile.readyMessage":
+    "Este dispositivo está registrado y la última respuesta de sincronización está disponible.",
   "mobile.offline": "Respaldo sin conexión activo",
-  "mobile.offlineMessage": "La sincronización en vivo no está disponible. No se recibieron datos del espacio de trabajo en vivo ni en caché.",
+  "mobile.offlineMessage":
+    "La sincronización en vivo no está disponible. No se recibieron datos del espacio de trabajo en vivo ni en caché.",
   "mobile.readyToConnect": "Listo para conectar",
-  "mobile.readyToConnectMessage": "Empieza registrando este teléfono y obteniendo una vista previa segura desde la sincronización de JoeSSH.",
+  "mobile.readyToConnectMessage":
+    "Empieza registrando este teléfono y obteniendo una vista previa segura desde la sincronización de JoeSSH.",
   "mobile.profiles": "Perfiles",
   "mobile.openSessions": "Sesiones abiertas",
   "mobile.pendingChanges": "Cambios recibidos",
@@ -332,19 +367,23 @@ export const es = {
   "mobile.waiting": "en espera",
   "mobile.pullPreview": "Obtener vista previa",
   "mobile.noWorkspace": "Aún no se obtuvo ningún espacio de trabajo",
-  "mobile.runPreview": "Ejecuta la vista previa para cargar el estado del cursor",
+  "mobile.runPreview":
+    "Ejecuta la vista previa para cargar el estado del cursor",
   "mobile.emergencyConnection": "Conexión de emergencia",
-  "mobile.emptyRoutes": "No hay rutas de recuperación configuradas para esta vista previa.",
+  "mobile.emptyRoutes":
+    "No hay rutas de recuperación configuradas para esta vista previa.",
   "mobile.offlineBadge": "Sin conexión",
   "mobile.liveBadge": "En vivo",
   "mobile.preparing": "Preparando vista previa",
   "mobile.registerPull": "Registrar y obtener vista previa",
   "desktop.error.boundary.title": "Algo salió mal",
   "desktop.error.boundary.reload": "Recargar",
-  "desktop.error.boundary.message": "Recarga JoeSSH o contacta con soporte si el problema continúa.",
+  "desktop.error.boundary.message":
+    "Recarga JoeSSH o contacta con soporte si el problema continúa.",
   "mobile.error.boundary.title": "Algo salió mal",
   "mobile.error.boundary.reload": "Recargar",
-  "mobile.error.boundary.message": "Recarga JoeSSH o contacta con soporte si el problema continúa.",
+  "mobile.error.boundary.message":
+    "Recarga JoeSSH o contacta con soporte si el problema continúa.",
   "desktop.paletteRecent": "Recientes",
   "desktop.paletteRecentBadge": "Reciente",
   "desktop.paletteConnections": "Conexiones",
@@ -395,7 +434,15 @@ export const es = {
   "team.accessRequestStatus": "Estado de solicitud de acceso del equipo",
   "desktop.restoreWorkbench": "Restaurar espacio de trabajo",
   "desktop.gettingStarted": "Primeros pasos",
-  "desktop.surfaceGuide": "Desktop abre sesiones SSH; Web Admin supervisa Sync y los equipos; Mobile es la aplicación complementaria.",
-  "desktop.telemetryPrivacyHint": "Es opcional y está desactivado por defecto. Nunca envía hosts, usuarios, comandos, claves, tokens, rutas ni la salida del terminal.",
-  "team.reviewedBy": "revisado por {reviewer}"
+  "desktop.surfaceGuide":
+    "Desktop abre sesiones SSH y SFTP locales; Web Admin muestra instantáneas de Sync de solo lectura; Mobile es una vista previa de Sync y no ejecuta SSH ni SFTP.",
+  "desktop.telemetryPrivacyHint":
+    "Es opcional y está desactivado por defecto. Nunca envía hosts, usuarios, comandos, claves, tokens, rutas ni la salida del terminal.",
+  "desktop.thirdPartyNotices": "Licencias y avisos",
+  "desktop.thirdPartyNoticesHint":
+    "Consulta las licencias y los avisos incluidos en esta versión exacta de la aplicación.",
+  "desktop.thirdPartyNoticesLoading": "Cargando licencias…",
+  "desktop.thirdPartyNoticesUnavailable":
+    "Los avisos de licencia no están disponibles en esta versión.",
+  "team.reviewedBy": "revisado por {reviewer}",
 } as const;

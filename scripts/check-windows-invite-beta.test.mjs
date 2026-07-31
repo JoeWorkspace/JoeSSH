@@ -110,6 +110,22 @@ test("rejects a workflow with a floating Action tag", (t) => {
   );
 });
 
+test("rejects a workflow with floating Node or npx tool resolution", (t) => {
+  const workflow = createWorkflowFixture()
+    .replace("node-version: 22.22.2", "node-version: 22")
+    .replace(
+      "npx --no-install playwright install chromium",
+      "npx playwright install chromium",
+    );
+  const root = createFixture(t, { workflow });
+  const output = formatWindowsInviteBetaResults(checkWindowsInviteBeta(root));
+
+  assert.match(
+    output,
+    /FAIL Windows workflow is manual, least-privilege, Stage A-only, and handoff-only/,
+  );
+});
+
 test("rejects a promotion gate without external anchors and stable snapshots", (t) => {
   const root = createFixture(t, {
     promotionScript: [
@@ -300,8 +316,19 @@ function createWorkflowFixture() {
     "            $env:DISPATCH_SHA",
     '          )) { throw "SHA mismatch" }',
     '          "reviewed_sha=$($env:REVIEWED_SHA_INPUT.ToLowerInvariant())" >> $env:GITHUB_OUTPUT',
+    "      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+    "        with:",
+    "          node-version: 22.22.2",
+    "      - name: Pin npm 10.9.7",
+    "        shell: bash",
+    "        run: |",
+    "          set -euo pipefail",
+    "          npm install --global --ignore-scripts --no-audit --no-fund npm@10.9.7",
+    '          test "$(npm --version)" = "10.9.7"',
     "      - name: Gate",
     "        run: npm run qa:beta:windows:fixture",
+    "      - name: Browser",
+    "        run: npx --no-install playwright install chromium",
     "      - name: Audit",
     "        run: cargo install cargo-audit --version 0.22.2 --locked",
     "      - name: Build",

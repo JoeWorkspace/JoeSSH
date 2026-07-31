@@ -1,7 +1,7 @@
 # Build from the repository root:
-#   docker build -f services/sync/Dockerfile -t joessh-sync:0.1.0-beta.9 .
+#   docker build -f services/sync/Dockerfile -t joessh-sync:0.1.0-beta.10 .
 
-FROM rust:1-bookworm AS build
+FROM rust:1.96.0-bookworm@sha256:5e2214abe154fe26e39f64488952e5c991eeed1d6d6da7cc8381ae83927f0cfc AS build
 WORKDIR /src
 
 COPY Cargo.toml Cargo.lock ./
@@ -10,7 +10,7 @@ COPY services/sync ./services/sync
 
 RUN cargo build --release -p atlasterm-sync --locked
 
-FROM debian:bookworm-slim
+FROM debian:bookworm-slim@sha256:7b140f374b289a7c2befc338f42ebe6441b7ea838a042bbd5acbfca6ec875818
 RUN useradd --system --home /var/lib/joessh-sync --create-home --shell /usr/sbin/nologin joessh \
   && apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates curl \

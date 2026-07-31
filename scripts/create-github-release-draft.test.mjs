@@ -1,13 +1,28 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
+import {
+  publishedLicenseBundleFixture,
+  sourceBoundReleaseSbomEnvironment,
+  writeSourceBoundReleaseSbomFixture,
+  writePublishedLicenseSourceInputFixture,
+} from "./release-sbom-test-fixtures.mjs";
 
-const DRAFT_SCRIPT_PATH = fileURLToPath(new URL("./create-github-release-draft.mjs", import.meta.url));
+const DRAFT_SCRIPT_PATH = fileURLToPath(
+  new URL("./create-github-release-draft.mjs", import.meta.url),
+);
 
 function createReleaseFixture(t) {
   const root = mkdtempSync(join(tmpdir(), "release-draft-"));
@@ -15,30 +30,65 @@ function createReleaseFixture(t) {
     rmSync(root, { recursive: true, force: true });
   });
 
-  writeFile(root, "package.json", JSON.stringify({ version: "0.1.0-beta.1" }));
-  writeFile(root, "package-lock.json", JSON.stringify({
-    lockfileVersion: 3,
-    packages: {
-      "node_modules/@tauri-apps/api": { version: "2.5.0" },
-      "node_modules/@tauri-apps/cli": { version: "2.11.3" },
-    },
-  }));
-  writeFile(root, "Cargo.lock", cargoLockFixture([["atlasterm-sync", "0.1.0-beta.1"]]));
-  writeFile(root, "apps/desktop/src-tauri/Cargo.lock", cargoLockFixture([["tauri", "2.8.5"]]));
+  writeFile(
+    root,
+    "package.json",
+    JSON.stringify({ name: "atlasterm", version: "0.1.0-beta.1" }),
+  );
+  writeFile(
+    root,
+    "package-lock.json",
+    JSON.stringify({
+      lockfileVersion: 3,
+      packages: {
+        "node_modules/@tauri-apps/api": { version: "2.5.0" },
+        "node_modules/@tauri-apps/cli": { version: "2.11.3" },
+      },
+    }),
+  );
+  writeFile(
+    root,
+    "Cargo.lock",
+    cargoLockFixture([["atlasterm-sync", "0.1.0-beta.1"]]),
+  );
+  writeFile(
+    root,
+    "apps/desktop/src-tauri/Cargo.lock",
+    cargoLockFixture([["tauri", "2.8.5"]]),
+  );
   writeFile(root, "docs/release-checklist.md", "# Release notes\n");
-  writeFile(root, "docs/release-notes/0.1.0-beta.1.md", "# JoeSSH 0.1.0-beta.1\n");
+  writeFile(
+    root,
+    "docs/release-notes/0.1.0-beta.1.md",
+    "# JoeSSH 0.1.0-beta.1\n",
+  );
   writeReleaseSbomFixture(root);
+  writePublishedLicenseFixture(root);
 
   const desktopArtifacts = [
-    ["desktop installer", "reports/release/desktop/JoeSSH_0.1.0-beta.1_x64-setup.exe"],
+    [
+      "desktop installer",
+      "reports/release/desktop/JoeSSH_0.1.0-beta.1_x64-setup.exe",
+    ],
     ["macos dmg", "reports/release/desktop/JoeSSH_0.1.0-beta.1_aarch64.dmg"],
-    ["linux appimage", "reports/release/desktop/JoeSSH_0.1.0-beta.1_amd64.AppImage"],
+    [
+      "linux appimage",
+      "reports/release/desktop/JoeSSH_0.1.0-beta.1_amd64.AppImage",
+    ],
   ];
   for (const [content, path] of desktopArtifacts) {
     writeArtifact(root, path, content);
   }
-  writeArtifact(root, "reports/release/web/joessh-web-admin-0.1.0-beta.1.zip", "web bundle");
-  writeArtifact(root, "reports/release/sync/joessh-sync-0.1.0-beta.1-linux-x64", "sync binary");
+  writeArtifact(
+    root,
+    "reports/release/web/joessh-web-admin-0.1.0-beta.1.zip",
+    "web bundle",
+  );
+  writeArtifact(
+    root,
+    "reports/release/sync/joessh-sync-0.1.0-beta.1-linux-x64",
+    "sync binary",
+  );
   const syncEvidence = JSON.stringify(
     {
       artifact: "sync-backup-restore-smoke",
@@ -54,18 +104,28 @@ function createReleaseFixture(t) {
     null,
     2,
   );
-  writeFile(root, "reports/release/sync/backup-restore-smoke.json", `${syncEvidence}\n`);
+  writeFile(
+    root,
+    "reports/release/sync/backup-restore-smoke.json",
+    `${syncEvidence}\n`,
+  );
 
-  writeManifest(root, "reports/release/desktop/SHA256SUMS.txt", desktopArtifacts);
+  writeManifest(
+    root,
+    "reports/release/desktop/SHA256SUMS.txt",
+    desktopArtifacts,
+  );
   writeManifest(root, "reports/release/web/SHA256SUMS.txt", [
     ["web bundle", "reports/release/web/joessh-web-admin-0.1.0-beta.1.zip"],
   ]);
   writeManifest(root, "reports/release/sync/SHA256SUMS.txt", [
     ["sync binary", "reports/release/sync/joessh-sync-0.1.0-beta.1-linux-x64"],
   ]);
-  writeManifest(root, "reports/release/sync/backup-restore-smoke-SHA256SUMS.txt", [
-    [`${syncEvidence}\n`, "reports/release/sync/backup-restore-smoke.json"],
-  ]);
+  writeManifest(
+    root,
+    "reports/release/sync/backup-restore-smoke-SHA256SUMS.txt",
+    [[`${syncEvidence}\n`, "reports/release/sync/backup-restore-smoke.json"]],
+  );
   const desktopEvidence = JSON.stringify(
     {
       artifacts: [
@@ -83,8 +143,10 @@ function createReleaseFixture(t) {
           sha256: sha256("macos dmg"),
           signed: true,
           notarized: true,
-          signatureVerification: "codesign --verify reports/release/desktop/JoeSSH_0.1.0-beta.1_aarch64.dmg passed",
-          notarizationVerification: "spctl --assess reports/release/desktop/JoeSSH_0.1.0-beta.1_aarch64.dmg passed",
+          signatureVerification:
+            "codesign --verify reports/release/desktop/JoeSSH_0.1.0-beta.1_aarch64.dmg passed",
+          notarizationVerification:
+            "spctl --assess reports/release/desktop/JoeSSH_0.1.0-beta.1_aarch64.dmg passed",
         },
         {
           path: "reports/release/desktop/JoeSSH_0.1.0-beta.1_amd64.AppImage",
@@ -97,13 +159,28 @@ function createReleaseFixture(t) {
     null,
     2,
   );
-  writeFile(root, "reports/release/desktop/release-evidence.json", desktopEvidence);
+  writeFile(
+    root,
+    "reports/release/desktop/release-evidence.json",
+    desktopEvidence,
+  );
   const desktopEvidenceSource = desktopEvidenceSourceFixture();
-  writeFile(root, "reports/release/desktop/release-evidence-source.json", desktopEvidenceSource);
-  writeManifest(root, "reports/release/desktop/release-evidence-SHA256SUMS.txt", [
-    [desktopEvidence, "reports/release/desktop/release-evidence.json"],
-    [desktopEvidenceSource, "reports/release/desktop/release-evidence-source.json"],
-  ]);
+  writeFile(
+    root,
+    "reports/release/desktop/release-evidence-source.json",
+    desktopEvidenceSource,
+  );
+  writeManifest(
+    root,
+    "reports/release/desktop/release-evidence-SHA256SUMS.txt",
+    [
+      [desktopEvidence, "reports/release/desktop/release-evidence.json"],
+      [
+        desktopEvidenceSource,
+        "reports/release/desktop/release-evidence-source.json",
+      ],
+    ],
+  );
   writeReleaseProvenanceFixture(root);
 
   return root;
@@ -140,44 +217,29 @@ function desktopEvidenceSourceFixture() {
 }
 
 function writeReleaseSbomFixture(root) {
-  const sbomFiles = [
-    ["desktop sbom", "reports/release/npm-desktop-sbom.cdx.json", cyclonedxFixture("desktop")],
-    ["web sbom", "reports/release/npm-web-sbom.cdx.json", cyclonedxFixture("web")],
-    ["cargo metadata", "reports/release/cargo-metadata.json", cargoMetadataFixture("atlasterm-sync")],
-    ["tauri cargo metadata", "reports/release/tauri-cargo-metadata.json", cargoMetadataFixture("atlasterm-desktop-shell")],
-  ];
-  for (const [, path, content] of sbomFiles) {
-    writeFile(root, path, content);
-  }
-  writeManifest(
+  writeSourceBoundReleaseSbomFixture(root);
+}
+
+function writePublishedLicenseFixture(root) {
+  writePublishedLicenseSourceInputFixture(root);
+  const { manifestText, noticesText } = publishedLicenseBundleFixture({ root });
+  writeFile(
     root,
-    "reports/release/SBOM-SHA256SUMS.txt",
-    sbomFiles.map(([, path, content]) => [content, path]),
+    "reports/release/third-party-licenses/manifest.json",
+    manifestText,
   );
-}
-
-function cyclonedxFixture(name) {
-  return JSON.stringify({
-    bomFormat: "CycloneDX",
-    specVersion: "1.5",
-    metadata: { component: { name } },
-    components: [{ name: `${name}-dependency`, version: "1.0.0" }],
-  });
-}
-
-function cargoMetadataFixture(name) {
-  const packages =
-    name === "atlasterm-desktop-shell"
-      ? ["atlasterm-desktop-shell", "atlasterm-core", "russh", "russh-sftp", "serde", "tauri", "tokio", "uuid"]
-      : ["atlasterm-core", "atlasterm-sync", "axum", "russh", "russh-sftp", "serde", "tokio", "uuid"];
-  const workspaceMembers =
-    name === "atlasterm-desktop-shell" ? ["atlasterm-desktop-shell"] : ["atlasterm-core", "atlasterm-sync"];
-
-  return JSON.stringify({
-    packages: packages.map((packageName) => ({ name: packageName, version: "0.1.0-beta.1" })),
-    workspace_members: workspaceMembers.map((packageName) => `path+file:///${packageName}`),
-    version: 1,
-  });
+  writeFile(
+    root,
+    "reports/release/third-party-licenses/THIRD-PARTY-NOTICES.txt",
+    noticesText,
+  );
+  writeManifest(root, "reports/release/THIRD-PARTY-LICENSES-SHA256SUMS.txt", [
+    [
+      noticesText,
+      "reports/release/third-party-licenses/THIRD-PARTY-NOTICES.txt",
+    ],
+    [manifestText, "reports/release/third-party-licenses/manifest.json"],
+  ]);
 }
 
 function writeArtifact(root, relativePath, content) {
@@ -194,13 +256,16 @@ function writeManifest(root, relativePath, entries) {
   writeFile(
     root,
     relativePath,
-    entries.map(([content, artifactPath]) => `${sha256(content)}  ${artifactPath}`).join("\n") + "\n",
+    entries
+      .map(([content, artifactPath]) => `${sha256(content)}  ${artifactPath}`)
+      .join("\n") + "\n",
   );
 }
 
 function writeReleaseProvenanceFixture(root) {
   const manifestPaths = [
     "reports/release/SBOM-SHA256SUMS.txt",
+    "reports/release/THIRD-PARTY-LICENSES-SHA256SUMS.txt",
     "reports/release/desktop/SHA256SUMS.txt",
     "reports/release/desktop/release-evidence-SHA256SUMS.txt",
     "reports/release/sync/SHA256SUMS.txt",
@@ -251,6 +316,7 @@ function writeReleaseProvenanceFixture(root) {
         "verify-sync-release-evidence.mjs",
         "verify-desktop-release-evidence.mjs --require-source",
         "verify-release-sbom.mjs",
+        "verify-third-party-licenses.mjs",
         "verify-release-provenance.mjs",
       ],
       version: "0.1.0-beta.1",
@@ -265,7 +331,9 @@ function writeReleaseProvenanceFixture(root) {
 }
 
 function rewriteReleaseProvenance(root, mutate) {
-  const provenance = JSON.parse(readFile(root, "reports/release/release-provenance.json"));
+  const provenance = JSON.parse(
+    readFile(root, "reports/release/release-provenance.json"),
+  );
   mutate(provenance);
   const text = `${JSON.stringify(provenance, null, 2)}\n`;
   writeFile(root, "reports/release/release-provenance.json", text);
@@ -280,7 +348,10 @@ function parseManifest(root, relativePath) {
     .filter((line) => line.trim() !== "")
     .map((line) => {
       const match = line.match(/^([a-f0-9]{64})\s\s(.+)$/);
-      assert.ok(match, `${relativePath} fixture manifest line should parse: ${line}`);
+      assert.ok(
+        match,
+        `${relativePath} fixture manifest line should parse: ${line}`,
+      );
       return { path: match[2], sha256: match[1] };
     });
 }
@@ -295,28 +366,39 @@ function sha256(value) {
 
 function cargoLockFixture(packages) {
   return packages
-    .map(([name, version]) => `[[package]]\nname = "${name}"\nversion = "${version}"\nsource = "registry+https://github.com/rust-lang/crates.io-index"\n`)
+    .map(
+      ([name, version]) =>
+        `[[package]]\nname = "${name}"\nversion = "${version}"\nsource = "registry+https://github.com/rust-lang/crates.io-index"\n`,
+    )
     .join("\n");
 }
 
 function runDraft(root, env = createFakeReleaseMachineCommands(root)) {
-  return spawnSync(process.execPath, [DRAFT_SCRIPT_PATH, "--root", root, "--dry-run", "--desktop"], {
-    encoding: "utf8",
-    env: {
-      ...process.env,
-      ...env,
+  return spawnSync(
+    process.execPath,
+    [DRAFT_SCRIPT_PATH, "--root", root, "--dry-run", "--desktop"],
+    {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        ...env,
+      },
     },
-  });
+  );
 }
 
 function runPublishDraft(root, env = {}) {
-  return spawnSync(process.execPath, [DRAFT_SCRIPT_PATH, "--root", root, "--desktop"], {
-    encoding: "utf8",
-    env: {
-      ...process.env,
-      ...env,
+  return spawnSync(
+    process.execPath,
+    [DRAFT_SCRIPT_PATH, "--root", root, "--desktop"],
+    {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        ...env,
+      },
     },
-  });
+  );
 }
 
 function createFakeReleaseMachineCommands(root, options = {}) {
@@ -325,8 +407,20 @@ function createFakeReleaseMachineCommands(root, options = {}) {
   const state = {
     dirtyStatus: "",
     duplicateRelease: false,
+    fixtureRoot: root,
     ghAuthFails: false,
+    githubControlsFail: false,
+    releaseDeleteConfirmationUnknownFails: false,
+    releaseDeleteFails: false,
+    releaseCreateFails: false,
+    releaseId: 424242,
     releaseViewUnknownFails: false,
+    remoteTagCommit: options.remoteTagCommit ?? options.tagCommit ?? "abc123",
+    remoteTagCommitAfterCreate: null,
+    remoteTagMissing: false,
+    remoteTagObjectCommit: "abc123",
+    remoteTagObjectSha: "c".repeat(40),
+    remoteTagType: "commit",
     tagCommit: "abc123",
     tagMissing: false,
     ...options,
@@ -376,9 +470,42 @@ process.exit(2);
     binDir,
     "gh",
     `
+const crypto = require("node:crypto");
+const fs = require("node:fs");
+const path = require("node:path");
 const args = process.argv.slice(2);
 const state = ${JSON.stringify(state)};
 const key = args.join(" ");
+const remoteStatePath = path.join(
+  state.fixtureRoot,
+  "fake-github-release-state.json",
+);
+const deletionMarkerPath = remoteStatePath + ".deleted";
+
+function digest(buffer) {
+  return "sha256:" + crypto.createHash("sha256").update(buffer).digest("hex");
+}
+
+function readRemoteRelease() {
+  if (!fs.existsSync(remoteStatePath)) {
+    return null;
+  }
+  return JSON.parse(fs.readFileSync(remoteStatePath, "utf8"));
+}
+
+function writeRemoteRelease(release) {
+  fs.writeFileSync(
+    remoteStatePath,
+    JSON.stringify(release, null, 2),
+    "utf8",
+  );
+}
+
+function notFound() {
+  console.error("gh: Not Found (HTTP 404)");
+  process.exit(1);
+}
+
 if (key === "--version") {
   console.log("gh version 2.0.0");
   process.exit(0);
@@ -391,21 +518,363 @@ if (key === "auth status") {
   console.log("Logged in");
   process.exit(0);
 }
-if (key === "release view v0.1.0-beta.1 --json url") {
-  if (state.duplicateRelease) {
-    console.log('{"url":"https://github.example/releases/v0.1.0-beta.1"}');
+if (
+  key ===
+  "release view v0.1.0-beta.1 --repo JoeWorkspace/JoeSSH --json url"
+) {
+  if (state.duplicateRelease || readRemoteRelease() !== null) {
+    console.log('{"url":"https://github.com/joessh/joessh/releases/tag/v0.1.0-beta.1"}');
     process.exit(0);
   }
   if (state.releaseViewUnknownFails) {
-    console.error("network unavailable");
+    console.error("network endpoint not found");
     process.exit(1);
   }
   console.error("release not found");
   process.exit(1);
 }
-if (key.startsWith("release create v0.1.0-beta.1 --draft")) {
+if (
+  key.startsWith(
+    "release create v0.1.0-beta.1 --repo JoeWorkspace/JoeSSH --draft",
+  )
+) {
+  const notesIndex = args.indexOf("--notes-file");
+  const notesPath = notesIndex === -1 ? "" : args[notesIndex + 1];
+  const uploadPaths = notesIndex === -1 ? [] : args.slice(notesIndex + 2);
+  const titleIndex = args.indexOf("--title");
+  const releaseTitle = titleIndex === -1 ? "" : args[titleIndex + 1];
+  if (state.mutateSourceAtReleaseCreate) {
+    const sourcePath = path.resolve(
+      state.fixtureRoot,
+      ...state.mutateSourceAtReleaseCreate.relativePath.split("/"),
+    );
+    fs.writeFileSync(
+      sourcePath,
+      state.mutateSourceAtReleaseCreate.content,
+      "utf8",
+    );
+  }
+  let tamperedUpload = null;
+  if (state.tamperSnapshotDuringUpload) {
+    tamperedUpload = uploadPaths.find(
+      (uploadPath) =>
+        path.basename(uploadPath) ===
+        state.tamperSnapshotDuringUpload.uploadName,
+    );
+    if (!tamperedUpload) {
+      console.error(
+        "snapshot tamper target not found: " +
+          state.tamperSnapshotDuringUpload.uploadName,
+      );
+      process.exit(2);
+    }
+  }
+  let originalSnapshot = null;
+  if (tamperedUpload) {
+    const metadata = fs.statSync(tamperedUpload);
+    originalSnapshot = {
+      atime: metadata.atime,
+      bytes: fs.readFileSync(tamperedUpload),
+      mode: metadata.mode & 0o777,
+      mtime: metadata.mtime,
+    };
+    fs.chmodSync(tamperedUpload, 0o600);
+    fs.writeFileSync(
+      tamperedUpload,
+      state.tamperSnapshotDuringUpload.content,
+      "utf8",
+    );
+  }
+  const uploadedBytes = uploadPaths.map((uploadPath) => ({
+    bytes: fs.readFileSync(uploadPath),
+    path: uploadPath,
+  }));
+  if (tamperedUpload) {
+    fs.writeFileSync(tamperedUpload, originalSnapshot.bytes);
+    fs.chmodSync(tamperedUpload, originalSnapshot.mode);
+    fs.utimesSync(
+      tamperedUpload,
+      originalSnapshot.atime,
+      originalSnapshot.mtime,
+    );
+  }
+  if (state.captureReleaseCreatePath) {
+    const snapshotRoot = path.dirname(notesPath);
+    const capture = {
+      args,
+      notes: {
+        content: fs.readFileSync(notesPath, "utf8"),
+        path: notesPath,
+      },
+      snapshotRoot,
+      uploads: uploadedBytes.map(({ bytes, path: uploadPath }) => ({
+        content: bytes.toString("utf8"),
+        localContentAfterUpload: fs.readFileSync(uploadPath, "utf8"),
+        path: uploadPath,
+        readOnly: (fs.statSync(uploadPath).mode & 0o222) === 0,
+      })),
+    };
+    fs.writeFileSync(
+      state.captureReleaseCreatePath,
+      JSON.stringify(capture, null, 2),
+      "utf8",
+    );
+  }
+  if (state.releaseCreateFails) {
+    console.error("draft creation failed");
+    process.exit(1);
+  }
+  const release = {
+    assets: uploadedBytes.map(({ bytes, path: uploadPath }, index) => ({
+      digest: digest(bytes),
+      id: 500000 + index,
+      name: path.basename(uploadPath),
+      size: bytes.length,
+      state: "uploaded",
+    })),
+    draft: true,
+    html_url:
+      "https://github.com/joessh/joessh/releases/tag/v0.1.0-beta.1",
+    id: state.releaseId,
+    name: releaseTitle,
+    tag_name: "v0.1.0-beta.1",
+  };
+  if (state.remoteAssetDigestMissing && release.assets.length > 0) {
+    delete release.assets[0].digest;
+  }
+  if (state.remoteAssetSizeDelta) {
+    const asset = release.assets.find(
+      ({ name }) => name === state.remoteAssetSizeDelta.uploadName,
+    );
+    if (!asset) {
+      console.error(
+        "remote size tamper target not found: " +
+          state.remoteAssetSizeDelta.uploadName,
+      );
+      process.exit(2);
+    }
+    asset.size += state.remoteAssetSizeDelta.delta;
+  }
+  if (state.remoteAssetRename) {
+    const asset = release.assets.find(
+      ({ name }) => name === state.remoteAssetRename.uploadName,
+    );
+    if (!asset) {
+      console.error(
+        "remote rename target not found: " + state.remoteAssetRename.uploadName,
+      );
+      process.exit(2);
+    }
+    asset.name = state.remoteAssetRename.remoteName;
+  }
+  if (state.remoteAssetExtra) {
+    const bytes = Buffer.from(state.remoteAssetExtra.content, "utf8");
+    release.assets.push({
+      digest: digest(bytes),
+      id: 599999,
+      name: state.remoteAssetExtra.name,
+      size: bytes.length,
+      state: "uploaded",
+    });
+  }
+  writeRemoteRelease(release);
   console.log("created draft release");
   process.exit(0);
+}
+if (args[0] === "api") {
+  const methodIndex = args.indexOf("--method");
+  const method = methodIndex === -1 ? "GET" : args[methodIndex + 1];
+  const endpoint = methodIndex === -1 ? args[1] : args[args.length - 1];
+  const controlsRoot = "repos/JoeWorkspace/JoeSSH";
+  const remoteTagRef =
+    controlsRoot + "/git/ref/tags/v0.1.0-beta.1";
+  const remoteTagObject =
+    controlsRoot + "/git/tags/" + state.remoteTagObjectSha;
+  if (method === "GET" && endpoint === remoteTagRef) {
+    if (state.remoteTagMissing) {
+      notFound();
+    }
+    const tagCommit =
+      state.remoteTagCommitAfterCreate && readRemoteRelease() !== null
+        ? state.remoteTagCommitAfterCreate
+        : state.remoteTagCommit;
+    console.log(
+      JSON.stringify({
+        object: {
+          sha:
+            state.remoteTagType === "tag"
+              ? state.remoteTagObjectSha
+              : tagCommit,
+          type: state.remoteTagType,
+        },
+      }),
+    );
+    process.exit(0);
+  }
+  if (
+    method === "GET" &&
+    state.remoteTagType === "tag" &&
+    endpoint === remoteTagObject
+  ) {
+    console.log(
+      JSON.stringify({
+        object: {
+          sha: state.remoteTagObjectCommit,
+          type: "commit",
+        },
+      }),
+    );
+    process.exit(0);
+  }
+  const byTag =
+    endpoint ===
+    controlsRoot + "/releases/tags/v0.1.0-beta.1";
+  const idPrefix = controlsRoot + "/releases/";
+  const requestedId =
+    endpoint.startsWith(idPrefix) && !byTag
+      ? Number(endpoint.slice(idPrefix.length))
+      : null;
+
+  if (method === "GET" && (byTag || Number.isSafeInteger(requestedId))) {
+    if (
+      state.releaseDeleteConfirmationUnknownFails &&
+      fs.existsSync(deletionMarkerPath)
+    ) {
+      console.error("network unavailable while confirming deletion");
+      process.exit(1);
+    }
+    const release = readRemoteRelease();
+    if (
+      release === null ||
+      (Number.isSafeInteger(requestedId) && release.id !== requestedId)
+    ) {
+      notFound();
+    }
+    const response =
+      Number.isSafeInteger(requestedId) &&
+      state.releaseIdLookupReturnsWrongIdentity
+        ? { ...release, id: release.id + 1 }
+        : release;
+    console.log(JSON.stringify(response));
+    process.exit(0);
+  }
+
+  if (method === "DELETE" && Number.isSafeInteger(requestedId)) {
+    const release = readRemoteRelease();
+    if (release === null || release.id !== requestedId) {
+      notFound();
+    }
+    if (state.releaseDeleteFails) {
+      console.error("deletion denied");
+      process.exit(1);
+    }
+    if (state.captureReleaseCleanupPath) {
+      fs.writeFileSync(
+        state.captureReleaseCleanupPath,
+        JSON.stringify(
+          {
+            deletedId: requestedId,
+            endpoint,
+            tag: release.tag_name,
+          },
+          null,
+          2,
+        ),
+        "utf8",
+      );
+    }
+    fs.rmSync(remoteStatePath);
+    fs.writeFileSync(deletionMarkerPath, "deleted\\n", "utf8");
+    process.exit(0);
+  }
+
+  let controlsResponse;
+  if (method === "GET" && endpoint === controlsRoot) {
+    controlsResponse = {
+      default_branch: "main",
+      private: state.githubControlsFail,
+      visibility: state.githubControlsFail ? "private" : "public",
+    };
+  } else if (method === "GET" && endpoint === controlsRoot + "/branches/main") {
+    controlsResponse = { name: "main", protected: true };
+  } else if (
+    method === "GET" &&
+    endpoint === controlsRoot + "/branches/main/protection"
+  ) {
+    controlsResponse = {
+      allow_deletions: { enabled: false },
+      allow_force_pushes: { enabled: false },
+      enforce_admins: { enabled: true },
+      required_pull_request_reviews: {
+        bypass_pull_request_allowances: { apps: [], teams: [], users: [] },
+        require_last_push_approval: true,
+        required_approving_review_count: 1,
+      },
+      required_status_checks: {
+        checks: [{ app_id: 15368, context: "Public Release Readiness" }],
+        contexts: ["Public Release Readiness"],
+        strict: true,
+      },
+    };
+  } else if (
+    method === "GET" &&
+    endpoint === controlsRoot + "/private-vulnerability-reporting"
+  ) {
+    controlsResponse = { enabled: true };
+  } else if (
+    method === "GET" &&
+    endpoint.startsWith(controlsRoot + "/environments/") &&
+    endpoint.endsWith("/secrets?per_page=100")
+  ) {
+    controlsResponse = [{ secrets: [], total_count: 0 }];
+  } else if (
+    method === "GET" &&
+    endpoint.startsWith(controlsRoot + "/environments/")
+  ) {
+    const environment = decodeURIComponent(endpoint.split("/").at(-1));
+    controlsResponse = {
+      can_admins_bypass: false,
+      deployment_branch_policy: {
+        custom_branch_policies: false,
+        protected_branches: true,
+      },
+      name: environment,
+      protection_rules: [
+        {
+          prevent_self_review: true,
+          reviewers: [
+            {
+              reviewer: { id: 1, login: "release-reviewer" },
+              type: "User",
+            },
+          ],
+          type: "required_reviewers",
+        },
+      ],
+    };
+  } else if (
+    method === "GET" &&
+    endpoint === controlsRoot + "/actions/secrets?per_page=100"
+  ) {
+    controlsResponse = [{ secrets: [], total_count: 0 }];
+  } else if (
+    method === "GET" &&
+    endpoint === controlsRoot + "/actions/artifacts?per_page=100"
+  ) {
+    controlsResponse = [{ artifacts: [], total_count: 0 }];
+  } else if (
+    method === "GET" &&
+    endpoint === controlsRoot + "/actions/cache/usage"
+  ) {
+    controlsResponse = {
+      active_caches_count: 0,
+      active_caches_size_in_bytes: 0,
+    };
+  }
+  if (controlsResponse !== undefined) {
+    console.log(JSON.stringify(controlsResponse));
+    process.exit(0);
+  }
 }
 console.error("unexpected gh args: " + key);
 process.exit(2);
@@ -431,6 +900,7 @@ process.exit(versions[tool] ? 0 : 2);
   );
 
   return {
+    ...sourceBoundReleaseSbomEnvironment(root),
     ATLASTERM_RELEASE_GH_ARGS: JSON.stringify([fakeGhPath]),
     ATLASTERM_RELEASE_GH_COMMAND: process.execPath,
     ATLASTERM_RELEASE_CARGO_ARGS: JSON.stringify([fakeToolPath, "cargo"]),
@@ -441,6 +911,7 @@ process.exit(versions[tool] ? 0 : 2);
     ATLASTERM_RELEASE_NPM_COMMAND: process.execPath,
     ATLASTERM_RELEASE_RUSTC_ARGS: JSON.stringify([fakeToolPath, "rustc"]),
     ATLASTERM_RELEASE_RUSTC_COMMAND: process.execPath,
+    JOESSH_GITHUB_BILLING_CONFIRMED: "1",
   };
 }
 
@@ -453,10 +924,19 @@ function writeNodeBackedCommand(binDir, name, source) {
 test("dry run verifies artifacts and prints the GitHub release command", (t) => {
   const result = runDraft(createReleaseFixture(t));
 
-  assert.equal(result.status, 0);
-  assert.match(result.stdout, /Release draft dry run passed for v0\.1\.0-beta\.1/);
-  assert.match(result.stdout, /gh release create v0\.1\.0-beta\.1 --draft/);
-  assert.match(result.stdout, /reports\/release\/desktop\/JoeSSH_0\.1\.0-beta\.1_x64-setup\.exe/);
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.match(
+    result.stdout,
+    /Release draft dry run passed for v0\.1\.0-beta\.1/,
+  );
+  assert.match(
+    result.stdout,
+    /gh release create v0\.1\.0-beta\.1 --repo JoeWorkspace\/JoeSSH --draft/,
+  );
+  assert.match(
+    result.stdout,
+    /reports\/release\/desktop\/JoeSSH_0\.1\.0-beta\.1_x64-setup\.exe/,
+  );
 });
 
 test("dry run rejects missing release notes", (t) => {
@@ -477,18 +957,247 @@ test("non-dry-run validates release machine state before creating a draft", (t) 
   assert.match(result.stdout, /created draft release/);
 });
 
-test("non-dry-run rejects a dirty Git working tree", (t) => {
+test("uploads only verified private snapshot bytes when a source artifact is replaced after verification", (t) => {
   const root = createReleaseFixture(t);
-  const result = runPublishDraft(root, createFakeReleaseMachineCommands(root, { dirtyStatus: " M package.json" }));
+  const capturePath = join(root, "release-create-capture.json");
+  const sourceArtifact =
+    "reports/release/web/joessh-web-admin-0.1.0-beta.1.zip";
+  const result = runPublishDraft(
+    root,
+    createFakeReleaseMachineCommands(root, {
+      captureReleaseCreatePath: capturePath,
+      mutateSourceAtReleaseCreate: {
+        content: "attacker replacement",
+        relativePath: sourceArtifact,
+      },
+    }),
+  );
+
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.equal(readFile(root, sourceArtifact), "attacker replacement");
+  const capture = JSON.parse(readFileSync(capturePath, "utf8"));
+  const uploadedWebArtifact = capture.uploads.find(({ path }) =>
+    path.endsWith("joessh-web-admin-0.1.0-beta.1.zip"),
+  );
+  assert.ok(uploadedWebArtifact, "the verified Web artifact must be uploaded");
+  assert.equal(uploadedWebArtifact.content, "web bundle");
+  assert.equal(uploadedWebArtifact.readOnly, true);
+  assert.ok(
+    capture.uploads.every(
+      ({ path }) =>
+        path.startsWith(
+          `${capture.snapshotRoot}${process.platform === "win32" ? "\\" : "/"}`,
+        ) && !path.startsWith(join(root, "reports", "release")),
+    ),
+    "every gh upload argument must point only into the private snapshot",
+  );
+  assert.equal(capture.notes.content, "# JoeSSH 0.1.0-beta.1\n");
+  assert.ok(capture.notes.path.startsWith(capture.snapshotRoot));
+  assert.equal(capture.args.includes("--draft"), true);
+  assert.equal(capture.args.includes("--verify-tag"), true);
+  assert.deepEqual(
+    capture.args.slice(
+      capture.args.indexOf("--repo"),
+      capture.args.indexOf("--repo") + 2,
+    ),
+    ["--repo", "JoeWorkspace/JoeSSH"],
+  );
+  assert.equal(
+    existsSync(capture.snapshotRoot),
+    false,
+    "the private snapshot must always be removed after gh exits",
+  );
+});
+
+test("rejects and deletes the exact draft when snapshot bytes are swapped only during upload", (t) => {
+  const root = createReleaseFixture(t);
+  const capturePath = join(root, "tampered-release-create-capture.json");
+  const cleanupPath = join(root, "tampered-release-cleanup.json");
+  const remoteStatePath = join(root, "fake-github-release-state.json");
+  const result = runPublishDraft(
+    root,
+    createFakeReleaseMachineCommands(root, {
+      captureReleaseCleanupPath: cleanupPath,
+      captureReleaseCreatePath: capturePath,
+      tamperSnapshotDuringUpload: {
+        content: "evil bytes",
+        uploadName: "joessh-web-admin-0.1.0-beta.1.zip",
+      },
+    }),
+  );
+
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.match(result.stderr, /Remote GitHub draft asset verification failed/);
+  assert.match(
+    result.stderr,
+    /joessh-web-admin-0\.1\.0-beta\.1\.zip digest is sha256:/,
+  );
+  assert.match(
+    result.stderr,
+    /was deleted by exact ID and its absence was confirmed by both ID and tag/,
+  );
+  const capture = JSON.parse(readFileSync(capturePath, "utf8"));
+  const uploadedWebArtifact = capture.uploads.find(({ path }) =>
+    path.endsWith("joessh-web-admin-0.1.0-beta.1.zip"),
+  );
+  assert.equal(uploadedWebArtifact.content, "evil bytes");
+  assert.equal(uploadedWebArtifact.localContentAfterUpload, "web bundle");
+  assert.equal(uploadedWebArtifact.readOnly, true);
+  assert.equal(existsSync(capture.snapshotRoot), false);
+  assert.deepEqual(JSON.parse(readFileSync(cleanupPath, "utf8")), {
+    deletedId: 424242,
+    endpoint: "repos/JoeWorkspace/JoeSSH/releases/424242",
+    tag: "v0.1.0-beta.1",
+  });
+  assert.equal(
+    existsSync(remoteStatePath),
+    false,
+    "the rejected remote draft must be removed",
+  );
+});
+
+test("fails closed and deletes the draft when GitHub omits an asset digest", (t) => {
+  const root = createReleaseFixture(t);
+  const cleanupPath = join(root, "missing-digest-release-cleanup.json");
+  const result = runPublishDraft(
+    root,
+    createFakeReleaseMachineCommands(root, {
+      captureReleaseCleanupPath: cleanupPath,
+      remoteAssetDigestMissing: true,
+    }),
+  );
+
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.match(
+    result.stderr,
+    /an exact sha256:<lowercase-hex> digest is required/,
+  );
+  assert.equal(JSON.parse(readFileSync(cleanupPath, "utf8")).deletedId, 424242);
+  assert.equal(existsSync(join(root, "fake-github-release-state.json")), false);
+});
+
+test("rejects remote asset name and size metadata outside the snapshot allowlist", (t) => {
+  const root = createReleaseFixture(t);
+  const cleanupPath = join(root, "metadata-tamper-release-cleanup.json");
+  const result = runPublishDraft(
+    root,
+    createFakeReleaseMachineCommands(root, {
+      captureReleaseCleanupPath: cleanupPath,
+      remoteAssetRename: {
+        remoteName: "renamed-sync-binary",
+        uploadName: "joessh-sync-0.1.0-beta.1-linux-x64",
+      },
+      remoteAssetSizeDelta: {
+        delta: 1,
+        uploadName: "joessh-web-admin-0.1.0-beta.1.zip",
+      },
+    }),
+  );
+
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.match(
+    result.stderr,
+    /joessh-web-admin-0\.1\.0-beta\.1\.zip size is 11; expected 10/,
+  );
+  assert.match(
+    result.stderr,
+    /missing asset joessh-sync-0\.1\.0-beta\.1-linux-x64/,
+  );
+  assert.match(result.stderr, /unexpected asset renamed-sync-binary/);
+  assert.equal(JSON.parse(readFileSync(cleanupPath, "utf8")).deletedId, 424242);
+});
+
+test("rechecks the newly created draft by its exact numeric release ID", (t) => {
+  const root = createReleaseFixture(t);
+  const cleanupPath = join(root, "identity-change-release-cleanup.json");
+  const result = runPublishDraft(
+    root,
+    createFakeReleaseMachineCommands(root, {
+      captureReleaseCleanupPath: cleanupPath,
+      releaseIdLookupReturnsWrongIdentity: true,
+    }),
+  );
+
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.match(
+    result.stderr,
+    /GitHub API release identity changed from ID 424242 to 424243/,
+  );
+  assert.deepEqual(JSON.parse(readFileSync(cleanupPath, "utf8")), {
+    deletedId: 424242,
+    endpoint: "repos/JoeWorkspace/JoeSSH/releases/424242",
+    tag: "v0.1.0-beta.1",
+  });
+});
+
+test("fails with manual isolation instructions when draft deletion cannot be confirmed", (t) => {
+  const root = createReleaseFixture(t);
+  const cleanupPath = join(root, "unconfirmed-release-cleanup.json");
+  const result = runPublishDraft(
+    root,
+    createFakeReleaseMachineCommands(root, {
+      captureReleaseCleanupPath: cleanupPath,
+      releaseDeleteConfirmationUnknownFails: true,
+      tamperSnapshotDuringUpload: {
+        content: "evil bytes",
+        uploadName: "joessh-web-admin-0.1.0-beta.1.zip",
+      },
+    }),
+  );
+
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.match(result.stderr, /MANUAL ISOLATION REQUIRED/);
+  assert.match(result.stderr, /release ID 424242/);
+  assert.match(
+    result.stderr,
+    /gh api --method DELETE repos\/JoeWorkspace\/JoeSSH\/releases\/424242/,
+  );
+  assert.equal(JSON.parse(readFileSync(cleanupPath, "utf8")).deletedId, 424242);
+});
+
+test("always removes the private snapshot when GitHub draft creation fails", (t) => {
+  const root = createReleaseFixture(t);
+  const capturePath = join(root, "failed-release-create-capture.json");
+  const result = runPublishDraft(
+    root,
+    createFakeReleaseMachineCommands(root, {
+      captureReleaseCreatePath: capturePath,
+      releaseCreateFails: true,
+    }),
+  );
 
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /Git working tree outside reports\/release must be clean/);
+  assert.match(result.stderr, /draft creation failed/);
+  const capture = JSON.parse(readFileSync(capturePath, "utf8"));
+  assert.equal(capture.args.includes("--draft"), true);
+  assert.equal(
+    existsSync(capture.snapshotRoot),
+    false,
+    "the private snapshot must be removed on gh failure",
+  );
+});
+
+test("non-dry-run rejects a dirty Git working tree", (t) => {
+  const root = createReleaseFixture(t);
+  const result = runPublishDraft(
+    root,
+    createFakeReleaseMachineCommands(root, { dirtyStatus: " M package.json" }),
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stderr,
+    /Git working tree outside reports\/release must be clean/,
+  );
   assert.match(result.stderr, /M package\.json/);
 });
 
 test("non-dry-run rejects a missing release tag", (t) => {
   const root = createReleaseFixture(t);
-  const result = runPublishDraft(root, createFakeReleaseMachineCommands(root, { tagMissing: true }));
+  const result = runPublishDraft(
+    root,
+    createFakeReleaseMachineCommands(root, { tagMissing: true }),
+  );
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /Release tag v0\.1\.0-beta\.1 must exist/);
@@ -496,10 +1205,71 @@ test("non-dry-run rejects a missing release tag", (t) => {
 
 test("non-dry-run rejects a release tag that does not point at HEAD", (t) => {
   const root = createReleaseFixture(t);
-  const result = runPublishDraft(root, createFakeReleaseMachineCommands(root, { tagCommit: "def456" }));
+  const result = runPublishDraft(
+    root,
+    createFakeReleaseMachineCommands(root, { tagCommit: "def456" }),
+  );
 
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /Release tag v0\.1\.0-beta\.1 must point at HEAD/);
+  assert.match(
+    result.stderr,
+    /Release tag v0\.1\.0-beta\.1 must point at HEAD/,
+  );
+});
+
+test("non-dry-run rejects a missing or mismatched remote release tag", async (t) => {
+  const cases = [
+    [
+      "missing",
+      { remoteTagMissing: true },
+      /Remote release tag v0\.1\.0-beta\.1 must exist/,
+    ],
+    [
+      "mismatched",
+      { remoteTagCommit: "def456" },
+      /Remote release tag v0\.1\.0-beta\.1 points at def456/,
+    ],
+  ];
+
+  for (const [name, options, diagnostic] of cases) {
+    await t.test(name, (subtest) => {
+      const root = createReleaseFixture(subtest);
+      const result = runPublishDraft(
+        root,
+        createFakeReleaseMachineCommands(root, options),
+      );
+      assert.equal(result.status, 1);
+      assert.match(result.stderr, diagnostic);
+      assert.equal(
+        existsSync(join(root, "fake-github-release-state.json")),
+        false,
+      );
+    });
+  }
+});
+
+test("deletes a new draft if the remote tag moves during creation", (t) => {
+  const root = createReleaseFixture(t);
+  const cleanupPath = join(root, "moved-tag-release-cleanup.json");
+  const result = runPublishDraft(
+    root,
+    createFakeReleaseMachineCommands(root, {
+      captureReleaseCleanupPath: cleanupPath,
+      remoteTagCommitAfterCreate: "def456",
+    }),
+  );
+
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.match(
+    result.stderr,
+    /Remote release tag v0\.1\.0-beta\.1 points at def456/,
+  );
+  assert.match(
+    result.stderr,
+    /was deleted by exact ID and its absence was confirmed by both ID and tag/,
+  );
+  assert.equal(JSON.parse(readFileSync(cleanupPath, "utf8")).deletedId, 424242);
+  assert.equal(existsSync(join(root, "fake-github-release-state.json")), false);
 });
 
 test("non-dry-run rejects release provenance from a different Git source", (t) => {
@@ -517,15 +1287,37 @@ test("non-dry-run rejects release provenance from a different Git source", (t) =
 
 test("non-dry-run rejects unauthenticated GitHub CLI state", (t) => {
   const root = createReleaseFixture(t);
-  const result = runPublishDraft(root, createFakeReleaseMachineCommands(root, { ghAuthFails: true }));
+  const result = runPublishDraft(
+    root,
+    createFakeReleaseMachineCommands(root, { ghAuthFails: true }),
+  );
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /GitHub CLI must be authenticated/);
 });
 
+test("non-dry-run rejects failing GitHub release controls", (t) => {
+  const root = createReleaseFixture(t);
+  const result = runPublishDraft(
+    root,
+    createFakeReleaseMachineCommands(root, { githubControlsFail: true }),
+  );
+
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.match(result.stdout, /FAIL repository-public/);
+  assert.match(
+    result.stderr,
+    /GitHub release controls must pass before drafting a public release/,
+  );
+  assert.equal(existsSync(join(root, "fake-github-release-state.json")), false);
+});
+
 test("non-dry-run rejects duplicate GitHub releases", (t) => {
   const root = createReleaseFixture(t);
-  const result = runPublishDraft(root, createFakeReleaseMachineCommands(root, { duplicateRelease: true }));
+  const result = runPublishDraft(
+    root,
+    createFakeReleaseMachineCommands(root, { duplicateRelease: true }),
+  );
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /already exists/);
@@ -533,10 +1325,16 @@ test("non-dry-run rejects duplicate GitHub releases", (t) => {
 
 test("non-dry-run rejects ambiguous GitHub release lookup failures", (t) => {
   const root = createReleaseFixture(t);
-  const result = runPublishDraft(root, createFakeReleaseMachineCommands(root, { releaseViewUnknownFails: true }));
+  const result = runPublishDraft(
+    root,
+    createFakeReleaseMachineCommands(root, { releaseViewUnknownFails: true }),
+  );
 
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /Unable to confirm GitHub Release v0\.1\.0-beta\.1 does not already exist/);
+  assert.match(
+    result.stderr,
+    /Unable to confirm GitHub Release v0\.1\.0-beta\.1 does not already exist/,
+  );
 });
 
 test("dry run rejects missing required checksum manifests", (t) => {
@@ -563,7 +1361,11 @@ test("dry run rejects missing SBOM checksum manifests", (t) => {
 
 test("dry run rejects stale checksum manifests before drafting", (t) => {
   const root = createReleaseFixture(t);
-  writeFile(root, "reports/release/web/joessh-web-admin-0.1.0-beta.1.zip", "mutated web bundle");
+  writeFile(
+    root,
+    "reports/release/web/joessh-web-admin-0.1.0-beta.1.zip",
+    "mutated web bundle",
+  );
 
   const result = runDraft(root);
 
@@ -575,7 +1377,9 @@ test("dry run rejects stale checksum manifests before drafting", (t) => {
 test("dry run rejects Web Admin manifests without the release package", (t) => {
   const root = createReleaseFixture(t);
   writeFile(root, "apps/web/dist/index.html", "web dist");
-  writeManifest(root, "reports/release/web/SHA256SUMS.txt", [["web dist", "apps/web/dist/index.html"]]);
+  writeManifest(root, "reports/release/web/SHA256SUMS.txt", [
+    ["web dist", "apps/web/dist/index.html"],
+  ]);
 
   const result = runDraft(root);
 
@@ -595,15 +1399,44 @@ test("dry run rejects release upload files without checksum coverage", (t) => {
   assert.match(result.stderr, /reports\/release\/sync\/uncovered-smoke\.json/);
 });
 
-test("dry run rejects local-only handoff files in the release upload tree", (t) => {
+test("dry run rejects checksum-covered raw Cargo metadata renamed into the public upload tree", (t) => {
   const root = createReleaseFixture(t);
-  writeFile(root, "reports/release/desktop/formal-evidence-unblock-report.json", '{"decision":"no-go"}\n');
+  const path = "reports/release/renamed-cargo-metadata.json";
+  const content =
+    '{"workspace_root":"C:\\\\Users\\\\release-builder\\\\JoeSSH"}\n';
+  writeFile(root, path, content);
+  writeFile(
+    root,
+    "reports/release/SBOM-SHA256SUMS.txt",
+    `${readFile(root, "reports/release/SBOM-SHA256SUMS.txt")}${sha256(content)}  ${path}\n`,
+  );
 
   const result = runDraft(root);
 
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /Local-only handoff file\(s\) must not be uploaded/);
-  assert.match(result.stderr, /reports\/release\/desktop\/formal-evidence-unblock-report\.json/);
+  assert.match(result.stderr, /outside the exact public upload allowlist/);
+  assert.match(result.stderr, /reports\/release\/renamed-cargo-metadata\.json/);
+});
+
+test("dry run rejects local-only handoff files in the release upload tree", (t) => {
+  const root = createReleaseFixture(t);
+  writeFile(
+    root,
+    "reports/release/desktop/formal-evidence-unblock-report.json",
+    '{"decision":"no-go"}\n',
+  );
+
+  const result = runDraft(root);
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stderr,
+    /Local-only handoff file\(s\) must not be uploaded/,
+  );
+  assert.match(
+    result.stderr,
+    /reports\/release\/desktop\/formal-evidence-unblock-report\.json/,
+  );
 });
 
 test("dry run uploads only staged reports release artifacts", (t) => {
@@ -617,7 +1450,10 @@ test("dry run uploads only staged reports release artifacts", (t) => {
   const result = runDraft(root);
 
   assert.equal(result.status, 0, result.stdout + result.stderr);
-  assert.doesNotMatch(result.stdout, /apps\/desktop\/src-tauri\/target\/release\/bundle/);
+  assert.doesNotMatch(
+    result.stdout,
+    /apps\/desktop\/src-tauri\/target\/release\/bundle/,
+  );
   assert.doesNotMatch(result.stdout, /raw-setup\.exe/);
 });
 
@@ -629,15 +1465,27 @@ test("dry run rejects missing desktop release evidence before drafting", (t) => 
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /Missing desktop release evidence/);
-  assert.match(result.stderr, /reports\/release\/desktop\/release-evidence\.json/);
+  assert.match(
+    result.stderr,
+    /reports\/release\/desktop\/release-evidence\.json/,
+  );
 });
 
 test("dry run rejects desktop release evidence without workflow source provenance", (t) => {
   const root = createReleaseFixture(t);
-  rmSync(join(root, "reports", "release", "desktop", "release-evidence-source.json"));
-  writeManifest(root, "reports/release/desktop/release-evidence-SHA256SUMS.txt", [
-    [readFile(root, "reports/release/desktop/release-evidence.json"), "reports/release/desktop/release-evidence.json"],
-  ]);
+  rmSync(
+    join(root, "reports", "release", "desktop", "release-evidence-source.json"),
+  );
+  writeManifest(
+    root,
+    "reports/release/desktop/release-evidence-SHA256SUMS.txt",
+    [
+      [
+        readFile(root, "reports/release/desktop/release-evidence.json"),
+        "reports/release/desktop/release-evidence.json",
+      ],
+    ],
+  );
 
   const result = runDraft(root);
 

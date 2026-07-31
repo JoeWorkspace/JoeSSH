@@ -75,6 +75,7 @@ import {
   knownHostsClear,
   knownHostsList,
   knownHostsRemove,
+  thirdPartyNotices,
   type KnownHostEntry,
 } from "./ipc";
 import { ConnectModal } from "./ConnectModal";
@@ -137,6 +138,12 @@ import {
 } from "./desktopTerminalSession";
 import { builtinGroupNames, desktopGroupLabel } from "./desktopGroups";
 import { applyLocalizedDesktopMetadata } from "./desktopManifest";
+import { parseDesktopLaunchIntent } from "./desktopLaunchIntent";
+import {
+  desktopSurfacePolicy,
+  resolvePanelShortcutForSurfacePolicy,
+  sanitizeRightPanelForSurfacePolicy,
+} from "./desktopSurfacePolicy";
 import { splitConnectionTarget, type ConnectionTarget } from "./connectTarget";
 import {
   builtinConnectionDeleteUnavailableToast,
@@ -201,9 +208,10 @@ type TelemetryControls = {
   onChange: (enabled: boolean) => void;
 };
 
+const stagingConnectionName = ["staging", "api"].join("-");
 const initialTerminalTabs = [
   "prod-edge-01",
-  "staging-api",
+  stagingConnectionName,
   "db-replica-03",
 ] as const;
 const connections = [
@@ -226,7 +234,7 @@ const connections = [
     tags: ["sample", "ssh"],
   },
   {
-    name: "staging-api",
+    name: stagingConnectionName,
     host: "stg-api.atlas",
     group: "Staging",
     status: "sample",
@@ -331,7 +339,7 @@ const terminalLines = [
   "edge-gateway-7b977f84c9-8hw4s    2/2     Running   0          19h",
   "edge-gateway-7b977f84c9-hmlr9    2/2     Running   0          19h",
   "atlas@prod-edge-01:~$ tail -f /var/log/joessh/session.log",
-  "2026-05-24T02:17:14Z auth policy=jit role=incident-commander expires=00:42:18",
+  "2026-05-24T02:17:14Z host-key status=verified algorithm=ssh-ed25519",
   "2026-05-24T02:17:18Z port-forward local=:8443 remote=gateway:443 status=ready",
   "2026-05-24T02:17:22Z command palette opened by user=lin",
 ];
@@ -460,8 +468,18 @@ function App({
   telemetry: TelemetryControls;
 }) {
   const storedLayout = useMemo(() => getStoredLayout(), []);
+  const launchIntent = useMemo(
+    () =>
+      parseDesktopLaunchIntent(
+        typeof window === "undefined" ? "" : window.location.search,
+      ),
+    [],
+  );
   const [rightPanel, setRightPanel] = useState<RightPanel>(
-    storedLayout.rightPanel,
+    sanitizeRightPanelForSurfacePolicy(
+      launchIntent.panel ?? storedLayout.rightPanel,
+      desktopSurfacePolicy,
+    ),
   );
   const [terminalSessions, setTerminalSessions] = useState<
     Record<string, TerminalSession>
@@ -571,24 +589,19 @@ function App({
         group: groupState.connectionGroups[connection.name] ?? connection.group,
         ...getConnectionPresence(desktopSessionsRef.current[connection.name]),
       })),
-      ...customConnections.connections.map(
-        (connection): DesktopConnection => ({
-          name: connection.name,
-          host: connection.host,
-          group:
-            groupState.connectionGroups[connection.name] ?? connection.group,
-          port: connection.port,
-          ...getConnectionPresence(desktopSessionsRef.current[connection.name]),
-          tags: connection.tags,
-          username: connection.username,
-        }),
-      ),
-      ...quickConnections.map(
-        (connection): DesktopConnection => ({
-          ...connection,
-          ...getConnectionPresence(desktopSessionsRef.current[connection.name]),
-        }),
-      ),
+      ...customConnections.connections.map((connection): DesktopConnection => ({
+        name: connection.name,
+        host: connection.host,
+        group: groupState.connectionGroups[connection.name] ?? connection.group,
+        port: connection.port,
+        ...getConnectionPresence(desktopSessionsRef.current[connection.name]),
+        tags: connection.tags,
+        username: connection.username,
+      })),
+      ...quickConnections.map((connection): DesktopConnection => ({
+        ...connection,
+        ...getConnectionPresence(desktopSessionsRef.current[connection.name]),
+      })),
     ];
   }, [
     groupState.connectionGroups,
@@ -636,7 +649,7 @@ function App({
     }),
     [activeConnection.username, t],
   );
-  const [connectOpen, setConnectOpen] = useState(false);
+  const [connectOpen, setConnectOpen] = useState(launchIntent.connect);
   const [newConnectionOpen, setNewConnectionOpen] = useState(false);
   const [editConnection, setEditConnection] =
     useState<PersistedConnection | null>(null);
@@ -1153,16 +1166,12 @@ function App({
         event.key <= "5"
       ) {
         event.preventDefault();
-        const panels: RightPanel[] = [
-          "inspector",
-          "sftp",
-          "team",
-          "forwarding",
-          "settings",
-        ];
-        const idx = Number(event.key) - 1;
-        if (idx < panels.length) {
-          setRightPanel(panels[idx]);
+        const panel = resolvePanelShortcutForSurfacePolicy(
+          event.key,
+          desktopSurfacePolicy,
+        );
+        if (panel) {
+          setRightPanel(panel);
           setTerminalMaximized(false);
         }
         return;
@@ -1261,55 +1270,60 @@ function App({
     /^[\w.-]+@[\w.-]+(?::\d+)?$/.test(paletteState.input);
 
   const commands = useMemo(
-    () => [
-      {
-        command: "focus-terminal",
-        icon: <TerminalSquare size={16} aria-hidden="true" />,
-        name: t("desktop.openTerminal"),
-        shortcut: "Enter",
-        kind: "command" as const,
-      },
-      {
-        command: "open-team",
-        icon: <ShieldCheck size={16} aria-hidden="true" />,
-        name: t("desktop.requestElevated"),
-        shortcut: "E",
-        kind: "command" as const,
-      },
-      {
-        command: "copy-session",
-        icon: <Copy size={16} aria-hidden="true" />,
-        name: t("desktop.copySession"),
-        kind: "command" as const,
-      },
-      {
-        command: "disconnect",
-        icon: <X size={16} aria-hidden="true" />,
-        name: t("desktop.disconnect"),
-        kind: "command" as const,
-      },
-      {
-        command: "open-sftp",
-        icon: <HardDrive size={16} aria-hidden="true" />,
-        name: t("desktop.openSftp"),
-        shortcut: "Ctrl+2",
-        kind: "command" as const,
-      },
-      {
-        command: "open-forwarding",
-        icon: <Network size={16} aria-hidden="true" />,
-        name: t("desktop.openForwarding"),
-        shortcut: "Ctrl+4",
-        kind: "command" as const,
-      },
-      {
-        command: "open-shortcuts",
-        icon: <Command size={16} aria-hidden="true" />,
-        name: t("desktop.keyboardShortcuts"),
-        shortcut: "Ctrl+Shift+?",
-        kind: "command" as const,
-      },
-    ],
+    () =>
+      [
+        {
+          command: "focus-terminal",
+          icon: <TerminalSquare size={16} aria-hidden="true" />,
+          name: t("desktop.openTerminal"),
+          shortcut: "Enter",
+          kind: "command" as const,
+        },
+        {
+          command: "open-team",
+          icon: <ShieldCheck size={16} aria-hidden="true" />,
+          name: t("desktop.requestElevated"),
+          shortcut: "E",
+          kind: "command" as const,
+        },
+        {
+          command: "copy-session",
+          icon: <Copy size={16} aria-hidden="true" />,
+          name: t("desktop.copySession"),
+          kind: "command" as const,
+        },
+        {
+          command: "disconnect",
+          icon: <X size={16} aria-hidden="true" />,
+          name: t("desktop.disconnect"),
+          kind: "command" as const,
+        },
+        {
+          command: "open-sftp",
+          icon: <HardDrive size={16} aria-hidden="true" />,
+          name: t("desktop.openSftp"),
+          shortcut: "Ctrl+2",
+          kind: "command" as const,
+        },
+        {
+          command: "open-forwarding",
+          icon: <Network size={16} aria-hidden="true" />,
+          name: t("desktop.openForwarding"),
+          shortcut: "Ctrl+4",
+          kind: "command" as const,
+        },
+        {
+          command: "open-shortcuts",
+          icon: <Command size={16} aria-hidden="true" />,
+          name: t("desktop.keyboardShortcuts"),
+          shortcut: "Ctrl+Shift+?",
+          kind: "command" as const,
+        },
+      ].filter(
+        (command) =>
+          desktopSurfacePolicy.showFutureProductSurfaces ||
+          command.command !== "open-team",
+      ),
     [t],
   );
 
@@ -1472,7 +1486,10 @@ function App({
             setRightPanel("sftp");
             setTerminalMaximized(false);
           }
-          if (item.command === "open-team") {
+          if (
+            item.command === "open-team" &&
+            desktopSurfacePolicy.showFutureProductSurfaces
+          ) {
             setRightPanel("team");
             setTerminalMaximized(false);
           }
@@ -1593,6 +1610,7 @@ function App({
   return (
     <main
       className={`workbench ${sidebarCollapsed ? "sidebar-collapsed" : ""} ${terminalMaximized ? "terminal-maximized" : ""}`}
+      data-release-surface-profile={desktopSurfacePolicy.profile}
       data-locale={locale}
       dir={direction}
       lang={locale}
@@ -1874,7 +1892,9 @@ function App({
             options={[
               { value: "inspector", label: t("desktop.context") },
               { value: "sftp", label: t("desktop.sftp") },
-              { value: "team", label: t("desktop.team") },
+              ...(desktopSurfacePolicy.showFutureProductSurfaces
+                ? [{ value: "team" as const, label: t("desktop.team") }]
+                : []),
               { value: "forwarding", label: t("desktop.forwarding") },
               { value: "settings", label: t("desktop.settings") },
             ]}
@@ -1923,7 +1943,8 @@ function App({
               }
             />
           ) : null}
-          {rightPanel === "team" ? (
+          {desktopSurfacePolicy.showFutureProductSurfaces &&
+          rightPanel === "team" ? (
             <LazyTeamAccessPanel formatters={formatters} t={t} />
           ) : null}
           {rightPanel === "forwarding" ? (
@@ -1971,6 +1992,13 @@ function App({
                 onClear: handleClearKnownHosts,
                 onRemove: handleRemoveKnownHost,
               }}
+              legal={{
+                available: isDesktopRuntime(),
+                loadThirdPartyNotices: thirdPartyNotices,
+              }}
+              showFutureProductSurfaces={
+                desktopSurfacePolicy.showFutureProductSurfaces
+              }
               telemetry={telemetry}
             />
           ) : null}
@@ -1987,6 +2015,7 @@ function App({
         }}
         t={t}
         teamAccess={teamAccess}
+        showTeamAccess={desktopSurfacePolicy.showFutureProductSurfaces}
       />
 
       {paletteState.open ? (
@@ -2007,6 +2036,9 @@ function App({
         <ShortcutsOverlay
           desktopRuntime={isDesktopRuntime()}
           onClose={() => setShortcutsOpen(false)}
+          showFutureProductSurfaces={
+            desktopSurfacePolicy.showFutureProductSurfaces
+          }
           t={t}
         />
       ) : null}
@@ -2019,6 +2051,9 @@ function App({
             closeGettingStarted();
             setNewConnectionOpen(true);
           }}
+          showCompanionProductSurfaces={
+            desktopSurfacePolicy.showCompanionProductSurfaces
+          }
           t={t}
         />
       ) : null}
@@ -2434,7 +2469,7 @@ const errorMonitor = desktopTelemetryAvailable
   ? createErrorMonitor({
       app: "desktop",
       endpoint: desktopEnv.VITE_ATLASTERM_ERROR_MONITOR_ENDPOINT,
-      version: desktopEnv.VITE_ATLASTERM_APP_VERSION ?? "0.1.0-beta.9",
+      version: desktopEnv.VITE_ATLASTERM_APP_VERSION ?? "0.1.0-beta.10",
     })
   : createNoopErrorMonitor();
 

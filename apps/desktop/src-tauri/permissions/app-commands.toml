@@ -87,3 +87,8 @@ commands.allow = ["pty_close"]
 identifier = "allow-test-connection"
 description = "Allows the main window to test TCP reachability without opening a session."
 commands.allow = ["test_connection"]
+
+[[permission]]
+identifier = "allow-third-party-notices"
+description = "Allows the main window to read the immutable third-party notices bundled with this app build."
+commands.allow = ["third_party_notices"]

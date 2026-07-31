@@ -1,0 +1,10 @@
+# Intentionally empty: JoeSSH has no verified funding destination yet.
+#
+# This comments-only file is fail-closed. GitHub must not render a sponsor
+# button that points to a placeholder, another person's account, or an
+# unapproved checkout.
+#
+# After ownership, logged-out page, small-payment, refund/non-purchase wording,
+# and payout verification, follow docs/funding-and-checkout.md. Add exactly one
+# verified destination and update funding-operator-attestation.json in the same
+# reviewed commit. Do not commit template handles or URLs as active YAML values.

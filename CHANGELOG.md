@@ -7,9 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+> The changes below are staged for the `[0.1.0-beta.10]` release candidate.
+> They remain unreleased until the annotated tag points to the reviewed commit
+> and every external release gate is closed.
+
+### Added
+
+- A production UI system across Desktop, Mobile, and Web Admin with responsive
+  light/dark themes, accessibility coverage, Windows scaling checks, and
+  visual-regression baselines.
+- A commit-bound Windows invite pipeline for private Stage A dogfood, including
+  immutable handoff evidence and clean-VM promotion checks.
+- Separate Microsoft Store NSIS EXE and external-MSIX candidate contracts that
+  fail closed on signing, publisher identity, hashes, silent installation, and
+  Store-certification claims.
+- A built-product Microsoft Store runtime gate that exercises narrow-window,
+  light/dark, shortcut, command-palette, hidden-surface, and overflow behavior
+  with Playwright in CI and the formal hosted verifier.
+- Support, privacy, refund, sale, trademark, third-party notice, pricing, and
+  funding drafts that keep all unverified seller and checkout data blocked.
+- A read-only remote release-control audit for repository visibility, protected
+  `main`, vulnerability reporting, release environments, Actions artifacts,
+  caches, and externally confirmed billing readiness.
+- A redacted full-history Gitleaks gate with exact historical fixture
+  fingerprints and tests that reject broader rule or ignore configuration.
+
+### Fixed
+
+- Cross-platform dependency-lock portability, Desktop async interaction races,
+  SFTP path and transfer safety, PTY lifecycle behavior, forwarding cleanup,
+  Mobile sync behavior, Web Admin localization, and responsive UI states.
+- Public vulnerability disclosure links, workflow secret scope, dependency
+  auto-merge boundaries, and high-privilege workflow permissions.
+- Windows Store automation is now hosted-verification-only: externally produced
+  EXE/MSIX bytes require a URL and SHA-256, while build signing, OIDC,
+  self-hosted runners, local handoffs, and signing secrets stay outside the
+  workflow.
+
+### Changed
+
+- Rolled the candidate forward without moving the existing
+  `v0.1.0-beta.9` tag.
+- Made Windows Desktop the first adoption and revenue-validation lane while
+  keeping Community functionality MIT-licensed and keeping paid, hosted, and
+  unsupported-platform promises unavailable until their evidence gates pass.
+- Prefer a time-boxed Microsoft Store MSIX feasibility spike for the free
+  Community build, with public-CA-signed Tauri NSIS retained as the fallback.
+- Pinned CI actions to reviewed commit SHAs and disabled persisted checkout
+  credentials.
+
 ## [0.1.0-beta.9] - 2026-06-23
 
 ### Added
+
 - Public Beta dogfood evidence template and verifier covering the top Desktop,
   Web Admin, Sync, rollback, and release-evidence review tasks without allowing
   open P0/P1 findings.
@@ -24,6 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   configured and verified before the upstream admin token is injected.
 
 ### Fixed
+
 - Desktop host-key probing now ignores stale results when the connection form
   changes mid-probe.
 - Desktop SFTP listing, download, and overwrite flows now pin the directory
@@ -37,6 +88,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   silently reporting zero imported connections.
 
 ### Changed
+
 - Release readiness now requires the dogfood verifier, native SFTP path guard,
   forward lifecycle cleanup evidence, and unsigned-staging handoff guard.
 - Public release readiness now requires the repository handoff playbook and
@@ -53,16 +105,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0-beta.8] - 2026-06-23
 
 ### Fixed
+
 - Public Beta release notes now include the Sync Service and SHA256 evidence
   language required by the release readiness gate.
 
 ### Changed
+
 - Rolled the Public Beta candidate forward from `0.1.0-beta.7` to
   `0.1.0-beta.8` without moving the already-published beta7 tag.
 
 ## [0.1.0-beta.7] - 2026-06-23
 
 ### Added
+
 - Desktop formal evidence diagnostics for the Public Beta release handoff,
   including tag/HEAD state, remote ref publication, staged artifact coverage,
   signing secret names, workflow visibility, CI runs, and check-run annotations.
@@ -71,6 +126,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   canonical remote before it can dispatch the formal evidence workflow.
 
 ### Changed
+
 - Public Beta release docs now treat Desktop diagnostics and signing-secret
   templates as handoff-only local artifacts, separate from the final
   `reports/release/` upload tree.
@@ -80,6 +136,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0-beta.5] - 2026-06-22
 
 ### Added
+
 - Fixture-backed Public Beta release gate wrapper so release machines can run
   the full `qa:release:public` command under a local OpenSSH dogfood fixture
   while still writing real Desktop SSH smoke evidence first.
@@ -87,6 +144,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0-beta.4] - 2026-06-22
 
 ### Added
+
 - Public Beta release gate with release QA, Rust workspace checks, Tauri shell
   build check, production audit risk register validation, self-hosted Sync
   smoke, and visual QA.
@@ -103,6 +161,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that do not block the Desktop + Web Admin + self-hosted Sync Public Beta.
 
 ### Added
+
 - Service worker update notification with `sw-update-available` custom event and auto-reload on controller change
 - Periodic service worker update checks (every 60 minutes) for both desktop and web apps
 - Offline page `aria-live="polite"` region for screen reader announcements when connection restores
@@ -120,10 +179,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PWA shortcuts for Team Access, Port Forwarding, and Settings in desktop manifest
 
 ### Fixed
+
 - Removed stale `/sitemap.xml` reference from web `robots.txt` (no sitemap existed)
 - i18n check script (`scripts/check-i18n.cjs`) now reads from separate locale files instead of the monolithic `index.ts`
 
 ### Changed
+
 - ARCHITECTURE.md with system design, data flow, security layers, sync protocol, and testing strategy
 - Documentation section in README linking all project docs
 - Cross-reference from CONTRIBUTING.md to ARCHITECTURE.md
@@ -180,6 +241,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated ARCHITECTURE.md CI section with Rust job, i18n release gate, sync API docs check
 
 ### Changed
+
 - Desktop service worker navigation fallback now includes root page fallback (matches web SW behavior)
 - Raised coverage thresholds to the checked-in release gates across all metrics
 - Raised Lighthouse thresholds: performance 0.95, accessibility 1.0, best-practices 1.0, SEO 0.95
@@ -193,6 +255,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated ARCHITECTURE.md testing summary to reference the current QA gates
 
 ### Fixed
+
 - i18n check script (`scripts/check-i18n.cjs`) now reads from separate locale files instead of the monolithic `index.ts`
 - CONTRIBUTING.md referenced `en.json` instead of `en.ts` for locale file path
 - Removed unused imports in test files (panels.test.tsx, assertCompleteTranslations.test.ts, index.test.ts)
@@ -207,25 +270,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed duplicate "### Changed" section in CHANGELOG.md
 
 ### Security
+
 - Added X-Content-Type-Options meta tag verification
 - Added Referrer-Policy meta tag verification
 - Added Permissions-Policy header verification
 - Added Content-Security-Policy header verification
 - All security headers verified in CI pipeline
 
-## [0.1.0] - 2025-01-01
+## Pre-release prototype baseline - 2025-01-01
+
+> This was a repository scaffold, not a tagged `v0.1.0` production release.
+> Team collaboration, shared vault, Mobile, and Web Admin entries below
+> described prototype surfaces rather than a hosted or commercially supported
+> product.
 
 ### Added
-- Initial release
-- Desktop workbench (React + TypeScript + Vite)
-- Web admin console
-- Mobile companion (React Native + Expo)
-- SSH terminal integration
-- SFTP file management
-- Connection forwarding
-- Team collaboration features
-- Shared vault
-- Sync service (Rust Axum)
+
+- Initial repository prototype
+- Desktop workbench shell (React + TypeScript + Vite)
+- Web Admin snapshot prototype
+- Mobile companion preview (React Native + Expo)
+- SSH terminal, SFTP, and connection-forwarding prototypes
+- Team collaboration and shared-vault demo surfaces
+- Sync service prototype (Rust Axum)
 - 15 locale internationalization
 - Playwright E2E tests
 - Lighthouse CI integration

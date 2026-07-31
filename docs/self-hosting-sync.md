@@ -3,7 +3,23 @@
 Public Beta supports a self-hosted, single-process Sync Service. The JSON ledger
 is intended for one running service instance. Multi-writer or clustered
 production deployments require a transactional database backend and are outside
-the `0.1.0-beta.9` support promise.
+the `0.1.0-beta.10` support promise.
+
+## Data Confidentiality Boundary
+
+The Public Beta service authenticates routes but does not encrypt change
+payloads end to end. It persists and returns each JSON `payload` as submitted,
+so bearer authentication is not a substitute for payload confidentiality.
+
+- Terminate TLS at an authenticating reverse proxy for every non-loopback
+  deployment.
+- Do not submit SSH private keys, passwords, bearer tokens, terminal output, or
+  other secrets.
+- Clients or deployers that need field confidentiality must encrypt those fields
+  before submission and manage their own keys until JoeSSH ships a reviewed
+  encrypted-envelope protocol.
+- Filesystem and backup access to `ledger.json` must be treated as access to the
+  unencrypted submitted payloads.
 
 ## Required Configuration
 
@@ -60,7 +76,7 @@ ATLASTERM_SYNC_MAX_LEDGER_BYTES=67108864
 Build from the repository root:
 
 ```bash
-docker build -f services/sync/Dockerfile -t joessh-sync:0.1.0-beta.9 .
+docker build -f services/sync/Dockerfile -t joessh-sync:0.1.0-beta.10 .
 docker run --rm -p 4100:4100 \
   --read-only \
   --cap-drop=ALL \
@@ -75,7 +91,7 @@ docker run --rm -p 4100:4100 \
   -e ATLASTERM_SYNC_CORS_ORIGINS=https://admin.example.com \
   -e ATLASTERM_SYNC_STORAGE_PATH=/var/lib/joessh-sync/ledger.json \
   -v joessh-sync-data:/var/lib/joessh-sync \
-  joessh-sync:0.1.0-beta.9
+  joessh-sync:0.1.0-beta.10
 ```
 
 The container defaults to `ATLASTERM_SYNC_BIND=0.0.0.0:4100` and
@@ -85,8 +101,12 @@ container restarts. The image includes a Docker `HEALTHCHECK` that probes
 `/healthz` on `127.0.0.1:4100`; if you run the service on a different container
 port, set `ATLASTERM_SYNC_HEALTHCHECK_PORT` to the listening port used by
 `ATLASTERM_SYNC_BIND`.
-The release Dockerfile builds with `Cargo.lock` via `cargo build --locked`, and
-the repository `.dockerignore` excludes Git metadata, Node dependencies, Rust
+The release Dockerfile builds with `Cargo.lock` via `cargo build --locked`,
+uses the repository's exact Rust `1.96.0` toolchain, and pins both build and
+runtime base images by multi-platform manifest digest. Dependabot checks the
+Docker inputs weekly; review and merge a digest update only after the full
+release gate passes. The repository `.dockerignore` excludes Git metadata,
+Node dependencies, Rust
 targets, generated dist files, coverage, env files, and release reports from
 the build context. Keep the runtime root filesystem read-only, drop Linux
 capabilities, enable `no-new-privileges`, and set memory, CPU, process, and

@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
+import { parseDocument } from "yaml";
 
 const root = resolve(
   readCliValue("--root") ?? resolve(import.meta.dirname, ".."),
@@ -10,6 +11,65 @@ const expectedVersion = rootPackageJson.version;
 const expectedReleaseTag = `v${expectedVersion}`;
 const allowUnhealthyGit = process.argv.includes("--allow-unhealthy-git");
 const checks = [];
+const PUBLIC_RELEASE_PREREQUISITES = Object.freeze([
+  "lint",
+  "typecheck",
+  "test-unit",
+  "test-mobile",
+  "build",
+  "test-e2e",
+  "store-runtime-windows",
+  "visual-qa",
+  "security-audit",
+  "rust",
+  "desktop-real-ssh-smoke",
+  "tauri-shell",
+  "lighthouse",
+]);
+const PUBLIC_RELEASE_RESULT_ENV = Object.freeze({
+  LINT_RESULT: "${{ needs.lint.result }}",
+  TYPECHECK_RESULT: "${{ needs.typecheck.result }}",
+  TEST_UNIT_RESULT: "${{ needs.test-unit.result }}",
+  TEST_MOBILE_RESULT: "${{ needs.test-mobile.result }}",
+  BUILD_RESULT: "${{ needs.build.result }}",
+  TEST_E2E_RESULT: "${{ needs.test-e2e.result }}",
+  STORE_RUNTIME_WINDOWS_RESULT: "${{ needs.store-runtime-windows.result }}",
+  VISUAL_QA_RESULT: "${{ needs.visual-qa.result }}",
+  SECURITY_AUDIT_RESULT: "${{ needs.security-audit.result }}",
+  RUST_RESULT: "${{ needs.rust.result }}",
+  DESKTOP_REAL_SSH_SMOKE_RESULT: "${{ needs.desktop-real-ssh-smoke.result }}",
+  TAURI_SHELL_RESULT: "${{ needs.tauri-shell.result }}",
+  LIGHTHOUSE_RESULT: "${{ needs.lighthouse.result }}",
+});
+const PUBLIC_RELEASE_PREREQUISITE_GATE_RUN = [
+  "set -euo pipefail",
+  "failed=()",
+  "require_success() {",
+  '  local job="$1"',
+  '  local result="$2"',
+  '  if [[ "$result" != "success" ]]; then',
+  '    failed+=("${job}=${result}")',
+  "  fi",
+  "}",
+  'require_success "lint" "${LINT_RESULT}"',
+  'require_success "typecheck" "${TYPECHECK_RESULT}"',
+  'require_success "test-unit" "${TEST_UNIT_RESULT}"',
+  'require_success "test-mobile" "${TEST_MOBILE_RESULT}"',
+  'require_success "build" "${BUILD_RESULT}"',
+  'require_success "test-e2e" "${TEST_E2E_RESULT}"',
+  'require_success "store-runtime-windows" "${STORE_RUNTIME_WINDOWS_RESULT}"',
+  'require_success "visual-qa" "${VISUAL_QA_RESULT}"',
+  'require_success "security-audit" "${SECURITY_AUDIT_RESULT}"',
+  'require_success "rust" "${RUST_RESULT}"',
+  'require_success "desktop-real-ssh-smoke" "${DESKTOP_REAL_SSH_SMOKE_RESULT}"',
+  'require_success "tauri-shell" "${TAURI_SHELL_RESULT}"',
+  'require_success "lighthouse" "${LIGHTHOUSE_RESULT}"',
+  "if (( ${#failed[@]} != 0 )); then",
+  "  printf 'Public Release Readiness blocked by prerequisite results:\\n' >&2",
+  `  printf ' - %s\\n' "\${failed[@]}" >&2`,
+  "  exit 1",
+  "fi",
+].join("\n");
 
 checkGitHealth();
 checkVersions();
@@ -172,6 +232,7 @@ function checkPackageScripts() {
     "test:release-readiness",
     "test:web-admin-bundle-token-scan",
     "test:mobile-public-env",
+    "test:third-party-licenses",
     "test:sync-release-package",
     "test:sync-release-evidence",
     "test:web-release-verify",
@@ -180,23 +241,25 @@ function checkPackageScripts() {
     "qa:release-provenance",
     "qa:release-rc-audit",
     "qa:release-readiness",
+    "qa:third-party-licenses",
+    "qa:release-preparation:contracts",
+    "qa:release-preparation",
     "qa:web-admin-bundle-token-scan",
     "qa:mobile-public-env",
     "qa:sync-release-package",
     "qa:sync-release-evidence",
     "qa:sync:release-backup-restore-smoke",
     "release:desktop:build",
+    "release:desktop:legal-resource",
     "release:desktop:package",
     "release:desktop:checksums",
     "release:desktop:secret-template",
-    "release:desktop:configure-secrets",
     "release:desktop:evidence-diagnostics",
     "release:desktop:verify-evidence",
     "release:desktop:evidence-download",
-    "release:desktop:evidence-preflight",
-    "release:desktop:evidence-workflow",
     "release:desktop:draft",
     "release:desktop:unsigned-staging-report",
+    "release:history-secret-scan",
     "release:dogfood-template",
     "release:publish-preflight",
     "release:provenance",
@@ -206,6 +269,8 @@ function checkPackageScripts() {
     "release:verify-checksums",
     "release:sbom",
     "release:sbom:verify",
+    "release:third-party-licenses",
+    "release:third-party-licenses:verify",
     "release:sync",
     "release:web",
   ]) {
@@ -238,6 +303,21 @@ function checkPackageScripts() {
     desktopChecksumsScript,
   );
 
+  const releasePreparationScript =
+    packageJson.scripts?.["qa:release-preparation"] ?? "";
+  passIf(
+    releasePreparationScript ===
+      "npm run qa:release-preparation:contracts && npm run release:history-secret-scan",
+    "Release preparation gate executes the real full-history secret scan",
+    releasePreparationScript,
+  );
+  passIf(
+    packageJson.scripts?.["release:history-secret-scan"] ===
+      "node scripts/check-git-history-secrets.mjs",
+    "Full-history secret scan uses the reviewed fail-closed checker",
+    packageJson.scripts?.["release:history-secret-scan"] ?? "",
+  );
+
   const releaseVerifyChecksumsScript =
     packageJson.scripts?.["release:verify-checksums"] ?? "";
   passIf(
@@ -262,23 +342,17 @@ function checkPackageScripts() {
     releaseProvenanceVerifyScript,
   );
 
-  const desktopEvidencePreflightScript =
-    packageJson.scripts?.["release:desktop:evidence-preflight"] ?? "";
   passIf(
-    desktopEvidencePreflightScript.includes(
-      "desktop-release-evidence-preflight.mjs",
-    ),
-    "Desktop formal evidence preflight script checks release prerequisites",
-    desktopEvidencePreflightScript,
+    !packageJson.scripts?.["release:desktop:configure-secrets"] &&
+      !packageJson.scripts?.["release:desktop:evidence-preflight"] &&
+      !packageJson.scripts?.["release:desktop:evidence-workflow"],
+    "Root package exposes no Desktop signing mutation, preflight, or workflow dispatch command",
   );
-  const desktopEvidenceWorkflowScript =
-    packageJson.scripts?.["release:desktop:evidence-workflow"] ?? "";
   passIf(
-    desktopEvidenceWorkflowScript.includes(
-      "desktop-release-evidence-preflight.mjs",
-    ) && desktopEvidenceWorkflowScript.includes("--dispatch"),
-    "Desktop formal evidence workflow script dispatches through the preflight guard",
-    desktopEvidenceWorkflowScript,
+    packageJson.scripts?.["release:desktop:secret-template"] ===
+      "node scripts/configure-desktop-release-secrets.mjs --write-template",
+    "Desktop signer template command is offline and template-only",
+    packageJson.scripts?.["release:desktop:secret-template"] ?? "",
   );
   const desktopEvidenceDownloadScript =
     packageJson.scripts?.["release:desktop:evidence-download"] ?? "";
@@ -288,15 +362,6 @@ function checkPackageScripts() {
     ),
     "Desktop formal evidence download script imports workflow evidence",
     desktopEvidenceDownloadScript,
-  );
-  const desktopConfigureSecretsScript =
-    packageJson.scripts?.["release:desktop:configure-secrets"] ?? "";
-  passIf(
-    desktopConfigureSecretsScript.includes(
-      "configure-desktop-release-secrets.mjs",
-    ),
-    "Desktop formal evidence secret configuration script sets signing secrets",
-    desktopConfigureSecretsScript,
   );
   const desktopEvidenceDiagnosticsScript =
     packageJson.scripts?.["release:desktop:evidence-diagnostics"] ?? "";
@@ -447,14 +512,21 @@ function checkCiPublicReleaseWiring() {
     "npm run qa:sync-release-evidence",
     "npm run qa:web-release",
     "npm run qa:release-sbom",
+    "npm run qa:third-party-licenses",
     "npm run qa:release-draft",
     "npm run qa:release-publish-preflight",
+    "npm run qa:release-preparation",
     "npm run qa:release-provenance",
     "npm run qa:lighthouse-audit",
     "npm run test:web-admin-bundle-token-scan",
     "npm run qa:e2e:fresh",
     "npm run qa:e2e:web-real-sync:fresh",
     "npm run qa:e2e:visual:fresh",
+    "npx --no-install vitest run --coverage",
+    "npx --no-install playwright install --with-deps chromium",
+    "npx --no-install playwright install chromium",
+    "npm install --global --ignore-scripts --no-audit --no-fund npm@10.9.7",
+    'test "$(npm --version)" = "10.9.7"',
     "npm run qa:prod-audit",
     "npm run qa:desktop:real-ssh-smoke",
     'JOESSH_REAL_SSH_SMOKE: "1"',
@@ -463,10 +535,12 @@ function checkCiPublicReleaseWiring() {
     "npm run qa:tauri",
     "npm run qa:mobile:native-preflight",
     "npm run qa:mobile-public-env",
-    "cargo install cargo-audit --locked",
+    "cargo install cargo-audit --version 0.22.2 --locked",
     "cargo audit --deny warnings",
     "npm run release:sbom",
     "npm run release:sbom:verify",
+    "npm run release:third-party-licenses",
+    "npm run release:third-party-licenses:verify",
     "npm run qa:web-admin-proxy-smoke",
     "npm run qa:web-admin-bundle-token-scan",
     "npm run qa:web-admin-sync-topology-release-smoke",
@@ -477,11 +551,83 @@ function checkCiPublicReleaseWiring() {
     "npm run qa:sync:backup-restore-smoke",
     "node scripts/verify-sync-release-evidence.mjs",
     "node scripts/check-public-release-readiness.mjs",
+    "fetch-depth: 0",
+    "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz",
+    "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb",
+    "sha256sum --check --strict -",
+    'if [[ "${actual_version}" != "${GITLEAKS_VERSION}" ]]; then',
+    "Scan full Git history before dependency installation",
+    "17692ae221e51b1fe8fa4cd7862e02258d23a8873fc75ebd12251a0372fa2dfe",
+    "a60c709073214edf6582b7cb911364b184743516b30a4970493195d04ee47ccf",
+    '"${gitleaks_bin}" git',
+    "JOESSH_GITLEAKS_COMMAND: ${{ runner.temp }}/gitleaks-bin/gitleaks",
   ];
 
   for (const snippet of requiredSnippets) {
     passIf(ci.includes(snippet), `CI public release gate runs '${snippet}'`);
   }
+
+  const workflow = parseWorkflow(ci);
+  const publicReleaseJob = isRecord(
+    workflow?.jobs?.["public-release-readiness"],
+  )
+    ? workflow.jobs["public-release-readiness"]
+    : null;
+  const prerequisiteGate =
+    publicReleaseJob &&
+    Array.isArray(publicReleaseJob.steps) &&
+    isRecord(publicReleaseJob.steps[0])
+      ? publicReleaseJob.steps[0]
+      : null;
+  passIf(
+    publicReleaseJob?.if === "${{ always() }}",
+    "CI Public Release Readiness always runs after every prerequisite result",
+    "expected the exact job-level condition '${{ always() }}'",
+  );
+  passIf(
+    publicReleaseJob !== null &&
+      JSON.stringify(publicReleaseJob.needs) ===
+        JSON.stringify(PUBLIC_RELEASE_PREREQUISITES) &&
+      prerequisiteGate?.name === "Require every prerequisite job to succeed" &&
+      prerequisiteGate?.shell === "bash" &&
+      JSON.stringify(prerequisiteGate?.env) ===
+        JSON.stringify(PUBLIC_RELEASE_RESULT_ENV) &&
+      normalizeLineEndings(prerequisiteGate?.run ?? "").trim() ===
+        PUBLIC_RELEASE_PREREQUISITE_GATE_RUN,
+    "CI Public Release Readiness fails closed on every exact prerequisite result",
+    "expected the complete needs/result mapping and first-step success-only assertion contract",
+  );
+
+  const publicReleaseJobMatch = ci.match(
+    /(?:^|\n) {2}public-release-readiness:\s*\n/,
+  );
+  let publicReleaseJobText = "";
+  if (publicReleaseJobMatch?.index !== undefined) {
+    const start = publicReleaseJobMatch.index + publicReleaseJobMatch[0].length;
+    const remainder = ci.slice(start);
+    const nextJob = remainder.match(/\n {2}[A-Za-z0-9_-]+:\s*\n/);
+    publicReleaseJobText =
+      nextJob?.index === undefined
+        ? remainder
+        : remainder.slice(0, nextJob.index);
+  }
+  const licenseChain = [
+    "npm run release:sbom",
+    "npm run release:sbom:verify",
+    "npm run release:third-party-licenses",
+    "npm run release:third-party-licenses:verify",
+  ];
+  let previousLicenseStep = -1;
+  const orderedLicenseChain = licenseChain.every((step) => {
+    const index = publicReleaseJobText.indexOf(step);
+    const ordered = index > previousLicenseStep;
+    previousLicenseStep = index;
+    return ordered;
+  });
+  passIf(
+    publicReleaseJobText !== "" && orderedLicenseChain,
+    "CI Public Release Readiness runs SBOM generation/verification before full third-party license generation/verification",
+  );
   passIf(
     !/\bnpm run qa:e2e(?:\s|$)/.test(ci),
     "CI E2E job avoids non-fresh E2E server reuse",
@@ -531,8 +677,14 @@ function checkReleaseToolingFiles() {
     "scripts/smoke-web-admin-sync-release-topology.mjs",
     "scripts/smoke-sync-backup-restore.mjs",
     "scripts/smoke-sync-config-guard.mjs",
+    "scripts/generate-release-sbom.mjs",
     "scripts/verify-release-sbom.mjs",
     "scripts/verify-release-sbom.test.mjs",
+    "scripts/release-sbom-contract.mjs",
+    "scripts/generate-third-party-licenses.mjs",
+    "scripts/verify-third-party-licenses.mjs",
+    "scripts/third-party-license-contract.mjs",
+    "scripts/third-party-licenses.test.mjs",
     "scripts/generate-release-provenance.mjs",
     "scripts/verify-release-provenance.mjs",
     "scripts/verify-release-provenance.test.mjs",
@@ -574,14 +726,18 @@ function checkReleaseToolingFiles() {
     "Desktop release packager records artifact SHA256 in release evidence",
   );
   passIf(
-    desktopPackager.includes("Desktop bundle source contains artifact(s) that do not include") &&
+    desktopPackager.includes(
+      "Desktop bundle source contains artifact(s) that do not include",
+    ) &&
       desktopPackager.includes("releaseVersion") &&
       desktopPackager.includes("basename(artifact.path)"),
     "Desktop release packager rejects stale source bundle artifacts before staging",
   );
   passIf(
     desktopPackager.includes("validateSignatureEvidence(sourceArtifacts)") &&
-      desktopPackager.includes("Windows Desktop artifacts require --windows-signature-verification") &&
+      desktopPackager.includes(
+        "Windows Desktop artifacts require --windows-signature-verification",
+      ) &&
       desktopPackager.indexOf("validateSignatureEvidence(sourceArtifacts)") <
         desktopPackager.indexOf("mkdirSync(outputDir"),
     "Desktop release packager validates signing evidence before staging artifacts",
@@ -612,7 +768,9 @@ function checkReleaseToolingFiles() {
   passIf(
     desktopEvidenceVerifier.includes("release-evidence-source.json") &&
       desktopEvidenceVerifier.includes("--require-source") &&
-      desktopEvidenceVerifier.includes("workflowRun.headSha must match releaseTagCommit") &&
+      desktopEvidenceVerifier.includes(
+        "workflowRun.headSha must match releaseTagCommit",
+      ) &&
       desktopEvidenceVerifier.includes("Package Formal Desktop Evidence"),
     "Desktop release evidence verifier can require formal workflow source provenance",
   );
@@ -626,12 +784,23 @@ function checkReleaseToolingFiles() {
   const desktopEvidencePreflight =
     readTextIfExists("scripts/desktop-release-evidence-preflight.mjs") ?? "";
   passIf(
-    desktopEvidencePreflight.includes("repos/${repo}/actions/secrets") &&
-      desktopEvidencePreflight.includes("ATLASTERM_WINDOWS_CERTIFICATE") &&
-      desktopEvidencePreflight.includes("ATLASTERM_APPLE_CERTIFICATE") &&
-      desktopEvidencePreflight.includes("formal_evidence=true") &&
-      desktopEvidencePreflight.includes("workflowRunArgs"),
-    "Desktop formal evidence preflight verifies required GitHub secret names before dispatch",
+    desktopEvidencePreflight.includes("FORMAL_SIGNING_DISABLED") &&
+      desktopEvidencePreflight.includes(
+        "approved externally managed isolated signer",
+      ) &&
+      desktopEvidencePreflight.includes(
+        "historical offline evidence verification tools do not form a runnable signing chain",
+      ) &&
+      !/node:(?:child_process|https?|net)|\b(?:spawn|exec)(?:Sync)?\s*\(|\bfetch\s*\(/.test(
+        desktopEvidencePreflight,
+      ) &&
+      !desktopEvidencePreflight.includes("process.env") &&
+      !desktopEvidencePreflight.includes("formal_evidence=true") &&
+      !desktopEvidencePreflight.includes("desktop-release-signing") &&
+      !/ATLASTERM_(?:WINDOWS|APPLE|KEYCHAIN)_[A-Z0-9_]+/.test(
+        desktopEvidencePreflight,
+      ),
+    "Desktop formal evidence preflight is a fail-closed compatibility guard with no credential or dispatch path",
   );
 
   const desktopEvidenceDownloader =
@@ -639,72 +808,139 @@ function checkReleaseToolingFiles() {
   passIf(
     desktopEvidenceDownloader.includes("Package Formal Desktop Evidence") &&
       desktopEvidenceDownloader.includes("--run-id is required") &&
-      desktopEvidenceDownloader.includes("verify-desktop-release-evidence.mjs") &&
+      desktopEvidenceDownloader.includes(
+        "verify-desktop-release-evidence.mjs",
+      ) &&
       desktopEvidenceDownloader.includes("--require-source") &&
       desktopEvidenceDownloader.includes("release-evidence-source.json") &&
       desktopEvidenceDownloader.includes("workflowDatabaseId") &&
       desktopEvidenceDownloader.includes("artifact.expired") &&
       desktopEvidenceDownloader.includes("reports/release/desktop/") &&
-      desktopEvidenceDownloader.includes("check-runs/${checkRunId}/annotations"),
+      desktopEvidenceDownloader.includes(
+        "check-runs/${checkRunId}/annotations",
+      ),
     "Desktop formal evidence downloader imports only verified workflow evidence",
   );
   const desktopReleaseWorkflow =
     readTextIfExists(".github/workflows/desktop-release-artifacts.yml") ?? "";
   passIf(
-    desktopReleaseWorkflow.includes("Collect macOS DMG diagnostics") &&
-      desktopReleaseWorkflow.includes("desktop-macos-dmg-diagnostics") &&
-      desktopReleaseWorkflow.includes("bundle_dmg.sh") &&
-      desktopReleaseWorkflow.includes("hdiutil info"),
-    "Desktop release workflow preserves macOS DMG failure diagnostics",
+    desktopReleaseWorkflow.includes("FORMAL_SIGNING_DISABLED") &&
+      desktopReleaseWorkflow.includes("desktop-unsigned-bundle-") &&
+      !desktopReleaseWorkflow.includes("Package Formal Desktop Evidence") &&
+      !desktopReleaseWorkflow.includes("${{ secrets.") &&
+      !/^\s*environment:/m.test(desktopReleaseWorkflow) &&
+      !/^\s*id-token:/m.test(desktopReleaseWorkflow),
+    "Desktop release workflow keeps formal signing disabled and unsigned staging unprivileged",
   );
 
   const requiredRealSshSmokeEnv =
     readTextIfExists("scripts/require-real-ssh-smoke-env.mjs") ?? "";
   passIf(
     requiredRealSshSmokeEnv.includes("JOESSH_REAL_SSH_SMOKE") &&
-    requiredRealSshSmokeEnv.includes("JOESSH_REAL_SSH_HOST") &&
-    requiredRealSshSmokeEnv.includes("JOESSH_REAL_SSH_PASSWORD") &&
+      requiredRealSshSmokeEnv.includes("JOESSH_REAL_SSH_HOST") &&
+      requiredRealSshSmokeEnv.includes("JOESSH_REAL_SSH_PASSWORD") &&
       requiredRealSshSmokeEnv.includes("JOESSH_REAL_SSH_PRIVATE_KEY_PATH") &&
       requiredRealSshSmokeEnv.includes("JOESSH_REAL_SSH_REMOTE_DIR") &&
-      requiredRealSshSmokeEnv.includes("JOESSH_REAL_SSH_PORT must be an integer"),
+      requiredRealSshSmokeEnv.includes(
+        "JOESSH_REAL_SSH_PORT must be an integer",
+      ),
     "Required Desktop SSH smoke env guard rejects missing real dogfood fixtures",
   );
   const realSshFixtureRunner =
     readTextIfExists("scripts/run-real-ssh-smoke-fixture.mjs") ?? "";
+  const realSshEvidencePath =
+    /resolve\(\s*root,\s*"reports",\s*"smoke",\s*"desktop",\s*"real-ssh-smoke\.json",?\s*\)/u;
+  const realSshEvidenceChecksumPath =
+    /resolve\(\s*root,\s*"reports",\s*"smoke",\s*"desktop",\s*"real-ssh-smoke-SHA256SUMS\.txt",?\s*\)/u;
   passIf(
-    realSshFixtureRunner.includes("reports\", \"smoke\", \"desktop\", \"real-ssh-smoke.json") &&
+    realSshEvidencePath.test(realSshFixtureRunner) &&
+      realSshEvidenceChecksumPath.test(realSshFixtureRunner) &&
       realSshFixtureRunner.includes("JOESSH_REAL_SSH_PRIVATE_KEY_PATH") &&
       realSshFixtureRunner.includes("qa:desktop:real-ssh-smoke:required") &&
-      realSshFixtureRunner.includes("local forwarding start/traffic/shutdown"),
+      realSshFixtureRunner.includes(
+        "local forwarding start/traffic/shutdown",
+      ) &&
+      realSshFixtureRunner.includes(
+        "const sourceState = captureSourceState();",
+      ) &&
+      realSshFixtureRunner.includes(
+        "const wrappedGate = classifyWrappedGate(wrappedCommand);",
+      ) &&
+      realSshFixtureRunner.includes(
+        "const passed = smokePassed && wrappedPassed && sourceBound;",
+      ) &&
+      realSshFixtureRunner.includes("exitCode = wrappedResult.status ?? 1;") &&
+      realSshFixtureRunner.includes("if (!evidencePassed && exitCode === 0)") &&
+      realSshFixtureRunner.includes('status: passed ? "passed" : "failed"') &&
+      realSshFixtureRunner.includes("version: packageVersion") &&
+      realSshFixtureRunner.includes("gitCommit") &&
+      realSshFixtureRunner.includes("gitDirty") &&
+      realSshFixtureRunner.includes('"qa:beta:windows:source"') &&
+      realSshFixtureRunner.includes('"qa:release:public"') &&
+      realSshFixtureRunner.includes("sha256(outputPath)") &&
+      realSshFixtureRunner.includes("toReleasePath(outputPath)"),
     "Desktop SSH smoke fixture runner writes reusable dogfood evidence",
   );
 
   const desktopSecretConfigurator =
     readTextIfExists("scripts/configure-desktop-release-secrets.mjs") ?? "";
   passIf(
-    desktopSecretConfigurator.includes("ATLASTERM_WINDOWS_CERTIFICATE_FILE") &&
-      desktopSecretConfigurator.includes("ATLASTERM_APPLE_CERTIFICATE_FILE") &&
+    desktopSecretConfigurator.includes("FORMAL_SIGNING_DISABLED") &&
       desktopSecretConfigurator.includes("--write-template") &&
-      desktopSecretConfigurator.includes("reports/handoff/desktop") &&
-      desktopSecretConfigurator.includes("secret-input-template.env") &&
-      desktopSecretConfigurator.includes('"secret", "set"') &&
-      desktopSecretConfigurator.includes("--body-file") &&
-      desktopSecretConfigurator.includes("desktop-release-evidence-preflight.mjs"),
-    "Desktop formal evidence secret configurator sets GitHub secrets from env or files without command-line values",
+      desktopSecretConfigurator.includes(
+        "reports/handoff/desktop/external-signer-input-template.env",
+      ) &&
+      desktopSecretConfigurator.includes(
+        "Never import, upload, copy, or pass this file to GitHub",
+      ) &&
+      desktopSecretConfigurator.includes('flag: "wx"') &&
+      !/node:(?:child_process|https?|net)|\b(?:spawn|exec)(?:Sync)?\s*\(|\bfetch\s*\(/.test(
+        desktopSecretConfigurator,
+      ) &&
+      !desktopSecretConfigurator.includes("process.env") &&
+      !desktopSecretConfigurator.includes("readFile") &&
+      !desktopSecretConfigurator.includes('"secret", "set"') &&
+      !desktopSecretConfigurator.includes("desktop-release-signing") &&
+      !desktopSecretConfigurator.includes("--repo") &&
+      !desktopSecretConfigurator.includes("--verify-only") &&
+      !/ATLASTERM_(?:WINDOWS|APPLE|KEYCHAIN)_[A-Z0-9_]+/.test(
+        desktopSecretConfigurator,
+      ),
+    "Desktop signing configurator is limited to a local gitignored non-secret handoff template",
   );
   const desktopEvidenceDiagnostics =
     readTextIfExists("scripts/diagnose-desktop-release-evidence.mjs") ?? "";
   passIf(
-    desktopEvidenceDiagnostics.includes("formal-evidence-unblock-report.json") &&
+    desktopEvidenceDiagnostics.includes(
+      "formal-evidence-unblock-report.json",
+    ) &&
       desktopEvidenceDiagnostics.includes("reports/handoff/desktop") &&
       desktopEvidenceDiagnostics.includes("release-evidence-source.json") &&
       desktopEvidenceDiagnostics.includes("release-remote-ref") &&
-      desktopEvidenceDiagnostics.includes("desktop-signing-secrets") &&
+      desktopEvidenceDiagnostics.includes("desktop-formal-signing-disabled") &&
+      desktopEvidenceDiagnostics.includes("FORMAL_SIGNING_DISABLED") &&
+      desktopEvidenceDiagnostics.includes(
+        "approved externally managed isolated signer",
+      ) &&
       desktopEvidenceDiagnostics.includes("release-desktop-stale-artifacts") &&
       desktopEvidenceDiagnostics.includes("github-ci") &&
-      desktopEvidenceDiagnostics.includes("check-runs/${checkRunId}/annotations") &&
-      desktopEvidenceDiagnostics.includes("verify-desktop-release-evidence.mjs"),
-    "Desktop formal evidence diagnostics report binds local evidence, signing secrets, workflow runs, and CI annotations",
+      desktopEvidenceDiagnostics.includes(
+        "check-runs/${checkRunId}/annotations",
+      ) &&
+      desktopEvidenceDiagnostics.includes(
+        "verify-desktop-release-evidence.mjs",
+      ) &&
+      !desktopEvidenceDiagnostics.includes("desktop-release-signing") &&
+      !desktopEvidenceDiagnostics.includes(
+        "release:desktop:configure-secrets",
+      ) &&
+      !desktopEvidenceDiagnostics.includes(
+        "release:desktop:evidence-workflow",
+      ) &&
+      !/ATLASTERM_(?:WINDOWS|APPLE|KEYCHAIN)_[A-Z0-9_]+/.test(
+        desktopEvidenceDiagnostics,
+      ),
+    "Desktop formal evidence diagnostics bind local evidence, the disabled signing boundary, workflow visibility, and CI annotations",
   );
   const desktopEvidenceParity =
     readTextIfExists("scripts/check-desktop-release-evidence-parity.mjs") ?? "";
@@ -713,10 +949,23 @@ function checkReleaseToolingFiles() {
       desktopEvidenceParity.includes("Desktop Release Artifacts") &&
       desktopEvidenceParity.includes("Package Formal Desktop Evidence") &&
       desktopEvidenceParity.includes("desktop-release-evidence") &&
-      desktopEvidenceParity.includes("ATLASTERM_WINDOWS_CERTIFICATE") &&
-      desktopEvidenceParity.includes("ATLASTERM_APPLE_CERTIFICATE") &&
-      desktopEvidenceParity.includes("reports/handoff/desktop/formal-evidence-unblock-report.json") &&
-      desktopEvidenceParity.includes("reports/release/desktop/release-evidence-source.json"),
+      desktopEvidenceParity.includes("FORMAL_SIGNING_DISABLED") &&
+      desktopEvidenceParity.includes("desktop-unsigned-bundle-") &&
+      desktopEvidenceParity.includes(
+        "Desktop release workflow contains no formal artifact, signing secret, environment, or id-token chain",
+      ) &&
+      desktopEvidenceParity.includes(
+        "package exposes no Desktop signing mutation, preflight, or dispatch command",
+      ) &&
+      desktopEvidenceParity.includes(
+        "Desktop configurator is template-only and contains no GitHub mutation or credential-input implementation",
+      ) &&
+      desktopEvidenceParity.includes(
+        "reports/handoff/desktop/formal-evidence-unblock-report.json",
+      ) &&
+      desktopEvidenceParity.includes(
+        "reports/release/desktop/release-evidence-source.json",
+      ),
     "Desktop formal evidence parity checker prevents workflow, script, and docs contract drift",
   );
 
@@ -735,13 +984,14 @@ function checkReleaseToolingFiles() {
   const rcAudit = readTextIfExists("scripts/audit-public-beta-rc.mjs") ?? "";
   passIf(
     rcAudit.includes("public-beta-rc-audit.json") &&
-      rcAudit.includes("desktop-signing-secrets") &&
+      rcAudit.includes("desktop-formal-signing-disabled") &&
+      rcAudit.includes("FORMAL_SIGNING_DISABLED") &&
       rcAudit.includes("desktop-dogfood") &&
       rcAudit.includes("release-desktop-stale-artifacts") &&
       rcAudit.includes("publish-preflight") &&
       rcAudit.includes("github-ci") &&
       rcAudit.includes("check-runs/${checkRunId}/annotations"),
-    "Public Beta RC audit binds dogfood, signing, preflight, and CI blocker evidence",
+    "Public Beta RC audit binds dogfood, disabled signing boundary, preflight, and CI blocker evidence",
   );
 
   const releasePublishPreflight =
@@ -779,12 +1029,36 @@ function checkReleaseToolingFiles() {
     "Publish preflight requires formal Desktop workflow source provenance",
   );
   passIf(
-    releasePublishPreflight.includes("Verify GitHub CLI publish readiness") &&
+    /runGh\(\[\s*"release",\s*"view",\s*releaseTag,\s*"--repo",\s*releaseRepository,\s*"--json",\s*"url",?\s*\]\)/u.test(
+      releasePublishPreflight,
+    ) &&
+      /runGh\(\[\s*"api",\s*"--method",\s*"GET",\s*endpoint,?\s*\]\)/u.test(
+        releasePublishPreflight,
+      ) &&
+      releasePublishPreflight.includes("Verify GitHub CLI publish readiness") &&
       releasePublishPreflight.includes("ATLASTERM_RELEASE_GH_COMMAND") &&
+      releasePublishPreflight.includes(
+        'const releaseRepository = "JoeWorkspace/JoeSSH";',
+      ) &&
+      releasePublishPreflight.includes(
+        "const githubRepositoryApiRoot = `repos/${releaseRepository}`;",
+      ) &&
       releasePublishPreflight.includes('auth", "status') &&
-      releasePublishPreflight.includes('release", "view", releaseTag') &&
+      releasePublishPreflight.includes(
+        "const remoteTag = resolveRemoteReleaseTagCommit();",
+      ) &&
+      releasePublishPreflight.includes(
+        "remoteTag.commit !== head.stdout.trim()",
+      ) &&
+      releasePublishPreflight.includes("Unable to confirm GitHub Release") &&
       releasePublishPreflight.includes(
         "already exists; refusing to publish a duplicate release",
+      ) &&
+      !/runGh\(\[\s*"release",\s*"(?:create|edit|delete|upload)"/u.test(
+        releasePublishPreflight,
+      ) &&
+      !/runGh\(\[\s*"api"[\s\S]{0,160}?"--method",\s*"(?:POST|PUT|PATCH|DELETE)"/u.test(
+        releasePublishPreflight,
       ),
     "Publish preflight verifies GitHub CLI auth and duplicate-release state without mutating GitHub",
   );
@@ -803,7 +1077,9 @@ function checkReleaseToolingFiles() {
         "reports/release/desktop/release-evidence-SHA256SUMS.txt",
       ) &&
       releaseProvenanceGenerator.includes("release-evidence-source.json") &&
-      releaseProvenanceGenerator.includes("verify-desktop-release-evidence.mjs --require-source") &&
+      releaseProvenanceGenerator.includes(
+        "verify-desktop-release-evidence.mjs --require-source",
+      ) &&
       releaseProvenanceGenerator.includes(
         "reports/release/sync/backup-restore-smoke-SHA256SUMS.txt",
       ),
@@ -819,7 +1095,9 @@ function checkReleaseToolingFiles() {
       releaseProvenanceVerifier.includes("artifact hash mismatch") &&
       releaseProvenanceVerifier.includes("requiredChecksumManifests") &&
       releaseProvenanceVerifier.includes("release-evidence-source.json") &&
-      releaseProvenanceVerifier.includes("verify-desktop-release-evidence.mjs --require-source") &&
+      releaseProvenanceVerifier.includes(
+        "verify-desktop-release-evidence.mjs --require-source",
+      ) &&
       releaseProvenanceVerifier.includes(
         "unexpected Public Beta checksum manifest is staged",
       ),
@@ -926,9 +1204,13 @@ function checkDependabotAutoMergePolicy() {
   passIf(
     workflow.includes("github.event.pull_request.base.ref == 'main'") &&
       workflow.includes("github.ref_protected == true") &&
-      workflow.includes("vars.JOESSH_DEPENDABOT_AUTO_MERGE_ENABLED == 'true'") &&
+      workflow.includes(
+        "vars.JOESSH_DEPENDABOT_AUTO_MERGE_ENABLED == 'true'",
+      ) &&
       workflow.includes('--match-head-commit "$PR_HEAD_SHA"') &&
-      workflow.includes("PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}"),
+      workflow.includes(
+        "PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}",
+      ),
     "Dependabot auto-merge requires protected main, explicit opt-in, and an exact PR head",
   );
   passIf(
@@ -1552,6 +1834,10 @@ function checkReleaseDocs() {
         "SBOM",
         "SHA256",
         "SBOM-SHA256SUMS.txt",
+        "cargo-workspace-sbom.cdx.json",
+        "tauri-cargo-sbom.cdx.json",
+        "THIRD-PARTY-LICENSES-SHA256SUMS.txt",
+        "release:third-party-licenses:verify",
         "release-evidence.json",
         "release-evidence-source.json",
         "release-evidence-SHA256SUMS.txt",
@@ -1585,12 +1871,29 @@ function checkReleaseDocs() {
         "git fsck --strict",
         "git diff --binary",
         "release-provenance.json",
+        "THIRD-PARTY-LICENSES-SHA256SUMS.txt",
+        "release:third-party-licenses:verify",
         "npm run qa:release:public",
         "npm run qa:release:public:fixture",
         "release-evidence-source.json",
         "reports/handoff/desktop/formal-evidence-unblock-report.json",
         "node scripts/check-public-release-readiness.mjs",
         expectedReleaseTag,
+      ],
+    ],
+    [
+      "Third-party notices overview",
+      "THIRD_PARTY_NOTICES.md",
+      [
+        "release:third-party-licenses",
+        "release:third-party-licenses:verify",
+        "reports/internal/release-inputs/",
+        "cargo-workspace-sbom.cdx.json",
+        "tauri-cargo-sbom.cdx.json",
+        "THIRD-PARTY-LICENSES-SHA256SUMS.txt",
+        "legal/THIRD-PARTY-NOTICES.txt",
+        "release:desktop:legal-resource",
+        "complete root `LICENSE`",
       ],
     ],
     [
@@ -1679,12 +1982,7 @@ function checkReleaseDocs() {
     [
       "Dependency risk register",
       "docs/dependency-risk-register.md",
-      [
-        "uuid",
-        "GHSA-w5hq-g745-h8pq",
-        "@expo/config-plugins",
-        "xcode",
-      ],
+      ["uuid", "GHSA-w5hq-g745-h8pq", "@expo/config-plugins", "xcode"],
     ],
     [
       "Public Beta privacy note",
@@ -1709,7 +2007,30 @@ function checkPublicFacingBranding() {
     [
       "README",
       "README.md",
-      ["JoeSSH", "Web Admin console", "npm run qa:prod-audit"],
+      [
+        "JoeSSH",
+        "React Native/Expo sync preview shell",
+        "does not currently provide public mobile SSH/SFTP or emergency-access execution",
+        "Read-only Web Admin viewer",
+        "Hosted SaaS and mutating team operations are not currently shipped",
+        "npm run qa:prod-audit",
+        "does not currently provide end-to-end payload encryption",
+      ],
+    ],
+    [
+      "Web Admin README",
+      "apps/web/README.md",
+      [
+        "read-only viewer",
+        "does not currently ship mutating admin operations, billing, or hosted SaaS",
+      ],
+    ],
+    [
+      "Web Admin manifest",
+      "apps/web/public/manifest.json",
+      [
+        "Read-only team, device, role, and audit snapshots from a configured JoeSSH Sync service.",
+      ],
     ],
     [
       ".env example",
@@ -1738,12 +2059,12 @@ function checkPublicFacingBranding() {
     [
       "Web service worker",
       "apps/web/public/sw.js",
-      ["const CACHE_NAME = 'joessh-admin-v2';"],
+      ['const CACHE_NAME = "joessh-admin-v3";'],
     ],
     [
       "Desktop service worker",
       "apps/desktop/public/sw.js",
-      ['const CACHE_NAME = "joessh-v2";'],
+      ['const CACHE_NAME = "joessh-v3";'],
     ],
     ["Architecture", "ARCHITECTURE.md", ["npm run qa:prod-audit"]],
   ];
@@ -1769,10 +2090,18 @@ function checkPublicFacingBranding() {
       [
         "github.com/atlasterm/atlasterm",
         "Team/admin console skeleton",
+        "Web Admin console",
+        "Mobile emergency SSH/SFTP",
         "npm audit + audit-ci",
+        "encrypted sync",
         "鈥",
         "�",
       ],
+    ],
+    [
+      "Web Admin manifest",
+      "apps/web/public/manifest.json",
+      ["Team management, audit views, and sync operations."],
     ],
     [".env example", ".env.example", ["AtlasTerm Environment Variables"]],
     ["License", "LICENSE", ["Copyright (c) 2026 AtlasTerm"]],
@@ -1792,8 +2121,16 @@ function checkPublicFacingBranding() {
       ["AtlasTerm Team"],
     ],
     ["Web humans.txt", "apps/web/public/humans.txt", ["AtlasTerm Team"]],
-    ["Web service worker", "apps/web/public/sw.js", ["atlasterm-admin-v1"]],
-    ["Desktop service worker", "apps/desktop/public/sw.js", ["atlasterm-v1"]],
+    [
+      "Web service worker",
+      "apps/web/public/sw.js",
+      ["atlasterm-admin-v1", "joessh-admin-v2"],
+    ],
+    [
+      "Desktop service worker",
+      "apps/desktop/public/sw.js",
+      ["atlasterm-v1", "joessh-v2"],
+    ],
     ["Architecture", "ARCHITECTURE.md", ["npm audit + audit-ci"]],
   ];
 
@@ -2464,6 +2801,32 @@ function stripRustComments(text) {
 
 function commandToPermission(command) {
   return `allow-${command.replaceAll("_", "-")}`;
+}
+
+function parseWorkflow(workflowText) {
+  try {
+    const document = parseDocument(workflowText, {
+      merge: false,
+      prettyErrors: true,
+      strict: true,
+      uniqueKeys: true,
+    });
+    if (document.errors.length > 0) {
+      return null;
+    }
+    const value = document.toJS({ maxAliasCount: 0 });
+    return isRecord(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeLineEndings(value) {
+  return value.replace(/\r\n?/g, "\n");
+}
+
+function isRecord(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 function readJson(relativePath) {

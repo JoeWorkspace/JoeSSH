@@ -3,8 +3,12 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-const SCRIPT_PATH = fileURLToPath(new URL("./run-real-ssh-smoke-fixture.mjs", import.meta.url));
-const PACKAGE_JSON_PATH = fileURLToPath(new URL("../package.json", import.meta.url));
+const SCRIPT_PATH = fileURLToPath(
+  new URL("./run-real-ssh-smoke-fixture.mjs", import.meta.url),
+);
+const PACKAGE_JSON_PATH = fileURLToPath(
+  new URL("../package.json", import.meta.url),
+);
 
 test("fixture runner can wrap a release gate without replacing the dogfood smoke", () => {
   const source = readFileSync(SCRIPT_PATH, "utf8");
@@ -15,7 +19,15 @@ test("fixture runner can wrap a release gate without replacing the dogfood smoke
   assert.match(source, /runFixtureCommand\(fixture, wrappedCommand\)/);
   assert.match(source, /qa:desktop:real-ssh-smoke:required/);
   assert.match(source, /wrappedCommand/);
-  assert.match(source, /status: result\.status === 0 \? "passed" : "failed"/);
+  assert.match(
+    source,
+    /const passed = smokePassed && wrappedPassed && sourceBound/,
+  );
+  assert.match(source, /status: passed \? "passed" : "failed"/);
+  assert.match(source, /gate: wrappedGate/);
+  assert.match(source, /gitCommit/);
+  assert.match(source, /gitDirty/);
+  assert.match(source, /version: packageVersion/);
 });
 
 test("package exposes a fixture-backed public release gate", () => {

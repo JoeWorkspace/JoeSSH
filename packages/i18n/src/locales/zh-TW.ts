@@ -2,12 +2,16 @@ export const zhTWComplete = {
   "desktop.demoScopeSummary": "示範資料 · 尚未連線至真實 SSH",
   "desktop.demoShell": "範例終端機",
   "desktop.noSession": "尚未連線至 SSH",
-  "desktop.noSessionActionDetail": "請先連線至真實主機，再使用終端機、SFTP 或連接埠轉送。",
+  "desktop.noSessionActionDetail":
+    "請先連線至真實主機，再使用終端機、SFTP 或連接埠轉送。",
   "desktop.sampleDataShort": "示範資料",
-  "desktop.terminalSessionConnectRequired": "請按一下「連線」建立真實 SSH 工作階段後，再執行指令。",
-  "desktop.terminalSessionSample": "目前僅為示範連線設定，尚未建立 SSH 工作階段。",
+  "desktop.terminalSessionConnectRequired":
+    "請按一下「連線」建立真實 SSH 工作階段後，再執行指令。",
+  "desktop.terminalSessionSample":
+    "目前僅為示範連線設定，尚未建立 SSH 工作階段。",
   "desktop.sftp": "SFTP",
-  "desktop.manifestDescription": "SSH 終端、SFTP、團隊存取和工作階段管理。",
+  "desktop.manifestDescription":
+    "SSH 終端、SFTP、連接埠轉送和本機工作階段管理。",
   "language.selectorLabel": "顯示語言",
   "language.autoRegion": "依地區自動設定",
   "language.worldReady": "全球語言已就緒",
@@ -53,7 +57,8 @@ export const zhTWComplete = {
   "desktop.terminalSessionMfaRequired": "執行命令前需要完成 MFA 驗證。",
   "desktop.mfaRequiredShort": "需要 MFA",
   "desktop.commandAccepted": "命令已接受",
-  "desktop.commandAcceptedDetail": "已通過本機安全預檢，並排入終端機執行器佇列。",
+  "desktop.commandAcceptedDetail":
+    "已通過本機安全預檢，並排入終端機執行器佇列。",
   "desktop.commandBlocked": "命令已封鎖",
   "desktop.commandBlockedDetail": "符合 {pattern}: {reason}",
   "desktop.safetyReasonRmRoot": "會遞迴刪除檔案系統根目錄",
@@ -62,15 +67,18 @@ export const zhTWComplete = {
   "desktop.safetyReasonRawDiskCopy": "原始磁碟複製可能破壞資料",
   "desktop.safetyReasonChmodRoot": "會從檔案系統根目錄大幅放寬權限",
   "desktop.safetyReasonTeeBlockDevice": "會將原始輸出寫入區塊裝置",
-  "desktop.safetyReasonRedirectBlockDevice": "會把輸出重新導向到原始區塊裝置並破壞內容",
+  "desktop.safetyReasonRedirectBlockDevice":
+    "會把輸出重新導向到原始區塊裝置並破壞內容",
   "desktop.safetyReasonFindRootDelete": "會從根路徑遞迴刪除檔案",
   "desktop.safetyReasonDiskWipe": "會不可逆地清除分割表或區塊裝置內容",
   "desktop.safetyReasonFirewallFlush": "會清空防火牆規則",
   "desktop.safetyReasonRemoteShellPipe": "會把遠端內容直接管線到 shell",
   "desktop.safetyReasonRootDownloadOverwrite": "會用下載內容覆寫根路徑",
   "desktop.safetyReasonHostShutdown": "會立即停止主機",
-  "desktop.safetyReasonWindowsDestructive": "Windows 破壞性命令會影響檔案、磁碟或主機狀態",
-  "desktop.safetyReasonPowershellDestructive": "PowerShell 破壞性命令會影響磁碟機、系統路徑、磁碟或主機電源狀態",
+  "desktop.safetyReasonWindowsDestructive":
+    "Windows 破壞性命令會影響檔案、磁碟或主機狀態",
+  "desktop.safetyReasonPowershellDestructive":
+    "PowerShell 破壞性命令會影響磁碟機、系統路徑、磁碟或主機電源狀態",
   "desktop.safetyReasonDropDatabase": "會刪除資料庫",
   "desktop.safetyReasonCommandSubstitution": "會嵌入可能執行任意內容的子命令",
   "desktop.context": "情境",
@@ -108,7 +116,7 @@ export const zhTWComplete = {
   "desktop.recordTerminal": "錄製終端機工作階段",
   "desktop.requiredProduction": "生產範圍必須啟用",
   "desktop.syncEncrypted": "同步加密片段",
-  "desktop.availableProBusiness": "Pro 與 Business 可用",
+  "desktop.plannedUnavailable": "規劃中，目前不可用",
   "desktop.telemetryErrors": "選用錯誤回報",
   "desktop.telemetryErrorsHint": "傳送已去識別的當機與錯誤摘要。",
   "desktop.businessLayer": "商務層",
@@ -218,7 +226,8 @@ export const zhTWComplete = {
   "desktop.hostKeyConfirmDetail": "認證前請核對這個 SHA-256 指紋。",
   "desktop.hostKeyPresentedFingerprint": "目前指紋",
   "desktop.hostKeyVerificationFailed": "主機金鑰驗證失敗",
-  "desktop.hostKeyChangedDetail": "已儲存的 {host}:{port} 主機金鑰不匹配。預期 {stored}，目前 {presented}。",
+  "desktop.hostKeyChangedDetail":
+    "已儲存的 {host}:{port} 主機金鑰不匹配。預期 {stored}，目前 {presented}。",
   "desktop.trustHostKeyAndConnect": "信任並連線",
   "desktop.connectAction": "連線",
   "desktop.connecting": "連線中…",
@@ -227,7 +236,8 @@ export const zhTWComplete = {
   "desktop.connectionSwitched": "已切換到{name}",
   "desktop.connectionMoved": "已將{connection}移動到{group}",
   "desktop.connectionsImported": "已匯入{count}個連線",
-  "desktop.connectionsImportFailed": "Could not import connections. Choose a valid JoeSSH connections JSON file.",
+  "desktop.connectionsImportFailed":
+    "Could not import connections. Choose a valid JoeSSH connections JSON file.",
   "desktop.connectionConnectToast": "連線：{name}",
   "desktop.connectionCreated": "連線{name}已建立",
   "desktop.connectionTestResult": "連線測試：{result}",
@@ -312,13 +322,15 @@ export const zhTWComplete = {
   "mobile.registering": "正在註冊裝置",
   "mobile.registeringMessage": "正在建立用於同步和緊急交接的行動身分。",
   "mobile.previewing": "正在拉取同步預覽",
-  "mobile.previewingMessage": "正在取得設定檔、工作階段、游標狀態與受信任復原路徑。",
+  "mobile.previewingMessage":
+    "正在取得設定檔、工作階段、游標狀態與受信任復原路徑。",
   "mobile.ready": "預覽已就緒",
   "mobile.readyMessage": "此裝置已註冊，最新同步回應已就緒。",
   "mobile.offline": "離線備援已啟用",
   "mobile.offlineMessage": "即時同步無法使用，未收到即時或快取的工作區資料。",
   "mobile.readyToConnect": "準備連線",
-  "mobile.readyToConnectMessage": "請先註冊這支手機，並從 JoeSSH 同步拉取安全預覽。",
+  "mobile.readyToConnectMessage":
+    "請先註冊這支手機，並從 JoeSSH 同步拉取安全預覽。",
   "mobile.profiles": "設定檔",
   "mobile.openSessions": "開啟的工作階段",
   "mobile.pendingChanges": "本次拉取",
@@ -338,10 +350,12 @@ export const zhTWComplete = {
   "mobile.registerPull": "註冊並拉取預覽",
   "desktop.error.boundary.title": "發生錯誤",
   "desktop.error.boundary.reload": "重新載入",
-  "desktop.error.boundary.message": "請重新載入 JoeSSH；如果問題持續發生，請聯絡支援團隊。",
+  "desktop.error.boundary.message":
+    "請重新載入 JoeSSH；如果問題持續發生，請聯絡支援團隊。",
   "mobile.error.boundary.title": "發生錯誤",
   "mobile.error.boundary.reload": "重新載入",
-  "mobile.error.boundary.message": "請重新載入 JoeSSH；如果問題持續發生，請聯絡支援團隊。",
+  "mobile.error.boundary.message":
+    "請重新載入 JoeSSH；如果問題持續發生，請聯絡支援團隊。",
   "desktop.paletteRecent": "最近",
   "desktop.paletteRecentBadge": "最近",
   "desktop.paletteConnections": "連線",
@@ -392,7 +406,14 @@ export const zhTWComplete = {
   "team.accessRequestStatus": "存取請求狀態",
   "desktop.restoreWorkbench": "還原工作區",
   "desktop.gettingStarted": "開始使用",
-  "desktop.surfaceGuide": "桌面端用於建立 SSH 工作階段；Web 管理台用於監控同步與團隊；行動端是搭配工具。",
-  "desktop.telemetryPrivacyHint": "此功能為選用且預設關閉。絕不會傳送主機、使用者名稱、命令、金鑰、權杖、路徑或終端輸出。",
-  "team.reviewedBy": "{reviewer} 已審查"
+  "desktop.surfaceGuide":
+    "桌面端用於本機 SSH 與 SFTP 工作階段；Web 管理台僅顯示唯讀同步快照；行動端是同步預覽，不執行 SSH 或 SFTP。",
+  "desktop.telemetryPrivacyHint":
+    "此功能為選用且預設關閉。絕不會傳送主機、使用者名稱、命令、金鑰、權杖、路徑或終端輸出。",
+  "desktop.thirdPartyNotices": "開源授權與第三方聲明",
+  "desktop.thirdPartyNoticesHint":
+    "查看與此應用程式版本一同封裝的授權條款及聲明全文。",
+  "desktop.thirdPartyNoticesLoading": "正在載入授權條款…",
+  "desktop.thirdPartyNoticesUnavailable": "此版本無法讀取授權聲明。",
+  "team.reviewedBy": "{reviewer} 已審查",
 } as const;

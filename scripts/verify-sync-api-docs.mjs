@@ -8,10 +8,19 @@ const dockerignorePath = resolve(root, ".dockerignore");
 const packageJsonPath = resolve(root, "package.json");
 const qaChecklistPath = resolve(root, "docs", "qa-checklist.md");
 const selfHostingPath = resolve(root, "docs", "self-hosting-sync.md");
-const systemdPath = resolve(root, "services", "sync", "joessh-sync.service.example");
+const systemdPath = resolve(
+  root,
+  "services",
+  "sync",
+  "joessh-sync.service.example",
+);
 const syncReadmePath = resolve(root, "services", "sync", "README.md");
 const syncSmokePath = resolve(root, "scripts", "smoke-self-hosted-sync.mjs");
-const syncConfigGuardPath = resolve(root, "scripts", "smoke-sync-config-guard.mjs");
+const syncConfigGuardPath = resolve(
+  root,
+  "scripts",
+  "smoke-sync-config-guard.mjs",
+);
 const sourcePath = resolve(root, "services", "sync", "src", "main.rs");
 const configSourcePath = resolve(root, "services", "sync", "src", "config.rs");
 
@@ -113,7 +122,8 @@ const checks = [
       /(?=[\s\S]*missing_authorization)(?=[\s\S]*invalid_authorization)(?=[\s\S]*admin_forbidden)(?=[\s\S]*admin_token_required)(?=[\s\S]*metrics_forbidden)(?=[\s\S]*invalid_sync_request)(?=[\s\S]*empty_change_set)(?=[\s\S]*unknown_device)(?=[\s\S]*invalid_cursor)(?=[\s\S]*storage_unavailable)(?=[\s\S]*ledger_quota_exceeded)/,
   },
   {
-    label: "Rust source validates Sync input fields before Web Admin snapshot projection",
+    label:
+      "Rust source validates Sync input fields before Web Admin snapshot projection",
     source: source,
     pattern:
       /validate_register_device_request[\s\S]*MAX_SYNC_APP_VERSION_CHARS[\s\S]*MAX_SYNC_DISPLAY_NAME_CHARS[\s\S]*validate_push_changes_request[\s\S]*validate_sync_entity_token[\s\S]*MAX_SYNC_ENTITY_TOKEN_CHARS[\s\S]*is_control_or_format_character/,
@@ -131,7 +141,8 @@ const checks = [
   {
     label: "Rust source reads explicit ephemeral storage escape hatch",
     source: configSource,
-    pattern: /allow_ephemeral_storage[\s\S]*ATLASTERM_SYNC_ALLOW_EPHEMERAL_STORAGE/,
+    pattern:
+      /allow_ephemeral_storage[\s\S]*ATLASTERM_SYNC_ALLOW_EPHEMERAL_STORAGE/,
   },
   {
     label: "Rust source reads JSON ledger quota environment variables",
@@ -140,13 +151,15 @@ const checks = [
       /ATLASTERM_SYNC_MAX_PUSH_CHANGES[\s\S]*ATLASTERM_SYNC_MAX_PULL_CHANGES[\s\S]*ATLASTERM_SYNC_MAX_STORED_CHANGES[\s\S]*ATLASTERM_SYNC_MAX_LEDGER_BYTES/,
   },
   {
-    label: "Rust source requires metrics auth, scoped CORS, and durable storage for non-loopback binds",
+    label:
+      "Rust source requires metrics auth, scoped CORS, and durable storage for non-loopback binds",
     source: source,
     pattern:
       /fn check_bind_safety\(addr: &SocketAddr, config: &SyncConfig\)[\s\S]*config\.auth_token\.is_none\(\)[\s\S]*config\.metrics_token\.is_none\(\)[\s\S]*ATLASTERM_SYNC_METRICS_TOKEN[\s\S]*config\.cors_permissive[\s\S]*ATLASTERM_SYNC_CORS_PERMISSIVE[\s\S]*config\.storage_path\.is_none\(\) && !config\.allow_ephemeral_storage[\s\S]*ATLASTERM_SYNC_STORAGE_PATH/,
   },
   {
-    label: "Rust source prepares storage and acquires a single-writer JSON ledger lock",
+    label:
+      "Rust source prepares storage and acquires a single-writer JSON ledger lock",
     source: source,
     pattern:
       /fn acquire_storage_lock\(path: Option<&Path>\) -> anyhow::Result<Option<StorageLock>>[\s\S]*fs::create_dir_all\(parent\)\.with_context[\s\S]*ATLASTERM_SYNC_STORAGE_PATH[\s\S]*path\.with_extension\("lock"\)[\s\S]*open_storage_lock_file\(&lock_path\)[\s\S]*another Sync Service instance may already be using this JSON ledger[\s\S]*fn create_storage_lock_file\(lock_path: &Path\) -> std::io::Result<fs::File>[\s\S]*\.create_new\(true\)/,
@@ -158,7 +171,8 @@ const checks = [
       /fn try_app_with_config\(config: SyncConfig\)[\s\S]*acquire_storage_lock\(config\.storage_path\.as_deref\(\)\)\?[\s\S]*load_store\(\s*config\.storage_path\.as_deref\(\),\s*config\.max_ledger_bytes,\s*config\.max_stored_changes,\s*\)\?[\s\S]*_storage_lock: storage_lock[\s\S]*max_push_changes: config\.max_push_changes[\s\S]*max_stored_changes: config\.max_stored_changes[\s\S]*max_ledger_bytes: config\.max_ledger_bytes/,
   },
   {
-    label: "Rust source paginates pull responses without skipping scanned cursor windows",
+    label:
+      "Rust source paginates pull responses without skipping scanned cursor windows",
     source: source,
     pattern:
       /(?=[\s\S]*struct PullQuery[\s\S]*limit: Option<usize>)(?=[\s\S]*fn resolve_pull_limit\(\s*limit: Option<usize>,\s*max_pull_changes: usize,\s*\))(?=[\s\S]*page_end_sequence = since_sequence[\s\S]*saturating_add\(page_limit as u64\)[\s\S]*change\.sequence <= page_end_sequence[\s\S]*next_cursor: cursor_from_sequence\(page_end_sequence\)[\s\S]*has_more)/,
@@ -166,12 +180,14 @@ const checks = [
   {
     label: "Rust source serializes the sync store for durable persistence",
     source: source,
-    pattern: /struct SyncStore[\s\S]*Serialize[\s\S]*Deserialize|Serialize, Deserialize[\s\S]*struct SyncStore/,
+    pattern:
+      /struct SyncStore[\s\S]*Serialize[\s\S]*Deserialize|Serialize, Deserialize[\s\S]*struct SyncStore/,
   },
   {
     label: "Rust source persists the documented JSON ledger fields",
     source: source,
-    pattern: /struct SyncStore[\s\S]*schema_version: u32[\s\S]*devices: HashMap[\s\S]*processed_change_ids: HashSet[\s\S]*changes: Vec<StoredChange>[\s\S]*latest_sequence: u64/,
+    pattern:
+      /struct SyncStore[\s\S]*schema_version: u32[\s\S]*devices: HashMap[\s\S]*processed_change_ids: HashSet[\s\S]*changes: Vec<StoredChange>[\s\S]*latest_sequence: u64/,
   },
   {
     label: "Rust source defines the current JSON ledger schema version",
@@ -179,7 +195,8 @@ const checks = [
     pattern: "const SYNC_LEDGER_SCHEMA_VERSION: u32 = 1",
   },
   {
-    label: "Rust source normalizes loaded ledger cursors and processed change IDs",
+    label:
+      "Rust source normalizes loaded ledger cursors and processed change IDs",
     source: source,
     pattern:
       /fn normalize_loaded_store\(\s*mut store: SyncStore,\s*max_stored_changes: usize,\s*\) -> anyhow::Result<SyncStore>[\s\S]*store\.schema_version[\s\S]*0 \| SYNC_LEDGER_SCHEMA_VERSION[\s\S]*UnsupportedLedgerSchemaVersion[\s\S]*store\.schema_version = SYNC_LEDGER_SCHEMA_VERSION[\s\S]*store\.changes\.len\(\) <= max_stored_changes[\s\S]*ATLASTERM_SYNC_MAX_STORED_CHANGES[\s\S]*latest_sequence\.max\(change\.sequence\)[\s\S]*change\.cursor = cursor_from_sequence\(change\.sequence\)[\s\S]*processed_change_ids\.insert\(change\.id\)/,
@@ -191,7 +208,8 @@ const checks = [
       /Err\(primary_error\) => \{[\s\S]*downcast_ref::<UnsupportedLedgerSchemaVersion>\(\)[\s\S]*return Err\(primary_error\)[\s\S]*if backup_path\.exists\(\)/,
   },
   {
-    label: "Rust source writes the current ledger schema version on persistence",
+    label:
+      "Rust source writes the current ledger schema version on persistence",
     source: source,
     pattern:
       /let mut persisted_store = store\.clone\(\);[\s\S]*persisted_store\.schema_version = SYNC_LEDGER_SCHEMA_VERSION[\s\S]*serialize_store_for_persistence\(&persisted_store\)/,
@@ -209,7 +227,8 @@ const checks = [
       /async fn register_device[\s\S]*let previous_store = store\.clone\(\);[\s\S]*persist_store\(\s*state\.storage_path\.as_deref\(\),\s*&store,\s*state\.max_ledger_bytes,\s*\)[\s\S]*\*store = previous_store;[\s\S]*storage_error_response\(error\)[\s\S]*async fn admin_snapshot/,
   },
   {
-    label: "Rust source rolls back push mutations and change IDs when persistence fails",
+    label:
+      "Rust source rolls back push mutations and change IDs when persistence fails",
     source: source,
     pattern:
       /async fn push_changes[\s\S]*previous_store = Some\(store\.clone\(\)\);[\s\S]*store\.accept_change\(request\.device_id, change\);[\s\S]*persist_store\(\s*state\.storage_path\.as_deref\(\),\s*&store,\s*state\.max_ledger_bytes,\s*\)[\s\S]*\*store = previous;[\s\S]*storage_error_response\(error\)[\s\S]*async fn pull_changes/,
@@ -221,13 +240,15 @@ const checks = [
       /request\.changes\.len\(\) > state\.max_push_changes[\s\S]*store\.changes\.len\(\) >= state\.max_stored_changes[\s\S]*store_exceeds_ledger_byte_limit\(&store, state\.max_ledger_bytes\)/,
   },
   {
-    label: "Rust tests cover paginated pull limits and self-change cursor advancement",
+    label:
+      "Rust tests cover paginated pull limits and self-change cursor advancement",
     source: source,
     pattern:
       /pull_pages_changes_with_server_limit[\s\S]*pull_limit_is_capped_by_configured_max[\s\S]*pull_advances_cursor_over_filtered_self_changes[\s\S]*pull_rejects_zero_limit/,
   },
   {
-    label: "Rust source enforces JSON ledger quotas while loading and persisting storage",
+    label:
+      "Rust source enforces JSON ledger quotas while loading and persisting storage",
     source: source,
     pattern:
       /fn load_required_store_file[\s\S]*metadata\.len\(\) <= max_ledger_bytes[\s\S]*normalize_loaded_store\(store, max_stored_changes\)[\s\S]*fn persist_store[\s\S]*bytes\.len\(\) as u64 <= max_ledger_bytes/,
@@ -235,10 +256,12 @@ const checks = [
   {
     label: "Rust source writes storage through temp and backup files",
     source: source,
-    pattern: /let temp_path = path\.with_extension\("tmp"\)[\s\S]*let backup_path = path\.with_extension\("bak"\)[\s\S]*fs::rename\(&temp_path, path\)/,
+    pattern:
+      /let temp_path = path\.with_extension\("tmp"\)[\s\S]*let backup_path = path\.with_extension\("bak"\)[\s\S]*fs::rename\(&temp_path, path\)/,
   },
   {
-    label: "Rust source recovers unreadable or missing storage from backup before temp",
+    label:
+      "Rust source recovers unreadable or missing storage from backup before temp",
     source: source,
     pattern:
       /let backup_path = path\.with_extension\("bak"\)[\s\S]*let temp_path = path\.with_extension\("tmp"\)[\s\S]*primary sync storage ledger is unreadable; recovering from backup[\s\S]*primary sync storage ledger is missing; recovering from backup[\s\S]*primary sync storage ledger is missing; recovering from temp ledger/,
@@ -246,7 +269,8 @@ const checks = [
   {
     label: "Rust source covers restart persistence behavior with a test",
     source: source,
-    pattern: "storage_path_persists_registered_devices_and_changes_across_app_restarts",
+    pattern:
+      "storage_path_persists_registered_devices_and_changes_across_app_restarts",
   },
   {
     label: "Rust source covers backup and temp ledger recovery with tests",
@@ -284,19 +308,22 @@ const checks = [
     pattern: "loaded_storage_normalizes_latest_cursor_and_processed_change_ids",
   },
   {
-    label: "Rust source bounds persisted audit log while preserving sync history",
+    label:
+      "Rust source bounds persisted audit log while preserving sync history",
     source: source,
     pattern:
       /const AUDIT_LOG_RETENTION: usize = 10_000;[\s\S]*fn record_audit_event\(&mut self, event: StoredAuditEvent\)[\s\S]*self\.prune_audit_log\(\);[\s\S]*fn accept_change\(&mut self, device_id: Uuid, change: SyncChange\)[\s\S]*self\.changes\.push[\s\S]*self\.prune_processed_ids\(\);/,
   },
   {
-    label: "Rust source tests audit log retention and processed change id pruning",
+    label:
+      "Rust source tests audit log retention and processed change id pruning",
     source: source,
     pattern:
       /accept_change_prunes_processed_change_ids_without_trimming_changes[\s\S]*audit_log_retention_is_bounded_before_persisting[\s\S]*admin_snapshot_returns_recent_audit_event_limit_from_bounded_log/,
   },
   {
-    label: "Rust source covers ledger schema migration and future-version rejection",
+    label:
+      "Rust source covers ledger schema migration and future-version rejection",
     source: source,
     pattern:
       /storage_path_migrates_legacy_v0_ledger_without_schema_version[\s\S]*storage_path_rejects_future_ledger_schema_version/,
@@ -314,14 +341,16 @@ const checks = [
       /bind_safety_allows_non_loopback_with_token_and_durable_storage[\s\S]*bind_safety_rejects_non_loopback_without_metrics_token[\s\S]*bind_safety_rejects_non_loopback_with_token_but_no_storage[\s\S]*bind_safety_rejects_non_loopback_with_permissive_cors/,
   },
   {
-    label: "Rust source constrains CORS origins to http(s) origins without paths",
+    label:
+      "Rust source constrains CORS origins to http(s) origins without paths",
     source: configSource,
     pattern: /matches!\(scheme, "http" \| "https"\)[\s\S]*without a path/,
   },
   {
     label: "Rust source defines Web Admin snapshot response shape",
     source: source,
-    pattern: /struct AdminDashboardSnapshot[\s\S]*audit_events[\s\S]*devices[\s\S]*members[\s\S]*metrics[\s\S]*roles/,
+    pattern:
+      /struct AdminDashboardSnapshot[\s\S]*audit_events[\s\S]*devices[\s\S]*members[\s\S]*metrics[\s\S]*roles/,
   },
   {
     label: "Rust source serializes admin snapshot camelCase fields",
@@ -371,7 +400,8 @@ const checks = [
   {
     label: "Docs show pull endpoint and 200 response",
     source: docs,
-    pattern: /`GET \/v1\/sync\/pull\?device_id=.*?&since=server-1&limit=100`[\s\S]*?Status:\s*`200 OK`/,
+    pattern:
+      /`GET \/v1\/sync\/pull\?device_id=.*?&since=server-1&limit=100`[\s\S]*?Status:\s*`200 OK`/,
   },
   {
     label: "Docs show admin snapshot endpoint and 200 response",
@@ -423,7 +453,8 @@ const checks = [
       /ATLASTERM_SYNC_MAX_PUSH_CHANGES[\s\S]*ATLASTERM_SYNC_MAX_PULL_CHANGES[\s\S]*ATLASTERM_SYNC_MAX_STORED_CHANGES[\s\S]*ATLASTERM_SYNC_MAX_LEDGER_BYTES/,
   },
   {
-    label: "Docs include non-loopback metrics auth, scoped CORS, and durable storage startup guard",
+    label:
+      "Docs include non-loopback metrics auth, scoped CORS, and durable storage startup guard",
     source: docs,
     pattern:
       /Non-loopback binds also\s+require[\s\S]*ATLASTERM_SYNC_METRICS_TOKEN[\s\S]*durable JSON ledger\s+storage[\s\S]*ATLASTERM_SYNC_CORS_ORIGINS[\s\S]*ATLASTERM_SYNC_ALLOW_EPHEMERAL_STORAGE=1[\s\S]*not a supported\s+Public Beta/,
@@ -431,7 +462,8 @@ const checks = [
   {
     label: "Docs describe persisted sync ledger contents",
     source: docs,
-    pattern: /registered\s+devices,\s+processed\s+change IDs,\s+accepted changes,\s+and the latest cursor/,
+    pattern:
+      /registered\s+devices,\s+processed\s+change IDs,\s+accepted changes,\s+and the latest cursor/,
   },
   {
     label: "Docs distinguish complete sync history from bounded audit history",
@@ -448,17 +480,20 @@ const checks = [
   {
     label: "Docs describe JSON ledger single-writer lock",
     source: docs,
-    pattern: /`ledger\.lock`[\s\S]*single-writer guard[\s\S]*second service instance cannot open the same ledger/,
+    pattern:
+      /`ledger\.lock`[\s\S]*single-writer guard[\s\S]*second service instance cannot open the same ledger/,
   },
   {
     label: "Docs describe backup and temp ledger startup recovery",
     source: docs,
-    pattern: /prefers the primary ledger[\s\S]*recovers from a valid `\.bak` ledger[\s\S]*recover a complete `\.tmp`/,
+    pattern:
+      /prefers the primary ledger[\s\S]*recovers from a valid `\.bak` ledger[\s\S]*recover a complete `\.tmp`/,
   },
   {
     label: "Docs include storage unavailable error contract",
     source: docs,
-    pattern: /`503 Service Unavailable` with\s+`code: "storage_unavailable"`[\s\S]*same change ID can be retried/,
+    pattern:
+      /`503 Service Unavailable` with\s+`code: "storage_unavailable"`[\s\S]*same change ID can be retried/,
   },
   {
     label: "Docs include ledger quota error contract",
@@ -475,7 +510,8 @@ const checks = [
   {
     label: "Docs include CORS methods and request headers",
     source: docs,
-    pattern: /`GET`, `POST`, and `OPTIONS`[\s\S]*`Authorization` and\s+`Content-Type`/,
+    pattern:
+      /`GET`, `POST`, and `OPTIONS`[\s\S]*`Authorization` and\s+`Content-Type`/,
   },
   {
     label: "Docs include ambiguous CORS startup rejection",
@@ -558,17 +594,20 @@ const checks = [
   {
     label: "Docs include conflict response shape",
     source: docs,
-    pattern: /conflicts` entries include `entity_type`, `entity_id`, and `reason`/,
+    pattern:
+      /conflicts` entries include `entity_type`, `entity_id`, and `reason`/,
   },
   {
     label: "Docs include pull self-change exclusion",
     source: docs,
-    pattern: "Pull responses exclude changes originally pushed by the requesting device.",
+    pattern:
+      "Pull responses exclude changes originally pushed by the requesting device.",
   },
   {
     label: "Docs include Web Admin-compatible admin snapshot fields",
     source: docs,
-    pattern: /Web Admin-compatible\s+snapshot[\s\S]*"metrics"[\s\S]*"members"[\s\S]*"roles"[\s\S]*"devices"[\s\S]*"auditEvents"/,
+    pattern:
+      /Web Admin-compatible\s+snapshot[\s\S]*"metrics"[\s\S]*"members"[\s\S]*"roles"[\s\S]*"devices"[\s\S]*"auditEvents"/,
   },
   {
     label: "Docs include admin snapshot dedicated admin token behavior",
@@ -584,7 +623,8 @@ const checks = [
   {
     label: "Sync service README documents JSON ledger startup recovery",
     source: syncReadme,
-    pattern: /primary ledger is preferred[\s\S]*valid `\.bak` ledger recovers[\s\S]*complete `\.tmp` ledger is used only when neither primary nor backup exists/,
+    pattern:
+      /primary ledger is preferred[\s\S]*valid `\.bak` ledger recovers[\s\S]*complete `\.tmp` ledger is used only when neither primary nor backup exists/,
   },
   {
     label: "Sync service README documents JSON ledger schema version behavior",
@@ -595,10 +635,12 @@ const checks = [
   {
     label: "Sync service README documents JSON ledger single-writer behavior",
     source: syncReadme,
-    pattern: /`ledger\.lock`[\s\S]*single-writer[\s\S]*guard[\s\S]*second service instance[\s\S]*fails startup/,
+    pattern:
+      /`ledger\.lock`[\s\S]*single-writer[\s\S]*guard[\s\S]*second service instance[\s\S]*fails startup/,
   },
   {
-    label: "Sync service README documents non-loopback metrics auth, scoped CORS, and durable storage guard",
+    label:
+      "Sync service README documents non-loopback metrics auth, scoped CORS, and durable storage guard",
     source: syncReadme,
     pattern:
       /non-loopback address[\s\S]*metrics bearer token[\s\S]*ATLASTERM_SYNC_STORAGE_PATH[\s\S]*permissive CORS is rejected[\s\S]*ATLASTERM_SYNC_ALLOW_EPHEMERAL_STORAGE=1[\s\S]*do not use it for Public Beta/,
@@ -626,6 +668,12 @@ const checks = [
     pattern: /cargo build --release -p atlasterm-sync --locked/,
   },
   {
+    label: "Sync Dockerfile pins exact Rust and runtime image digests",
+    source: dockerfile,
+    pattern:
+      /(?:^|\n)FROM rust:1\.96\.0-bookworm@sha256:[0-9a-f]{64} AS build\r?\n[\s\S]*(?:^|\n)FROM debian:bookworm-slim@sha256:[0-9a-f]{64}(?:\r?\n|$)/,
+  },
+  {
     label: "Sync Dockerfile keeps durable ledger defaults and healthcheck",
     source: dockerfile,
     pattern:
@@ -635,7 +683,7 @@ const checks = [
     label: "Docker build context excludes generated and sensitive files",
     source: dockerignore,
     pattern:
-      /(?=[\s\S]*\.git)(?=[\s\S]*node_modules)(?=[\s\S]*\*\*\/node_modules)(?=[\s\S]*target)(?=[\s\S]*\*\*\/target)(?=[\s\S]*\*\*\/dist)(?=[\s\S]*reports\/release)(?=[\s\S]*\.env)/,
+      /(?=[\s\S]*\.git)(?=[\s\S]*node_modules)(?=[\s\S]*\*\*\/node_modules)(?=[\s\S]*target)(?=[\s\S]*\*\*\/target)(?=[\s\S]*\*\*\/dist)(?=[\s\S]*(?:^|\n)reports(?:\r?\n|$))(?=[\s\S]*\.env)/,
   },
   {
     label: "Self-hosting docs include hardened Docker runtime flags",
@@ -658,7 +706,8 @@ const checks = [
   {
     label: "QA checklist includes JSON ledger recovery gate",
     source: qaChecklist,
-    pattern: /JSON ledger startup recovers from a valid `\.bak` file[\s\S]*complete `\.tmp` file/,
+    pattern:
+      /JSON ledger startup recovers from a valid `\.bak` file[\s\S]*complete `\.tmp` file/,
   },
   {
     label: "QA checklist includes JSON ledger schema migration gate",
@@ -669,10 +718,12 @@ const checks = [
   {
     label: "QA checklist includes JSON ledger single-writer gate",
     source: qaChecklist,
-    pattern: /configured storage directory before serving traffic[\s\S]*`ledger\.lock` single-writer guard[\s\S]*npm run qa:sync:config-guard-smoke[\s\S]*non-loopback bind without metrics auth fails startup[\s\S]*non-loopback bind without durable storage fails startup[\s\S]*non-loopback bind with an unusable storage path fails startup[\s\S]*non-loopback bind with permissive CORS fails startup/,
+    pattern:
+      /configured storage directory before serving traffic[\s\S]*`ledger\.lock` single-writer guard[\s\S]*npm run qa:sync:config-guard-smoke[\s\S]*non-loopback bind without metrics auth fails startup[\s\S]*non-loopback bind without durable storage fails startup[\s\S]*non-loopback bind with an unusable storage path fails startup[\s\S]*non-loopback bind with permissive CORS fails startup/,
   },
   {
-    label: "QA checklist includes Sync non-loopback metrics auth and durable storage gate",
+    label:
+      "QA checklist includes Sync non-loopback metrics auth and durable storage gate",
     source: qaChecklist,
     pattern:
       /Non-loopback Sync binds require sync bearer auth, metrics bearer auth, durable JSON ledger storage, and scoped CORS[\s\S]*ATLASTERM_SYNC_ALLOW_EPHEMERAL_STORAGE=1/,
@@ -697,7 +748,8 @@ const checks = [
   {
     label: "QA checklist includes readiness gate",
     source: qaChecklist,
-    pattern: /`GET \/readyz` returns `200`[\s\S]*returns `503`[\s\S]*unwritable/,
+    pattern:
+      /`GET \/readyz` returns `200`[\s\S]*returns `503`[\s\S]*unwritable/,
   },
   {
     label: "Self-hosted smoke checks readiness",

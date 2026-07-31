@@ -2,12 +2,16 @@ export const hi = {
   "desktop.demoScopeSummary": "डेमो डेटा — कोई वास्तविक SSH सत्र नहीं",
   "desktop.demoShell": "नमूना शेल",
   "desktop.noSession": "कोई SSH सत्र नहीं",
-  "desktop.noSessionActionDetail": "टर्मिनल, SFTP या फ़ॉरवर्डिंग क्रियाएँ चलाने से पहले किसी वास्तविक होस्ट से कनेक्ट करें।",
+  "desktop.noSessionActionDetail":
+    "टर्मिनल, SFTP या फ़ॉरवर्डिंग क्रियाएँ चलाने से पहले किसी वास्तविक होस्ट से कनेक्ट करें।",
   "desktop.sampleDataShort": "नमूना डेटा",
-  "desktop.terminalSessionConnectRequired": "कमांड चलाने से पहले “कनेक्ट करें” से वास्तविक SSH सत्र खोलें।",
-  "desktop.terminalSessionSample": "यह केवल नमूना कनेक्शन प्रोफ़ाइल है। कोई SSH सत्र सक्रिय नहीं है।",
+  "desktop.terminalSessionConnectRequired":
+    "कमांड चलाने से पहले “कनेक्ट करें” से वास्तविक SSH सत्र खोलें।",
+  "desktop.terminalSessionSample":
+    "यह केवल नमूना कनेक्शन प्रोफ़ाइल है। कोई SSH सत्र सक्रिय नहीं है।",
   "desktop.sftp": "SFTP",
-  "desktop.manifestDescription": "SSH टर्मिनल, SFTP, टीम एक्सेस और सत्र प्रबंधन.",
+  "desktop.manifestDescription":
+    "SSH टर्मिनल, SFTP, पोर्ट फ़ॉरवर्डिंग और स्थानीय सत्र प्रबंधन।",
   "language.selectorLabel": "प्रदर्शन भाषा",
   "language.autoRegion": "क्षेत्र के अनुसार स्वतः",
   "language.worldReady": "वैश्विक भाषाएं तैयार हैं",
@@ -16,7 +20,8 @@ export const hi = {
   "desktop.searchPlaceholder": "होस्ट, टैग, उपयोगकर्ता खोजें",
   "desktop.searchMatches": "{count} परिणाम",
   "desktop.searchEmptyTitle": "कोई मेल खाता कनेक्शन नहीं",
-  "desktop.searchEmptyHint": "कोई अन्य कीवर्ड आज़माएँ या टैग फ़िल्टर साफ़ करें।",
+  "desktop.searchEmptyHint":
+    "कोई अन्य कीवर्ड आज़माएँ या टैग फ़िल्टर साफ़ करें।",
   "desktop.new": "नया",
   "desktop.connections": "कनेक्शन",
   "desktop.filterByTag": "टैग से फ़िल्टर करें",
@@ -50,29 +55,41 @@ export const hi = {
   "desktop.terminalAutocompleteNavigate": "नेविगेट करने के लिए",
   "desktop.terminalSessionConnected": "{name} ({group}) से कनेक्ट किया गया",
   "desktop.terminalSessionReady": "सत्र तैयार है।",
-  "desktop.terminalSessionMfaRequired": "कमांड चलाने से पहले MFA सत्यापन आवश्यक है।",
+  "desktop.terminalSessionMfaRequired":
+    "कमांड चलाने से पहले MFA सत्यापन आवश्यक है।",
   "desktop.mfaRequiredShort": "MFA आवश्यक",
   "desktop.commandAccepted": "कमांड स्वीकार किया गया",
-  "desktop.commandAcceptedDetail": "स्थानीय सुरक्षा प्रीफ्लाइट पास हुई और कमांड टर्मिनल executor कतार में जोड़ दिया गया।",
+  "desktop.commandAcceptedDetail":
+    "स्थानीय सुरक्षा प्रीफ्लाइट पास हुई और कमांड टर्मिनल executor कतार में जोड़ दिया गया।",
   "desktop.commandBlocked": "कमांड ब्लॉक किया गया",
   "desktop.commandBlockedDetail": "{pattern} से मेल खाया: {reason}",
   "desktop.safetyReasonRmRoot": "फ़ाइल सिस्टम रूट को रिकर्सिव रूप से हटाता है",
   "desktop.safetyReasonMkfs": "फ़ाइल सिस्टम को फ़ॉर्मैट करता है",
   "desktop.safetyReasonForkBomb": "fork bomb",
   "desktop.safetyReasonRawDiskCopy": "कच्ची डिस्क कॉपी डेटा नष्ट कर सकती है",
-  "desktop.safetyReasonChmodRoot": "फ़ाइल सिस्टम रूट से अनुमतियाँ बहुत व्यापक कर देता है",
-  "desktop.safetyReasonTeeBlockDevice": "कच्चे आउटपुट को ब्लॉक डिवाइस पर लिखता है",
-  "desktop.safetyReasonRedirectBlockDevice": "आउटपुट को कच्चे ब्लॉक डिवाइस पर भेजकर उसकी सामग्री नष्ट करता है",
-  "desktop.safetyReasonFindRootDelete": "रूट पथ से फ़ाइलें रिकर्सिव रूप से हटाता है",
-  "desktop.safetyReasonDiskWipe": "पार्टीशन टेबल या ब्लॉक-डिवाइस सामग्री को अपरिवर्तनीय रूप से मिटाता है",
+  "desktop.safetyReasonChmodRoot":
+    "फ़ाइल सिस्टम रूट से अनुमतियाँ बहुत व्यापक कर देता है",
+  "desktop.safetyReasonTeeBlockDevice":
+    "कच्चे आउटपुट को ब्लॉक डिवाइस पर लिखता है",
+  "desktop.safetyReasonRedirectBlockDevice":
+    "आउटपुट को कच्चे ब्लॉक डिवाइस पर भेजकर उसकी सामग्री नष्ट करता है",
+  "desktop.safetyReasonFindRootDelete":
+    "रूट पथ से फ़ाइलें रिकर्सिव रूप से हटाता है",
+  "desktop.safetyReasonDiskWipe":
+    "पार्टीशन टेबल या ब्लॉक-डिवाइस सामग्री को अपरिवर्तनीय रूप से मिटाता है",
   "desktop.safetyReasonFirewallFlush": "फ़ायरवॉल नियमों को साफ़ करता है",
-  "desktop.safetyReasonRemoteShellPipe": "दूरस्थ सामग्री को सीधे shell में पाइप करता है",
-  "desktop.safetyReasonRootDownloadOverwrite": "डाउनलोड की गई सामग्री से रूट पथ को ओवरराइट करता है",
+  "desktop.safetyReasonRemoteShellPipe":
+    "दूरस्थ सामग्री को सीधे shell में पाइप करता है",
+  "desktop.safetyReasonRootDownloadOverwrite":
+    "डाउनलोड की गई सामग्री से रूट पथ को ओवरराइट करता है",
   "desktop.safetyReasonHostShutdown": "होस्ट को तुरंत रोकता है",
-  "desktop.safetyReasonWindowsDestructive": "Windows का विनाशकारी कमांड फ़ाइलों, डिस्क या होस्ट स्थिति को लक्षित करता है",
-  "desktop.safetyReasonPowershellDestructive": "PowerShell का विनाशकारी कमांड ड्राइव, सिस्टम पथ, डिस्क या होस्ट पावर स्थिति को लक्षित करता है",
+  "desktop.safetyReasonWindowsDestructive":
+    "Windows का विनाशकारी कमांड फ़ाइलों, डिस्क या होस्ट स्थिति को लक्षित करता है",
+  "desktop.safetyReasonPowershellDestructive":
+    "PowerShell का विनाशकारी कमांड ड्राइव, सिस्टम पथ, डिस्क या होस्ट पावर स्थिति को लक्षित करता है",
   "desktop.safetyReasonDropDatabase": "डेटाबेस हटाता है",
-  "desktop.safetyReasonCommandSubstitution": "ऐसा सब-कमांड एम्बेड करता है जो कुछ भी चला सकता है",
+  "desktop.safetyReasonCommandSubstitution":
+    "ऐसा सब-कमांड एम्बेड करता है जो कुछ भी चला सकता है",
   "desktop.context": "संदर्भ",
   "desktop.team": "टीम",
   "desktop.settings": "सेटिंग्स",
@@ -108,7 +125,7 @@ export const hi = {
   "desktop.recordTerminal": "टर्मिनल सत्र रिकॉर्ड करें",
   "desktop.requiredProduction": "Production scopes के लिए आवश्यक",
   "desktop.syncEncrypted": "एन्क्रिप्टेड स्निपेट सिंक करें",
-  "desktop.availableProBusiness": "Pro और Business में उपलब्ध",
+  "desktop.plannedUnavailable": "योजनाबद्ध; अभी उपलब्ध नहीं",
   "desktop.telemetryErrors": "वैकल्पिक त्रुटि रिपोर्ट",
   "desktop.telemetryErrorsHint": "संपादित क्रैश और त्रुटि सारांश भेजें।",
   "desktop.businessLayer": "व्यवसाय परत",
@@ -123,7 +140,8 @@ export const hi = {
   "desktop.requestElevated": "उन्नत पहुंच का अनुरोध करें",
   "desktop.palettePlaceholder": "कमांड चलाएं, होस्ट खोलें, workflow शुरू करें",
   "desktop.paletteEmptyTitle": "पैलेट में कोई मेल नहीं",
-  "desktop.paletteEmptyHint": "होस्ट, हालिया कमांड या कार्यप्रवाह कीवर्ड आज़माएँ।",
+  "desktop.paletteEmptyHint":
+    "होस्ट, हालिया कमांड या कार्यप्रवाह कीवर्ड आज़माएँ।",
   "team.access": "टीम पहुंच",
   "team.accessSummary": "टीम पहुंच सारांश",
   "team.business": "Business",
@@ -167,7 +185,8 @@ export const hi = {
   "desktop.forwardActive": "सक्रिय",
   "desktop.forwardInactive": "निष्क्रिय",
   "desktop.forwardNoRules": "अभी तक कोई फ़ॉर्वर्डिंग नियम नहीं",
-  "desktop.forwardNoRulesHint": "SSH के ज़रिए लोकल TCP पोर्ट को टनल करने के लिए एक नियम जोड़ें।",
+  "desktop.forwardNoRulesHint":
+    "SSH के ज़रिए लोकल TCP पोर्ट को टनल करने के लिए एक नियम जोड़ें।",
   "desktop.sftpEmpty": "यह फ़ोल्डर खाली है",
   "desktop.sftpEmptyHint": "कोई फ़ाइल अपलोड करें या किसी अन्य फ़ोल्डर पर जाएँ।",
   "desktop.groupProduction": "प्रोडक्शन",
@@ -215,10 +234,12 @@ export const hi = {
   "desktop.passphrase": "पासफ़्रेज़ (वैकल्पिक)",
   "desktop.pinnedFingerprint": "पिन की गई होस्ट कुंजी (वैकल्पिक)",
   "desktop.hostKeyConfirmTitle": "Confirm host key",
-  "desktop.hostKeyConfirmDetail": "Verify this SHA-256 fingerprint before authenticating.",
+  "desktop.hostKeyConfirmDetail":
+    "Verify this SHA-256 fingerprint before authenticating.",
   "desktop.hostKeyPresentedFingerprint": "Presented fingerprint",
   "desktop.hostKeyVerificationFailed": "Host key verification failed",
-  "desktop.hostKeyChangedDetail": "Stored host key mismatch for {host}:{port}. Expected {stored}, presented {presented}.",
+  "desktop.hostKeyChangedDetail":
+    "Stored host key mismatch for {host}:{port}. Expected {stored}, presented {presented}.",
   "desktop.trustHostKeyAndConnect": "Trust and connect",
   "desktop.connectAction": "कनेक्ट करें",
   "desktop.connecting": "कनेक्ट हो रहा है…",
@@ -227,23 +248,27 @@ export const hi = {
   "desktop.connectionSwitched": "{name} पर स्विच किया गया",
   "desktop.connectionMoved": "{connection} को {group} में ले जाया गया",
   "desktop.connectionsImported": "{count} कनेक्शन आयात किए गए",
-  "desktop.connectionsImportFailed": "Could not import connections. Choose a valid JoeSSH connections JSON file.",
+  "desktop.connectionsImportFailed":
+    "Could not import connections. Choose a valid JoeSSH connections JSON file.",
   "desktop.connectionConnectToast": "कनेक्ट करें: {name}",
   "desktop.connectionCreated": "कनेक्शन {name} बनाया गया",
   "desktop.connectionTestResult": "कनेक्शन परीक्षण: {result}",
-  "desktop.builtinConnectionEditUnavailable": "अंतर्निहित डेमो कनेक्शन संपादित नहीं किए जा सकते",
-  "desktop.builtinConnectionDeleteUnavailable": "अंतर्निहित डेमो कनेक्शन हटाए नहीं जा सकते",
+  "desktop.builtinConnectionEditUnavailable":
+    "अंतर्निहित डेमो कनेक्शन संपादित नहीं किए जा सकते",
+  "desktop.builtinConnectionDeleteUnavailable":
+    "अंतर्निहित डेमो कनेक्शन हटाए नहीं जा सकते",
   "desktop.connectionCopyName": "{name} कॉपी",
   "desktop.connectionCopyNameNumbered": "{name} कॉपी {number}",
   "desktop.connectionDuplicated": "{name} डुप्लिकेट किया गया",
   "desktop.connectionDeleted": "{name} हटाया गया",
   "desktop.connectionEdited": "{name} संपादित किया गया",
-  "desktop.groupCreatedToast": "समूह \"{name}\" बनाया गया",
-  "desktop.groupDeletedToast": "समूह \"{name}\" हटाया गया",
-  "desktop.groupRenamedToast": "समूह का नाम \"{name}\" किया गया",
+  "desktop.groupCreatedToast": 'समूह "{name}" बनाया गया',
+  "desktop.groupDeletedToast": 'समूह "{name}" हटाया गया',
+  "desktop.groupRenamedToast": 'समूह का नाम "{name}" किया गया',
   "desktop.sftpUploadComplete": "{name} अपलोड किया गया",
   "desktop.sftpOverwriteTitle": "मौजूदा फ़ाइल बदलें?",
-  "desktop.sftpOverwriteDetail": "इस फ़ोल्डर में {name} नाम की फ़ाइल पहले से मौजूद है।",
+  "desktop.sftpOverwriteDetail":
+    "इस फ़ोल्डर में {name} नाम की फ़ाइल पहले से मौजूद है।",
   "desktop.sftpOverwriteCancel": "रद्द करें",
   "desktop.sftpOverwriteConfirm": "ओवरराइट करें",
   "desktop.sshCommandCopied": "{name} का SSH कमांड कॉपी किया गया",
@@ -269,7 +294,8 @@ export const hi = {
   "team.auditCommandRecorded": "Command recorded",
   "team.auditAccessRequestApproved": "Access request approved",
   "team.auditAccessRequestRejected": "Access request rejected",
-  "team.productionElevationDetail": "Incident commander role for gateway triage",
+  "team.productionElevationDetail":
+    "Incident commander role for gateway triage",
   "web.adminNavigation": "JoeSSH व्यवस्थापन नेविगेशन",
   "web.adminConsole": "व्यवस्थापन कंसोल",
   "web.skipToContent": "मुख्य सामग्री पर जाएं",
@@ -308,17 +334,23 @@ export const hi = {
   "web.storage": "संग्रहण",
   "mobile.kicker": "JoeSSH Mobile",
   "mobile.title": "सिंक और आपातकालीन पहुंच",
-  "mobile.subtitle": "इस फोन को पंजीकृत करें, टर्मिनल संदर्भ का पूर्वावलोकन करें, और पुनर्प्राप्ति पथ पास रखें।",
+  "mobile.subtitle":
+    "इस फोन को पंजीकृत करें, टर्मिनल संदर्भ का पूर्वावलोकन करें, और पुनर्प्राप्ति पथ पास रखें।",
   "mobile.registering": "डिवाइस पंजीकृत हो रहा है",
-  "mobile.registeringMessage": "सिंक और आपातकालीन handoff के लिए मोबाइल पहचान बनाई जा रही है।",
+  "mobile.registeringMessage":
+    "सिंक और आपातकालीन handoff के लिए मोबाइल पहचान बनाई जा रही है।",
   "mobile.previewing": "सिंक पूर्वावलोकन खींचा जा रहा है",
-  "mobile.previewingMessage": "प्रोफ़ाइल, सत्र, कर्सर स्थिति और विश्वसनीय पुनर्प्राप्ति मार्ग लिए जा रहे हैं।",
+  "mobile.previewingMessage":
+    "प्रोफ़ाइल, सत्र, कर्सर स्थिति और विश्वसनीय पुनर्प्राप्ति मार्ग लिए जा रहे हैं।",
   "mobile.ready": "पूर्वावलोकन तैयार",
-  "mobile.readyMessage": "यह डिवाइस पंजीकृत है और नवीनतम सिंक प्रतिक्रिया उपलब्ध है।",
+  "mobile.readyMessage":
+    "यह डिवाइस पंजीकृत है और नवीनतम सिंक प्रतिक्रिया उपलब्ध है।",
   "mobile.offline": "ऑफ़लाइन fallback सक्रिय",
-  "mobile.offlineMessage": "लाइव सिंक उपलब्ध नहीं है। कोई लाइव या कैश किया हुआ कार्यस्थान डेटा प्राप्त नहीं हुआ।",
+  "mobile.offlineMessage":
+    "लाइव सिंक उपलब्ध नहीं है। कोई लाइव या कैश किया हुआ कार्यस्थान डेटा प्राप्त नहीं हुआ।",
   "mobile.readyToConnect": "कनेक्ट करने के लिए तैयार",
-  "mobile.readyToConnectMessage": "पहले इस फोन को पंजीकृत करें और JoeSSH सिंक से सुरक्षित पूर्वावलोकन खींचें।",
+  "mobile.readyToConnectMessage":
+    "पहले इस फोन को पंजीकृत करें और JoeSSH सिंक से सुरक्षित पूर्वावलोकन खींचें।",
   "mobile.profiles": "प्रोफ़ाइल",
   "mobile.openSessions": "खुले सत्र",
   "mobile.pendingChanges": "प्राप्त बदलाव",
@@ -331,17 +363,20 @@ export const hi = {
   "mobile.noWorkspace": "अभी कोई कार्यस्थान नहीं खींचा गया",
   "mobile.runPreview": "कर्सर स्थिति लोड करने के लिए पूर्वावलोकन चलाएं",
   "mobile.emergencyConnection": "आपातकालीन कनेक्शन",
-  "mobile.emptyRoutes": "इस पूर्वावलोकन के लिए कोई पुनर्प्राप्ति मार्ग कॉन्फ़िगर नहीं है।",
+  "mobile.emptyRoutes":
+    "इस पूर्वावलोकन के लिए कोई पुनर्प्राप्ति मार्ग कॉन्फ़िगर नहीं है।",
   "mobile.offlineBadge": "ऑफ़लाइन",
   "mobile.liveBadge": "लाइव",
   "mobile.preparing": "पूर्वावलोकन तैयार हो रहा है",
   "mobile.registerPull": "पंजीकृत करें और पूर्वावलोकन खींचें",
   "desktop.error.boundary.title": "कुछ गलत हो गया",
   "desktop.error.boundary.reload": "पुनः लोड करें",
-  "desktop.error.boundary.message": "JoeSSH को पुनः लोड करें या समस्या जारी रहने पर सहायता से संपर्क करें।",
+  "desktop.error.boundary.message":
+    "JoeSSH को पुनः लोड करें या समस्या जारी रहने पर सहायता से संपर्क करें।",
   "mobile.error.boundary.title": "कुछ गलत हो गया",
   "mobile.error.boundary.reload": "पुनः लोड करें",
-  "mobile.error.boundary.message": "JoeSSH को पुनः लोड करें या समस्या जारी रहने पर सहायता से संपर्क करें।",
+  "mobile.error.boundary.message":
+    "JoeSSH को पुनः लोड करें या समस्या जारी रहने पर सहायता से संपर्क करें।",
   "desktop.paletteRecent": "हालिया",
   "desktop.paletteRecentBadge": "हाल का",
   "desktop.paletteConnections": "कनेक्शन",
@@ -392,7 +427,15 @@ export const hi = {
   "team.accessRequestStatus": "टीम पहुंच अनुरोध स्थिति",
   "desktop.restoreWorkbench": "कार्यस्थान पुनर्स्थापित करें",
   "desktop.gettingStarted": "शुरू करें",
-  "desktop.surfaceGuide": "Desktop SSH सत्र खोलता है; Web Admin सिंक और टीमों की निगरानी करता है; Mobile सहायक ऐप है।",
-  "desktop.telemetryPrivacyHint": "यह वैकल्पिक है और डिफ़ॉल्ट रूप से बंद है। यह कभी भी होस्ट, उपयोगकर्ता नाम, कमांड, कुंजियाँ, टोकन, पथ या टर्मिनल आउटपुट नहीं भेजता।",
-  "team.reviewedBy": "{reviewer} द्वारा समीक्षा की गई"
+  "desktop.surfaceGuide":
+    "Desktop स्थानीय SSH और SFTP सत्र खोलता है; Web Admin केवल-पढ़ने योग्य Sync स्नैपशॉट दिखाता है; Mobile एक Sync पूर्वावलोकन है और SSH या SFTP नहीं चलाता।",
+  "desktop.telemetryPrivacyHint":
+    "यह वैकल्पिक है और डिफ़ॉल्ट रूप से बंद है। यह कभी भी होस्ट, उपयोगकर्ता नाम, कमांड, कुंजियाँ, टोकन, पथ या टर्मिनल आउटपुट नहीं भेजता।",
+  "desktop.thirdPartyNotices": "लाइसेंस और सूचनाएँ",
+  "desktop.thirdPartyNoticesHint":
+    "इस ऐप बिल्ड के साथ शामिल लाइसेंस और सूचना का पूरा पाठ देखें।",
+  "desktop.thirdPartyNoticesLoading": "लाइसेंस लोड हो रहे हैं…",
+  "desktop.thirdPartyNoticesUnavailable":
+    "इस बिल्ड में लाइसेंस सूचनाएँ उपलब्ध नहीं हैं।",
+  "team.reviewedBy": "{reviewer} द्वारा समीक्षा की गई",
 } as const;

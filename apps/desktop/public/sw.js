@@ -1,4 +1,4 @@
-const CACHE_NAME = "joessh-v2";
+const CACHE_NAME = "joessh-v3";
 const MAX_CACHE_ENTRIES = 100;
 const PRECACHE_URLS = ["/", "/offline.html"];
 
