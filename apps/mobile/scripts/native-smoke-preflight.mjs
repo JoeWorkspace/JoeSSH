@@ -185,7 +185,9 @@ function checkNativeSmokeFlowContract() {
     'Fallback preview does not fabricate recovery routes',
   );
   passIf(
-    syncServiceSource.includes('accepted: 0') && syncServiceSource.includes("syncCursor: device.syncCursor ?? '0'"),
+    /accepted:\s*0[\s\S]*?syncCursor:\s*device\.syncCursor\s*\?\?\s*(['"])0\1/.test(
+      syncServiceSource,
+    ),
     'Presence push is skipped without a sync endpoint',
   );
   if (!hasNoEndpointSyncUrl) {
