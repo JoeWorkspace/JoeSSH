@@ -8,8 +8,9 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import test from "node:test";
+import { deflateSync } from "node:zlib";
 import {
   STORE_SCREENSHOT_SLOTS,
   encodeSolidPng,
@@ -87,6 +88,261 @@ test("provisional references remain fail-closed while brand art is reproducible"
         root: repositoryRoot,
       }),
     /provisional-not-uploadable/,
+  );
+});
+
+test("rejects hand-written minimal candidate evidence", (t) => {
+  const root = temporaryDirectory(t);
+  const evidenceRoot = join(root, "candidate-evidence");
+  mkdirSync(evidenceRoot);
+  const candidatePath = join(evidenceRoot, "JoeSSH.msix");
+  const candidateEvidencePath = join(evidenceRoot, "candidate.json");
+  const candidateBytes = Buffer.from("not a real package");
+  writeFileSync(candidatePath, candidateBytes);
+  writeFileSync(
+    candidateEvidencePath,
+    `${JSON.stringify(
+      {
+        schemaVersion: 3,
+        kind: "windows-store-candidate",
+        format: "msix",
+        version: "0.1.0-beta.10",
+        artifact: {
+          fileName: "JoeSSH.msix",
+          sha256: sha256(candidateBytes),
+          sizeBytes: candidateBytes.length,
+        },
+        gates: {
+          artifactHashBound: true,
+          candidatePreflightPassed: true,
+          storePublicationReady: false,
+        },
+        storeSubmission: {
+          certificationStatus: "not-run",
+          status: "not-submitted",
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+
+  assert.throws(
+    () =>
+      initializeStoreAssetCaptureSession({
+        candidatePath,
+        candidateEvidencePath,
+        captureDir: join(root, "captures"),
+      }),
+    /generated evidence schema|complete schema v3/,
+  );
+});
+
+test("rejects an inconsistent pending Store-signing state", (t) => {
+  const root = temporaryDirectory(t);
+  const evidenceRoot = join(root, "candidate-evidence");
+  mkdirSync(evidenceRoot);
+  const candidatePath = join(evidenceRoot, "JoeSSH.msix");
+  const candidateEvidencePath = join(evidenceRoot, "candidate.json");
+  writeFileSync(candidatePath, Buffer.from("candidate bytes"));
+  writeCandidateEvidence(candidatePath, candidateEvidencePath, (evidence) => ({
+    ...evidence,
+    verification: {
+      ...evidence.verification,
+      signature: {
+        ...evidence.verification.signature,
+        status: "Valid",
+      },
+    },
+  }));
+
+  assert.throws(
+    () =>
+      initializeStoreAssetCaptureSession({
+        candidatePath,
+        candidateEvidencePath,
+        captureDir: join(root, "captures"),
+      }),
+    /Pending Store-only MSIX signing evidence is inconsistent/,
+  );
+});
+
+test("rejects incomplete MSIX semantic and Partner Center evidence", (t) => {
+  const root = temporaryDirectory(t);
+  const evidenceRoot = join(root, "candidate-evidence");
+  mkdirSync(evidenceRoot);
+  const candidatePath = join(evidenceRoot, "JoeSSH.msix");
+  const candidateEvidencePath = join(evidenceRoot, "candidate.json");
+  writeFileSync(candidatePath, Buffer.from("candidate bytes"));
+
+  const mutations = [
+    (evidence) => ({
+      ...evidence,
+      verification: {
+        ...evidence.verification,
+        partnerIdentityCrossCheck: null,
+      },
+    }),
+    (evidence) => ({
+      ...evidence,
+      verification: {
+        ...evidence.verification,
+        desktopApplication: null,
+      },
+    }),
+    (evidence) => ({
+      ...evidence,
+      verification: {
+        ...evidence.verification,
+        manifest: { ...evidence.verification.manifest, version: "0.1.0.9" },
+      },
+    }),
+  ];
+
+  for (const [index, mutate] of mutations.entries()) {
+    writeCandidateEvidence(candidatePath, candidateEvidencePath, mutate);
+    assert.throws(
+      () =>
+        initializeStoreAssetCaptureSession({
+          candidatePath,
+          candidateEvidencePath,
+          captureDir: join(root, `captures-invalid-msix-${index}`),
+        }),
+      /MSIX .*evidence|MSIX candidate identity or semantic verification is invalid/,
+    );
+  }
+});
+
+test("accepts complete EXE signer evidence and rejects signer drift", (t) => {
+  const root = temporaryDirectory(t);
+  const evidenceRoot = join(root, "candidate-evidence");
+  mkdirSync(evidenceRoot);
+  const candidatePath = join(evidenceRoot, "JoeSSH.exe");
+  const candidateEvidencePath = join(evidenceRoot, "candidate.json");
+  writeFileSync(candidatePath, Buffer.from("candidate bytes"));
+  writeCandidateEvidence(candidatePath, candidateEvidencePath, toExeEvidence);
+
+  assert.doesNotThrow(() =>
+    initializeStoreAssetCaptureSession({
+      candidatePath,
+      candidateEvidencePath,
+      captureDir: join(root, "captures-valid"),
+    }),
+  );
+
+  writeCandidateEvidence(candidatePath, candidateEvidencePath, (evidence) => {
+    const exe = toExeEvidence(evidence);
+    return {
+      ...exe,
+      verification: {
+        ...exe.verification,
+        signerPolicy: {
+          ...exe.verification.signerPolicy,
+          expectedThumbprint: "B".repeat(40),
+        },
+      },
+    };
+  });
+  assert.throws(
+    () =>
+      initializeStoreAssetCaptureSession({
+        candidatePath,
+        candidateEvidencePath,
+        captureDir: join(root, "captures-invalid"),
+      }),
+    /EXE candidate signer or installed-payload evidence is invalid/,
+  );
+});
+
+test("rejects EXE evidence with a missing signer subject", (t) => {
+  const root = temporaryDirectory(t);
+  const evidenceRoot = join(root, "candidate-evidence");
+  mkdirSync(evidenceRoot);
+  const candidatePath = join(evidenceRoot, "JoeSSH.exe");
+  const candidateEvidencePath = join(evidenceRoot, "candidate.json");
+  writeFileSync(candidatePath, Buffer.from("candidate bytes"));
+  writeCandidateEvidence(candidatePath, candidateEvidencePath, (evidence) => {
+    const exe = toExeEvidence(evidence);
+    const withoutSubject = {
+      ...exe.verification.installerSignature,
+      signerSubject: null,
+    };
+    return {
+      ...exe,
+      attestations: {
+        ...exe.attestations,
+        protectedEnvironment: {
+          ...exe.attestations.protectedEnvironment,
+          expectedSigner: {
+            ...exe.attestations.protectedEnvironment.expectedSigner,
+            subject: null,
+          },
+        },
+      },
+      verification: {
+        ...exe.verification,
+        installerSignature: withoutSubject,
+        payload: exe.verification.payload.map((entry) => ({
+          ...entry,
+          signature: withoutSubject,
+        })),
+        signerPolicy: {
+          ...exe.verification.signerPolicy,
+          expectedSubject: null,
+        },
+      },
+    };
+  });
+
+  assert.throws(
+    () =>
+      initializeStoreAssetCaptureSession({
+        candidatePath,
+        candidateEvidencePath,
+        captureDir: join(root, "captures-invalid-exe-subject"),
+      }),
+    /EXE candidate signer or installed-payload evidence is invalid/,
+  );
+});
+
+test("accepts candidate evidence from a 64-character Git object format", (t) => {
+  const root = temporaryDirectory(t);
+  const evidenceRoot = join(root, "candidate-evidence");
+  mkdirSync(evidenceRoot);
+  const candidatePath = join(evidenceRoot, "JoeSSH.msix");
+  const candidateEvidencePath = join(evidenceRoot, "candidate.json");
+  const commit = "a".repeat(64);
+  writeFileSync(candidatePath, Buffer.from("candidate bytes"));
+  writeCandidateEvidence(candidatePath, candidateEvidencePath, (evidence) => ({
+    ...evidence,
+    commits: {
+      ...evidence.commits,
+      artifactSourceCommit: commit,
+      preflightCommit: commit,
+    },
+    executionIdentity: {
+      ...evidence.executionIdentity,
+      tool: {
+        ...evidence.executionIdentity.tool,
+        preflightCommit: commit,
+      },
+    },
+    attestations: {
+      ...evidence.attestations,
+      protectedEnvironment: {
+        ...evidence.attestations.protectedEnvironment,
+        artifactSourceCommit: commit,
+        preflightCommit: commit,
+      },
+    },
+  }));
+
+  assert.doesNotThrow(() =>
+    initializeStoreAssetCaptureSession({
+      candidatePath,
+      candidateEvidencePath,
+      captureDir: join(root, "captures-sha256-git"),
+    }),
   );
 });
 
@@ -176,6 +432,45 @@ test("requires explicit exact-candidate confirmation", (t) => {
   );
 });
 
+test("requires the exact generated candidate checksum inventory", (t) => {
+  const fixture = createCompleteCaptureFixture(t);
+  const evidenceRoot = dirname(fixture.options.candidateEvidencePath);
+  writeFileSync(
+    join(evidenceRoot, "SHA256SUMS.txt"),
+    `${"0".repeat(64)}  candidate.json\n`,
+  );
+
+  assert.throws(
+    () =>
+      prepareStoreAssetBundle({
+        ...fixture.options,
+        confirmExactCandidate: true,
+        outputDir: join(fixture.root, "prepared-stale-candidate-checksums"),
+        root: repositoryRoot,
+      }),
+    /Candidate evidence SHA256SUMS.txt is stale or incomplete/,
+  );
+});
+
+test("rejects unexpected files in the generated candidate evidence bundle", (t) => {
+  const fixture = createCompleteCaptureFixture(t);
+  writeFileSync(
+    join(dirname(fixture.options.candidateEvidencePath), "unreviewed.txt"),
+    "unexpected evidence",
+  );
+
+  assert.throws(
+    () =>
+      prepareStoreAssetBundle({
+        ...fixture.options,
+        confirmExactCandidate: true,
+        outputDir: join(fixture.root, "prepared-extra-candidate-evidence"),
+        root: repositoryRoot,
+      }),
+    /Candidate evidence contains missing, stale, or unexpected files/,
+  );
+});
+
 test("rejects duplicate screenshots instead of promoting repeated references", (t) => {
   const fixture = createCaptureFixture(t);
   const duplicate = encodeSolidPng(1920, 1080, [20, 30, 40, 255]);
@@ -214,6 +509,48 @@ test("rejects screenshots with dimensions outside the pinned capture contract", 
         root: repositoryRoot,
       }),
     /must be exactly 1920x1080/,
+  );
+});
+
+test("rejects transparent RGBA screenshots with invisible RGB payloads", (t) => {
+  const fixture = createCaptureFixture(t);
+  for (let index = 0; index < STORE_SCREENSHOT_SLOTS.length; index += 1) {
+    writeFixtureFile(
+      fixture.options.captureDir,
+      STORE_SCREENSHOT_SLOTS[index].path,
+      encodeSolidPng(1920, 1080, [20 + index, 40 + index, 80 + index, 0]),
+    );
+  }
+
+  assert.throws(
+    () =>
+      prepareStoreAssetBundle({
+        ...fixture.options,
+        confirmExactCandidate: true,
+        outputDir: join(fixture.root, "prepared-transparent"),
+        root: repositoryRoot,
+      }),
+    /must be fully opaque/,
+  );
+});
+
+test("rejects oversized screenshot source files before reading them", (t) => {
+  const fixture = createCompleteCaptureFixture(t);
+  const firstScreenshotPath = join(
+    fixture.options.captureDir,
+    ...STORE_SCREENSHOT_SLOTS[0].path.split("/"),
+  );
+  writeFileSync(firstScreenshotPath, Buffer.alloc(16 * 1024 * 1024 + 1));
+
+  assert.throws(
+    () =>
+      prepareStoreAssetBundle({
+        ...fixture.options,
+        confirmExactCandidate: true,
+        outputDir: join(fixture.root, "prepared-oversized-source"),
+        root: repositoryRoot,
+      }),
+    /source file limit/,
   );
 });
 
@@ -272,6 +609,9 @@ test("rejects corrupt or trailing PNG compressed image data", (t) => {
     ),
     rewriteFirstPngChunk(cleanScreenshot, "IDAT", (data) =>
       Buffer.concat([data, Buffer.from("hidden-trailing-payload", "ascii")]),
+    ),
+    rewriteFirstPngChunk(cleanScreenshot, "IDAT", () =>
+      deflateSync(Buffer.alloc((1920 * 4 + 1) * 1080 + 1)),
     ),
   ];
 
@@ -392,8 +732,10 @@ function createCompleteCaptureFixture(t) {
 
 function createCaptureFixture(t) {
   const root = temporaryDirectory(t);
-  const candidatePath = join(root, "JoeSSH.msix");
-  const candidateEvidencePath = join(root, "candidate.json");
+  const candidateEvidenceDir = join(root, "candidate-evidence");
+  mkdirSync(candidateEvidenceDir);
+  const candidatePath = join(candidateEvidenceDir, "JoeSSH.msix");
+  const candidateEvidencePath = join(candidateEvidenceDir, "candidate.json");
   const captureDir = join(root, "captures");
   writeFileSync(candidatePath, Buffer.from("candidate bytes"));
   writeCandidateEvidence(candidatePath, candidateEvidencePath);
@@ -408,35 +750,334 @@ function createCaptureFixture(t) {
   };
 }
 
-function writeCandidateEvidence(candidatePath, evidencePath) {
-  const bytes = readFileSync(candidatePath);
-  writeFileSync(
-    evidencePath,
-    `${JSON.stringify(
-      {
-        schemaVersion: 3,
-        kind: "windows-store-candidate",
-        format: "msix",
-        version: "0.1.0-beta.10",
-        artifact: {
-          fileName: "JoeSSH.msix",
-          sha256: sha256(bytes),
-          sizeBytes: bytes.length,
+function writeCandidateEvidence(
+  candidatePath,
+  evidencePath,
+  mutate = (value) => value,
+) {
+  const candidateBytes = readFileSync(candidatePath);
+  const candidateSha256 = sha256(candidateBytes);
+  const evidenceRoot = dirname(evidencePath);
+  const noticesFileName = "THIRD-PARTY-NOTICES.txt";
+  const notices = Buffer.from(
+    "Synthetic third-party notices fixture.\n",
+    "utf8",
+  );
+  const noticesSha256 = sha256(notices);
+  writeFileSync(join(evidenceRoot, noticesFileName), notices);
+  const commit = "a".repeat(40);
+  const legalChecksumSha256 = "b".repeat(64);
+  const licenseManifestSha256 = "c".repeat(64);
+  const sbomChecksumSha256 = "d".repeat(64);
+  const partnerIdentity = {
+    schemaVersion: 1,
+    source: "partner-center",
+    productId: "9N1234567890",
+    packageIdentityName: "JoeSSH.Store.Assigned",
+    publisher: "CN=01234567-89ab-cdef-0123-456789abcdef",
+    publisherDisplayName: "Verified Test Individual",
+    publisherId: "8wekyb3d8bbwe",
+    packageFamilyName: "JoeSSH.Store.Assigned_8wekyb3d8bbwe",
+    reservedAt: "2020-01-01T00:00:00.000Z",
+  };
+  const repository = {
+    slug: "JoeWorkspace/JoeSSH",
+    source: "sanitized-git-origin",
+  };
+  const run = {
+    attempt: null,
+    id: null,
+    job: null,
+    serverUrl: null,
+    status: "local-run-context-not-authenticated",
+    workflow: null,
+  };
+  const evidence = mutate({
+    schemaVersion: 3,
+    kind: "windows-store-candidate",
+    generatedAt: "2020-01-01T00:00:00.000Z",
+    format: "msix",
+    route: "microsoft-store-msix-external",
+    version: "0.1.0-beta.10",
+    commits: {
+      artifactSourceCommit: commit,
+      preflightCommit: commit,
+      relationship: "same-commit",
+      sourceCommitBinding:
+        "operator-supplied input; authenticated provenance not provided",
+    },
+    executionIdentity: {
+      repository,
+      run,
+      tool: {
+        architecture: "x64",
+        gitExecutable: "git.exe",
+        nodeVersion: process.version,
+        platform: process.platform,
+        preflightCommit: commit,
+        script: "prepare-windows-store-candidate.mjs",
+        scriptSha256: "e".repeat(64),
+        scriptVersion: 3,
+      },
+    },
+    projectIdentity: {
+      communityPublisher: "JoeSSH Project",
+      identifier: "com.joeworkspace.joessh",
+      productName: "JoeSSH",
+      publisher: partnerIdentity.publisherDisplayName,
+      version: "0.1.0-beta.10",
+    },
+    artifact: {
+      fileName: basename(candidatePath),
+      sha256: candidateSha256,
+      sizeBytes: candidateBytes.length,
+      source: "local-artifact",
+      versionedHttpsUrl: null,
+      stagedCopySha256: candidateSha256,
+      integrity: {
+        expectedSha256: candidateSha256,
+        hashPolicy: "verify-every-download-snapshot-and-staged-copy",
+        observations: [
+          {
+            point: "private-snapshot-before-verification",
+            sha256: candidateSha256,
+          },
+          {
+            point: "candidate-evidence-staged-copy",
+            sha256: candidateSha256,
+          },
+        ],
+        status: "passed",
+        urlImmutability: { status: "not-applicable-local-artifact" },
+      },
+    },
+    legalNotices: {
+      bundleResourcePath: "legal/THIRD-PARTY-NOTICES.txt",
+      checksumManifest: "reports/release/THIRD-PARTY-LICENSES-SHA256SUMS.txt",
+      checksumManifestSha256: legalChecksumSha256,
+      evidenceFileName: noticesFileName,
+      licenseManifest: "reports/release/third-party-licenses/manifest.json",
+      licenseManifestSha256,
+      packageCount: 1,
+      sbomChecksumManifest: "reports/release/SBOM-SHA256SUMS.txt",
+      sbomChecksumSha256,
+      sboms: [
+        "cargo-workspace-sbom.cdx.json",
+        "npm-desktop-sbom.cdx.json",
+        "npm-web-sbom.cdx.json",
+        "tauri-cargo-sbom.cdx.json",
+      ].map((fileName, index) => ({
+        path: `reports/release/${fileName}`,
+        sha256: String(index + 1).repeat(64),
+      })),
+      sha256: noticesSha256,
+      sizeBytes: notices.length,
+      sourcePath:
+        "reports/release/third-party-licenses/THIRD-PARTY-NOTICES.txt",
+      textCount: 1,
+      verification:
+        "self-contained license bundle verification, exact Tauri resource mapping, exact installed or unpacked candidate payload match, and four checksum-bound public SBOMs",
+    },
+    attestations: {
+      authenticatedProvenance: {
+        status: "not-provided",
+        requiredBeforePublication: true,
+        acceptedEvidence:
+          "independently verified signed CI/build provenance bound to repository, source commit, workflow run, tool identity, and artifact SHA-256",
+      },
+      protectedEnvironment: {
+        artifactSha256: candidateSha256,
+        artifactSourceCommit: commit,
+        environment: "windows-release-stage-b",
+        legalPublisher: partnerIdentity.publisherDisplayName,
+        sbomChecksumManifestSha256: sbomChecksumSha256,
+        thirdPartyLicenseChecksumManifestSha256: legalChecksumSha256,
+        thirdPartyNoticesSha256: noticesSha256,
+        expectedSigner: "not-applicable-store-signed-msix",
+        preflightCommit: commit,
+        repository,
+        run,
+        status: "inputs-enforced-not-cryptographically-authenticated",
+      },
+      selfGeneratedChecksums: {
+        authenticatedProvenance: false,
+        classification: "local-integrity-list-only",
+        fileName: "SHA256SUMS.txt",
+      },
+    },
+    verification: {
+      bundledThirdPartyNotices: {
+        path: "legal/THIRD-PARTY-NOTICES.txt",
+        sha256: noticesSha256,
+        sizeBytes: notices.length,
+        status: "exact-match",
+      },
+      format: "msix",
+      makeAppx: {
+        executable: "makeappx.exe",
+        semanticValidation: "passed",
+      },
+      manifest: {
+        name: partnerIdentity.packageIdentityName,
+        publisher: partnerIdentity.publisher,
+        publisherDisplayName: partnerIdentity.publisherDisplayName,
+        version: "0.1.0.10",
+        architecture: "x64",
+      },
+      desktopApplication: {
+        executable: "JoeSSH.exe",
+        runtimeBehavior: "packagedClassicApp",
+        trustLevel: "mediumIL",
+        peMachine: "x64",
+        sha256: "f".repeat(64),
+      },
+      projectVersionMapping: {
+        msixVersion: "0.1.0.10",
+        projectVersion: "0.1.0-beta.10",
+      },
+      partnerIdentity,
+      partnerIdentityCrossCheck: {
+        method: "PackageNameAndPublisherIdFromFamilyName",
+        packageIdentityName: partnerIdentity.packageIdentityName,
+        publisherId: partnerIdentity.publisherId,
+        status: "matched",
+      },
+      partnerIdentityEvidence:
+        "operator-supplied Partner Center values; assignment is not independently verified",
+      route: "microsoft-store-msix-external",
+      signature: {
+        signerSubject: null,
+        signerThumbprint: null,
+        status: "NotSigned",
+        statusMessage: "Not signed",
+        timeStamperSubject: null,
+        timeStamperThumbprint: null,
+      },
+      signatureState: "pending-microsoft-store-signing",
+      storeSigningExpected: true,
+      tauriNativeBundle: false,
+    },
+    gates: {
+      artifactHashBound: true,
+      authenticatedProvenance: false,
+      candidatePreflightPassed: true,
+      hostedUrlImmutability: "not-applicable",
+      offlineWebView2Config: "not-applicable",
+      publicSbomsBound: true,
+      thirdPartyNoticesBundled: true,
+      partnerCenterUploadCandidate: false,
+      storePublicationReady: false,
+      windowsAppCertificationKit: "not-run",
+      blockers: [
+        "Windows App Certification Kit has not been run.",
+        "Partner Center submission, certification, and Microsoft Store signing have not occurred.",
+        "Authenticated build provenance has not been supplied or verified.",
+      ],
+    },
+    storeSubmission: {
+      certificationStatus: "not-run",
+      status: "not-submitted",
+      storeSignatureStatus: "not-issued",
+    },
+    boundary:
+      "This file proves only local candidate checks. It is not Partner Center submission, certification, Store signing, listing, or publication evidence.",
+  });
+  writeFileSync(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`);
+  rewriteCandidateEvidenceChecksums(evidenceRoot, evidence);
+}
+
+function rewriteCandidateEvidenceChecksums(evidenceRoot, evidence) {
+  const paths = [
+    evidence.artifact.fileName,
+    evidence.legalNotices.evidenceFileName,
+    "candidate.json",
+  ];
+  const lines = paths.map((path) => {
+    const absolute = join(evidenceRoot, ...path.split("/"));
+    return `${sha256(readFileSync(absolute))}  ${path}`;
+  });
+  writeFileSync(join(evidenceRoot, "SHA256SUMS.txt"), `${lines.join("\n")}\n`);
+}
+
+function toExeEvidence(evidence) {
+  const subject = "CN=Verified Test Individual";
+  const thumbprint = "A".repeat(40);
+  const signature = {
+    signerSubject: subject,
+    signerThumbprint: thumbprint,
+    status: "Valid",
+    statusMessage: "Valid",
+    timeStamperSubject: "CN=Test Timestamp Authority",
+    timeStamperThumbprint: "C".repeat(40),
+    signToolVerification: "passed",
+  };
+  return {
+    ...evidence,
+    format: "exe",
+    route: "microsoft-store-exe-msi",
+    artifact: {
+      ...evidence.artifact,
+      fileName: "JoeSSH.exe",
+    },
+    attestations: {
+      ...evidence.attestations,
+      protectedEnvironment: {
+        ...evidence.attestations.protectedEnvironment,
+        expectedSigner: { subject, thumbprint },
+      },
+    },
+    verification: {
+      architecture: "x64",
+      architectureVerification: {
+        installedMainExecutable: "JoeSSH.exe",
+        peMachine: "x64",
+      },
+      bundledThirdPartyNotices: evidence.verification.bundledThirdPartyNotices,
+      format: "exe",
+      install: {
+        arpIdentity: {
+          displayName: "JoeSSH",
+          displayVersion: evidence.version,
+          publisher: evidence.projectIdentity.publisher,
         },
-        gates: {
-          artifactHashBound: true,
-          candidatePreflightPassed: true,
-          storePublicationReady: false,
-        },
-        storeSubmission: {
-          certificationStatus: "not-run",
-          status: "not-submitted",
+        installedPayloadRoot: "verified-on-disposable-runner-not-recorded",
+        silentArgument: "/S",
+        silentInstallExitCode: 0,
+        uninstall: {
+          path: "uninstall.exe",
+          sha256: "9".repeat(64),
+          silentArgument: "/S",
+          silentUninstallExitCode: 0,
         },
       },
-      null,
-      2,
-    )}\n`,
-  );
+      installerSignature: signature,
+      payload: [
+        {
+          path: "JoeSSH.exe",
+          sha256: "8".repeat(64),
+          signature,
+        },
+      ],
+      route: "microsoft-store-exe-msi",
+      signerPolicy: {
+        allInstalledPeMatched: true,
+        expectedSubject: subject,
+        expectedThumbprint: thumbprint,
+        inputBoundary: "protected-release-environment",
+        legalPublisher: evidence.projectIdentity.publisher,
+      },
+      storeSigningExpected: false,
+      tauriNativeBundle: true,
+    },
+    gates: {
+      ...evidence.gates,
+      offlineWebView2Config: true,
+    },
+    storeSubmission: {
+      ...evidence.storeSubmission,
+      storeSignatureStatus: "not-applicable-publisher-signature-required",
+    },
+  };
 }
 
 function temporaryDirectory(t) {

@@ -174,6 +174,21 @@ function createFixture(t, overrides = {}) {
   });
 
   const logPath = join(root, "gh-invocations.jsonl");
+  const repoMetadata = {
+    default_branch: "main",
+    id: 123456,
+    owner: {
+      type: "Organization",
+    },
+    private: false,
+    security_and_analysis: {
+      dependabot_security_updates: { status: "enabled" },
+      secret_scanning: { status: "enabled" },
+      secret_scanning_push_protection: { status: "enabled" },
+    },
+    visibility: "public",
+    ...(overrides.repoMetadata ?? {}),
+  };
   const state = {
     artifactsPages: [
       {
@@ -227,15 +242,6 @@ function createFixture(t, overrides = {}) {
     privateVulnerabilityReporting: {
       enabled: true,
     },
-    repoMetadata: {
-      default_branch: "main",
-      id: 123456,
-      owner: {
-        type: "Organization",
-      },
-      private: false,
-      visibility: "public",
-    },
     repositorySecretPages: [
       {
         secrets: [],
@@ -246,6 +252,7 @@ function createFixture(t, overrides = {}) {
     rulesetDetails: {},
     rulesets: [],
     ...overrides,
+    repoMetadata,
   };
 
   const fakeGhPath = join(root, "fake-gh.mjs");
@@ -411,6 +418,7 @@ test("fails closed until GitHub Free limits and blocked paid overages are explic
 
   assert.equal(result.status, 1, result.stdout + result.stderr);
   assert.match(result.stdout, /PASS repository-public/);
+  assert.match(result.stdout, /PASS repository-security-features/);
   assert.match(result.stdout, /PASS main-protection/);
   assert.match(result.stdout, /PASS private-vulnerability-reporting/);
   assert.match(
@@ -643,6 +651,27 @@ test("rejects a private repository", (t) => {
   assert.equal(result.status, 1);
   assert.match(result.stdout, /FAIL repository-public/);
   assert.match(result.stdout, /visibility is private; private=true/);
+});
+
+test("rejects disabled public repository security features", (t) => {
+  const fixture = createFixture(t, {
+    repoMetadata: {
+      security_and_analysis: {
+        dependabot_security_updates: { status: "disabled" },
+        secret_scanning: { status: "enabled" },
+        secret_scanning_push_protection: { status: "disabled" },
+      },
+    },
+  });
+  const result = runChecker(
+    ["--repo", REPOSITORY, "--confirm-billing-ready"],
+    fixture.env,
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /FAIL repository-security-features/);
+  assert.match(result.stdout, /Dependabot security updates=disabled/);
+  assert.match(result.stdout, /Push protection=disabled/);
 });
 
 test("rejects main when GitHub reports it as unprotected", (t) => {

@@ -23,7 +23,15 @@ import {
   sep,
 } from "node:path";
 import { fileURLToPath } from "node:url";
+import { TextDecoder } from "node:util";
 import { deflateSync, inflateSync } from "node:zlib";
+import {
+  assertCertificateSubjectMatchesLegalPublisher,
+  assertReviewedCommit,
+  deriveMsixVersion,
+  normalizeMsixExecutablePath,
+  validatePartnerCenterIdentity,
+} from "./windows-store-contract.mjs";
 
 const repositoryRoot = resolve(import.meta.dirname, "..");
 const PNG_SIGNATURE = Buffer.from([
@@ -31,6 +39,10 @@ const PNG_SIGNATURE = Buffer.from([
 ]);
 const STORE_SCREENSHOT_WIDTH = 1920;
 const STORE_SCREENSHOT_HEIGHT = 1080;
+const MAX_SCREENSHOT_SOURCE_BYTES = 16 * 1024 * 1024;
+const MAX_CANDIDATE_EVIDENCE_BYTES = 2 * 1024 * 1024;
+const MAX_CHECKSUM_MANIFEST_BYTES = 64 * 1024;
+const MAX_LEGAL_NOTICES_BYTES = 64 * 1024 * 1024;
 const BOX_ART_WIDTH = 1024;
 const BOX_ART_HEIGHT = 1024;
 const POSTER_ART_WIDTH = 1024;
@@ -40,6 +52,7 @@ const MANIFEST_NAME = "manifest.json";
 const CHECKSUMS_NAME = "SHA256SUMS.txt";
 const CAPTURE_SESSION_NAME = "capture-session.json";
 const CANDIDATE_BINDING_NAME = "candidate-binding.json";
+const CANDIDATE_EVIDENCE_NAME = "candidate.json";
 const MASTER_ICON_PATH =
   "apps/desktop/src-tauri/icons/joessh-icon-master-1024.png";
 const BRAND_ASSET_SPECS = Object.freeze([
@@ -241,6 +254,7 @@ export function prepareStoreAssetBundle({
     const evidence = captureStableFile(
       resolveBundlePath(captureRoot, slot.path),
       `Store screenshot ${slot.id}`,
+      MAX_SCREENSHOT_SOURCE_BYTES,
     );
     const metadata = inspectPng(evidence.bytes, slot.path, true);
     if (
@@ -336,6 +350,12 @@ export function prepareStoreAssetBundle({
       brandAssets,
       blockers: [
         "Final 100% zoom privacy, localization, and visual review is not automated.",
+        ...(candidate.evidence.signatureState ===
+        "pending-microsoft-store-signing"
+          ? [
+              "The exact MSIX is pending Microsoft Store signing; this asset bundle is not publication evidence.",
+            ]
+          : []),
         "Partner Center identity, listing choices, certification, and submission remain separate gates.",
       ],
     };
@@ -485,54 +505,32 @@ function collectCandidateBinding(candidatePath, candidateEvidencePath) {
   if (!new Set([".exe", ".msix"]).has(extension)) {
     throw new Error("Store candidate must be an .exe or .msix file.");
   }
+  const absoluteEvidencePath = resolve(candidateEvidencePath);
+  if (basename(absoluteEvidencePath) !== CANDIDATE_EVIDENCE_NAME) {
+    throw new Error(
+      `Candidate preflight evidence must be the generated ${CANDIDATE_EVIDENCE_NAME} file.`,
+    );
+  }
   const evidenceFile = captureStableFile(
-    candidateEvidencePath,
+    absoluteEvidencePath,
     "candidate preflight evidence",
+    MAX_CANDIDATE_EVIDENCE_BYTES,
   );
-  const evidence = parseJson(
+  const evidence = parseCanonicalGeneratedJson(
     evidenceFile.bytes,
     "candidate preflight evidence",
   );
-  if (
-    evidence.schemaVersion !== 3 ||
-    evidence.kind !== "windows-store-candidate" ||
-    !["exe", "msix"].includes(evidence.format)
-  ) {
-    throw new Error(
-      "Candidate evidence must be a schema v3 windows-store-candidate document.",
-    );
-  }
-  if (
-    evidence.gates?.artifactHashBound !== true ||
-    evidence.gates?.candidatePreflightPassed !== true ||
-    evidence.gates?.storePublicationReady !== false
-  ) {
-    throw new Error(
-      "Candidate evidence must record hash binding, a passed preflight, and storePublicationReady=false.",
-    );
-  }
-  if (
-    evidence.storeSubmission?.status !== "not-submitted" ||
-    evidence.storeSubmission?.certificationStatus !== "not-run"
-  ) {
-    throw new Error(
-      "Candidate evidence must remain pre-submission and pre-certification.",
-    );
-  }
-  if (
-    evidence.artifact?.fileName !== artifact.fileName ||
-    evidence.artifact?.sha256 !== artifact.sha256 ||
-    evidence.artifact?.sizeBytes !== artifact.sizeBytes
-  ) {
-    throw new Error(
-      "Candidate file does not match the artifact recorded by candidate preflight evidence.",
-    );
-  }
+  assertCandidateEvidenceContract(evidence, artifact);
   if (extension.slice(1) !== evidence.format) {
     throw new Error(
       "Candidate extension does not match candidate evidence format.",
     );
   }
+  assertCandidateEvidenceBundle(absoluteEvidencePath, evidence, artifact);
+  const signatureState =
+    evidence.format === "msix"
+      ? evidence.verification.signatureState
+      : "valid-authenticode";
   return {
     artifact: {
       fileName: artifact.fileName,
@@ -542,11 +540,827 @@ function collectCandidateBinding(candidatePath, candidateEvidencePath) {
     evidence: {
       schemaVersion: evidence.schemaVersion,
       format: evidence.format,
+      route: evidence.route,
+      signatureState,
+      storeSignatureStatus: evidence.storeSubmission.storeSignatureStatus,
       version: requireNonEmptyString(evidence.version, "candidate version"),
       sha256: evidenceFile.sha256,
       preflightPassed: true,
     },
   };
+}
+
+function assertCandidateEvidenceContract(evidence, artifact) {
+  assertExactObjectKeys(
+    evidence,
+    [
+      "schemaVersion",
+      "kind",
+      "generatedAt",
+      "format",
+      "route",
+      "version",
+      "commits",
+      "executionIdentity",
+      "projectIdentity",
+      "artifact",
+      "legalNotices",
+      "attestations",
+      "verification",
+      "gates",
+      "storeSubmission",
+      "boundary",
+    ],
+    "Candidate evidence",
+  );
+  if (
+    evidence.schemaVersion !== 3 ||
+    evidence.kind !== "windows-store-candidate" ||
+    !["exe", "msix"].includes(evidence.format)
+  ) {
+    throw new Error(
+      "Candidate evidence must be a complete schema v3 windows-store-candidate document.",
+    );
+  }
+  assertNormalizedPastTimestamp(evidence.generatedAt, "candidate generatedAt");
+  requireNonEmptyString(evidence.version, "candidate version");
+  assertCandidateCommitEvidence(evidence.commits);
+  assertCandidateExecutionIdentity(
+    evidence.executionIdentity,
+    evidence.commits,
+  );
+  assertCandidateProjectIdentity(evidence.projectIdentity, evidence.version);
+  assertCandidateArtifactEvidence(evidence.artifact, artifact);
+  assertCandidateLegalEvidence(evidence.legalNotices);
+  assertCandidateAttestations(evidence.attestations, evidence);
+  assertCandidateGates(
+    evidence.gates,
+    evidence.format,
+    evidence.artifact.source,
+    evidence.artifact.integrity.urlImmutability.status,
+  );
+  assertCandidateSubmissionState(evidence.storeSubmission, evidence.format);
+  assertCandidateVerification(evidence.verification, evidence);
+  if (
+    evidence.boundary !==
+    "This file proves only local candidate checks. It is not Partner Center submission, certification, Store signing, listing, or publication evidence."
+  ) {
+    throw new Error("Candidate evidence has an invalid verification boundary.");
+  }
+}
+
+function assertCandidateCommitEvidence(commits) {
+  assertExactObjectKeys(
+    commits,
+    [
+      "artifactSourceCommit",
+      "preflightCommit",
+      "relationship",
+      "sourceCommitBinding",
+    ],
+    "Candidate commit evidence",
+  );
+  if (
+    !isCommitSha(commits.artifactSourceCommit) ||
+    !isCommitSha(commits.preflightCommit) ||
+    commits.relationship !==
+      (commits.artifactSourceCommit === commits.preflightCommit
+        ? "same-commit"
+        : "distinct-commits") ||
+    commits.sourceCommitBinding !==
+      "operator-supplied input; authenticated provenance not provided"
+  ) {
+    throw new Error("Candidate commit evidence is incomplete or inconsistent.");
+  }
+}
+
+function assertCandidateExecutionIdentity(executionIdentity, commits) {
+  assertExactObjectKeys(
+    executionIdentity,
+    ["repository", "run", "tool"],
+    "Candidate execution identity",
+  );
+  assertExactObjectKeys(
+    executionIdentity.repository,
+    ["slug", "source"],
+    "Candidate repository identity",
+  );
+  if (
+    !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(
+      executionIdentity.repository.slug ?? "",
+    ) ||
+    !["github-actions-context", "sanitized-git-origin"].includes(
+      executionIdentity.repository.source,
+    )
+  ) {
+    throw new Error("Candidate repository identity is unavailable or invalid.");
+  }
+  assertExactObjectKeys(
+    executionIdentity.run,
+    ["attempt", "id", "job", "serverUrl", "status", "workflow"],
+    "Candidate run identity",
+  );
+  if (
+    ![
+      "github-actions-context-recorded",
+      "local-run-context-not-authenticated",
+    ].includes(executionIdentity.run.status)
+  ) {
+    throw new Error("Candidate run identity has an invalid status.");
+  }
+  assertExactObjectKeys(
+    executionIdentity.tool,
+    [
+      "architecture",
+      "gitExecutable",
+      "nodeVersion",
+      "platform",
+      "preflightCommit",
+      "script",
+      "scriptSha256",
+      "scriptVersion",
+    ],
+    "Candidate tool identity",
+  );
+  if (
+    !requireNonEmptyString(
+      executionIdentity.tool.architecture,
+      "candidate tool architecture",
+    ) ||
+    !/^git(?:\.exe)?$/i.test(executionIdentity.tool.gitExecutable ?? "") ||
+    !/^v\d+\.\d+\.\d+/.test(executionIdentity.tool.nodeVersion ?? "") ||
+    !requireNonEmptyString(
+      executionIdentity.tool.platform,
+      "candidate tool platform",
+    ) ||
+    executionIdentity.tool.preflightCommit !== commits.preflightCommit ||
+    executionIdentity.tool.script !== "prepare-windows-store-candidate.mjs" ||
+    !isSha256(executionIdentity.tool.scriptSha256) ||
+    executionIdentity.tool.scriptVersion !== 3
+  ) {
+    throw new Error("Candidate tool identity is incomplete or inconsistent.");
+  }
+}
+
+function assertCandidateProjectIdentity(projectIdentity, version) {
+  assertExactObjectKeys(
+    projectIdentity,
+    ["communityPublisher", "identifier", "productName", "publisher", "version"],
+    "Candidate project identity",
+  );
+  for (const [field, value] of Object.entries(projectIdentity)) {
+    requireNonEmptyString(value, `candidate project ${field}`);
+  }
+  if (
+    projectIdentity.version !== version ||
+    projectIdentity.publisher === projectIdentity.productName
+  ) {
+    throw new Error("Candidate project identity is inconsistent.");
+  }
+}
+
+function assertCandidateArtifactEvidence(candidateArtifact, artifact) {
+  assertExactObjectKeys(
+    candidateArtifact,
+    [
+      "fileName",
+      "sha256",
+      "sizeBytes",
+      "source",
+      "versionedHttpsUrl",
+      "stagedCopySha256",
+      "integrity",
+    ],
+    "Candidate artifact evidence",
+  );
+  if (
+    candidateArtifact.fileName !== artifact.fileName ||
+    candidateArtifact.sha256 !== artifact.sha256 ||
+    candidateArtifact.stagedCopySha256 !== artifact.sha256 ||
+    candidateArtifact.sizeBytes !== artifact.sizeBytes ||
+    !["local-artifact", "hosted-download"].includes(candidateArtifact.source)
+  ) {
+    throw new Error(
+      "Candidate file does not match the artifact recorded by candidate preflight evidence.",
+    );
+  }
+  if (
+    basename(candidateArtifact.fileName) !== candidateArtifact.fileName ||
+    candidateArtifact.fileName === CANDIDATE_EVIDENCE_NAME ||
+    candidateArtifact.fileName === CHECKSUMS_NAME
+  ) {
+    throw new Error(
+      "Candidate evidence contains an unsafe artifact file name.",
+    );
+  }
+  if (candidateArtifact.source === "hosted-download") {
+    assertPublicEvidenceHttpsUrl(candidateArtifact.versionedHttpsUrl);
+  } else if (candidateArtifact.versionedHttpsUrl !== null) {
+    throw new Error("Local candidate evidence must not claim a hosted URL.");
+  }
+  const integrity = candidateArtifact.integrity;
+  assertExactObjectKeys(
+    integrity,
+    [
+      "expectedSha256",
+      "hashPolicy",
+      "observations",
+      "status",
+      "urlImmutability",
+    ],
+    "Candidate artifact integrity",
+  );
+  if (
+    integrity.expectedSha256 !== artifact.sha256 ||
+    integrity.hashPolicy !== "verify-every-download-snapshot-and-staged-copy" ||
+    integrity.status !== "passed" ||
+    !Array.isArray(integrity.observations) ||
+    integrity.observations.length < 2 ||
+    integrity.observations[0]?.point !==
+      "private-snapshot-before-verification" ||
+    integrity.observations.at(-1)?.point !== "candidate-evidence-staged-copy" ||
+    integrity.observations.some(
+      (observation) =>
+        !hasExactObjectKeys(observation, ["point", "sha256"]) ||
+        observation.sha256 !== artifact.sha256,
+    )
+  ) {
+    throw new Error("Candidate artifact integrity evidence is incomplete.");
+  }
+  const expectedImmutability =
+    candidateArtifact.source === "local-artifact"
+      ? "not-applicable-local-artifact"
+      : null;
+  if (
+    !integrity.urlImmutability ||
+    (expectedImmutability &&
+      integrity.urlImmutability.status !== expectedImmutability) ||
+    (!expectedImmutability &&
+      ![
+        "human-attested-object-retention",
+        "unverified-no-object-retention-proof",
+      ].includes(integrity.urlImmutability.status))
+  ) {
+    throw new Error("Candidate URL immutability evidence is inconsistent.");
+  }
+}
+
+function assertCandidateLegalEvidence(legalNotices) {
+  assertExactObjectKeys(
+    legalNotices,
+    [
+      "bundleResourcePath",
+      "checksumManifest",
+      "checksumManifestSha256",
+      "evidenceFileName",
+      "licenseManifest",
+      "licenseManifestSha256",
+      "packageCount",
+      "sbomChecksumManifest",
+      "sbomChecksumSha256",
+      "sboms",
+      "sha256",
+      "sizeBytes",
+      "sourcePath",
+      "textCount",
+      "verification",
+    ],
+    "Candidate legal-notices evidence",
+  );
+  if (
+    legalNotices.bundleResourcePath !== "legal/THIRD-PARTY-NOTICES.txt" ||
+    basename(legalNotices.evidenceFileName ?? "") !==
+      legalNotices.evidenceFileName ||
+    !isSha256(legalNotices.sha256) ||
+    !isSha256(legalNotices.checksumManifestSha256) ||
+    !isSha256(legalNotices.licenseManifestSha256) ||
+    !isSha256(legalNotices.sbomChecksumSha256) ||
+    !Number.isSafeInteger(legalNotices.sizeBytes) ||
+    legalNotices.sizeBytes <= 0 ||
+    !Number.isSafeInteger(legalNotices.packageCount) ||
+    legalNotices.packageCount <= 0 ||
+    !Number.isSafeInteger(legalNotices.textCount) ||
+    legalNotices.textCount <= 0 ||
+    !Array.isArray(legalNotices.sboms) ||
+    legalNotices.sboms.length !== 4 ||
+    legalNotices.sboms.some(
+      (sbom) =>
+        !hasExactObjectKeys(sbom, ["path", "sha256"]) ||
+        !requireNonEmptyString(sbom.path, "candidate SBOM path") ||
+        !isSha256(sbom.sha256),
+    ) ||
+    new Set(legalNotices.sboms.map(({ path }) => path)).size !== 4 ||
+    legalNotices.verification !==
+      "self-contained license bundle verification, exact Tauri resource mapping, exact installed or unpacked candidate payload match, and four checksum-bound public SBOMs"
+  ) {
+    throw new Error("Candidate legal-notices evidence is incomplete.");
+  }
+}
+
+function assertCandidateAttestations(attestations, evidence) {
+  assertExactObjectKeys(
+    attestations,
+    [
+      "authenticatedProvenance",
+      "protectedEnvironment",
+      "selfGeneratedChecksums",
+    ],
+    "Candidate attestations",
+  );
+  assertExactObjectKeys(
+    attestations.authenticatedProvenance,
+    ["status", "requiredBeforePublication", "acceptedEvidence"],
+    "Candidate provenance attestation",
+  );
+  if (
+    attestations.authenticatedProvenance.status !== "not-provided" ||
+    attestations.authenticatedProvenance.requiredBeforePublication !== true ||
+    !requireNonEmptyString(
+      attestations.authenticatedProvenance.acceptedEvidence,
+      "candidate accepted provenance",
+    )
+  ) {
+    throw new Error("Candidate provenance boundary is invalid.");
+  }
+  assertExactObjectKeys(
+    attestations.protectedEnvironment,
+    [
+      "artifactSha256",
+      "artifactSourceCommit",
+      "environment",
+      "legalPublisher",
+      "sbomChecksumManifestSha256",
+      "thirdPartyLicenseChecksumManifestSha256",
+      "thirdPartyNoticesSha256",
+      "expectedSigner",
+      "preflightCommit",
+      "repository",
+      "run",
+      "status",
+    ],
+    "Candidate protected-environment attestation",
+  );
+  const protectedEnvironment = attestations.protectedEnvironment;
+  if (
+    protectedEnvironment.artifactSha256 !== evidence.artifact.sha256 ||
+    protectedEnvironment.artifactSourceCommit !==
+      evidence.commits.artifactSourceCommit ||
+    protectedEnvironment.environment !== "windows-release-stage-b" ||
+    protectedEnvironment.legalPublisher !==
+      evidence.projectIdentity.publisher ||
+    protectedEnvironment.preflightCommit !== evidence.commits.preflightCommit ||
+    protectedEnvironment.thirdPartyNoticesSha256 !==
+      evidence.legalNotices.sha256 ||
+    protectedEnvironment.thirdPartyLicenseChecksumManifestSha256 !==
+      evidence.legalNotices.checksumManifestSha256 ||
+    protectedEnvironment.sbomChecksumManifestSha256 !==
+      evidence.legalNotices.sbomChecksumSha256 ||
+    JSON.stringify(protectedEnvironment.repository) !==
+      JSON.stringify(evidence.executionIdentity.repository) ||
+    JSON.stringify(protectedEnvironment.run) !==
+      JSON.stringify(evidence.executionIdentity.run) ||
+    protectedEnvironment.status !==
+      "inputs-enforced-not-cryptographically-authenticated"
+  ) {
+    throw new Error(
+      "Candidate protected-environment evidence is inconsistent.",
+    );
+  }
+  assertExactObjectKeys(
+    attestations.selfGeneratedChecksums,
+    ["authenticatedProvenance", "classification", "fileName"],
+    "Candidate checksum attestation",
+  );
+  if (
+    attestations.selfGeneratedChecksums.authenticatedProvenance !== false ||
+    attestations.selfGeneratedChecksums.classification !==
+      "local-integrity-list-only" ||
+    attestations.selfGeneratedChecksums.fileName !== CHECKSUMS_NAME
+  ) {
+    throw new Error(
+      "Candidate checksum evidence has an invalid trust boundary.",
+    );
+  }
+}
+
+function assertCandidateGates(
+  gates,
+  format,
+  artifactSource,
+  urlImmutabilityStatus,
+) {
+  assertExactObjectKeys(
+    gates,
+    [
+      "artifactHashBound",
+      "authenticatedProvenance",
+      "candidatePreflightPassed",
+      "hostedUrlImmutability",
+      "offlineWebView2Config",
+      "publicSbomsBound",
+      "thirdPartyNoticesBundled",
+      "partnerCenterUploadCandidate",
+      "storePublicationReady",
+      "windowsAppCertificationKit",
+      "blockers",
+    ],
+    "Candidate gates",
+  );
+  const expectedHostedUrlImmutability =
+    artifactSource !== "hosted-download"
+      ? "not-applicable"
+      : urlImmutabilityStatus === "human-attested-object-retention"
+        ? "human-attested"
+        : "unverified";
+  if (
+    gates.artifactHashBound !== true ||
+    gates.authenticatedProvenance !== false ||
+    gates.candidatePreflightPassed !== true ||
+    gates.publicSbomsBound !== true ||
+    gates.thirdPartyNoticesBundled !== true ||
+    gates.partnerCenterUploadCandidate !== false ||
+    gates.storePublicationReady !== false ||
+    gates.windowsAppCertificationKit !== "not-run" ||
+    gates.hostedUrlImmutability !== expectedHostedUrlImmutability ||
+    gates.offlineWebView2Config !==
+      (format === "exe" ? true : "not-applicable") ||
+    !Array.isArray(gates.blockers) ||
+    gates.blockers.length === 0 ||
+    gates.blockers.some(
+      (blocker) => !requireNonEmptyString(blocker, "candidate blocker"),
+    )
+  ) {
+    throw new Error(
+      "Candidate preflight gates are incomplete or inconsistent.",
+    );
+  }
+}
+
+function assertCandidateSubmissionState(storeSubmission, format) {
+  assertExactObjectKeys(
+    storeSubmission,
+    ["certificationStatus", "status", "storeSignatureStatus"],
+    "Candidate Store submission state",
+  );
+  if (
+    storeSubmission.status !== "not-submitted" ||
+    storeSubmission.certificationStatus !== "not-run" ||
+    storeSubmission.storeSignatureStatus !==
+      (format === "exe"
+        ? "not-applicable-publisher-signature-required"
+        : "not-issued")
+  ) {
+    throw new Error(
+      "Candidate evidence must remain pre-submission and pre-certification with the route-specific signing state.",
+    );
+  }
+}
+
+function assertCandidateVerification(verification, evidence) {
+  const notices = verification?.bundledThirdPartyNotices;
+  if (
+    notices?.status !== "exact-match" ||
+    notices.path !== evidence.legalNotices.bundleResourcePath ||
+    notices.sha256 !== evidence.legalNotices.sha256 ||
+    notices.sizeBytes !== evidence.legalNotices.sizeBytes
+  ) {
+    throw new Error("Candidate payload legal-notices verification is invalid.");
+  }
+  if (evidence.format === "msix") {
+    assertMsixCandidateVerification(verification, evidence);
+  } else {
+    assertExeCandidateVerification(verification, evidence);
+  }
+}
+
+function assertMsixCandidateVerification(verification, evidence) {
+  assertExactObjectKeys(
+    verification,
+    [
+      "bundledThirdPartyNotices",
+      "format",
+      "makeAppx",
+      "manifest",
+      "desktopApplication",
+      "projectVersionMapping",
+      "partnerIdentity",
+      "partnerIdentityCrossCheck",
+      "partnerIdentityEvidence",
+      "route",
+      "signature",
+      "signatureState",
+      "storeSigningExpected",
+      "tauriNativeBundle",
+    ],
+    "MSIX candidate verification",
+  );
+  assertExactObjectKeys(
+    verification.partnerIdentity,
+    [
+      "packageFamilyName",
+      "packageIdentityName",
+      "productId",
+      "publisher",
+      "publisherDisplayName",
+      "publisherId",
+      "reservedAt",
+      "schemaVersion",
+      "source",
+    ],
+    "MSIX Partner Center identity",
+  );
+  const partnerIdentity = validatePartnerCenterIdentity(
+    verification.partnerIdentity,
+  );
+  assertExactObjectKeys(
+    verification.makeAppx,
+    ["executable", "semanticValidation"],
+    "MSIX MakeAppx evidence",
+  );
+  assertExactObjectKeys(
+    verification.manifest,
+    ["architecture", "name", "publisher", "publisherDisplayName", "version"],
+    "MSIX manifest evidence",
+  );
+  assertExactObjectKeys(
+    verification.desktopApplication,
+    ["executable", "runtimeBehavior", "trustLevel", "peMachine", "sha256"],
+    "MSIX desktop application evidence",
+  );
+  assertExactObjectKeys(
+    verification.projectVersionMapping,
+    ["msixVersion", "projectVersion"],
+    "MSIX project-version mapping",
+  );
+  assertExactObjectKeys(
+    verification.partnerIdentityCrossCheck,
+    ["method", "packageIdentityName", "publisherId", "status"],
+    "MSIX Partner Center package-family cross-check",
+  );
+  assertExactObjectKeys(
+    verification.signature,
+    [
+      "signerSubject",
+      "signerThumbprint",
+      "status",
+      "statusMessage",
+      "timeStamperSubject",
+      "timeStamperThumbprint",
+    ],
+    "MSIX Authenticode evidence",
+  );
+  const manifest = verification.manifest;
+  const desktopApplication = verification.desktopApplication;
+  const versionMapping = verification.projectVersionMapping;
+  const crossCheck = verification.partnerIdentityCrossCheck;
+  const expectedMsixVersion = deriveMsixVersion(evidence.version);
+  const canonicalPartnerIdentity = Object.entries(partnerIdentity).every(
+    ([key, value]) => verification.partnerIdentity[key] === value,
+  );
+  let normalizedExecutable;
+  try {
+    normalizedExecutable = normalizeMsixExecutablePath(
+      desktopApplication.executable,
+    );
+  } catch {
+    normalizedExecutable = null;
+  }
+  if (
+    evidence.route !== "microsoft-store-msix-external" ||
+    verification.route !== evidence.route ||
+    verification.format !== "msix" ||
+    !canonicalPartnerIdentity ||
+    typeof verification.makeAppx.executable !== "string" ||
+    verification.makeAppx.executable.toLowerCase() !== "makeappx.exe" ||
+    verification.makeAppx.semanticValidation !== "passed" ||
+    verification.storeSigningExpected !== true ||
+    verification.tauriNativeBundle !== false ||
+    partnerIdentity.publisherDisplayName !==
+      evidence.projectIdentity.publisher ||
+    manifest.name !== partnerIdentity.packageIdentityName ||
+    manifest.publisher !== partnerIdentity.publisher ||
+    manifest.publisherDisplayName !== partnerIdentity.publisherDisplayName ||
+    !["x86", "x64", "arm64"].includes(manifest.architecture) ||
+    manifest.version !== expectedMsixVersion ||
+    normalizedExecutable !== desktopApplication.executable ||
+    desktopApplication.runtimeBehavior !== "packagedClassicApp" ||
+    desktopApplication.trustLevel !== "mediumIL" ||
+    desktopApplication.peMachine !== manifest.architecture ||
+    !isSha256(desktopApplication.sha256) ||
+    versionMapping.projectVersion !== evidence.version ||
+    versionMapping.msixVersion !== expectedMsixVersion ||
+    versionMapping.msixVersion !== manifest.version ||
+    crossCheck.method !== "PackageNameAndPublisherIdFromFamilyName" ||
+    crossCheck.status !== "matched" ||
+    typeof crossCheck.packageIdentityName !== "string" ||
+    crossCheck.packageIdentityName.localeCompare(
+      partnerIdentity.packageIdentityName,
+      undefined,
+      { sensitivity: "accent" },
+    ) !== 0 ||
+    typeof crossCheck.publisherId !== "string" ||
+    crossCheck.publisherId.localeCompare(
+      partnerIdentity.publisherId,
+      undefined,
+      {
+        sensitivity: "accent",
+      },
+    ) !== 0 ||
+    verification.partnerIdentityEvidence !==
+      "operator-supplied Partner Center values; assignment is not independently verified" ||
+    typeof verification.signature.statusMessage !== "string" ||
+    evidence.attestations.protectedEnvironment.expectedSigner !==
+      "not-applicable-store-signed-msix" ||
+    !["pending-microsoft-store-signing", "valid-pre-store-signature"].includes(
+      verification.signatureState,
+    )
+  ) {
+    throw new Error(
+      "MSIX candidate identity or semantic verification is invalid.",
+    );
+  }
+  if (
+    verification.signatureState === "pending-microsoft-store-signing" &&
+    (verification.signature?.status !== "NotSigned" ||
+      verification.signature?.signerSubject !== null ||
+      verification.signature?.signerThumbprint !== null ||
+      verification.signature?.timeStamperSubject !== null ||
+      verification.signature?.timeStamperThumbprint !== null)
+  ) {
+    throw new Error(
+      "Pending Store-only MSIX signing evidence is inconsistent.",
+    );
+  }
+  if (
+    verification.signatureState === "valid-pre-store-signature" &&
+    (verification.signature?.status !== "Valid" ||
+      verification.signature?.signerSubject !==
+        verification.manifest.publisher ||
+      !isCertificateThumbprint(verification.signature?.signerThumbprint) ||
+      !hasConsistentOptionalTimestamp(verification.signature))
+  ) {
+    throw new Error("Pre-signed MSIX signature evidence is inconsistent.");
+  }
+}
+
+function assertExeCandidateVerification(verification, evidence) {
+  assertExactObjectKeys(
+    verification,
+    [
+      "architecture",
+      "architectureVerification",
+      "bundledThirdPartyNotices",
+      "format",
+      "install",
+      "installerSignature",
+      "payload",
+      "route",
+      "signerPolicy",
+      "storeSigningExpected",
+      "tauriNativeBundle",
+    ],
+    "EXE candidate verification",
+  );
+  const signature = verification.installerSignature;
+  const signerPolicy = verification.signerPolicy;
+  assertExactObjectKeys(
+    signature,
+    [
+      "signerSubject",
+      "signerThumbprint",
+      "status",
+      "statusMessage",
+      "timeStamperSubject",
+      "timeStamperThumbprint",
+      "signToolVerification",
+    ],
+    "EXE installer Authenticode evidence",
+  );
+  assertExactObjectKeys(
+    signerPolicy,
+    [
+      "allInstalledPeMatched",
+      "expectedSubject",
+      "expectedThumbprint",
+      "inputBoundary",
+      "legalPublisher",
+    ],
+    "EXE signer policy",
+  );
+  if (
+    evidence.route !== "microsoft-store-exe-msi" ||
+    verification.route !== evidence.route ||
+    verification.format !== "exe" ||
+    verification.storeSigningExpected !== false ||
+    verification.tauriNativeBundle !== true ||
+    signature?.status !== "Valid" ||
+    signature?.signToolVerification !== "passed" ||
+    !isCertificateSubjectForPublisher(
+      signature?.signerSubject,
+      evidence.projectIdentity.publisher,
+    ) ||
+    !isCertificateThumbprint(signature?.signerThumbprint) ||
+    !requireNonEmptyString(
+      signature?.timeStamperSubject,
+      "EXE timestamp subject",
+    ) ||
+    !isCertificateThumbprint(signature?.timeStamperThumbprint) ||
+    signerPolicy?.allInstalledPeMatched !== true ||
+    signerPolicy?.expectedSubject !== signature.signerSubject ||
+    signerPolicy?.expectedThumbprint !== signature.signerThumbprint ||
+    signerPolicy?.legalPublisher !== evidence.projectIdentity.publisher ||
+    !hasExactObjectKeys(
+      evidence.attestations.protectedEnvironment.expectedSigner,
+      ["subject", "thumbprint"],
+    ) ||
+    evidence.attestations.protectedEnvironment.expectedSigner?.subject !==
+      signature.signerSubject ||
+    evidence.attestations.protectedEnvironment.expectedSigner?.thumbprint !==
+      signature.signerThumbprint ||
+    verification.install?.arpIdentity?.publisher !==
+      evidence.projectIdentity.publisher ||
+    !Array.isArray(verification.payload) ||
+    verification.payload.length === 0 ||
+    verification.payload.some(
+      (entry) =>
+        !isSha256(entry?.sha256) ||
+        !hasExactObjectKeys(entry, ["path", "sha256", "signature"]) ||
+        !hasExactObjectKeys(entry.signature, [
+          "signerSubject",
+          "signerThumbprint",
+          "status",
+          "statusMessage",
+          "timeStamperSubject",
+          "timeStamperThumbprint",
+          "signToolVerification",
+        ]) ||
+        entry.signature?.status !== "Valid" ||
+        entry.signature?.signToolVerification !== "passed" ||
+        entry.signature?.signerSubject !== signature.signerSubject ||
+        entry.signature?.signerThumbprint !== signature.signerThumbprint ||
+        !requireNonEmptyString(
+          entry.signature?.timeStamperSubject,
+          "installed PE timestamp subject",
+        ) ||
+        !isCertificateThumbprint(entry.signature?.timeStamperThumbprint),
+    )
+  ) {
+    throw new Error(
+      "EXE candidate signer or installed-payload evidence is invalid.",
+    );
+  }
+}
+
+function assertCandidateEvidenceBundle(evidencePath, evidence, artifact) {
+  const evidenceRoot = requireExistingDirectory(
+    dirname(evidencePath),
+    "candidate evidence directory",
+  );
+  const legalFileName = evidence.legalNotices.evidenceFileName;
+  const expectedContentPaths = [
+    artifact.fileName,
+    legalFileName,
+    CANDIDATE_EVIDENCE_NAME,
+  ];
+  if (new Set(expectedContentPaths).size !== expectedContentPaths.length) {
+    throw new Error("Candidate evidence file names must be distinct.");
+  }
+  const stagedArtifact = captureStableFile(
+    resolveBundlePath(evidenceRoot, artifact.fileName),
+    "staged candidate evidence artifact",
+  );
+  if (
+    stagedArtifact.sha256 !== artifact.sha256 ||
+    stagedArtifact.sizeBytes !== artifact.sizeBytes
+  ) {
+    throw new Error(
+      "Candidate evidence staged artifact does not match the candidate.",
+    );
+  }
+  const stagedNotices = captureStableFile(
+    resolveBundlePath(evidenceRoot, legalFileName),
+    "staged candidate legal notices",
+    MAX_LEGAL_NOTICES_BYTES,
+  );
+  if (
+    stagedNotices.sha256 !== evidence.legalNotices.sha256 ||
+    stagedNotices.sizeBytes !== evidence.legalNotices.sizeBytes
+  ) {
+    throw new Error(
+      "Candidate evidence staged legal notices do not match candidate.json.",
+    );
+  }
+  assertChecksumManifest(
+    evidenceRoot,
+    expectedContentPaths,
+    "Candidate evidence",
+    false,
+  );
+  assertExactBundleInventory(
+    evidenceRoot,
+    [...expectedContentPaths, CHECKSUMS_NAME],
+    "Candidate evidence",
+  );
 }
 
 function assertCaptureSession(session, candidate) {
@@ -754,6 +1568,7 @@ function assertFinalManifest(bundleRoot, manifest, candidate) {
     const file = captureStableFile(
       resolveBundlePath(bundleRoot, screenshot.path),
       screenshot.id,
+      MAX_SCREENSHOT_SOURCE_BYTES,
     );
     const metadata = inspectPng(file.bytes, screenshot.path, true);
     if (
@@ -942,33 +1757,13 @@ function decodeRgbaPng(bytes, label) {
     throw new Error(`${label} must be a non-interlaced 8-bit RGBA PNG.`);
   }
   const compressed = Buffer.concat(parsed.idatChunks);
-  const raw = inflateSync(compressed);
   const rowBytes = parsed.width * 4;
   const expectedLength = (rowBytes + 1) * parsed.height;
+  const raw = inflateSync(compressed, { maxOutputLength: expectedLength });
   if (raw.length !== expectedLength) {
     throw new Error(`${label} has an unexpected decompressed PNG length.`);
   }
-  const pixels = Buffer.alloc(rowBytes * parsed.height);
-  for (let y = 0; y < parsed.height; y += 1) {
-    const rawOffset = y * (rowBytes + 1);
-    const filterType = raw[rawOffset];
-    for (let x = 0; x < rowBytes; x += 1) {
-      const encoded = raw[rawOffset + 1 + x];
-      const left = x >= 4 ? pixels[y * rowBytes + x - 4] : 0;
-      const up = y > 0 ? pixels[(y - 1) * rowBytes + x] : 0;
-      const upperLeft =
-        y > 0 && x >= 4 ? pixels[(y - 1) * rowBytes + x - 4] : 0;
-      let value;
-      if (filterType === 0) value = encoded;
-      else if (filterType === 1) value = encoded + left;
-      else if (filterType === 2) value = encoded + up;
-      else if (filterType === 3) value = encoded + Math.floor((left + up) / 2);
-      else if (filterType === 4) value = encoded + paeth(left, up, upperLeft);
-      else
-        throw new Error(`${label} uses unsupported PNG filter ${filterType}.`);
-      pixels[y * rowBytes + x] = value & 0xff;
-    }
-  }
+  const pixels = unfilterPngRows(raw, parsed.width, parsed.height, 4, label);
   return { width: parsed.width, height: parsed.height, pixels };
 }
 
@@ -1059,17 +1854,20 @@ function assertStoreScreenshotPng(metadata, label) {
   }
 
   const compressed = Buffer.concat(metadata.idatChunks);
+  const channels = metadata.colorType === 6 ? 4 : 3;
+  const rowBytes = metadata.width * channels;
+  const expectedLength = (rowBytes + 1) * metadata.height;
   let decoded;
   try {
-    decoded = inflateSync(compressed, { info: true });
+    decoded = inflateSync(compressed, {
+      info: true,
+      maxOutputLength: expectedLength,
+    });
   } catch (error) {
     throw new Error(`${label} contains invalid compressed PNG image data.`, {
       cause: error,
     });
   }
-  const channels = metadata.colorType === 6 ? 4 : 3;
-  const rowBytes = metadata.width * channels;
-  const expectedLength = (rowBytes + 1) * metadata.height;
   if (
     decoded.buffer.length !== expectedLength ||
     decoded.engine.bytesWritten !== compressed.length
@@ -1078,11 +1876,53 @@ function assertStoreScreenshotPng(metadata, label) {
       `${label} compressed PNG image data does not exactly match its declared dimensions.`,
     );
   }
-  for (let row = 0; row < metadata.height; row += 1) {
-    if (decoded.buffer[row * (rowBytes + 1)] > 4) {
-      throw new Error(`${label} uses an invalid PNG scanline filter.`);
+  const pixels = unfilterPngRows(
+    decoded.buffer,
+    metadata.width,
+    metadata.height,
+    channels,
+    label,
+  );
+  if (channels === 4) {
+    for (let offset = 3; offset < pixels.length; offset += channels) {
+      if (pixels[offset] !== 255) {
+        throw new Error(
+          `${label} must be fully opaque; transparent RGBA pixels can conceal unreviewed RGB data.`,
+        );
+      }
     }
   }
+}
+
+function unfilterPngRows(raw, width, height, channels, label) {
+  const rowBytes = width * channels;
+  const expectedLength = (rowBytes + 1) * height;
+  if (raw.length !== expectedLength) {
+    throw new Error(`${label} has an unexpected decompressed PNG length.`);
+  }
+  const pixels = Buffer.alloc(rowBytes * height);
+  for (let y = 0; y < height; y += 1) {
+    const rawOffset = y * (rowBytes + 1);
+    const filterType = raw[rawOffset];
+    if (filterType > 4) {
+      throw new Error(`${label} uses an invalid PNG scanline filter.`);
+    }
+    for (let x = 0; x < rowBytes; x += 1) {
+      const encoded = raw[rawOffset + 1 + x];
+      const left = x >= channels ? pixels[y * rowBytes + x - channels] : 0;
+      const up = y > 0 ? pixels[(y - 1) * rowBytes + x] : 0;
+      const upperLeft =
+        y > 0 && x >= channels ? pixels[(y - 1) * rowBytes + x - channels] : 0;
+      let value;
+      if (filterType === 0) value = encoded;
+      else if (filterType === 1) value = encoded + left;
+      else if (filterType === 2) value = encoded + up;
+      else if (filterType === 3) value = encoded + Math.floor((left + up) / 2);
+      else value = encoded + paeth(left, up, upperLeft);
+      pixels[y * rowBytes + x] = value & 0xff;
+    }
+  }
+  return pixels;
 }
 
 function encodeRgbaPng(width, height, pixels) {
@@ -1177,7 +2017,11 @@ function createBundleAtomically(outputDir, writer) {
   }
 }
 
-function captureStableFile(path, label) {
+function captureStableFile(
+  path,
+  label,
+  maximumBytes = Number.POSITIVE_INFINITY,
+) {
   const absolutePath = resolve(path);
   let beforeLink;
   let before;
@@ -1190,6 +2034,11 @@ function captureStableFile(path, label) {
   if (beforeLink.isSymbolicLink() || !before.isFile() || before.size <= 0) {
     throw new Error(
       `${label} must be a non-empty regular file: ${absolutePath}`,
+    );
+  }
+  if (before.size > maximumBytes) {
+    throw new Error(
+      `${label} exceeds the ${maximumBytes}-byte source file limit.`,
     );
   }
   const bytes = readFileSync(absolutePath);
@@ -1233,31 +2082,39 @@ function writeChecksumManifest(bundleRoot, paths) {
   });
 }
 
-function assertChecksumManifest(bundleRoot, expectedPaths) {
+function assertChecksumManifest(
+  bundleRoot,
+  expectedPaths,
+  label = "Store asset",
+  sortPaths = true,
+) {
   const checksumPath = resolve(bundleRoot, CHECKSUMS_NAME);
   const checksumText = captureStableFile(
     checksumPath,
-    "Store asset checksums",
+    `${label} checksums`,
+    MAX_CHECKSUM_MANIFEST_BYTES,
   ).bytes.toString("ascii");
+  const normalizedPaths = sortPaths ? [...expectedPaths].sort() : expectedPaths;
   const expected =
-    [...expectedPaths]
-      .sort()
+    normalizedPaths
       .map(
         (path) => `${sha256File(resolveBundlePath(bundleRoot, path))}  ${path}`,
       )
       .join("\n") + "\n";
   if (checksumText !== expected) {
-    throw new Error("Store asset SHA256SUMS.txt is stale or incomplete.");
+    throw new Error(`${label} SHA256SUMS.txt is stale or incomplete.`);
   }
 }
 
-function assertExactBundleInventory(bundleRoot, expectedPaths) {
+function assertExactBundleInventory(
+  bundleRoot,
+  expectedPaths,
+  label = "Store asset bundle",
+) {
   const expected = [...expectedPaths].sort();
   const actual = listRelativeFiles(bundleRoot);
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {
-    throw new Error(
-      "Store asset bundle contains missing, stale, or unexpected files.",
-    );
+    throw new Error(`${label} contains missing, stale, or unexpected files.`);
   }
 }
 
@@ -1355,6 +2212,87 @@ function isWithinPath(parent, child) {
   );
 }
 
+function assertExactObjectKeys(value, expectedKeys, label) {
+  if (!hasExactObjectKeys(value, expectedKeys)) {
+    throw new Error(`${label} does not match the generated evidence schema.`);
+  }
+}
+
+function hasExactObjectKeys(value, expectedKeys) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const actual = Object.keys(value).sort();
+  const expected = [...expectedKeys].sort();
+  return JSON.stringify(actual) === JSON.stringify(expected);
+}
+
+function assertNormalizedPastTimestamp(value, label) {
+  const timestamp = Date.parse(value);
+  if (
+    typeof value !== "string" ||
+    !Number.isFinite(timestamp) ||
+    new Date(timestamp).toISOString() !== value ||
+    timestamp > Date.now() + 5 * 60_000
+  ) {
+    throw new Error(
+      `${label} must be a normalized UTC timestamp not in the future.`,
+    );
+  }
+  return value;
+}
+
+function isCommitSha(value) {
+  try {
+    return assertReviewedCommit(value) === value;
+  } catch {
+    return false;
+  }
+}
+
+function isCertificateThumbprint(value) {
+  return typeof value === "string" && /^[0-9A-F]{40}$/.test(value);
+}
+
+function isCertificateSubjectForPublisher(subject, publisher) {
+  try {
+    assertCertificateSubjectMatchesLegalPublisher(subject, publisher);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function hasConsistentOptionalTimestamp(signature) {
+  const hasSubject = typeof signature.timeStamperSubject === "string";
+  const hasThumbprint = isCertificateThumbprint(
+    signature.timeStamperThumbprint,
+  );
+  return (
+    (signature.timeStamperSubject === null &&
+      signature.timeStamperThumbprint === null) ||
+    Boolean(hasSubject && signature.timeStamperSubject.trim() && hasThumbprint)
+  );
+}
+
+function assertPublicEvidenceHttpsUrl(value) {
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error("Hosted candidate evidence URL is invalid.");
+  }
+  if (
+    parsed.protocol !== "https:" ||
+    parsed.username ||
+    parsed.password ||
+    parsed.search ||
+    parsed.hash
+  ) {
+    throw new Error(
+      "Hosted candidate evidence URL must use HTTPS without credentials, query, or fragment.",
+    );
+  }
+}
+
 function requirePath(value, label) {
   if (typeof value !== "string" || !value.trim()) {
     throw new Error(`${label} is required.`);
@@ -1377,6 +2315,30 @@ function parseJson(bytes, label) {
       { cause: error },
     );
   }
+}
+
+function parseCanonicalGeneratedJson(bytes, label) {
+  let text;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch (error) {
+    throw new Error(`${label} is not valid UTF-8 JSON.`, { cause: error });
+  }
+  let value;
+  try {
+    value = JSON.parse(text);
+  } catch (error) {
+    throw new Error(
+      `${label} is not valid JSON: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error },
+    );
+  }
+  if (text !== `${JSON.stringify(value, null, 2)}\n`) {
+    throw new Error(
+      `${label} must be the canonical JSON emitted by the candidate generator.`,
+    );
+  }
+  return value;
 }
 
 function writeJson(path, value) {

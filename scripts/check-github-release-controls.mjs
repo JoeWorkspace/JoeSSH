@@ -90,6 +90,7 @@ report.repository = repository;
 
 if (repository) {
   const repositoryMetadata = auditRepositoryVisibility(repository);
+  auditRepositorySecurityFeatures(repositoryMetadata);
   auditMainProtection(repository, repositoryMetadata);
   auditPrivateVulnerabilityReporting(repository);
   for (const contract of REQUIRED_ENVIRONMENT_CONTRACTS) {
@@ -228,6 +229,30 @@ function auditRepositoryVisibility(repository) {
         )}.`,
   );
   return result.value;
+}
+
+function auditRepositorySecurityFeatures(repositoryMetadata) {
+  const requiredFeatures = [
+    ["dependabot_security_updates", "Dependabot security updates"],
+    ["secret_scanning", "Secret scanning"],
+    ["secret_scanning_push_protection", "Push protection"],
+  ];
+  const security = repositoryMetadata?.security_and_analysis;
+  const disabled = requiredFeatures
+    .filter(([key]) => security?.[key]?.status !== "enabled")
+    .map(
+      ([key, label]) =>
+        `${label}=${String(security?.[key]?.status ?? "unreadable")}`,
+    );
+
+  addCheck(
+    "repository-security-features",
+    "Free repository security features are enabled",
+    disabled.length === 0 ? "pass" : "fail",
+    disabled.length === 0
+      ? "Dependabot security updates, Secret scanning, and Push protection are enabled."
+      : `Required public-repository security features are not enabled: ${disabled.join(", ")}.`,
+  );
 }
 
 function auditMainProtection(repository, repositoryMetadata) {
@@ -739,6 +764,10 @@ function addUnavailableRemoteChecks() {
   for (const [id, label] of [
     ["repository-public", "Repository is public"],
     ["repository-default-main", "Repository default branch is main"],
+    [
+      "repository-security-features",
+      "Free repository security features are enabled",
+    ],
     ["main-protection", MAIN_PROTECTION_CHECK_LABEL],
     [
       "private-vulnerability-reporting",
