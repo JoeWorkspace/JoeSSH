@@ -833,6 +833,11 @@ if (key === "api repos/JoeWorkspace/JoeSSH") {
     default_branch: "main",
     owner: { id: 1, login: "JoeWorkspace", type: "User" },
     private: false,
+    security_and_analysis: {
+      dependabot_security_updates: { status: "enabled" },
+      secret_scanning: { status: "enabled" },
+      secret_scanning_push_protection: { status: "enabled" },
+    },
     visibility: "public",
   });
 }

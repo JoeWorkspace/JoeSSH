@@ -808,6 +808,11 @@ if (args[0] === "api") {
       default_branch: "main",
       owner: { id: 1, login: "JoeWorkspace", type: "User" },
       private: state.githubControlsFail,
+      security_and_analysis: {
+        dependabot_security_updates: { status: "enabled" },
+        secret_scanning: { status: "enabled" },
+        secret_scanning_push_protection: { status: "enabled" },
+      },
       visibility: state.githubControlsFail ? "private" : "public",
     };
   } else if (method === "GET" && endpoint === controlsRoot + "/branches/main") {
