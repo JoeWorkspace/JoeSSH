@@ -31,12 +31,13 @@ custom deployments, incident response, or general infrastructure consulting.
 - Report security vulnerabilities only through the private route documented in
   [SECURITY.md](SECURITY.md). Never disclose a vulnerability in a public issue.
 
-No support email, customer portal, or paid-support channel is currently
-published. A future public support address must replace
-`{{SUPPORT_CONTACT_EMAIL_OR_FORM_URL}}` in the commercial policy templates and
-pass the checklist in
+The Store release support route is still blocked. Before publication, render
+the static support template from a private staging copy, insert a monitored
+public HTTPS page or form that works while logged out, and pass the checklist in
 [docs/commercial-release-readiness.md](docs/commercial-release-readiness.md)
-before any paid offer or hosted service is enabled.
+before the free Store listing is submitted. Do not commit the personal
+publisher identity or private contact material here. No customer portal or
+paid-support channel is currently offered.
 
 ## A Useful Bug Report
 

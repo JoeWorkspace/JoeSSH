@@ -25,7 +25,7 @@ const CUSTOMER_POLICIES = [
 const STORE_POLICIES = ["PRIVACY.md", "SUPPORT.md"];
 const PLACEHOLDER_PATTERN = /\{\{[A-Z0-9_]+\}\}/g;
 const DRAFT_PATTERN =
-  /\b(?:publication status:\s*fail-closed draft|fail-closed commercial draft|no paid offer is active)\b/i;
+  /\b(?:publication\s+status:\s*fail-closed(?:\s+Store)?\s+(?:draft|source)|fail-closed\s+commercial\s+draft|no\s+paid\s+offer\s+is\s+active|Store\s+release\s+support\s+route\s+is\s+still\s+blocked)\b/i;
 const PAID_INACTIVE_PATTERN =
   /\b(?:not currently (?:available|for sale)|not currently an? (?:available )?offer|product hypotheses?, not currently available offers?)\b/i;
 const UNVERIFIED_VALUE_PATTERN =
@@ -64,7 +64,6 @@ if (checks.every((check) => check.ok)) {
   checkCommunityBoundary();
   checkFundingConfiguration();
   if (options.mode === "store") {
-    checkPublishablePolicies(STORE_POLICIES);
     checkStoreOperatorEvidence();
   } else if (options.mode === "paid") {
     checkPublishablePolicies(CUSTOMER_POLICIES);
@@ -355,7 +354,7 @@ function checkPublishablePolicies(relativePaths) {
     addCheck(
       `policy:${relativePath}:draft`,
       !DRAFT_PATTERN.test(text),
-      `${relativePath} is no longer marked as an inactive commercial draft`,
+      `${relativePath} is no longer marked as an inactive or blocked draft`,
     );
   }
 }
@@ -377,7 +376,7 @@ function checkStoreOperatorEvidence() {
         isRealValue(options.windowsLegalPublisher) &&
         options.sellerName === options.windowsLegalPublisher
         ? "Exact legal identity binding supplied."
-        : "Set --seller-name and --windows-legal-publisher to the same truthful legal identity.",
+        : "Supply one canonical local Partner Center identity through the Store wrapper, or set both protected identity environment values to the same truthful legal identity.",
     );
   }
   checkPublicUrl(
@@ -399,12 +398,15 @@ function checkStoreOperatorEvidence() {
       : "Rerun with --confirm-public-links only after logged-out verification.",
   );
 
-  if (isRealValue(options.sellerName) && isPublicHttpsUrl(options.supportUrl)) {
+  if (options.mode === "store" && isRealValue(options.sellerName)) {
+    const trackedStorePolicies = STORE_POLICIES.map(readText).join("\n");
     addCheck(
-      "store:policy-binding",
-      readText("PRIVACY.md").includes(options.sellerName) &&
-        readText("SUPPORT.md").includes(options.supportUrl),
-      "Store seller and support URL are present in the customer-facing policies",
+      "store:publisher-identity-not-tracked",
+      !trackedStorePolicies.includes(options.sellerName),
+      "Personal Store publisher identity stays out of tracked policy sources",
+      trackedStorePolicies.includes(options.sellerName)
+        ? "Remove the personal publisher identity from tracked policy files and render the public Store pages from a private staging copy."
+        : "The logged-out public-page checker owns exact publisher-name binding without committing the name.",
     );
   }
 }
@@ -477,7 +479,9 @@ function checkRealValue(id, value, label) {
     id,
     isRealValue(value),
     `${label} is explicit and non-placeholder`,
-    isRealValue(value) ? value : "Missing or placeholder value.",
+    isRealValue(value)
+      ? "Value supplied and validated without echoing it."
+      : "Missing or placeholder value.",
   );
 }
 
@@ -512,6 +516,7 @@ function isPublicHttpsUrl(value) {
       url.protocol === "https:" &&
       !url.username &&
       !url.password &&
+      !url.search &&
       !url.hash &&
       isPublicHostname(url.hostname)
     );

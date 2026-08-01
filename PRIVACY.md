@@ -1,14 +1,15 @@
 # JoeSSH Privacy Policy
 
-Last updated: 2026-07-30
+Last updated: 2026-08-01
 
-> **Publication status: fail-closed draft.** JoeSSH does not currently operate
-> a public hosted service, paid checkout, customer account system, or production
-> telemetry endpoint. Before this policy is used for a public hosted or paid
-> offering, the operator must replace every `{{...}}` field, identify all
-> processors and retention periods, and complete
-> [docs/commercial-release-readiness.md](docs/commercial-release-readiness.md).
-> Do not remove this notice while any placeholder remains.
+> **Publication status: fail-closed Store source.** This tracked file is not the
+> public Microsoft Store privacy URL. JoeSSH does not currently operate a public
+> hosted service, paid checkout, customer account system, or production
+> telemetry endpoint. Render the Store page from the static template in private
+> staging, insert the verified individual publisher and public contact there,
+> and keep those personal values out of this repository. Any future hosted,
+> telemetry, account, or paid service requires a new policy update before it is
+> enabled.
 
 This policy explains how JoeSSH Community Desktop, Web Admin, the self-hosted
 Sync Service, and any future operator-run service handle information. It does
@@ -17,14 +18,17 @@ third-party system selected or operated by the user.
 
 ## 1. Who Is Responsible
 
-For a future JoeSSH-operated website, hosted service, telemetry endpoint, or
-paid offer, the responsible operator will be:
+For the current free, noncommercial JoeSSH Community release, the responsible
+publisher is:
 
 - legal name: `{{SELLER_LEGAL_NAME}}`;
-- business form or registration, if applicable:
-  `{{SELLER_BUSINESS_FORM_AND_REGISTRATION}}`;
-- contact address, if legally required: `{{SELLER_CONTACT_ADDRESS}}`;
+- publishing capacity: an individual acting personally, with no company;
 - privacy contact: `{{PRIVACY_CONTACT_EMAIL_OR_FORM_URL}}`.
+
+The public Microsoft Store listing identifies the same verified individual
+publisher. If a postal address becomes legally required for a selected market,
+it must be supplied through the applicable Store or legal disclosure before
+that market is enabled; no placeholder address is presented as a real address.
 
 For a self-hosted Sync Service or Web Admin deployment, the person or
 organization operating that deployment controls the server-side information.
@@ -109,9 +113,12 @@ unless the deployment operator deliberately sends it.
 
 ## 6. Optional Error Telemetry
 
-Production error telemetry is not currently operated. A future build may expose
-the existing opt-in control only after this policy identifies the endpoint
-operator, processor, destination countries, retention, and deletion route.
+Production error telemetry is not operated for this release. The current
+Community publication has no telemetry processor, production endpoint,
+cross-border telemetry transfer, or server-side telemetry retention period.
+A future build may expose the existing opt-in control only after this policy is
+updated to identify the real endpoint operator, processor, destination
+countries, retention period, and deletion route.
 
 If configured and explicitly enabled by the user, the client is designed to
 send a bounded, sanitized error report containing items such as:
@@ -128,16 +135,10 @@ reduces risk but is not a guarantee; users should still inspect any manually
 submitted diagnostic material.
 
 Telemetry consent can be withdrawn in settings. Withdrawal stops new
-submissions and clears the in-memory queue in the current client. Data already
-received by a future endpoint would follow the disclosed retention and deletion
-rules:
-
-- processor: `{{TELEMETRY_PROCESSOR_OR_SELF_HOSTED}}`;
-- endpoint/operator region: `{{TELEMETRY_PROCESSING_REGIONS}}`;
-- retention: `{{TELEMETRY_RETENTION_PERIOD}}`;
-- deletion request route: `{{PRIVACY_CONTACT_EMAIL_OR_FORM_URL}}`.
-
-Until these fields are complete, production telemetry must remain disabled.
+submissions and clears the in-memory queue in the current client. Because no
+production endpoint is configured for this release, the JoeSSH publisher does
+not receive or retain a server-side telemetry record. Production telemetry must
+remain disabled until the disclosures above are added and reviewed.
 
 ## 7. Support And Security Reports
 
@@ -149,27 +150,20 @@ investigate the report.
 
 Security reports use the private route in [SECURITY.md](SECURITY.md). Security
 material is used to validate, remediate, coordinate, and disclose the issue.
-A future paid-support retention schedule must be stated here before launch:
-`{{SUPPORT_RECORD_RETENTION_PERIOD}}`.
+GitHub retains public issues and private vulnerability reports under its own
+service terms and retention practices. The publisher may retain the minimum
+report content needed to investigate, remediate, and document a security issue.
+No paid-support record system is operated for this release.
 
 ## 8. Purchases And Licensing
 
 JoeSSH Community is free. JoeSSH Pro, Founder access, hosted Sync, and paid
 support are not currently for sale.
 
-Before checkout is enabled, this section must name the merchant of record or
-payment processor and describe the information exchanged. The expected
-categories are purchaser contact details, country, product, price, currency,
-tax information, payment status, refund status, and a license or entitlement
-identifier. JoeSSH should not receive full payment-card credentials when a
-hosted checkout provider processes them.
-
-- checkout provider or merchant of record: `{{CHECKOUT_PROVIDER_LEGAL_NAME}}`;
-- provider privacy policy: `{{CHECKOUT_PROVIDER_PRIVACY_URL}}`;
-- license-delivery provider, if separate: `{{LICENSE_PROVIDER_AND_PRIVACY_URL}}`;
-- purchase-record retention: `{{PURCHASE_RECORD_RETENTION_PERIOD}}`.
-
-Checkout must remain disabled until these fields match a verified live account.
+No checkout provider, merchant of record, license-delivery provider, purchase
+record, or payment-card flow is used for this release. Checkout must remain
+disabled until a later policy names the real providers, information exchanged,
+retention periods, customer rights, and verified live account.
 
 ## 9. Purposes And Legal Grounds
 
@@ -193,8 +187,8 @@ and service providers.
 Any future JoeSSH-operated processor must be listed in this policy before data
 is sent to it. If information is transferred across borders, the operator will
 use the safeguards required by applicable law and disclose the relevant
-destinations. No placeholder in Sections 6 or 8 may be treated as a real
-processor disclosure.
+destinations. The absence of a processor in this release is not permission to
+enable one without updating the policy.
 
 ## 11. Security
 
@@ -219,9 +213,9 @@ on a request, and legally required records may be retained.
 ## 13. Children
 
 JoeSSH is a technical remote-administration tool and is not directed to
-children. A future account or paid service must define and enforce an
-appropriate minimum age for each market before launch:
-`{{MINIMUM_ACCOUNT_AGE_AND_MARKET_RULES}}`.
+children. This release does not provide a JoeSSH account or paid service. Any
+future account or paid service must define and enforce an appropriate minimum
+age for each market before launch.
 
 ## 14. Changes
 

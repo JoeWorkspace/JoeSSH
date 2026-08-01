@@ -74,10 +74,9 @@ This Public Beta limits each SFTP upload or download to 25 MiB. It is intended
 for evaluation and careful day-to-day use while release evidence and external
 compatibility coverage continue to grow.
 
-JoeSSH Community is free and, once the source repository is public, available
-under the MIT License. Telemetry and error reporting are disabled by default.
-JoeSSH does not require an account and does not currently provide a hosted
-service.
+JoeSSH Community is free and available from its public source repository under
+the MIT License. Telemetry and error reporting are disabled by default. JoeSSH
+does not require an account and does not currently provide a hosted service.
 
 You need permission to access every server you connect to. Never use JoeSSH to
 access systems, accounts, or networks without authorization.
@@ -209,6 +208,13 @@ Before upload:
   compression;
 - record each asset SHA-256 next to the candidate evidence.
 
+Use the fail-closed [Store asset preparation workflow](windows-store-assets.md).
+The tracked `docs/assets/microsoft-store` bundle contains reproducible 1:1 and
+2:3 brand art plus reference metadata, but its manifest is deliberately
+`provisional-not-uploadable`. Only a private bundle containing all eight
+exact-candidate captures, `candidate-binding.json`, and a verified checksum
+manifest can advance to final human review.
+
 ## Policy, License, And Contact Fields
 
 - Personal information declaration: select `Yes`. Microsoft Store policy
@@ -219,6 +225,14 @@ Before upload:
 - Support contact: Partner Center may accept a URL or email for MSI/EXE support
   information, but JoeSSH applies the stricter internal gate of a monitored
   public HTTPS route that works while logged out.
+- Prepare the two static pages from
+  [`store-public-pages`](store-public-pages/README.md) outside the repository so
+  no personal identity is committed accidentally. After publication, run the
+  complete [Store policy preflight](release-preparation.md) with the local
+  canonical `--partner-identity` file, both public URLs, and
+  `--confirm-public-links`; setting only URL variables is insufficient. The
+  preflight rejects placeholders, authentication redirects, non-public DNS,
+  non-HTML responses, and content that does not match the page role.
 - Applicable license terms: paste the complete, exact repository `LICENSE`
   contents into the required text field. A URL alone is not accepted by the
   JoeSSH release gate.
@@ -231,25 +245,21 @@ Before upload:
   the exact native candidate passes the complete Microsoft accessibility tool
   and assistive-technology matrix. Keyboard coverage alone is not sufficient.
 
-Do not use the base Tauri value `JoeSSH Project` as a legal Store publisher.
-Before account creation, apply Microsoft Store policy 10.14 to the operator's
-real situation:
+The account decision for this release is `Individual`: the operator is one
+person with no company, and this Community release is free, open source, and
+noncommercial. After Partner Center identity verification, copy the displayed
+personal `publisherDisplayName` exactly. Do not use the base Tauri value
+`JoeSSH Project`, the product name, a GitHub username, or an invented studio
+name as the legal Store publisher. The separate package `publisher` value must
+be copied from Product identity and begins with `CN=`; it must not be invented
+from the personal name.
 
-- an Individual account must publish under the verified person's truthful
-  identity and is intended for a single developer not acting in relation to a
-  business, trade, or profession;
-- a Company account is required when the operator is acting in relation to a
-  business, trade, or profession, or when a reasonable customer would interpret
-  the publisher name as a business entity; this includes eligible freelancers
-  and independent developers even when the business has only one person, and
-  requires real business verification such as D-U-N-S or accepted official
-  registration documents plus work/domain identity checks;
-- Partner Center does not support converting an Individual account to Company,
-  so the account type must be resolved before reserving the product.
-
-The current free, no-commerce Community candidate must remain disconnected from
-paid benefits or in-product funding until the chosen account type and local
-legal/tax position have been independently confirmed.
+This decision applies only to the current noncommercial release. Partner Center
+does not convert an Individual account to Company in place. Before any future
+freelance, sole-trader, company, paid-benefit, or other commercial release,
+recheck the applicable account, business-verification, legal, and tax path.
+Keep funding, checkout, paid benefits, and paid support disconnected from this
+candidate.
 
 ## Certification Notes Draft
 
@@ -281,8 +291,9 @@ Provide these notes only after they match the uploaded candidate:
 The listing is still `NO-GO` until all of the following are true:
 
 - the JoeSSH name is reserved in the selected Store product type;
-- the account type is valid for the operator's real publishing activity and the
-  publisher is not the placeholder-like `JoeSSH Project`;
+- Individual onboarding and identity verification are complete for the current
+  free noncommercial release, and the publisher is the exact verified personal
+  display name rather than `JoeSSH Project` or another alias;
 - the truthful publisher identity is verified and matches the package route;
 - the repository and exact candidate source are publicly reachable before the
   listing calls JoeSSH open source;

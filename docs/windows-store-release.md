@@ -167,6 +167,41 @@ Product identity 页面逐字复制至少以下字段，保存到不提交仓库
 }
 ```
 
+本次 Community 发布已明确为个人、无公司、免费开源且非商业，因此使用
+Individual developer account。`publisherDisplayName` 必须是 Partner Center
+完成个人身份验证后显示的**精确个人姓名**；不要填写 `JoeSSH`、
+`JoeSSH Project`、`JoeSSH Community`、GitHub 用户名或临时工作室名。
+`publisher` 是 Product identity 页面另一个独立的 `CN=` package identity
+字段，不要用个人姓名自行拼接。不要把真实姓名、身份证件或验证材料提交到仓库、
+Issue、PR 或聊天中。如果发布意图以后变成商业活动，应重新核对账号资格；
+Individual account 不能原地转换为 Company。
+
+使用仓库提供的两阶段 writer，避免把个人姓名放进命令行历史。第一步只生成
+位于 gitignored `reports/` 目录的占位模板：
+
+```powershell
+node scripts/write-partner-center-identity.mjs --write-template
+```
+
+在本机编辑
+`reports/handoff/windows-store/partner-center-identity.input.json`：
+`productId`、`packageIdentityName`、`publisher`、`publisherDisplayName`、
+`publisherId` 和 `packageFamilyName` 从 Product identity 页面逐字复制，
+`reservedAt` 记录名称保留完成时刻并使用规范 UTC ISO 时间。然后生成可直接传给
+预检的规范 JSON：
+
+```powershell
+node scripts/write-partner-center-identity.mjs `
+  --input reports/handoff/windows-store/partner-center-identity.input.json
+```
+
+默认输出为
+`reports/handoff/windows-store/partner-center-identity.json`。writer 只接受预检
+schema 中的九个字段，拒绝额外 token、证件或签名材料，拒绝静默裁剪字段、
+仓库内非 gitignored 输出和覆盖已有文件，并且不会把任何身份值打印到终端。
+需要重新生成时，先把旧的本地文件移到仓库外留档，再执行；不要删除或覆盖已经
+用于候选证据的输入。
+
 所有 `CHANGE-ME`、example、placeholder 等值都会被拒绝。预检只接受
 `.msix`，调用 Windows SDK 的 `MakeAppx.exe unpack`（不使用 `/nv`）做
 语义验证，并要求 `AppxManifest.xml` 的 `Identity.Name`、
@@ -340,7 +375,11 @@ Microsoft Store 徽章，也不应把候选证据称为商店发布证据。
 
 上架文案、真实产品截图、Store art、Privacy/Support URL、Markets、
 Discoverability、账号类型和认证备注的独立收口清单见
-[Microsoft Store listing draft](microsoft-store-listing-draft.md)。
+[Microsoft Store listing draft](microsoft-store-listing-draft.md)。候选绑定的
+八张 en-US/zh-CN 截图、1:1/2:3 品牌图和 SHA-256 manifest 流程见
+[Microsoft Store asset preparation](windows-store-assets.md)；公开隐私/支持页的
+无个人信息模板与未登录网络检查见
+[Microsoft Store public pages](store-public-pages/README.md)。
 
 ## Store 功能表面门禁
 

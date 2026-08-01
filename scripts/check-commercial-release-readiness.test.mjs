@@ -123,14 +123,50 @@ test("community mode rejects an active unverified funding destination", (t) => {
   assert.match(result.stdout, /funding:provider/);
 });
 
-test("store mode rejects unresolved privacy and support policy fields", (t) => {
-  const result = run(createFixture(t), "store");
+test("store mode keeps tracked policies fail-closed while public pages are checked separately", (t) => {
+  const seller = "Verified Test Individual";
+  const supportUrl = "https://joessh.dev/support";
+  const privacyUrl = "https://joessh.dev/privacy";
+  const result = run(createFixture(t), "store", [
+    "--seller-name",
+    seller,
+    "--windows-legal-publisher",
+    seller,
+    "--support-url",
+    supportUrl,
+    "--privacy-url",
+    privacyUrl,
+    "--confirm-public-links",
+  ]);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.doesNotMatch(result.stdout + result.stderr, new RegExp(seller));
+  assert.equal(JSON.parse(result.stdout).decision, "pass");
+});
+
+test("store mode rejects committing the personal publisher identity to tracked policies", (t) => {
+  const seller = "Verified Test Individual";
+  const root = createFixture(t, {
+    "PRIVACY.md": `# Privacy\nController: ${seller}\n`,
+  });
+  const result = run(root, "store", [
+    "--seller-name",
+    seller,
+    "--windows-legal-publisher",
+    seller,
+    "--support-url",
+    "https://joessh.dev/support",
+    "--privacy-url",
+    "https://joessh.dev/privacy",
+    "--confirm-public-links",
+  ]);
+
   assert.equal(result.status, 1);
-  const report = JSON.parse(result.stdout);
-  assert.equal(report.decision, "fail");
+  assert.doesNotMatch(result.stdout + result.stderr, new RegExp(seller));
   assert.ok(
-    report.checks.some(
-      (check) => check.id === "policy:PRIVACY.md:placeholders" && !check.ok,
+    JSON.parse(result.stdout).checks.some(
+      (check) =>
+        check.id === "store:publisher-identity-not-tracked" && !check.ok,
     ),
   );
 });
@@ -194,8 +230,8 @@ test("store mode binds the public seller to the protected Windows legal publishe
   const supportUrl = "https://joessh.dev/support";
   const privacyUrl = "https://joessh.dev/privacy";
   const root = createFixture(t, {
-    "PRIVACY.md": `# Privacy\nController: ${seller}\n`,
-    "SUPPORT.md": `# Support\nCommunity is free and MIT-licensed.\nSupport: ${supportUrl}\n`,
+    "PRIVACY.md": "# Privacy\nRendered Store policy is hosted separately.\n",
+    "SUPPORT.md": "# Support\nCommunity is free and MIT-licensed.\n",
   });
   const baseArgs = [
     "--seller-name",
@@ -230,7 +266,7 @@ test("store mode binds the public seller to the protected Windows legal publishe
 test("commercial URL checks reject local, private, reserved, and single-label hosts", async (t) => {
   const seller = "Joe Dev Studio";
   const completed = {
-    "PRIVACY.md": `# Privacy\nController: ${seller}\n`,
+    "PRIVACY.md": "# Privacy\nRendered Store policy is hosted separately.\n",
     "SUPPORT.md": "# Support\nCommunity is free and MIT-licensed.\n",
   };
   const rejectedHosts = [
@@ -291,6 +327,28 @@ test("commercial URL checks reject local, private, reserved, and single-label ho
       );
     });
   }
+});
+
+test("commercial URL checks reject query-bearing public URLs", (t) => {
+  const seller = "Verified Test Individual";
+  const result = run(createFixture(t), "store", [
+    "--seller-name",
+    seller,
+    "--windows-legal-publisher",
+    seller,
+    "--support-url",
+    "https://joessh.dev/support?preview_token=secret",
+    "--privacy-url",
+    "https://joessh.dev/privacy",
+    "--confirm-public-links",
+  ]);
+
+  assert.equal(result.status, 1);
+  assert.ok(
+    JSON.parse(result.stdout).checks.some(
+      (check) => check.id === "store:support-url" && !check.ok,
+    ),
+  );
 });
 
 test("active funding passes ordinary CI only with a current persistent attestation", (t) => {

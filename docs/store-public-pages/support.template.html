@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>JoeSSH Community Support</title>
+    <style>
+      :root {
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        color: #18201d;
+        background: #f7f9f8;
+      }
+
+      body {
+        margin: 0;
+      }
+
+      main {
+        width: min(46rem, calc(100% - 2rem));
+        margin: 0 auto;
+        padding: 3rem 0 5rem;
+      }
+
+      h1,
+      h2 {
+        line-height: 1.2;
+      }
+
+      h1 {
+        font-size: 2rem;
+      }
+
+      h2 {
+        margin-top: 2rem;
+        font-size: 1.2rem;
+      }
+
+      p,
+      li {
+        line-height: 1.65;
+      }
+
+      a {
+        color: #006b52;
+      }
+
+      .metadata {
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid #cbd5d0;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          color: #edf4f1;
+          background: #101613;
+        }
+
+        a {
+          color: #6ee7bd;
+        }
+
+        .metadata {
+          border-color: #3b4a44;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>JoeSSH Community Support</h1>
+      <div class="metadata">
+        <p>Last updated: {{POLICY_EFFECTIVE_DATE_ISO}}</p>
+        <p>Publisher: {{PARTNER_CENTER_PUBLISHER_DISPLAY_NAME}}</p>
+        <p>
+          Support contact:
+          <a
+            data-joessh-contact="support"
+            href="{{PUBLIC_SUPPORT_CONTACT_HREF}}"
+            >{{PUBLIC_SUPPORT_CONTACT_LABEL}}</a
+          >
+        </p>
+      </div>
+
+      <h2>Support scope</h2>
+      <p>
+        JoeSSH Community is free, MIT-licensed, and community-supported. Support
+        is provided on a best-effort basis. Downloading or using the application
+        does not create a service-level agreement, guaranteed response time, or
+        entitlement to private support.
+      </p>
+      <p>
+        The first public release line is Windows-first. Community support covers
+        reproducible product defects, documentation errors, and installation
+        problems involving an official JoeSSH artifact. It does not include
+        operating a user's SSH server, recovering a third-party system, custom
+        deployment work, incident response, or infrastructure consulting.
+      </p>
+
+      <h2>Report an issue</h2>
+      <p>
+        Search existing reports before opening a new issue. A useful report
+        includes the JoeSSH version, installation source, Windows version and
+        architecture, the smallest reliable reproduction, and expected and
+        actual behavior. Use the
+        <a href="https://github.com/JoeWorkspace/JoeSSH/issues/new/choose"
+          >public JoeSSH issue forms</a
+        >
+        for non-sensitive bugs and focused feature requests.
+      </p>
+      <p>
+        Remove server names and addresses, usernames, commands, terminal output,
+        paths, private keys, passwords, passphrases, bearer tokens, and other
+        secrets before submitting text, logs, or screenshots.
+      </p>
+
+      <h2>Security reports</h2>
+      <p>
+        Do not disclose a vulnerability in a public issue. Follow the private
+        reporting instructions in the
+        <a href="https://github.com/JoeWorkspace/JoeSSH/blob/main/SECURITY.md"
+          >JoeSSH security policy</a
+        >. The security route may require a GitHub account to submit a private
+        report, but this support page and the policy itself must remain visible
+        while logged out.
+      </p>
+
+      <h2>Self-hosted components</h2>
+      <p>
+        The person or organization operating a self-hosted Sync Service or Web
+        Admin deployment is responsible for that infrastructure, access
+        controls, backups, retention, and monitoring. Community maintainers can
+        review a minimal reproducible software issue but cannot inspect or
+        administer a private deployment.
+      </p>
+
+      <h2>Privacy and contact</h2>
+      <p>
+        Read the
+        <a href="{{PUBLIC_PRIVACY_URL}}">JoeSSH Community Privacy Policy</a>
+        before sending diagnostic material. The public support contact shown
+        above is the current route for Store installation and product support.
+        No paid-support channel is offered for this release.
+      </p>
+    </main>
+  </body>
+</html>

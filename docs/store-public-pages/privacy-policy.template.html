@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>JoeSSH Community Privacy Policy</title>
+    <style>
+      :root {
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        color: #18201d;
+        background: #f7f9f8;
+      }
+
+      body {
+        margin: 0;
+      }
+
+      main {
+        width: min(46rem, calc(100% - 2rem));
+        margin: 0 auto;
+        padding: 3rem 0 5rem;
+      }
+
+      h1,
+      h2 {
+        line-height: 1.2;
+      }
+
+      h1 {
+        font-size: 2rem;
+      }
+
+      h2 {
+        margin-top: 2rem;
+        font-size: 1.2rem;
+      }
+
+      p,
+      li {
+        line-height: 1.65;
+      }
+
+      a {
+        color: #006b52;
+      }
+
+      .metadata {
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid #cbd5d0;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          color: #edf4f1;
+          background: #101613;
+        }
+
+        a {
+          color: #6ee7bd;
+        }
+
+        .metadata {
+          border-color: #3b4a44;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>JoeSSH Community Privacy Policy</h1>
+      <div class="metadata">
+        <p>Last updated: {{POLICY_EFFECTIVE_DATE_ISO}}</p>
+        <p>Publisher: {{PARTNER_CENTER_PUBLISHER_DISPLAY_NAME}}</p>
+        <p>
+          Privacy contact:
+          <a
+            data-joessh-contact="privacy"
+            href="{{PUBLIC_PRIVACY_CONTACT_HREF}}"
+            >{{PUBLIC_PRIVACY_CONTACT_LABEL}}</a
+          >
+        </p>
+      </div>
+
+      <h2>Local-first operation</h2>
+      <p>
+        JoeSSH Community is a local-first Windows application. It does not
+        require a JoeSSH account. SSH, terminal, SFTP, and port-forwarding
+        traffic travels between this device and the server selected by the user.
+        The JoeSSH publisher does not receive that traffic merely because the
+        application is used.
+      </p>
+
+      <h2>Information on this device</h2>
+      <p>Depending on the features used, JoeSSH may store on this device:</p>
+      <ul>
+        <li>language, theme, layout, onboarding, and consent preferences;</li>
+        <li>
+          connection names, hosts, ports, usernames, groups, tags, favorites,
+          and recent-connection state;
+        </li>
+        <li>recent command text used by local convenience features;</li>
+        <li>known-host fingerprints and verification metadata; and</li>
+        <li>local import, export, and workspace settings.</li>
+      </ul>
+      <p>
+        Passwords, passphrases, and pasted private-key contents are processed in
+        memory when supplied for a connection and are excluded from the
+        documented profile persistence. Local data remains until the user
+        removes it, clears application data, or removes the operating-system
+        profile. Uninstall behavior can leave application data behind.
+      </p>
+
+      <h2>Connections and third parties</h2>
+      <p>
+        A selected SSH server, network operator, proxy, DNS provider, device
+        administrator, or clipboard service may process or log information under
+        its own policy. Microsoft processes Store acquisition, download, and
+        update information under the
+        <a href="https://privacy.microsoft.com/privacystatement"
+          >Microsoft Privacy Statement</a
+        >. JoeSSH does not control those services.
+      </p>
+
+      <h2>Telemetry</h2>
+      <p>
+        Production error telemetry is not operated for this Community release.
+        Telemetry is unavailable or off unless a later release identifies a real
+        endpoint and processor and the user separately opts in. Connection
+        hosts, usernames, commands, terminal output, file content, credentials,
+        and authentication tokens are not intended telemetry fields.
+      </p>
+
+      <h2>Support submissions</h2>
+      <p>
+        Information placed in a public issue is provided by its author and is
+        visible to everyone. Users must remove credentials, private
+        infrastructure details, terminal output, and other secrets before
+        submitting an issue. Security vulnerabilities must use the private
+        reporting route identified by the project support page.
+      </p>
+
+      <h2>Sale, advertising, and children</h2>
+      <p>
+        JoeSSH Community does not sell personal information and does not use
+        local application data for advertising. It is a technical remote
+        administration tool and is not directed to children.
+      </p>
+
+      <h2>Choices and contact</h2>
+      <p>
+        Users choose which servers to contact and can remove local profiles and
+        application data. Requests about a self-hosted server must go to that
+        server's operator. Questions about this policy or applicable privacy
+        rights can be sent through the privacy contact shown above.
+      </p>
+
+      <h2>Changes</h2>
+      <p>
+        Material changes will receive a new last-updated date and will be
+        announced through the canonical JoeSSH repository, release notes, or an
+        application notice as appropriate.
+      </p>
+    </main>
+  </body>
+</html>

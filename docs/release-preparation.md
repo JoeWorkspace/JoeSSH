@@ -128,12 +128,19 @@ Microsoft Store 政策边界：
 
 ```powershell
 npm run release:windows-store:policy-preflight -- `
-  --seller-name "<真实卖方名称>" `
-  --windows-legal-publisher "<与受保护 Stage-B 变量完全相同的法定发布者>" `
+  --partner-identity reports/handoff/windows-store/partner-center-identity.json `
   --support-url "https://<真实域名>/support" `
   --privacy-url "https://<真实域名>/privacy" `
   --confirm-public-links
 ```
+
+该命令通过单一 wrapper 接收 `npm run --` 后的参数：它从 gitignored 的规范
+Partner Center identity 文件读取卖方/Windows 法定发布者，不在命令行或报告中
+打印个人姓名；Privacy/Support URL 同时传给 commercial 和未登录网络 checker，
+远程页面必须包含同一精确姓名，但仓库内政策源文件不得包含它。URL 不得带 query，
+避免预览 token 进入 argv 或检查报告。
+不要把姓名改回 argv，也不要把两个 checker 拆成 shell 尾接命令，否则会泄露
+命令历史，且 npm 追加的参数只会到达最后一个进程。
 
 未来付费边界：
 
@@ -188,12 +195,13 @@ Stage B 仍是明确 No-Go。可信 Authenticode、时间戳、Defender、干净
 优先做一次限时一天的 MSIX Packaging Tool 可行性验证；只有出现已记录的真实兼容
 阻塞时，才回退到 Tauri 原生 NSIS EXE：
 
-1. 先确认真实发布活动的账号类型。免费 Individual onboarding 只适用于真实的
-   非商业个人/业余用途；只要准备以自由职业者、个体经营者或其他商业身份发布，
-   即使只有一名开发者，也应走 Company onboarding，并准备真实登记文件、
-   D-U-N-S 或 Microsoft 接受的替代商业文件以及工作/域名身份验证。Individual
-   不能原地转换为 Company。完成验证后保留产品名称；不能把 `JoeSSH Project`
-   当作法律发布者。
+1. 本次发布已经确认由无公司的个人维护者以免费、开源、非商业 Community
+   项目发布，因此使用 Individual onboarding。完成个人身份验证后，法定发布者
+   必须逐字采用 Partner Center 显示的本人姓名；不能使用 `JoeSSH`、
+   `JoeSSH Project`、GitHub 用户名或虚构工作室名。随后保留产品名称并复制真实
+   package identity。Individual 不能原地转换为 Company；如果以后改为以
+   自由职业、个体经营或其他商业身份发布，应在商业活动开始前重新核对资格并
+   单独办理适用的 Company 路径。
 2. 取得真实 Partner Center package identity 后，用 Microsoft MSIX Packaging
    Tool 对精确 release build 做一天的外部打包试验，运行 WACK，并验证 SSH、
    PTY、SFTP、本地端口转发、WebView2、安装、升级、卸载和回滚。Store-only
@@ -264,16 +272,18 @@ package identity，再用微软工具外部打包；不能把 NSIS 改后缀或�
 2. 重新运行只读 GitHub controls，确认现有 `main` 保护、PVR 和两个受保护环境
    仍通过；这些控制已经配置，不要重复创建。
 3. 用 3–5 名可信测试者完成 Stage A，修完 P0/P1。
-4. 以正确账号类型办理 Partner Center、保留产品名，先完成一天的 MSIX
-   可行性验证；只有失败时再办理 NSIS 所需的可信代码签名。
-5. 先上线并验证一个真实自愿支持入口：核对收款账号所有人、未登录展示页、
-   退款/非购买说明、小额付款与提现；在同一审核 commit 提交精确 URL 和当前
-   operator attestation，确认无参数 `qa:commercial:community` 通过，且不承诺
-   任何软件权益。
-6. 达到至少 10 名重复使用者和 5 名真实支持者后，只开始 MoR 申请、
+4. 以已确认的 Individual 类型办理 Partner Center、保留产品名，先完成一天的
+   MSIX 可行性验证；只有失败时再办理 NSIS 所需的可信代码签名。
+5. 当前 Community 发布保持 funding、checkout、付费权益和付费支持全部关闭；
+   自愿支持不是本次发布前置条件，也不能为了收款把当前非商业发布描述改成
+   商业活动。
+6. 正式发布并完成首轮使用验证后，如要另行启用自愿支持，先核对账号资格、
+   收款账号所有人、未登录展示页、退款/非购买说明、小额付款与提现；在同一
+   审核 commit 提交精确 URL 和当前 operator attestation，且不承诺软件权益。
+7. 达到至少 10 名重复使用者和 5 名真实支持者后，只开始 MoR 申请、
    访谈和 Founder/Pro 非售卖原型；真正开售仍须达到 30 名外部 Windows 用户
    完成 SSH、且 10 人提出同一付费需求等更高门禁。
-7. 托管 Sync 与团队服务延后，直到多设备/团队需求、备份恢复、账号删除、
+8. 托管 Sync 与团队服务延后，直到多设备/团队需求、备份恢复、账号删除、
    事故响应和个人值守能力都被证明。
 
 ## Go 条件

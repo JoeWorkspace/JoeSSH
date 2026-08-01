@@ -13,10 +13,13 @@ but Community release notes must not advertise unavailable paid benefits.
 
 - [ ] The seller's truthful legal name and business form are published where
       required.
-- [ ] For Microsoft Store release, `--seller-name` exactly equals the protected
+- [ ] For Microsoft Store release, the canonical local Partner Center identity
+      supplies a seller name that exactly equals the protected
       `ATLASTERM_WINDOWS_LEGAL_PUBLISHER`; the same value is bound to NSIS ARP
       Publisher and the certificate's unique CN, or to Partner Center
-      PublisherDisplayName for MSIX.
+      PublisherDisplayName for MSIX. Do not put a personal publisher name in
+      command-line arguments, logs, or tracked policy sources; the remote page
+      checker binds it from the gitignored identity file instead.
 - [ ] A monitored support email or HTTPS form has been tested from a logged-out
       browser.
 - [ ] Privacy and trademark contacts resolve to verified routes.
