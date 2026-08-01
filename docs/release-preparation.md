@@ -167,19 +167,20 @@ npm run release:commercial:preflight -- `
 
 Stage A 只用于 3–5 名可信技术测试者：
 
-1. 先公开仓库并配置受保护 `main`、PVR 和
-   `windows-invite-stage-a` 环境。
+1. 确认仓库仍为 public，并用只读门禁复核现有的 protected `main`、PVR 和
+   `windows-invite-stage-a` 环境；这些控制已经配置，不要重复创建。
 2. 从 protected `main` 手动运行
    `.github/workflows/windows-invite-beta.yml`。
-3. 独立核对 workflow summary 中的完整 commit、artifact ID/digest 和安装包
-   SHA-256。
+3. 在与构建 runner 分离的干净环境核对 workflow summary 中的完整 commit、
+   artifact ID/digest 和安装包 SHA-256。
 4. 在隔离 Windows VM 完成安装、启动、host-key、PTY、SFTP、端口转发、
    重启、卸载/回滚和 Defender 检查。
 5. 使用 `release:desktop:promote:windows-invite` 生成不可覆盖的 Stage A
    邀请批准证据。
 
 Stage B 仍是明确 No-Go。可信 Authenticode、时间戳、Defender、干净 VM、
-零 P0/P1 和独立复核未全部形成证据前，不扩大到 10–30 人，也不收费。
+零 P0/P1、维护者最终 diff 自审和与构建 runner 分离的复核未全部形成证据前，
+不扩大到 10–30 人，也不收费。维护者批准属于自审，不是独立审核。
 详见 [Windows invite Beta playbook](windows-invite-beta.md)。
 
 ## 5. Microsoft Store 候选
@@ -206,7 +207,8 @@ Stage B 仍是明确 No-Go。可信 Authenticode、时间戳、Defender、干净
    完整 SHA-256；两种格式都不得省略 URL 或 hash。EXE 直发 URL 还必须不可变
    且带版本；MSIX URL 只承担 hash-bound 验证传输，后续向 Partner Center
    提交同一 SHA-256 的包，不把该 URL 误称为长期托管或不可变性证明。
-5. 配置受保护的 `windows-release-stage-b` environment、始终必需的
+5. 用只读门禁复核现有受保护的 `windows-release-stage-b` environment；该环境
+   已经配置，不要重复创建。配置仍缺少且始终必需的
    `ATLASTERM_WINDOWS_LEGAL_PUBLISHER` 和只读 policy token。只有已经证明
    MSIX 兼容阻塞、明确回退 EXE 时，才额外配置公开的证书 subject/thumbprint
    变量；MSIX 不要求也不允许伪造证书身份。不得在该 workflow 中配置签名
@@ -225,8 +227,9 @@ Stage B 仍是明确 No-Go。可信 Authenticode、时间戳、Defender、干净
    托管字节 SHA-256，并在执行候选前后比较 clean HEAD、workflow、完整 Store
    `dist` 与法律/SBOM hash。该同 runner 基线只阻断普通污染，不替代隔离
    clean VM 或 authenticated provenance。
-8. 在独立 clean VM 中复核 exact SHA-256 候选和托管证据；不能把会执行未经
-   信任 native binary 的同一 hosted runner 当作独立 provenance 信任根。
+8. 在与构建 runner 分离的 clean VM 中复核 exact SHA-256 候选和托管证据；
+   不能把会执行未经信任 native binary 的同一 hosted runner 当作独立
+   provenance 信任根。
 9. 完成 Windows App Certification Kit、Partner Center 提交、认证、更新和
    回滚演练后，才可以展示 Store 徽章。
 
@@ -248,16 +251,18 @@ package identity，再用微软工具外部打包；不能把 NSIS 改后缀或�
 - 旧的 `v0.1.0-beta.9` 标签永久保留，不移动、不覆盖。
 - 只有候选改动已 commit、push，目标门禁全部绿色，且外部 blocker 已关闭
   后，才创建指向精确候选 commit 的 `v0.1.0-beta.10` annotated tag。
-- GitHub Release 一律先建 draft；下载草稿产物并独立复核 SHA-256 后再考虑
-  publish。
+- GitHub Release 一律先建 draft；在干净环境重新下载草稿产物并复核 SHA-256
+  后再考虑 publish。
 - `npm run release:publish-preflight` 是完整 Desktop/Web/Sync 多平台公开发行
   门禁，不是 Windows Store 候选的快捷通道。缺少 macOS/Linux 或正式
   Desktop 证据时，它正确地保持失败。
 
 ## 7. 个人维护者的外部办理顺序
 
-1. 确认 GitHub Billing 与 cache 使用，确保正式工作流能运行。
-2. 公开仓库，立即配置 `main` 保护、PVR 和两个受保护环境。
+1. 重新确认 GitHub Free、standard hosted runners、artifact/cache 免费额度，
+   并确保付费超额使用仍被阻止。
+2. 重新运行只读 GitHub controls，确认现有 `main` 保护、PVR 和两个受保护环境
+   仍通过；这些控制已经配置，不要重复创建。
 3. 用 3–5 名可信测试者完成 Stage A，修完 P0/P1。
 4. 以正确账号类型办理 Partner Center、保留产品名，先完成一天的 MSIX
    可行性验证；只有失败时再办理 NSIS 所需的可信代码签名。

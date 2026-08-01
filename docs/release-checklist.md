@@ -27,11 +27,12 @@ evidence. None can make the current workflow produce
 
 ## Required Before Publishing
 
-- When switching the repository to public, immediately enable GitHub Private
-  Vulnerability Reporting, subscribe the maintainer to Security alerts, and
-  verify in a signed-out browser that the `Report a vulnerability` form is
-  reachable. Do not announce or distribute the release while the private
-  reporting route in `SECURITY.md` and both `security.txt` files is unavailable.
+- Before publishing, confirm that the repository remains public and GitHub
+  Private Vulnerability Reporting remains enabled. Keep the maintainer
+  subscribed to Security alerts, and verify in a signed-out browser that the
+  `Report a vulnerability` form is reachable. Do not announce or distribute
+  the release while the private reporting route in `SECURITY.md` and both
+  `security.txt` files is unavailable.
 - Configure direct classic branch protection for `main`; the
   `/repos/<owner>/<repo>/branches/main/protection` API must be readable and must
   require a pull request plus the exact `Public Release Readiness` check from
@@ -378,9 +379,10 @@ evidence. None can make the current workflow produce
   lookups are absent.
 - Attach installers, Web Admin static package if used, Sync Service package,
   SBOM, and the relevant `SHA256SUMS.txt` files.
-- Independently download the surviving draft assets and verify their checksums
-  before publishing; the automated remote digest check does not replace this
-  second-party review.
+- In a clean environment separated from the creation/upload process, download
+  the surviving draft assets and verify their checksums before publishing. The
+  automated remote digest check does not replace the maintainer's final
+  verification; this remains solo-maintainer self-review.
 - Rollback means unpublishing the broken draft/release and restoring the prior
   signed artifacts and deployment bundle. Keep the previous release artifact
   checksums visible until the new release has soaked successfully.

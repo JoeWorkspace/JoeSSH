@@ -12,6 +12,63 @@ contains a preview-only Mobile shell and a read-only Web Admin companion.
 Mobile is outside the current public distribution scope; Web Admin remains an
 evaluation/community surface rather than a hosted or mutating team service.
 
+> [!IMPORTANT]
+> **Release status:** `0.1.0-beta.10` is a source-first release candidate, not
+> a published installer release. Signed/notarized Desktop installers are not
+> available yet, and unsigned CI bundles are for staging review only. To use
+> real SSH today, run the native Tauri Desktop app from source; the browser
+> Desktop preview uses demo data and cannot open a real SSH session.
+
+## Screenshots
+
+| Desktop workbench (English)                                                                                                      | Desktop workbench (Simplified Chinese)                                                                                                         |
+| -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| ![JoeSSH Desktop workbench in English with sample hosts and fixture terminals](docs/assets/screenshots/desktop-workbench-en.png) | ![JoeSSH Desktop workbench in Simplified Chinese with sample hosts and fixture terminals](docs/assets/screenshots/desktop-workbench-zh-cn.png) |
+
+The Desktop images are real E2E visual-regression captures using labeled
+sample data. They show the implemented interface, but no real SSH session is
+connected and the terminal text is a fixture transcript.
+
+![JoeSSH read-only Web Admin dashboard using fixture data](docs/assets/screenshots/web-admin-read-only-en.png)
+
+The Web Admin image is a real E2E capture in read-only fixture-fallback mode.
+It is a deployment preview, not evidence of a hosted JoeSSH service or live
+team data.
+
+## Get Started From Source
+
+Use the pinned Node.js `22.22.2`, npm `10.9.7`, and Rust `1.96.0` toolchains.
+Install the platform-specific [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/)
+and put NASM on `PATH`, then install the locked dependencies:
+
+```bash
+npm ci
+```
+
+Launch the native Desktop runtime for real SSH, SFTP, and port forwarding:
+
+```bash
+npm exec --workspace @atlasterm/desktop -- tauri dev
+```
+
+For interface evaluation without a native SSH engine, launch the browser demo:
+
+```bash
+npm run dev:desktop
+```
+
+See [Getting Started](docs/getting-started.md) for OS prerequisites, the first
+connection walkthrough, host-key safety, and the supported deployment paths.
+
+## Deployment Paths
+
+| Surface      | Current boundary                                                                                                                         | Guide                                                |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Desktop      | Build/run from source or review unsigned staging bundles; public distribution waits for platform signing and notarization where required | [Desktop distribution](docs/desktop-distribution.md) |
+| Web Admin    | Static, read-only companion; live data requires a same-origin authenticated proxy                                                        | [Web Admin deployment](docs/web-admin-deployment.md) |
+| Sync Service | Self-hosted, single-process Public Beta service with a durable JSON ledger                                                               | [Sync self-hosting](docs/self-hosting-sync.md)       |
+| Mobile       | Preview shell only; no public SSH/SFTP execution                                                                                         | Source evaluation only                               |
+
 ## Workspaces
 
 - `apps/desktop`: React + TypeScript desktop workbench, wrapped as a native app by `apps/desktop/src-tauri` (Tauri 2). In the desktop runtime it drives the real Rust engine over IPC; in the browser preview it falls back to demo data.
@@ -28,15 +85,9 @@ evaluation/community surface rather than a hosted or mutating team service.
 
 > **Verification note:** the TCP port-forwarder is covered end-to-end by loopback integration tests. The SSH/PTY/SFTP/`direct-tcpip` paths are exercised by unit tests for their deterministic logic (host-key policy, fingerprinting) and verified to compile against the real `russh` API; a live handshake requires a reachable SSH server, and the Tauri GUI requires a desktop WebView2 runtime. Building `apps/desktop/src-tauri` requires NASM on `PATH` (the `russh` `ring` crypto backend assembles primitives at build time).
 
-## Quick Start
-
-```bash
-npm install
-npm run dev
-```
-
-Rust/Cargo is required for `npm run qa:rust`; the JavaScript, mobile, E2E, and
-docs-contract QA lanes do not invoke Cargo unless explicitly requested.
+Rust/Cargo is required for native Desktop development and `npm run qa:rust`;
+the JavaScript, mobile, E2E, and docs-contract QA lanes do not invoke Cargo
+unless explicitly requested.
 
 ## Sync And Auth Config
 
@@ -181,6 +232,7 @@ GitHub Actions runs on push, PR, and a weekly Monday schedule:
 
 ## Documentation
 
+- [docs/getting-started.md](docs/getting-started.md) - Source installation, first real SSH connection, host-key safety, and deployment choices
 - [ARCHITECTURE.md](ARCHITECTURE.md) - System design, data flow, security layers, and sync protocol
 - [CONTRIBUTING.md](CONTRIBUTING.md) - Development workflow, code style, and commit conventions
 - [SECURITY.md](SECURITY.md) - Vulnerability reporting and security measures

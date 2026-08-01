@@ -139,7 +139,7 @@ JoeSSH Public Beta 是一款专注的 Windows 服务器连接工作台，不要�
 当前 Public Beta 对每次 SFTP 上传或下载设置 25 MiB 上限。它适合评估和谨慎的日常
 使用，发布证据与外部兼容性覆盖仍在持续完善。
 
-JoeSSH Community 免费提供；源码仓库公开后，源码将按 MIT 许可证提供。遥测和错误
+JoeSSH Community 免费提供；源码仓库已公开，并按 MIT 许可证提供。遥测和错误
 上报默认关闭。JoeSSH 不要求账号，当前也不提供托管服务。
 
 你必须获得所连接服务器的合法授权。请勿使用 JoeSSH 访问任何未经授权的系统、账号
