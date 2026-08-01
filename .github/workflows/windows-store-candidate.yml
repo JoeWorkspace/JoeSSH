@@ -246,16 +246,42 @@ jobs:
             $environment.protection_rules |
               Where-Object { $_.type -ceq "required_reviewers" }
           )
+          $environmentReviewers = @()
+          if ($reviewRules.Count -eq 1) {
+            $environmentReviewers = @($reviewRules[0].reviewers)
+          }
+          $personalOwnerReviewerMismatch = $false
+          $ownerTypeProperty = $repositoryMetadata.owner.PSObject.Properties["type"]
+          $repositoryOwnerType = if ($null -eq $ownerTypeProperty) {
+            ""
+          } else {
+            [string]$ownerTypeProperty.Value
+          }
+          if ($repositoryOwnerType -ceq "User") {
+            $ownerIdProperty = $repositoryMetadata.owner.PSObject.Properties["id"]
+            $personalOwnerReviewerCount = 0
+            if ($null -ne $ownerIdProperty) {
+              $personalOwnerReviewerCount = @(
+                $environmentReviewers |
+                  Where-Object {
+                    $_.type -ceq "User" -and
+                    $_.reviewer.id -eq $ownerIdProperty.Value
+                  }
+              ).Count
+            }
+            $personalOwnerReviewerMismatch = $personalOwnerReviewerCount -ne 1
+          }
           if (
             $environment.name -cne "windows-release-stage-b" -or
             $environment.can_admins_bypass -ne $false -or
             $reviewRules.Count -ne 1 -or
-            $reviewRules[0].prevent_self_review -ne $true -or
-            @($reviewRules[0].reviewers).Count -lt 1 -or
+            $reviewRules[0].prevent_self_review -ne $false -or
+            $environmentReviewers.Count -ne 1 -or
+            $personalOwnerReviewerMismatch -or
             $environment.deployment_branch_policy.protected_branches -ne $true -or
             $environment.deployment_branch_policy.custom_branch_policies -ne $false
           ) {
-            throw "windows-release-stage-b must require reviewers, prevent self-review and admin bypass, and accept protected branches only."
+            throw "windows-release-stage-b must require exactly one reviewer, use the personal repository owner when applicable, permit self-review, prevent admin bypass, and accept protected branches only."
           }
 
           $protection = Get-GitHubJson "/repos/$($env:REPOSITORY)/branches/main/protection"
@@ -269,6 +295,9 @@ jobs:
               }
           )
           $pullRequestReviews = $protection.required_pull_request_reviews
+          if ($null -eq $pullRequestReviews) {
+            throw "Direct classic main protection must keep the pull request rule."
+          }
           $bypassProperty = $pullRequestReviews.PSObject.Properties["bypass_pull_request_allowances"]
           if ($null -eq $bypassProperty) {
             if ($repositoryMetadata.owner.type -cne "User") {
@@ -296,9 +325,11 @@ jobs:
             $protection.required_status_checks.strict -ne $true -or
             $requiredStatusCheckMatches.Count -ne 1 -or
             $protection.enforce_admins.enabled -ne $true -or
-            $protection.required_pull_request_reviews.required_approving_review_count -lt 1 -or
-            $protection.required_pull_request_reviews.require_last_push_approval -ne $true -or
+            $protection.required_pull_request_reviews.required_approving_review_count -ne 0 -or
+            $protection.required_pull_request_reviews.require_last_push_approval -ne $false -or
             $bypassCount -ne 0 -or
+            $protection.required_linear_history.enabled -ne $true -or
+            $protection.required_conversation_resolution.enabled -ne $true -or
             $protection.allow_force_pushes.enabled -ne $false -or
             $protection.allow_deletions.enabled -ne $false
           ) {

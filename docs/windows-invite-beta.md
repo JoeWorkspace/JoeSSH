@@ -103,8 +103,9 @@ GitHub Actions 的手工工作流
 `Windows Invite Beta` 也只生成 `stage-a-unsigned-internal-only` handoff artifact，
 只允许从受保护的 `main` 分支运行，并把整个 job 绑定到
 `windows-invite-stage-a` environment。仓库必须为该 environment 配置 required
-reviewers、prevent self-review、关闭 admin bypass，并仅允许 protected branches；
-审批者先独立复核完整 40 位 commit SHA，再批准 job。操作者输入只通过
+reviewer（仓库所有者）、允许 self-review、关闭 admin bypass，并仅允许 protected
+branches；单维护者先复核完整 40 位 commit SHA，再批准 job。该批准是防误操作的
+人工暂停点，不是独立审核。操作者输入只通过
 step environment 进入 PowerShell，且必须与 `github.sha` 完全一致。上传完成后，
 step summary 会记录 reviewed commit、安装包 SHA-256、artifact ID/URL 与 artifact
 digest；原生 VM 验收和 promotion 前须在工作流外独立核对这些值。状态固定为

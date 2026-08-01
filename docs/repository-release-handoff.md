@@ -108,9 +108,11 @@ route, not a blocker for the first Public Beta.
    created. A different SHA means the remote tag is not the reviewed candidate;
    stop without drafting a release.
 
-8. After independently confirming GitHub Billing and spending-limit readiness,
-   keep that operator attestation in the environment for both fail-closed
-   release entry points:
+8. Confirm that the repository is still public, every release workflow uses a
+   standard GitHub-hosted runner, larger runners are not enabled, artifact and
+   cache usage remain inside the free allowances, and a zero paid budget or no
+   payment method will block overages. Keep that GitHub Free operator
+   attestation in the environment for both fail-closed release entry points:
 
    ```bash
    export JOESSH_GITHUB_BILLING_CONFIRMED=1

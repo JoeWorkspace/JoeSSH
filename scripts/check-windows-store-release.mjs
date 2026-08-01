@@ -33,7 +33,7 @@ const POLICY_JOB_METADATA_SHA256 =
   "12f268209b9e1b3ba4f5a3b8f833d70494348ff1702969b6f699d32a8fbd4eeb";
 const POLICY_STEP_SHA256 = [
   "d7dea33a7dd5710c349d77cba02b912c1bb0f7a32883d630e9f9f130775d7b11",
-  "1d4312333b085411091897df55ab74adfbbc6338e33d6860a13698bfa66aa14e",
+  "a57e76cfc2b13abddbb25d7f1280456f7f324dc80bef3779e4877a14d723cd6a",
 ];
 const VERIFY_JOB_METADATA_SHA256 =
   "b05a185846fd627b48f062be0edb9bb099d65773778b9b5ad417295722bd1a3f";
@@ -444,16 +444,26 @@ export function checkWindowsStoreWorkflowSecurity(workflowText) {
       "/environments/windows-release-stage-b",
       "/branches/main/protection",
       "required_reviewers",
+      "$environmentReviewers = @()",
+      "if ($reviewRules.Count -eq 1)",
+      '$repositoryMetadata.owner.PSObject.Properties["id"]',
+      "$personalOwnerReviewerMismatch",
       "can_admins_bypass -ne $false",
-      "prevent_self_review -ne $true",
+      "prevent_self_review -ne $false",
+      "environmentReviewers.Count -ne 1",
       "protected_branches -ne $true",
       "custom_branch_policies -ne $false",
       "required_status_checks.strict -ne $true",
       "enforce_admins.enabled -ne $true",
+      "required_approving_review_count -ne 0",
+      "require_last_push_approval -ne $false",
+      "$null -eq $pullRequestReviews",
       '$bypassProperty = $pullRequestReviews.PSObject.Properties["bypass_pull_request_allowances"]',
       '$repositoryMetadata.owner.type -cne "User"',
       "Bypass allowances must be an object when present.",
       "bypassCount -ne 0",
+      "required_linear_history.enabled -ne $true",
+      "required_conversation_resolution.enabled -ne $true",
       "allow_force_pushes.enabled -ne $false",
       "allow_deletions.enabled -ne $false",
       "/variables/ATLASTERM_WINDOWS_LEGAL_PUBLISHER",

@@ -228,13 +228,14 @@ EXE 与 MSIX 都必须填写非空 `artifact_url` 和完整 `expected_sha256`，
   MSIX 时该输入必须严格为空；
 - dispatch 必须来自受保护 `main`，`reviewed_sha` 必须与 `github.sha`
   完全相同；
-- `windows-release-stage-b` 恰好有 required reviewers，开启 prevent
-  self-review（即 `prevent self-review`），关闭 admin bypass，只允许
-  protected branches；
+- `windows-release-stage-b` 恰好有一个 required reviewer（仓库所有者），关闭
+  `prevent self-review` 以允许单维护者批准自己触发的部署，关闭 admin bypass，
+  且只允许 protected branches；该人工暂停点不构成独立审核；
 - `main` 的证据必须来自可读取的直接 classic
   `/repos/<owner>/<repo>/branches/main/protection` endpoint，并开启 strict
-  required checks、至少一次 PR 审批、last-push approval 和 admin
-  enforcement，且无 reviewer bypass、force-push 或 deletion；ruleset
+  required checks、PR 要求、线性历史、讨论解决和 admin enforcement；当前
+  solo-maintainer 模式要求审批数严格为 `0` 且关闭 last-push approval，并且无
+  reviewer bypass、force-push 或 deletion；ruleset
   只能补充，不能替代这套直接保护；
 - API 403/404、字段缺失或任一策略不符都直接阻断。
 

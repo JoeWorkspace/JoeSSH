@@ -93,7 +93,7 @@ if (repository) {
   auditMainProtection(repository, repositoryMetadata);
   auditPrivateVulnerabilityReporting(repository);
   for (const contract of REQUIRED_ENVIRONMENT_CONTRACTS) {
-    auditEnvironment(repository, contract);
+    auditEnvironment(repository, contract, repositoryMetadata?.owner);
   }
   auditHistoricalDesktopSigningSecretAbsence(repository);
   for (const { environment } of REQUIRED_ENVIRONMENT_CONTRACTS) {
@@ -113,11 +113,11 @@ const billingConfirmed =
   isEnabled(process.env.JOESSH_GITHUB_BILLING_CONFIRMED);
 addCheck(
   "billing-spending-limit",
-  "GitHub Actions billing and spending limit is externally confirmed",
+  "GitHub Free Actions usage and zero-paid-overage policy is externally confirmed",
   billingConfirmed ? "pass" : "needs_external_confirmation",
   billingConfirmed
-    ? "Operator explicitly confirmed that GitHub Actions billing, payment, and spending-limit state permits release workflows. This is an operator attestation, not GitHub API evidence."
-    : "GitHub exposes no reliable repository API that proves account payment and spending-limit readiness. Confirm Billing & plans externally, then rerun with --confirm-billing-ready or JOESSH_GITHUB_BILLING_CONFIRMED=1.",
+    ? "Operator explicitly confirmed that the repository remains public, release workflows use only standard GitHub-hosted runners, larger runners are disabled, included storage allowances are respected, and paid overages are blocked. This is an operator attestation, not GitHub API evidence."
+    : "GitHub exposes no reliable repository API that proves account budget and payment settings. Confirm that the public repository uses only standard GitHub-hosted runners, larger runners are disabled, storage remains within included allowances, and paid overages are blocked; then rerun with --confirm-billing-ready or JOESSH_GITHUB_BILLING_CONFIRMED=1.",
   {
     evidence: billingConfirmed
       ? "operator-attestation"
@@ -266,10 +266,14 @@ function auditMainProtection(repository, repositoryMetadata) {
       "main-protection",
       MAIN_PROTECTION_CHECK_LABEL,
       "pass",
-      `GitHub reports direct classic main branch protection as active with strict ${REQUIRED_MAIN_STATUS_CHECK_CONTEXTS.join(
+      `GitHub reports direct classic main branch protection as active with a solo-maintainer pull-request flow, zero required approvals, no latest-push approval requirement, strict ${REQUIRED_MAIN_STATUS_CHECK_CONTEXTS.join(
         ", ",
-      )} status checks bound to GitHub Actions App ${REQUIRED_MAIN_STATUS_CHECK_APP_ID}, administrator enforcement, at least one approval of the latest push, no pull-request bypass allowances, force pushes disabled, and deletion disabled.`,
-      { evidence: "branch-protection" },
+      )} status checks bound to GitHub Actions App ${REQUIRED_MAIN_STATUS_CHECK_APP_ID}, administrator enforcement, required linear history, required conversation resolution, no pull-request bypass allowances, force pushes disabled, and deletion disabled. Self-review in this solo-maintainer model is not independent review.`,
+      {
+        evidence: "branch-protection",
+        independentReview: false,
+        reviewModel: "solo-maintainer-self-review",
+      },
     );
     return;
   }
@@ -280,7 +284,7 @@ function auditMainProtection(repository, repositoryMetadata) {
   const directProtectionDiagnostic = directProtection.ok
     ? `Direct classic branch protection does not prove strict required status checks for ${REQUIRED_MAIN_STATUS_CHECK_CONTEXTS.join(
         ", ",
-      )} bound to GitHub Actions App ${REQUIRED_MAIN_STATUS_CHECK_APP_ID}, administrator enforcement, at least one approval of the latest push, zero pull-request bypass allowances, and force pushes and deletion disabled.`
+      )} bound to GitHub Actions App ${REQUIRED_MAIN_STATUS_CHECK_APP_ID}, administrator enforcement, a solo-maintainer pull-request flow with exactly zero required approvals and no latest-push approval requirement, required linear history, required conversation resolution, zero pull-request bypass allowances, and force pushes and deletion disabled. Self-review is not independent review.`
     : directProtection.detail;
   const mandatoryDirectProtectionDiagnostic = `Direct classic branch protection from GET /repos/${repository}/branches/main/protection is required; an active ruleset may supplement it but cannot replace it.`;
   if (!rulesets.ok || !Array.isArray(rulesets.value)) {
@@ -338,7 +342,7 @@ function auditMainProtection(repository, repositoryMetadata) {
         ? diagnostics.join(" ")
         : `No active branch ruleset supplements the required direct protection with strict ${REQUIRED_MAIN_STATUS_CHECK_CONTEXTS.join(
             ", ",
-          )} status checks bound to GitHub Actions App ${REQUIRED_MAIN_STATUS_CHECK_APP_ID}, at least one approval of the latest push, zero bypass actors, and blocks deletion and non-fast-forward updates for refs/heads/main.`,
+          )} status checks bound to GitHub Actions App ${REQUIRED_MAIN_STATUS_CHECK_APP_ID}, a solo-maintainer pull-request flow with exactly zero required approvals and no latest-push approval requirement, required review-thread resolution, required linear history, zero bypass actors, and blocks deletion and non-fast-forward updates for refs/heads/main. Self-review is not independent review.`,
     ]
       .filter(Boolean)
       .join(" "),
@@ -360,7 +364,7 @@ function auditPrivateVulnerabilityReporting(repository) {
   );
 }
 
-function auditEnvironment(repository, contract) {
+function auditEnvironment(repository, contract, repositoryOwner) {
   const { environment, requireAdminBypassDisabled } = contract;
   const result = apiJson(
     `repos/${repository}/environments/${encodeURIComponent(environment)}`,
@@ -413,18 +417,37 @@ function auditEnvironment(repository, contract) {
     failures.push("required_reviewers.reviewers is not readable as an array");
   } else if (Array.isArray(reviewers) && reviewers.length < 1) {
     failures.push("required_reviewers must configure at least one reviewer");
+  } else if (Array.isArray(reviewers) && reviewers.length !== 1) {
+    failures.push(
+      `solo-maintainer mode requires exactly one reviewer; found ${reviewers.length}`,
+    );
   } else if (Array.isArray(reviewers) && concreteReviewers.length < 1) {
     failures.push(
       "required_reviewers must configure at least one concrete User or Team reviewer with a positive integer id",
     );
   }
-  if (reviewerRule && reviewerRule.prevent_self_review !== true) {
+  if (repositoryOwner?.type === "User") {
+    if (!Number.isInteger(repositoryOwner.id) || repositoryOwner.id < 1) {
+      failures.push(
+        "personal repository owner id is unreadable; the solo-maintainer reviewer identity cannot be proven",
+      );
+    } else if (
+      concreteReviewers.length !== 1 ||
+      concreteReviewers[0]?.type !== "User" ||
+      concreteReviewers[0]?.reviewer?.id !== repositoryOwner.id
+    ) {
+      failures.push(
+        "the sole environment reviewer must be the personal repository owner",
+      );
+    }
+  }
+  if (reviewerRule && reviewerRule.prevent_self_review !== false) {
     failures.push(
       Object.hasOwn(reviewerRule, "prevent_self_review")
-        ? `prevent_self_review must be true; received ${String(
+        ? `prevent_self_review must be false for the solo-maintainer self-review flow; received ${String(
             reviewerRule.prevent_self_review,
           )}`
-        : "prevent_self_review is not readable and therefore cannot be proven enabled",
+        : "prevent_self_review is not readable and therefore cannot be proven explicitly disabled for the solo-maintainer self-review flow",
     );
   }
 
@@ -473,9 +496,9 @@ function auditEnvironment(repository, contract) {
     label,
     satisfiesContract ? "pass" : "fail",
     satisfiesContract
-      ? `${environment} has exactly one required_reviewers rule with ${configuredReviewerCount} configured reviewer(s), prevents self-review, and accepts protected branches only.${
+      ? `${environment} has exactly one required_reviewers rule with exactly one configured reviewer, uses the personal repository owner when applicable, explicitly allows self-review for the solo maintainer, and accepts protected branches only.${
           requireAdminBypassDisabled ? " Administrator bypass is disabled." : ""
-        }`
+        } This self-review approval is not independent review.`
       : `${environment} does not satisfy the fail-closed environment contract: ${failures.join(
           "; ",
         )}.`,
@@ -490,8 +513,12 @@ function auditEnvironment(repository, contract) {
             protectedBranches: deploymentBranchPolicy.protected_branches,
           },
           evidence: "github-environment-api",
+          independentReview: false,
+          personalRepositoryOwnerIsReviewer:
+            repositoryOwner?.type === "User" ? true : "not-applicable",
           preventSelfReview: reviewerRule.prevent_self_review,
           requiredReviewerRuleCount: reviewerRules.length,
+          reviewModel: "solo-maintainer-self-review",
         }
       : {},
   );
@@ -825,6 +852,9 @@ function activeRulesetProtectsMain(ruleset) {
   const nonFastForwardRules = ruleset.rules.filter(
     (rule) => rule?.type === "non_fast_forward",
   );
+  const requiredLinearHistoryRules = ruleset.rules.filter(
+    (rule) => rule?.type === "required_linear_history",
+  );
   const requiredStatusCheckRules = ruleset.rules.filter(
     (rule) => rule?.type === "required_status_checks",
   );
@@ -834,6 +864,7 @@ function activeRulesetProtectsMain(ruleset) {
   if (
     deletionRules.length !== 1 ||
     nonFastForwardRules.length !== 1 ||
+    requiredLinearHistoryRules.length !== 1 ||
     requiredStatusCheckRules.length !== 1 ||
     pullRequestRules.length !== 1
   ) {
@@ -850,9 +881,9 @@ function activeRulesetProtectsMain(ruleset) {
       requiredStatusChecks?.parameters?.required_status_checks,
       "integration_id",
     ) &&
-    Number.isInteger(requiredApprovalCount) &&
-    requiredApprovalCount >= 1 &&
-    pullRequest?.parameters?.require_last_push_approval === true
+    requiredApprovalCount === 0 &&
+    pullRequest?.parameters?.require_last_push_approval === false &&
+    pullRequest?.parameters?.required_review_thread_resolution === true
   );
 }
 
@@ -868,13 +899,14 @@ function branchProtectionMeetsReleaseBar(value, repositoryOwnerType) {
     requiredStatusChecks?.strict === true &&
     hasRequiredStatusCheckBindings(requiredStatusChecks?.checks, "app_id") &&
     value.enforce_admins?.enabled === true &&
-    Number.isInteger(requiredApprovalCount) &&
-    requiredApprovalCount >= 1 &&
-    pullRequestReviews?.require_last_push_approval === true &&
+    requiredApprovalCount === 0 &&
+    pullRequestReviews?.require_last_push_approval === false &&
     hasNoPullRequestBypassAllowances(
       pullRequestReviews?.bypass_pull_request_allowances,
       repositoryOwnerType,
     ) &&
+    value.required_linear_history?.enabled === true &&
+    value.required_conversation_resolution?.enabled === true &&
     value.allow_force_pushes?.enabled === false &&
     value.allow_deletions?.enabled === false
   );
@@ -1070,7 +1102,7 @@ Read-only, fail-closed GitHub release control preflight.
 Options:
   --repo owner/name             Repository to inspect.
   --json                        Emit a machine-readable JSON report.
-  --confirm-billing-ready       Record explicit external billing/spending-limit confirmation.
+  --confirm-billing-ready       Attest that GitHub Free use is within allowance and paid overages are blocked.
   -h, --help                    Show this help.
 
 Environment:

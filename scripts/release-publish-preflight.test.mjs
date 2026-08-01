@@ -829,7 +829,12 @@ if (key === "release view v0.1.0-beta.1 --repo JoeWorkspace/JoeSSH --json url") 
   process.exit(1);
 }
 if (key === "api repos/JoeWorkspace/JoeSSH") {
-  respond({ default_branch: "main", private: false, visibility: "public" });
+  respond({
+    default_branch: "main",
+    owner: { id: 1, login: "JoeWorkspace", type: "User" },
+    private: false,
+    visibility: "public",
+  });
 }
   if (key === "api repos/JoeWorkspace/JoeSSH/branches/main") {
     respond({ commit: { sha: state.mainCommit }, name: "main", protected: true });
@@ -839,10 +844,12 @@ if (key === "api repos/JoeWorkspace/JoeSSH/branches/main/protection") {
     allow_deletions: { enabled: false },
     allow_force_pushes: { enabled: false },
     enforce_admins: { enabled: true },
+    required_conversation_resolution: { enabled: true },
+    required_linear_history: { enabled: true },
     required_pull_request_reviews: {
       bypass_pull_request_allowances: { apps: [], teams: [], users: [] },
-      require_last_push_approval: true,
-      required_approving_review_count: 1,
+      require_last_push_approval: false,
+      required_approving_review_count: 0,
     },
     required_status_checks: {
       checks: [{ app_id: 15368, context: "Public Release Readiness" }],
@@ -874,10 +881,10 @@ if (
       name,
       protection_rules: [
         {
-          prevent_self_review: true,
+          prevent_self_review: false,
           reviewers: [
             {
-              reviewer: { id: 1, login: "release-reviewer" },
+              reviewer: { id: 1, login: "JoeWorkspace" },
               type: "User",
             },
           ],

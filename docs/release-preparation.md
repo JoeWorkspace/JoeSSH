@@ -93,18 +93,23 @@ npm run release:github-controls -- --repo JoeWorkspace/JoeSSH
 - `main` 必须通过
   `/repos/<owner>/<repo>/branches/main/protection` 暴露可读取的直接 classic
   branch protection：精确要求 GitHub Actions App 提供的
-  `Public Release Readiness`，至少一次 latest-push 审批，对管理员同样生效且没有
-  PR bypass allowance，并阻止 force-push 与删除；active ruleset 可以追加更严格
-  约束，但不能替代这套直接保护；
+  `Public Release Readiness`，要求 PR、线性历史和讨论全部解决，对管理员同样生效且
+  没有 PR bypass allowance，并阻止 force-push 与删除；当前单维护者模式把审批数
+  固定为 `0` 并关闭 latest-push approval，由维护者在最新 push 后复核最终 diff，
+  因为 GitHub 不会把 PR 作者对自己 PR 的批准计入门禁；这属于自审，不是独立审核。
+  active ruleset 可以追加更严格约束，但不能替代这套直接保护；
 - Private Vulnerability Reporting 已启用；
-- `windows-invite-stage-a` 与 `windows-release-stage-b` 环境都要求至少一名
-  reviewer、阻止 self-review 和 admin bypass，且只允许 protected branches；
+- `windows-invite-stage-a` 与 `windows-release-stage-b` 环境都把仓库所有者设为
+  required reviewer，允许 self-review、阻止 admin bypass，且只允许 protected
+  branches；这是单维护者的人工暂停点，不得表述成独立安全审核；
 - 正式 Desktop 签名自动化保持禁用；repository scope 不得存在历史
   Windows/macOS 签名与公证 secret，敏感签名材料留在仓库外，unsigned workflow
   不能生成正式签名证据；
 - Actions artifact/cache 摘要可读；
-- 维护者在 GitHub Billing 页面单独确认支付方式与 spending limit 后，使用
-  `--confirm-billing-ready` 记录人工确认。
+- 维护者在 GitHub Billing 页面确认仓库保持 public、只使用 standard hosted
+  runners、未启用 larger runner，artifact/package 与 cache 未超过免费额度，并
+  通过零付费预算或不配置付款方式让超额使用直接被阻断；随后使用
+  `--confirm-billing-ready` 记录人工确认。GitHub Free 不要求充值。
 - Store policy 使用的 fine-grained token 由操作员在仓库外复核 owner、唯一目标
   仓库、只读权限、到期时间与审计记录；workflow 只能限制自己的 GET 调用，
   不能证明管理员没有给 token 额外权限。

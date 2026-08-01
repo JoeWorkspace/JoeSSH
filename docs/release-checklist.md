@@ -34,13 +34,31 @@ evidence. None can make the current workflow produce
   reporting route in `SECURITY.md` and both `security.txt` files is unavailable.
 - Configure direct classic branch protection for `main`; the
   `/repos/<owner>/<repo>/branches/main/protection` API must be readable and must
-  require the exact `Public Release Readiness` check from GitHub Actions, apply
-  to administrators, require at least one approval of the latest push, expose
-  no pull-request bypass allowances, and block force pushes and branch
-  deletion. An active ruleset may add stricter constraints, but it cannot
-  replace this direct protection contract. While JoeSSH has one maintainer, do
-  not add a separate CODEOWNER requirement that the maintainer cannot satisfy;
-  use the trusted release reviewer for the single required approval.
+  require a pull request plus the exact `Public Release Readiness` check from
+  GitHub Actions, apply to administrators, require linear history and resolved
+  review conversations, expose no pull-request bypass allowances, and block
+  force pushes and branch deletion. JoeSSH currently uses an explicit
+  **solo-maintainer review mode**: required approval count is `0` and
+  last-push approval is disabled because GitHub cannot count the pull-request
+  author's own approval. The maintainer must review the final diff after the
+  latest push and record that review in the pull-request checklist; this is
+  self-review, not independent review. An active ruleset may add stricter
+  constraints, but it cannot replace this direct protection contract. If a
+  trusted second maintainer is added later, update the verifier, documentation,
+  branch protection, and environment rules together before restoring a required
+  independent approval.
+- Keep `windows-invite-stage-a` and `windows-release-stage-b` as manual
+  deployment pauses with the repository owner as the required reviewer,
+  `prevent_self_review=false`, administrator bypass disabled, and protected
+  branches only. This allows the sole maintainer to approve a run they
+  triggered; it is an operator confirmation and must not be described as an
+  independent security boundary.
+- GitHub Free is sufficient while the repository stays public and workflows use
+  standard GitHub-hosted runners. Do not select larger runners. Keep Actions
+  artifact/package storage within the plan allowance and cache storage within
+  the per-repository allowance; use a zero paid budget or no payment method so
+  excess metered usage is blocked rather than purchased. Record this check with
+  `--confirm-billing-ready` before a release workflow.
 - Keep `.github/workflows/desktop-release-artifacts.yml` limited to its fixed
   policy job and unprivileged three-platform unsigned matrix. It must contain
   no signing environment, `id-token`, GitHub signing secret, certificate

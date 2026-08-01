@@ -806,6 +806,7 @@ if (args[0] === "api") {
   if (method === "GET" && endpoint === controlsRoot) {
     controlsResponse = {
       default_branch: "main",
+      owner: { id: 1, login: "JoeWorkspace", type: "User" },
       private: state.githubControlsFail,
       visibility: state.githubControlsFail ? "private" : "public",
     };
@@ -883,10 +884,12 @@ if (args[0] === "api") {
       allow_deletions: { enabled: false },
       allow_force_pushes: { enabled: false },
       enforce_admins: { enabled: true },
+      required_conversation_resolution: { enabled: true },
+      required_linear_history: { enabled: true },
       required_pull_request_reviews: {
         bypass_pull_request_allowances: { apps: [], teams: [], users: [] },
-        require_last_push_approval: true,
-        required_approving_review_count: 1,
+        require_last_push_approval: false,
+        required_approving_review_count: 0,
       },
       required_status_checks: {
         checks: [{ app_id: 15368, context: "Public Release Readiness" }],
@@ -919,10 +922,10 @@ if (args[0] === "api") {
       name: environment,
       protection_rules: [
         {
-          prevent_self_review: true,
+          prevent_self_review: false,
           reviewers: [
             {
-              reviewer: { id: 1, login: "release-reviewer" },
+              reviewer: { id: 1, login: "JoeWorkspace" },
               type: "User",
             },
           ],

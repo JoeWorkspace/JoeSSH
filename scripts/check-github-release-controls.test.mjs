@@ -71,7 +71,7 @@ function validEnvironment(name) {
     name,
     protection_rules: [
       {
-        prevent_self_review: true,
+        prevent_self_review: false,
         reviewers: [
           {
             reviewer: {
@@ -100,14 +100,16 @@ function validDirectProtection(overrides = {}) {
     allow_deletions: { enabled: false },
     allow_force_pushes: { enabled: false },
     enforce_admins: { enabled: true },
+    required_conversation_resolution: { enabled: true },
+    required_linear_history: { enabled: true },
     required_pull_request_reviews: {
       bypass_pull_request_allowances: {
         apps: [],
         teams: [],
         users: [],
       },
-      require_last_push_approval: true,
-      required_approving_review_count: 1,
+      require_last_push_approval: false,
+      required_approving_review_count: 0,
     },
     required_status_checks: {
       checks: [
@@ -139,6 +141,7 @@ function validRulesetDetail(name = "Release main") {
     rules: [
       { type: "deletion" },
       { type: "non_fast_forward" },
+      { type: "required_linear_history" },
       {
         parameters: {
           required_status_checks: [
@@ -153,8 +156,9 @@ function validRulesetDetail(name = "Release main") {
       },
       {
         parameters: {
-          require_last_push_approval: true,
-          required_approving_review_count: 1,
+          require_last_push_approval: false,
+          required_approving_review_count: 0,
+          required_review_thread_resolution: true,
         },
         type: "pull_request",
       },
@@ -401,7 +405,7 @@ function readInvocations(logPath) {
     .map((line) => JSON.parse(line));
 }
 
-test("fails closed until billing and spending-limit state is explicitly confirmed", (t) => {
+test("fails closed until GitHub Free limits and blocked paid overages are explicitly confirmed", (t) => {
   const fixture = createFixture(t);
   const result = runChecker(["--repo", REPOSITORY], fixture.env);
 
@@ -478,8 +482,17 @@ test("passes only after every remote control and external billing confirmation p
   assert.match(result.stdout, /PASS repository-public/);
   assert.match(result.stdout, /PASS repository-default-main/);
   assert.match(result.stdout, /PASS main-protection/);
+  assert.match(result.stdout, /solo-maintainer pull-request flow/);
+  assert.match(
+    result.stdout,
+    /Self-review in this solo-maintainer model is not independent review/,
+  );
   assert.match(result.stdout, /PASS environment-windows-invite-stage-a/);
   assert.match(result.stdout, /PASS environment-windows-release-stage-b/);
+  assert.match(
+    result.stdout,
+    /This self-review approval is not independent review/,
+  );
   assert.match(result.stdout, /PASS desktop-signing-repository-secret-copies/);
   assert.match(
     result.stdout,
@@ -556,6 +569,22 @@ test("emits a machine-readable JSON report with artifact and cache summaries", (
       .evidence,
     "operator-attestation",
   );
+  const mainProtection = report.checks.find(
+    (check) => check.id === "main-protection",
+  );
+  assert.equal(mainProtection.independentReview, false);
+  assert.equal(mainProtection.reviewModel, "solo-maintainer-self-review");
+  for (const environment of [
+    "windows-invite-stage-a",
+    "windows-release-stage-b",
+  ]) {
+    const environmentCheck = report.checks.find(
+      (check) => check.id === `environment-${environment}`,
+    );
+    assert.equal(environmentCheck.independentReview, false);
+    assert.equal(environmentCheck.preventSelfReview, false);
+    assert.equal(environmentCheck.reviewModel, "solo-maintainer-self-review");
+  }
   assert.equal(
     report.checks.some(
       (check) =>
@@ -724,13 +753,13 @@ test("fails an active ruleset closed when bypass actors are unreadable", (t) => 
   assert.match(result.stdout, /Unreadable bypass policy/);
 });
 
-test("rejects an active ruleset without approval of the latest push", (t) => {
-  const detail = validRulesetDetail("Weak review policy");
+test("rejects an active ruleset with the legacy one-approval latest-push policy", (t) => {
+  const detail = validRulesetDetail("Legacy independent-review policy");
   const pullRequestRule = detail.rules.find(
     (rule) => rule.type === "pull_request",
   );
-  pullRequestRule.parameters.required_approving_review_count = 0;
-  pullRequestRule.parameters.require_last_push_approval = false;
+  pullRequestRule.parameters.required_approving_review_count = 1;
+  pullRequestRule.parameters.require_last_push_approval = true;
   const fixture = createFixture(t, {
     directProtection: null,
     rulesetDetails: { 42: detail },
@@ -750,7 +779,68 @@ test("rejects an active ruleset without approval of the latest push", (t) => {
 
   assert.equal(result.status, 1);
   assert.match(result.stdout, /FAIL main-protection/);
-  assert.match(result.stdout, /Weak review policy/);
+  assert.match(result.stdout, /Legacy independent-review policy/);
+});
+
+test("rejects an active ruleset without required linear history", (t) => {
+  const detail = validRulesetDetail("No linear history");
+  detail.rules = detail.rules.filter(
+    (rule) => rule.type !== "required_linear_history",
+  );
+  const fixture = createFixture(t, {
+    directProtection: null,
+    rulesetDetails: { 42: detail },
+    rulesets: [
+      {
+        enforcement: "active",
+        id: 42,
+        name: detail.name,
+        target: "branch",
+      },
+    ],
+  });
+  const result = runChecker(
+    ["--repo", REPOSITORY, "--confirm-billing-ready"],
+    fixture.env,
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /FAIL main-protection/);
+  assert.match(
+    result.stdout,
+    /No linear history: active ruleset does not prove protection for refs\/heads\/main/,
+  );
+});
+
+test("rejects an active ruleset without required review-thread resolution", (t) => {
+  const detail = validRulesetDetail("No conversation resolution");
+  const pullRequestRule = detail.rules.find(
+    (rule) => rule.type === "pull_request",
+  );
+  delete pullRequestRule.parameters.required_review_thread_resolution;
+  const fixture = createFixture(t, {
+    directProtection: null,
+    rulesetDetails: { 42: detail },
+    rulesets: [
+      {
+        enforcement: "active",
+        id: 42,
+        name: detail.name,
+        target: "branch",
+      },
+    ],
+  });
+  const result = runChecker(
+    ["--repo", REPOSITORY, "--confirm-billing-ready"],
+    fixture.env,
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /FAIL main-protection/);
+  assert.match(
+    result.stdout,
+    /No conversation resolution: active ruleset does not prove protection for refs\/heads\/main/,
+  );
 });
 
 test("rejects an active ruleset that requires only an unrelated status check", (t) => {
@@ -771,6 +861,7 @@ test("rejects an active ruleset that requires only an unrelated status check", (
         rules: [
           { type: "deletion" },
           { type: "non_fast_forward" },
+          { type: "required_linear_history" },
           {
             parameters: {
               required_status_checks: [
@@ -785,8 +876,9 @@ test("rejects an active ruleset that requires only an unrelated status check", (
           },
           {
             parameters: {
-              require_last_push_approval: true,
-              required_approving_review_count: 1,
+              require_last_push_approval: false,
+              required_approving_review_count: 0,
+              required_review_thread_resolution: true,
             },
             type: "pull_request",
           },
@@ -834,6 +926,7 @@ test("rejects an active ruleset whose release-readiness check is not bound to Gi
         rules: [
           { type: "deletion" },
           { type: "non_fast_forward" },
+          { type: "required_linear_history" },
           {
             parameters: {
               required_status_checks: [
@@ -848,8 +941,9 @@ test("rejects an active ruleset whose release-readiness check is not bound to Gi
           },
           {
             parameters: {
-              require_last_push_approval: true,
-              required_approving_review_count: 1,
+              require_last_push_approval: false,
+              required_approving_review_count: 0,
+              required_review_thread_resolution: true,
             },
             type: "pull_request",
           },
@@ -965,6 +1059,43 @@ test("rejects direct branch protection that does not enforce administrators", (t
   assert.match(result.stdout, /administrator enforcement/);
 });
 
+test("rejects direct branch protection without a pull-request review object", (t) => {
+  const protection = validDirectProtection();
+  delete protection.required_pull_request_reviews;
+  const fixture = createFixture(t, {
+    directProtection: protection,
+  });
+  const result = runChecker(
+    ["--repo", REPOSITORY, "--confirm-billing-ready"],
+    fixture.env,
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /FAIL main-protection/);
+  assert.match(result.stdout, /solo-maintainer pull-request flow/);
+});
+
+for (const [field, diagnostic] of [
+  ["required_linear_history", /required linear history/],
+  ["required_conversation_resolution", /required conversation resolution/],
+]) {
+  test(`rejects direct branch protection when ${field} is missing`, (t) => {
+    const protection = validDirectProtection();
+    delete protection[field];
+    const fixture = createFixture(t, {
+      directProtection: protection,
+    });
+    const result = runChecker(
+      ["--repo", REPOSITORY, "--confirm-billing-ready"],
+      fixture.env,
+    );
+
+    assert.equal(result.status, 1);
+    assert.match(result.stdout, /FAIL main-protection/);
+    assert.match(result.stdout, diagnostic);
+  });
+}
+
 test("rejects direct branch protection with pull-request bypass allowances", (t) => {
   const protection = validDirectProtection();
   protection.required_pull_request_reviews.bypass_pull_request_allowances.users =
@@ -1021,6 +1152,7 @@ test("accepts omitted bypass allowances only for personal repositories", (t) => 
       default_branch: "main",
       id: 123456,
       owner: {
+        id: 1,
         type: "User",
       },
       private: false,
@@ -1054,10 +1186,10 @@ test("fails direct branch protection closed when bypass allowances are unreadabl
   assert.match(result.stdout, /zero pull-request bypass allowances/);
 });
 
-test("rejects direct branch protection without approval of the latest push", (t) => {
+test("rejects direct branch protection with the legacy one-approval latest-push policy", (t) => {
   const protection = validDirectProtection();
-  protection.required_pull_request_reviews.required_approving_review_count = 0;
-  protection.required_pull_request_reviews.require_last_push_approval = false;
+  protection.required_pull_request_reviews.required_approving_review_count = 1;
+  protection.required_pull_request_reviews.require_last_push_approval = true;
   const fixture = createFixture(t, {
     directProtection: protection,
   });
@@ -1068,7 +1200,11 @@ test("rejects direct branch protection without approval of the latest push", (t)
 
   assert.equal(result.status, 1);
   assert.match(result.stdout, /FAIL main-protection/);
-  assert.match(result.stdout, /at least one approval of the latest push/);
+  assert.match(
+    result.stdout,
+    /exactly zero required approvals and no latest-push approval requirement/,
+  );
+  assert.match(result.stdout, /Self-review is not independent review/);
 });
 
 test("rejects disabled Private Vulnerability Reporting", (t) => {
@@ -1140,9 +1276,9 @@ for (const environment of [
   "windows-invite-stage-a",
   "windows-release-stage-b",
 ]) {
-  test(`rejects ${environment} when the dispatcher can self-review`, (t) => {
+  test(`rejects ${environment} when solo-maintainer self-review is prevented`, (t) => {
     const candidate = validEnvironment(environment);
-    candidate.protection_rules[0].prevent_self_review = false;
+    candidate.protection_rules[0].prevent_self_review = true;
     const fixture = createFixture(t, {
       environments: validEnvironments({
         [environment]: candidate,
@@ -1157,7 +1293,28 @@ for (const environment of [
     assert.match(result.stdout, new RegExp(`FAIL environment-${environment}`));
     assert.match(
       result.stdout,
-      /prevent_self_review must be true; received false/,
+      /prevent_self_review must be false for the solo-maintainer self-review flow; received true/,
+    );
+  });
+
+  test(`rejects ${environment} when self-review policy is unreadable`, (t) => {
+    const candidate = validEnvironment(environment);
+    delete candidate.protection_rules[0].prevent_self_review;
+    const fixture = createFixture(t, {
+      environments: validEnvironments({
+        [environment]: candidate,
+      }),
+    });
+    const result = runChecker(
+      ["--repo", REPOSITORY, "--confirm-billing-ready"],
+      fixture.env,
+    );
+
+    assert.equal(result.status, 1);
+    assert.match(result.stdout, new RegExp(`FAIL environment-${environment}`));
+    assert.match(
+      result.stdout,
+      /prevent_self_review is not readable and therefore cannot be proven explicitly disabled/,
     );
   });
 
@@ -1236,6 +1393,51 @@ test("rejects a malformed environment reviewer as unreadable evidence", (t) => {
   assert.match(
     result.stdout,
     /at least one concrete User or Team reviewer with a positive integer id/,
+  );
+});
+
+test("rejects multiple reviewers in solo-maintainer mode", (t) => {
+  const stageB = validEnvironment("windows-release-stage-b");
+  stageB.protection_rules[0].reviewers.push({
+    reviewer: { id: 2, login: "second-reviewer" },
+    type: "User",
+  });
+  const fixture = createFixture(t, {
+    environments: validEnvironments({
+      "windows-release-stage-b": stageB,
+    }),
+  });
+  const result = runChecker(
+    ["--repo", REPOSITORY, "--confirm-billing-ready"],
+    fixture.env,
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stdout,
+    /solo-maintainer mode requires exactly one reviewer/,
+  );
+});
+
+test("requires the personal repository owner as the environment reviewer", (t) => {
+  const fixture = createFixture(t, {
+    repoMetadata: {
+      default_branch: "main",
+      id: 123456,
+      owner: { id: 42, login: "JoeWorkspace", type: "User" },
+      private: false,
+      visibility: "public",
+    },
+  });
+  const result = runChecker(
+    ["--repo", REPOSITORY, "--confirm-billing-ready"],
+    fixture.env,
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stdout,
+    /sole environment reviewer must be the personal repository owner/,
   );
 });
 

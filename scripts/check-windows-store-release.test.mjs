@@ -780,7 +780,71 @@ test("live policy accepts explicit empty bypass actor arrays", () => {
   assert.equal(result.status, 0, commandOutput(result));
 });
 
-function runLivePolicy({ bypassAllowances, ownerType } = {}) {
+test("live policy enforces the exact solo-maintainer environment gate", () => {
+  for (const options of [
+    { environmentReviewerCount: 0 },
+    { environmentReviewerCount: 2 },
+    { environmentReviewerId: 2 },
+    { environmentReviewerType: "Team" },
+    { preventSelfReview: true },
+    { canAdminsBypass: true },
+    { protectedBranches: false },
+    { customBranchPolicies: true },
+  ]) {
+    const result = runLivePolicy(options);
+    assert.notEqual(result.status, 0, commandOutput(result));
+    assert.match(
+      commandOutput(result),
+      /windows-release-stage-b must require exactly one reviewer/,
+    );
+  }
+});
+
+test("live policy enforces the exact solo-maintainer main gate", () => {
+  for (const options of [
+    { requiredApprovingReviewCount: 1 },
+    { requireLastPushApproval: true },
+    { includePullRequestReviews: false },
+    { requiredStatusChecksStrict: false },
+    { requiredStatusCheckAppId: 1 },
+    { requiredStatusCheckContext: "continuous-integration" },
+    { enforceAdmins: false },
+    { requiredLinearHistory: false },
+    { requiredConversationResolution: false },
+    { allowForcePushes: true },
+    { allowDeletions: true },
+  ]) {
+    const result = runLivePolicy(options);
+    assert.notEqual(result.status, 0, commandOutput(result));
+    assert.match(
+      commandOutput(result),
+      /Direct classic main protection (?:does not match the release contract|must keep the pull request rule)/,
+    );
+  }
+});
+
+function runLivePolicy({
+  allowDeletions = false,
+  allowForcePushes = false,
+  bypassAllowances,
+  canAdminsBypass = false,
+  customBranchPolicies = false,
+  enforceAdmins = true,
+  environmentReviewerCount = 1,
+  environmentReviewerId = 1,
+  environmentReviewerType = "User",
+  includePullRequestReviews = true,
+  ownerType,
+  preventSelfReview = false,
+  protectedBranches = true,
+  requiredApprovingReviewCount = 0,
+  requiredConversationResolution = true,
+  requireLastPushApproval = false,
+  requiredLinearHistory = true,
+  requiredStatusCheckAppId = 15368,
+  requiredStatusCheckContext = "Public Release Readiness",
+  requiredStatusChecksStrict = true,
+} = {}) {
   const workflow = inspectWindowsStoreWorkflowStructure(readWorkflow());
   const livePolicyRun = workflow.jobs.policy.steps.find(
     (step) =>
@@ -790,37 +854,58 @@ function runLivePolicy({ bypassAllowances, ownerType } = {}) {
   assert.equal(typeof livePolicyRun, "string");
 
   const repositoryMetadata = {
-    owner: ownerType === null ? {} : { type: ownerType ?? "User" },
+    owner:
+      ownerType === null
+        ? {}
+        : { id: 1, login: "JoeWorkspace", type: ownerType ?? "User" },
   };
   const protection = {
-    allow_deletions: { enabled: false },
-    allow_force_pushes: { enabled: false },
-    enforce_admins: { enabled: true },
+    allow_deletions: { enabled: allowDeletions },
+    allow_force_pushes: { enabled: allowForcePushes },
+    enforce_admins: { enabled: enforceAdmins },
+    required_conversation_resolution: {
+      enabled: requiredConversationResolution,
+    },
+    required_linear_history: { enabled: requiredLinearHistory },
     required_pull_request_reviews: {
-      require_last_push_approval: true,
-      required_approving_review_count: 1,
+      require_last_push_approval: requireLastPushApproval,
+      required_approving_review_count: requiredApprovingReviewCount,
     },
     required_status_checks: {
-      checks: [{ app_id: 15368, context: "Public Release Readiness" }],
-      strict: true,
+      checks: [
+        {
+          app_id: requiredStatusCheckAppId,
+          context: requiredStatusCheckContext,
+        },
+      ],
+      strict: requiredStatusChecksStrict,
     },
   };
   if (bypassAllowances !== undefined) {
     protection.required_pull_request_reviews.bypass_pull_request_allowances =
       bypassAllowances;
   }
+  if (!includePullRequestReviews) {
+    protection.required_pull_request_reviews = null;
+  }
 
   const environment = {
-    can_admins_bypass: false,
+    can_admins_bypass: canAdminsBypass,
     deployment_branch_policy: {
-      custom_branch_policies: false,
-      protected_branches: true,
+      custom_branch_policies: customBranchPolicies,
+      protected_branches: protectedBranches,
     },
     name: "windows-release-stage-b",
     protection_rules: [
       {
-        prevent_self_review: true,
-        reviewers: [{ reviewer: { id: 1 }, type: "User" }],
+        prevent_self_review: preventSelfReview,
+        reviewers: Array.from(
+          { length: environmentReviewerCount },
+          (_, index) => ({
+            reviewer: { id: index === 0 ? environmentReviewerId : index + 1 },
+            type: environmentReviewerType,
+          }),
+        ),
         type: "required_reviewers",
       },
     ],
