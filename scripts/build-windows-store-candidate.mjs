@@ -116,7 +116,8 @@ export function buildWindowsStoreCandidate({
     console.log(
       `Building signed-capable Microsoft Store NSIS candidate for ${identity.version}.`,
     );
-    const result = spawn("npm.cmd", ["run", "release:desktop:build"], {
+    const npmInvocation = createNpmInvocation(platform, env);
+    const result = spawn(npmInvocation.command, npmInvocation.args, {
       cwd: root,
       env: {
         ...env,
@@ -168,6 +169,19 @@ export function buildWindowsStoreCandidate({
       rmSync(temporarySigningDirectory, { force: true, recursive: true });
     }
   }
+}
+
+export function createNpmInvocation(platform, env = process.env) {
+  if (platform === "win32") {
+    return {
+      command: env.ComSpec || env.COMSPEC || "cmd.exe",
+      args: ["/d", "/s", "/c", "npm.cmd", "run", "release:desktop:build"],
+    };
+  }
+  return {
+    command: "npm",
+    args: ["run", "release:desktop:build"],
+  };
 }
 
 export function createWindowsStoreIdentityConfig(legalPublisher) {

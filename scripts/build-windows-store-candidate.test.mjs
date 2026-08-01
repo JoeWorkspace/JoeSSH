@@ -4,6 +4,7 @@ import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
 import {
+  createNpmInvocation,
   createWindowsStoreIdentityConfig,
   loadWindowsStoreSigningConfig,
   normalizeSigningConfig,
@@ -12,6 +13,29 @@ import {
 
 const THUMBPRINT = "a".repeat(40);
 const LEGAL_PUBLISHER = "Joe Developer";
+
+test("uses cmd.exe to launch npm scripts on Windows", () => {
+  assert.deepEqual(
+    createNpmInvocation("win32", {
+      ComSpec: "C:\\Windows\\System32\\cmd.exe",
+    }),
+    {
+      command: "C:\\Windows\\System32\\cmd.exe",
+      args: ["/d", "/s", "/c", "npm.cmd", "run", "release:desktop:build"],
+    },
+  );
+  assert.deepEqual(createNpmInvocation("win32", {}), {
+    command: "cmd.exe",
+    args: ["/d", "/s", "/c", "npm.cmd", "run", "release:desktop:build"],
+  });
+});
+
+test("launches npm directly outside Windows", () => {
+  assert.deepEqual(createNpmInvocation("linux"), {
+    command: "npm",
+    args: ["run", "release:desktop:build"],
+  });
+});
 
 test("creates only the audited temporary legal publisher override", () => {
   assert.deepEqual(createWindowsStoreIdentityConfig(LEGAL_PUBLISHER), {
