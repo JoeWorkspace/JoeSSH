@@ -84,40 +84,41 @@ test("adjacent build provenance binds every installer identity dimension", () =>
     sourceCommit: commit,
     projectVersion: "0.1.0-beta.10",
     artifact: {
+      bootstrapMachine: "x86",
       fileName: "JoeSSH_0.1.0-beta.10_x64-setup.exe",
       sha256,
       sizeBytes: 123,
     },
+    payload: {
+      architecture: "x64",
+      fileName: "atlasterm-desktop-shell.exe",
+      sha256: "e".repeat(64),
+      sizeBytes: 456,
+    },
   };
-  assert.deepEqual(
-    assertBuildProvenanceBinding({
-      buildProvenance,
-      installerFileName: buildProvenance.artifact.fileName,
-      installerSha256: sha256,
-      installerSizeBytes: 123,
-      projectVersion: buildProvenance.projectVersion,
-      reviewedSha: commit,
-    }),
+  const binding = {
     buildProvenance,
-  );
+    installer: { ...buildProvenance.artifact },
+    payload: { ...buildProvenance.payload },
+    projectVersion: buildProvenance.projectVersion,
+    reviewedSha: commit,
+  };
+  assert.deepEqual(assertBuildProvenanceBinding(binding), buildProvenance);
 
-  for (const overrides of [
+  for (const tamperedBinding of [
     { reviewedSha: "c".repeat(40) },
-    { installerSha256: "d".repeat(64) },
-    { installerFileName: "other.exe" },
-    { installerSizeBytes: 124 },
+    { installer: { ...binding.installer, sha256: "d".repeat(64) } },
+    { installer: { ...binding.installer, fileName: "other.exe" } },
+    { installer: { ...binding.installer, sizeBytes: 124 } },
+    { payload: { ...binding.payload, architecture: "x86" } },
+    { payload: { ...binding.payload, sha256: "f".repeat(64) } },
     { projectVersion: "0.1.0" },
   ]) {
     assert.throws(
       () =>
         assertBuildProvenanceBinding({
-          buildProvenance,
-          installerFileName: buildProvenance.artifact.fileName,
-          installerSha256: sha256,
-          installerSizeBytes: 123,
-          projectVersion: buildProvenance.projectVersion,
-          reviewedSha: commit,
-          ...overrides,
+          ...binding,
+          ...tamperedBinding,
         }),
       /does not bind the exact reviewed HEAD/,
     );
@@ -125,12 +126,8 @@ test("adjacent build provenance binds every installer identity dimension", () =>
   assert.throws(
     () =>
       assertBuildProvenanceBinding({
+        ...binding,
         buildProvenance: { ...buildProvenance, unexpected: true },
-        installerFileName: buildProvenance.artifact.fileName,
-        installerSha256: sha256,
-        installerSizeBytes: 123,
-        projectVersion: buildProvenance.projectVersion,
-        reviewedSha: commit,
       }),
     /only the reviewed fields/,
   );

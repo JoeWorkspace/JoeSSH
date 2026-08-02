@@ -249,6 +249,11 @@ reparse point 和真实路径越界。它固定核验 Microsoft MSIX Packaging T
 和打印机重定向全部关闭。真实 Partner identity 只写入 private conversion XML，
 不会出现在命令行、`plan.json`、状态文件或终端输出中。
 
+NSIS 自解压 bootstrap 本身是 x86 PE，但其安装载荷必须是精确的 x64
+`atlasterm-desktop-shell.exe`。构建 provenance 会分别绑定 bootstrap 和 payload
+的架构、文件名、大小与 SHA-256；不能用 bootstrap 位数替代载荷架构判断。转换后
+仍须由 MSIX manifest 和解包 payload 的独立预检确认最终包为 x64。
+
 ```powershell
 npm run release:windows-store:msix-sandbox -- `
   --tool-bundle <官方离线msixbundle> `

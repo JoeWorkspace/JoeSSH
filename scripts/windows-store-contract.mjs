@@ -180,8 +180,13 @@ export function assertReviewedCommit(value) {
 
 export function createWindowsStoreNsisBuildProvenance({
   artifactFileName,
+  artifactMachine,
   artifactSha256,
   artifactSizeBytes,
+  payloadFileName,
+  payloadMachine,
+  payloadSha256,
+  payloadSizeBytes,
   projectVersion,
   sourceCommit,
 }) {
@@ -192,9 +197,16 @@ export function createWindowsStoreNsisBuildProvenance({
     sourceCommit,
     projectVersion,
     artifact: {
+      bootstrapMachine: artifactMachine,
       fileName: artifactFileName,
       sha256: artifactSha256,
       sizeBytes: artifactSizeBytes,
+    },
+    payload: {
+      architecture: payloadMachine,
+      fileName: payloadFileName,
+      sha256: payloadSha256,
+      sizeBytes: payloadSizeBytes,
     },
   });
 }
@@ -209,13 +221,19 @@ export function validateWindowsStoreNsisBuildProvenance(value) {
       "sourceCommit",
       "projectVersion",
       "artifact",
+      "payload",
     ],
     "Windows Store NSIS build provenance",
   );
   assertExactObjectFields(
     value.artifact,
-    ["fileName", "sha256", "sizeBytes"],
+    ["bootstrapMachine", "fileName", "sha256", "sizeBytes"],
     "Windows Store NSIS build provenance artifact",
+  );
+  assertExactObjectFields(
+    value.payload,
+    ["architecture", "fileName", "sha256", "sizeBytes"],
+    "Windows Store NSIS build provenance payload",
   );
   if (
     value.schemaVersion !== 1 ||
@@ -242,29 +260,24 @@ export function validateWindowsStoreNsisBuildProvenance(value) {
     );
   }
   deriveMsixVersion(value.projectVersion);
-  const fileName = value.artifact.fileName;
-  if (
-    typeof fileName !== "string" ||
-    !fileName.toLowerCase().endsWith(".exe") ||
-    fileName.trim() !== fileName ||
-    /[\\/\0\r\n]/.test(fileName)
-  ) {
+  const artifact = validateBuildProvenanceExecutable(
+    value.artifact,
+    "artifact",
+  );
+  const payload = validateBuildProvenanceExecutable(value.payload, "payload");
+  if (!["x86", "x64"].includes(value.artifact.bootstrapMachine)) {
     throw new Error(
-      "Windows Store NSIS build provenance artifact fileName must be a direct EXE file name.",
+      "Windows Store NSIS build provenance artifact bootstrapMachine is unsupported.",
     );
   }
-  const sha256 = assertExpectedSha256(value.artifact.sha256);
-  if (value.artifact.sha256 !== sha256) {
+  if (value.payload.architecture !== "x64") {
     throw new Error(
-      "Windows Store NSIS build provenance artifact SHA-256 must already be canonical lowercase.",
+      "Windows Store NSIS build provenance payload architecture must be x64.",
     );
   }
-  if (
-    !Number.isSafeInteger(value.artifact.sizeBytes) ||
-    value.artifact.sizeBytes <= 0
-  ) {
+  if (payload.fileName !== "atlasterm-desktop-shell.exe") {
     throw new Error(
-      "Windows Store NSIS build provenance artifact sizeBytes must be a positive safe integer.",
+      "Windows Store NSIS build provenance payload fileName is not the reviewed Tauri executable.",
     );
   }
   return {
@@ -274,9 +287,12 @@ export function validateWindowsStoreNsisBuildProvenance(value) {
     sourceCommit,
     projectVersion: value.projectVersion,
     artifact: {
-      fileName,
-      sha256,
-      sizeBytes: value.artifact.sizeBytes,
+      bootstrapMachine: value.artifact.bootstrapMachine,
+      ...artifact,
+    },
+    payload: {
+      architecture: value.payload.architecture,
+      ...payload,
     },
   };
 }
@@ -820,6 +836,32 @@ function assertExactObjectFields(value, expectedFields, label) {
   ) {
     throw new Error(`${label} must contain only the reviewed fields.`);
   }
+}
+
+function validateBuildProvenanceExecutable(value, label) {
+  const fileName = value.fileName;
+  if (
+    typeof fileName !== "string" ||
+    !fileName.toLowerCase().endsWith(".exe") ||
+    fileName.trim() !== fileName ||
+    /[\\/\0\r\n]/.test(fileName)
+  ) {
+    throw new Error(
+      `Windows Store NSIS build provenance ${label} fileName must be a direct EXE file name.`,
+    );
+  }
+  const sha256 = assertExpectedSha256(value.sha256);
+  if (value.sha256 !== sha256) {
+    throw new Error(
+      `Windows Store NSIS build provenance ${label} SHA-256 must already be canonical lowercase.`,
+    );
+  }
+  if (!Number.isSafeInteger(value.sizeBytes) || value.sizeBytes <= 0) {
+    throw new Error(
+      `Windows Store NSIS build provenance ${label} sizeBytes must be a positive safe integer.`,
+    );
+  }
+  return { fileName, sha256, sizeBytes: value.sizeBytes };
 }
 
 function containsControlCharacters(value) {

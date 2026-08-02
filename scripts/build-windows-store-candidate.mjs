@@ -23,9 +23,12 @@ import {
   fileNameContainsVersion,
   readCargoVersion,
 } from "./windows-store-contract.mjs";
+import { inspectPortableExecutable } from "./prepare-windows-store-candidate.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const SIGNING_CONFIG_MAX_BYTES = 64 * 1024;
+const TAURI_PAYLOAD_EXECUTABLE_PATH =
+  "apps/desktop/src-tauri/target/release/atlasterm-desktop-shell.exe";
 const TAURI_GENERATED_SCHEMA_PATHS = Object.freeze([
   "apps/desktop/src-tauri/gen/schemas/acl-manifests.json",
   "apps/desktop/src-tauri/gen/schemas/capabilities.json",
@@ -176,6 +179,7 @@ export function buildWindowsStoreCandidate({
     assertCleanBuildHead(spawn, sourceCommit);
     const provenancePath = writeWindowsStoreNsisBuildProvenance({
       artifactPath: candidates[0],
+      payloadPath: resolve(root, TAURI_PAYLOAD_EXECUTABLE_PATH),
       projectVersion: identity.version,
       sourceCommit,
     });
@@ -222,14 +226,23 @@ export function windowsStoreNsisBuildProvenancePath(artifactPath) {
 
 export function writeWindowsStoreNsisBuildProvenance({
   artifactPath,
+  payloadPath,
   projectVersion,
   sourceCommit,
 }) {
-  const artifact = snapshotBuildArtifact(artifactPath);
+  const artifact = snapshotBuildExecutable(artifactPath, "NSIS artifact");
+  const payload = snapshotBuildExecutable(payloadPath, "Tauri x64 payload");
+  const artifactPe = inspectPortableExecutable(artifact.bytes);
+  const payloadPe = inspectPortableExecutable(payload.bytes);
   const provenance = createWindowsStoreNsisBuildProvenance({
     artifactFileName: basename(artifact.path),
+    artifactMachine: artifactPe.machine,
     artifactSha256: artifact.sha256,
     artifactSizeBytes: artifact.sizeBytes,
+    payloadFileName: basename(payload.path),
+    payloadMachine: payloadPe.machine,
+    payloadSha256: payload.sha256,
+    payloadSizeBytes: payload.sizeBytes,
     projectVersion,
     sourceCommit,
   });
@@ -269,10 +282,10 @@ export function writeWindowsStoreNsisBuildProvenance({
   return provenancePath;
 }
 
-function snapshotBuildArtifact(path) {
+function snapshotBuildExecutable(path, label) {
   const resolvedPath = resolve(path);
   if (!existsSync(resolvedPath)) {
-    throw new Error("Windows Store NSIS build artifact is missing.");
+    throw new Error(`Windows Store ${label} is missing.`);
   }
   const link = lstatSync(resolvedPath);
   if (
@@ -282,7 +295,7 @@ function snapshotBuildArtifact(path) {
     realpathSync(resolvedPath).toLowerCase() !== resolvedPath.toLowerCase()
   ) {
     throw new Error(
-      "Windows Store NSIS build artifact must be a direct, regular, single-link file.",
+      `Windows Store ${label} must be a direct, regular, single-link file.`,
     );
   }
   const before = statSync(resolvedPath);
@@ -299,10 +312,11 @@ function snapshotBuildArtifact(path) {
     after.size <= 0
   ) {
     throw new Error(
-      "Windows Store NSIS build artifact changed while provenance was generated.",
+      `Windows Store ${label} changed while provenance was generated.`,
     );
   }
   return {
+    bytes,
     path: resolvedPath,
     sha256: createHash("sha256").update(bytes).digest("hex"),
     sizeBytes: after.size,

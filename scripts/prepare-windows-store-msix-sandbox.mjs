@@ -176,20 +176,28 @@ export function prepareWindowsStoreMsixSandbox(
       label: "NSIS conversion input",
       source: installerPath,
     });
+    const installerPe = inspectPortableExecutable(readFileSync(installer.path));
+    const payloadPath = resolve(
+      root,
+      "apps/desktop/src-tauri/target/release",
+      buildProvenance.payload.fileName,
+    );
+    const payload = inspectLocalExecutableEvidence(
+      payloadPath,
+      "fresh Tauri payload",
+    );
     assertBuildProvenanceBinding({
       buildProvenance,
-      installerFileName: basename(installerPath),
-      installerSha256: installer.sha256,
-      installerSizeBytes: installer.sizeBytes,
+      installer: {
+        bootstrapMachine: installerPe.machine,
+        fileName: basename(installerPath),
+        sha256: installer.sha256,
+        sizeBytes: installer.sizeBytes,
+      },
+      payload,
       projectVersion: projectIdentity.version,
       reviewedSha,
     });
-    const pe = inspectPortableExecutable(readFileSync(installer.path));
-    if (pe.machine !== "x64") {
-      throw new Error(
-        "The current Store Sandbox conversion requires an x64 NSIS input.",
-      );
-    }
     const toolBundle = snapshotInput({
       destination: resolve(inputRoot, approvedTooling.bundle.fileName),
       expectedSha256: approvedTooling.bundle.sha256,
@@ -273,7 +281,8 @@ export function prepareWindowsStoreMsixSandbox(
       },
       projectVersion: projectIdentity.version,
       msixVersion,
-      architecture: pe.machine,
+      architecture: payload.architecture,
+      installerBootstrapMachine: installerPe.machine,
       packageFileName,
       sandbox: {
         clipboard: "disabled",
@@ -404,24 +413,27 @@ export function createSandboxConfig({ inputRoot, memoryInMb, outputRoot }) {
 
 export function assertBuildProvenanceBinding({
   buildProvenance,
-  installerFileName,
-  installerSha256,
-  installerSizeBytes,
+  installer,
+  payload,
   projectVersion,
   reviewedSha,
 }) {
   const provenance = validateWindowsStoreNsisBuildProvenance(buildProvenance);
-  const actualSha256 = assertExpectedSha256(installerSha256);
   const expectedCommit = assertReviewedCommit(reviewedSha);
   if (
     provenance.sourceCommit !== expectedCommit ||
     provenance.projectVersion !== projectVersion ||
-    provenance.artifact.fileName !== installerFileName ||
-    provenance.artifact.sha256 !== actualSha256 ||
-    provenance.artifact.sizeBytes !== installerSizeBytes
+    provenance.artifact.bootstrapMachine !== installer.bootstrapMachine ||
+    provenance.artifact.fileName !== installer.fileName ||
+    provenance.artifact.sha256 !== assertExpectedSha256(installer.sha256) ||
+    provenance.artifact.sizeBytes !== installer.sizeBytes ||
+    provenance.payload.architecture !== payload.architecture ||
+    provenance.payload.fileName !== payload.fileName ||
+    provenance.payload.sha256 !== assertExpectedSha256(payload.sha256) ||
+    provenance.payload.sizeBytes !== payload.sizeBytes
   ) {
     throw new Error(
-      "Adjacent NSIS build provenance does not bind the exact reviewed HEAD, project version, installer name, size, and SHA-256.",
+      "Adjacent NSIS build provenance does not bind the exact reviewed HEAD, project version, NSIS bootstrap, and x64 payload.",
     );
   }
   return provenance;
@@ -730,6 +742,23 @@ function snapshotInput({ destination, expectedSha256, label, source }) {
     throw new Error(`${label} SHA-256 does not match the reviewed value.`);
   }
   return inspectSnapshot(destination, basename(destination), label);
+}
+
+function inspectLocalExecutableEvidence(path, label) {
+  assertInputFile(path, ".exe", label);
+  const before = statSync(path);
+  const data = readFileSync(path);
+  const after = statSync(path);
+  if (!sameFileState(before, after) || data.length !== after.size) {
+    throw new Error(`${label} changed while it was inspected.`);
+  }
+  const pe = inspectPortableExecutable(data);
+  return {
+    architecture: pe.machine,
+    fileName: basename(path),
+    sha256: createHash("sha256").update(data).digest("hex"),
+    sizeBytes: after.size,
+  };
 }
 
 function inspectSnapshot(path, fileName, label = fileName) {

@@ -18,16 +18,28 @@ const THUMBPRINT = "a".repeat(40);
 const LEGAL_PUBLISHER = "Joe Developer";
 const SOURCE_COMMIT = "a".repeat(40);
 
+function portableExecutable(machineCode) {
+  const bytes = Buffer.alloc(1024);
+  bytes.writeUInt16LE(0x5a4d, 0);
+  bytes.writeUInt32LE(0x80, 0x3c);
+  bytes.write("PE\0\0", 0x80, "binary");
+  bytes.writeUInt16LE(machineCode, 0x84);
+  return bytes;
+}
+
 test("binds NSIS bytes to the clean source HEAD in an adjacent provenance file", () => {
   const fixtureDirectory = mkdtempSync(join(tmpdir(), "joessh-build-proof-"));
   const artifactPath = join(
     fixtureDirectory,
     "JoeSSH_0.1.0-beta.10_x64-setup.exe",
   );
+  const payloadPath = join(fixtureDirectory, "atlasterm-desktop-shell.exe");
   try {
-    writeFileSync(artifactPath, "exact installer bytes", "utf8");
+    writeFileSync(artifactPath, portableExecutable(0x014c));
+    writeFileSync(payloadPath, portableExecutable(0x8664));
     const provenancePath = writeWindowsStoreNsisBuildProvenance({
       artifactPath,
+      payloadPath,
       projectVersion: "0.1.0-beta.10",
       sourceCommit: SOURCE_COMMIT,
     });
@@ -42,8 +54,13 @@ test("binds NSIS bytes to the clean source HEAD in an adjacent provenance file",
       provenance.artifact.fileName,
       artifactPath.split(/[\\/]/).at(-1),
     );
-    assert.equal(provenance.artifact.sizeBytes, 21);
+    assert.equal(provenance.artifact.bootstrapMachine, "x86");
+    assert.equal(provenance.artifact.sizeBytes, 1024);
     assert.match(provenance.artifact.sha256, /^[a-f0-9]{64}$/);
+    assert.equal(provenance.payload.architecture, "x64");
+    assert.equal(provenance.payload.fileName, "atlasterm-desktop-shell.exe");
+    assert.equal(provenance.payload.sizeBytes, 1024);
+    assert.match(provenance.payload.sha256, /^[a-f0-9]{64}$/);
   } finally {
     rmSync(fixtureDirectory, { force: true, recursive: true });
   }

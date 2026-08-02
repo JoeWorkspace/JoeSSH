@@ -213,6 +213,8 @@ export function checkWindowsStoreRelease(rootPath = defaultRoot) {
       sandboxPreparation.includes("assertBuildProvenanceBinding") &&
       sandboxPreparation.includes("assertUnredirectedStagingPath") &&
       sandboxPreparation.includes("buildWindowsStoreCandidate") &&
+      sandboxPreparation.includes("installerBootstrapMachine") &&
+      sandboxPreparation.includes("fresh Tauri payload") &&
       sandboxPreparation.includes(
         'ATLASTERM_WINDOWS_STORE_SIGNING_CONFIG: ""',
       ) &&
@@ -226,6 +228,7 @@ export function checkWindowsStoreRelease(rootPath = defaultRoot) {
       !sandboxPreparation.includes("--installer") &&
       build.includes("assertCleanBuildHead") &&
       build.includes("restoreTauriGeneratedSchemas") &&
+      build.includes("TAURI_PAYLOAD_EXECUTABLE_PATH") &&
       build.includes("writeWindowsStoreNsisBuildProvenance") &&
       build.includes(".build-provenance.json") &&
       sandboxBootstrap.includes("Assert-InputManifest") &&
