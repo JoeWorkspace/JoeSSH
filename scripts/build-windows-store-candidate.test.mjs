@@ -1,5 +1,11 @@
 import assert from "node:assert/strict";
-import { readFileSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  linkSync,
+  readFileSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
@@ -34,9 +40,11 @@ test("binds NSIS bytes to the clean source HEAD in an adjacent provenance file",
     "JoeSSH_0.1.0-beta.10_x64-setup.exe",
   );
   const payloadPath = join(fixtureDirectory, "atlasterm-desktop-shell.exe");
+  const payloadBackingPath = join(fixtureDirectory, "cargo-output.exe");
   try {
     writeFileSync(artifactPath, portableExecutable(0x014c));
-    writeFileSync(payloadPath, portableExecutable(0x8664));
+    writeFileSync(payloadBackingPath, portableExecutable(0x8664));
+    linkSync(payloadBackingPath, payloadPath);
     const provenancePath = writeWindowsStoreNsisBuildProvenance({
       artifactPath,
       payloadPath,

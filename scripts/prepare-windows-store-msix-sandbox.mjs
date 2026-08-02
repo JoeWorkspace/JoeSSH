@@ -745,7 +745,17 @@ function snapshotInput({ destination, expectedSha256, label, source }) {
 }
 
 function inspectLocalExecutableEvidence(path, label) {
-  assertInputFile(path, ".exe", label);
+  if (extname(path).toLowerCase() !== ".exe" || !existsSync(path)) {
+    throw new Error(`${label} must be an existing .exe file.`);
+  }
+  const link = lstatSync(path);
+  if (
+    !link.isFile() ||
+    link.isSymbolicLink() ||
+    realpathSync(path).toLowerCase() !== resolve(path).toLowerCase()
+  ) {
+    throw new Error(`${label} must be a direct, regular file.`);
+  }
   const before = statSync(path);
   const data = readFileSync(path);
   const after = statSync(path);

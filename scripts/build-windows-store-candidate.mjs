@@ -231,7 +231,9 @@ export function writeWindowsStoreNsisBuildProvenance({
   sourceCommit,
 }) {
   const artifact = snapshotBuildExecutable(artifactPath, "NSIS artifact");
-  const payload = snapshotBuildExecutable(payloadPath, "Tauri x64 payload");
+  const payload = snapshotBuildExecutable(payloadPath, "Tauri x64 payload", {
+    requireSingleLink: false,
+  });
   const artifactPe = inspectPortableExecutable(artifact.bytes);
   const payloadPe = inspectPortableExecutable(payload.bytes);
   const provenance = createWindowsStoreNsisBuildProvenance({
@@ -282,7 +284,11 @@ export function writeWindowsStoreNsisBuildProvenance({
   return provenancePath;
 }
 
-function snapshotBuildExecutable(path, label) {
+function snapshotBuildExecutable(
+  path,
+  label,
+  { requireSingleLink = true } = {},
+) {
   const resolvedPath = resolve(path);
   if (!existsSync(resolvedPath)) {
     throw new Error(`Windows Store ${label} is missing.`);
@@ -291,11 +297,11 @@ function snapshotBuildExecutable(path, label) {
   if (
     !link.isFile() ||
     link.isSymbolicLink() ||
-    link.nlink !== 1 ||
+    (requireSingleLink && link.nlink !== 1) ||
     realpathSync(resolvedPath).toLowerCase() !== resolvedPath.toLowerCase()
   ) {
     throw new Error(
-      `Windows Store ${label} must be a direct, regular, single-link file.`,
+      `Windows Store ${label} must be a direct, regular${requireSingleLink ? ", single-link" : ""} file.`,
     );
   }
   const before = statSync(resolvedPath);
