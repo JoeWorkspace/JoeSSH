@@ -269,12 +269,19 @@ function sha256Text(value) {
   return createHash("sha256").update(value).digest("hex");
 }
 
+function compareVersionComponents(left, right) {
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] !== right[index]) return left[index] - right[index];
+  }
+  return 0;
+}
+
 function completeMsixManifest(overrides = {}) {
   const {
     application = `<Application Id="App" Executable="JoeSSH.exe"
       RuntimeBehavior="packagedClassicApp" TrustLevel="mediumIL" />`,
     capabilities = '<rescap:Capability Name="runFullTrust" />',
-    identity = `<Identity Publisher="CN=Store Publisher" Version="1.2.3.4"
+    identity = `<Identity Publisher="CN=Store Publisher" Version="1.2.3.0"
       Name="JoeSSH.Store.Assigned" ProcessorArchitecture="x64" />`,
   } = overrides;
   return `<?xml version="1.0"?>
@@ -351,7 +358,7 @@ function createMsixCandidateVerificationFixture(t, verifyNotices) {
         unpackRoot,
         "AppxManifest.xml",
         completeMsixManifest({
-          identity: `<Identity Publisher="CN=Store Publisher" Version="0.1.0.10"
+          identity: `<Identity Publisher="CN=Store Publisher" Version="1.1.10.0"
       Name="JoeSSH.Store.Assigned" ProcessorArchitecture="x64" />`,
         }),
       );
@@ -1022,11 +1029,91 @@ test("MSIX capability allowlist rejects extra base, UAP, and restricted capabili
 });
 
 test("MSIX version is deterministically bound to the project version", () => {
-  assert.equal(deriveMsixVersion("0.1.0-beta.10"), "0.1.0.10");
-  assert.equal(deriveMsixVersion("0.1.0"), "0.1.0.65535");
+  assert.equal(deriveMsixVersion("0.1.0-beta.10"), "1.1.10.0");
+  assert.equal(deriveMsixVersion("0.1.0"), "1.1.99.0");
   assert.throws(
     () => deriveMsixVersion("0.1.0-rc.1"),
     /cannot be deterministically mapped/,
+  );
+});
+
+test("MSIX version mapping preserves beta, stable, and next-patch order", () => {
+  const projectVersions = [
+    "0.1.0-beta.1",
+    "0.1.0-beta.10",
+    "0.1.0-beta.98",
+    "0.1.0",
+    "0.1.1-beta.1",
+    "0.1.1",
+  ];
+  const msixVersions = projectVersions.map(deriveMsixVersion);
+
+  assert.deepEqual(msixVersions, [
+    "1.1.1.0",
+    "1.1.10.0",
+    "1.1.98.0",
+    "1.1.99.0",
+    "1.1.101.0",
+    "1.1.199.0",
+  ]);
+  for (let index = 1; index < msixVersions.length; index += 1) {
+    const previous = msixVersions[index - 1].split(".").map(Number);
+    const current = msixVersions[index].split(".").map(Number);
+    assert.equal(compareVersionComponents(previous, current) < 0, true);
+  }
+});
+
+test("MSIX version mapping enforces Store component boundaries", () => {
+  assert.equal(deriveMsixVersion("65534.65535.654"), "65535.65535.65499.0");
+  for (const projectVersion of [
+    "65535.0.0-beta.1",
+    "0.65536.0-beta.1",
+    "0.0.655-beta.1",
+    "0.0.655",
+  ]) {
+    assert.throws(
+      () => deriveMsixVersion(projectVersion),
+      /exceeds the deterministic MSIX mapping/,
+    );
+  }
+  for (const projectVersion of ["0.1.0-beta.0", "0.1.0-beta.99"]) {
+    assert.throws(
+      () => deriveMsixVersion(projectVersion),
+      /beta number must be from 1 to 98/,
+    );
+  }
+});
+
+test("MSIX manifests require a nonzero first component and zero revision", () => {
+  assert.throws(
+    () =>
+      parseMsixManifestIdentity(
+        completeMsixManifest({
+          identity: `<Identity Publisher="CN=Store Publisher" Version="0.1.10.0"
+      Name="JoeSSH.Store.Assigned" ProcessorArchitecture="x64" />`,
+        }),
+      ),
+    /first component must be nonzero/,
+  );
+  assert.throws(
+    () =>
+      parseMsixManifestIdentity(
+        completeMsixManifest({
+          identity: `<Identity Publisher="CN=Store Publisher" Version="1.1.10.1"
+      Name="JoeSSH.Store.Assigned" ProcessorArchitecture="x64" />`,
+        }),
+      ),
+    /revision \(fourth component\) must be 0/,
+  );
+  assert.throws(
+    () =>
+      parseMsixManifestIdentity(
+        completeMsixManifest({
+          identity: `<Identity Publisher="CN=Store Publisher" Version="1.65536.10.0"
+      Name="JoeSSH.Store.Assigned" ProcessorArchitecture="x64" />`,
+        }),
+      ),
+    /from 0 to 65535/,
   );
 });
 
@@ -1034,7 +1121,7 @@ test("MSIX manifest rejects comment, DTD, entity, and CDATA decoys", () => {
   const decoy = completeMsixManifest().replace(
     "<Package",
     `<!-- <Identity Name="decoy" Publisher="CN=decoy"
-      Version="1.2.3.4" ProcessorArchitecture="x64" /> -->
+      Version="1.2.3.0" ProcessorArchitecture="x64" /> -->
     <Package`,
   );
   assert.throws(

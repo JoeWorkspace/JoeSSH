@@ -921,7 +921,7 @@ function writeCandidateEvidence(
         name: partnerIdentity.packageIdentityName,
         publisher: partnerIdentity.publisher,
         publisherDisplayName: partnerIdentity.publisherDisplayName,
-        version: "0.1.0.10",
+        version: "1.1.10.0",
         architecture: "x64",
       },
       desktopApplication: {
@@ -932,7 +932,7 @@ function writeCandidateEvidence(
         sha256: "f".repeat(64),
       },
       projectVersionMapping: {
-        msixVersion: "0.1.0.10",
+        msixVersion: "1.1.10.0",
         projectVersion: "0.1.0-beta.10",
       },
       partnerIdentity,

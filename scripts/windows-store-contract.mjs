@@ -334,8 +334,24 @@ export function parseMsixManifestContract(xml) {
       requireAttribute(identityNode, name, `Identity.${name}`),
     ]),
   );
-  if (!/^\d{1,5}(?:\.\d{1,5}){3}$/.test(identityAttributes.Version)) {
-    throw new Error("MSIX Identity.Version must use four numeric components.");
+  const versionComponents = identityAttributes.Version.split(".").map(Number);
+  if (
+    !/^\d{1,5}(?:\.\d{1,5}){3}$/.test(identityAttributes.Version) ||
+    versionComponents.some((component) => component > 65_535)
+  ) {
+    throw new Error(
+      "MSIX Identity.Version must use four numeric components from 0 to 65535.",
+    );
+  }
+  if (versionComponents[0] === 0) {
+    throw new Error(
+      "MSIX Identity.Version first component must be nonzero for Microsoft Store.",
+    );
+  }
+  if (versionComponents[3] !== 0) {
+    throw new Error(
+      "MSIX Identity.Version revision (fourth component) must be 0 for Microsoft Store.",
+    );
   }
   const architecture = identityAttributes.ProcessorArchitecture.toLowerCase();
   if (!["x86", "x64", "arm", "arm64", "neutral"].includes(architecture)) {
@@ -490,22 +506,28 @@ export function normalizeMsixExecutablePath(value) {
 
 export function deriveMsixVersion(projectVersion) {
   const match = projectVersion?.match(
-    /^(\d{1,5})\.(\d{1,5})\.(\d{1,5})(?:-beta\.(\d{1,5}))?$/,
+    /^(0|[1-9]\d{0,4})\.(0|[1-9]\d{0,4})\.(0|[1-9]\d{0,4})(?:-beta\.(0|[1-9]\d{0,4}))?$/,
   );
   if (!match) {
     throw new Error(
       "Project version cannot be deterministically mapped to a four-part MSIX version.",
     );
   }
-  const components = match.slice(1, 4).map(Number);
-  const revision = match[4] === undefined ? 65_535 : Number(match[4]);
-  if (
-    components.some((component) => component > 65_535) ||
-    (match[4] !== undefined && revision > 65_534)
-  ) {
+  const [projectMajor, projectMinor, projectPatch] = match
+    .slice(1, 4)
+    .map(Number);
+  const betaNumber = match[4] === undefined ? null : Number(match[4]);
+  if (projectMajor >= 65_535 || projectMinor > 65_535 || projectPatch > 654) {
     throw new Error("Project version exceeds the deterministic MSIX mapping.");
   }
-  return [...components, revision].join(".");
+  if (betaNumber !== null && (betaNumber < 1 || betaNumber > 98)) {
+    throw new Error(
+      "Project beta number must be from 1 to 98 for the deterministic MSIX mapping.",
+    );
+  }
+  const channel = betaNumber ?? 99;
+  const build = projectPatch * 100 + channel;
+  return `${projectMajor + 1}.${projectMinor}.${build}.0`;
 }
 
 export function readCargoVersion(path) {

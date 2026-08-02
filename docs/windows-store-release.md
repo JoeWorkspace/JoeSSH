@@ -41,6 +41,8 @@ MSIX。因此本项目把两条路径完全隔离：
 - [Microsoft 的 EXE/MSI 包要求](https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msi/app-package-requirements)
 - [Microsoft 的 EXE/MSI 上传要求](https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msi/upload-app-packages)
 - [Microsoft MSIX Packaging Tool](https://learn.microsoft.com/en-us/windows/msix/packaging-tool/create-app-package)
+- [MSIX Packaging Tool 断网环境](https://learn.microsoft.com/en-us/windows/msix/packaging-tool/disconnected-environment)
+- [Microsoft Store MSIX 包与版本要求](https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msix/app-package-requirements)
 - [Partner Center 应用身份](https://learn.microsoft.com/en-us/windows/apps/publish/view-app-identity-details)
 - [Microsoft Store 的 Windows 签名路径](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/code-signing-options)
 - [Microsoft 的分发路径选择](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/choose-distribution-path)
@@ -222,10 +224,42 @@ manifest 使用 strict、namespace-aware XML parser 解析；要求唯一的 des
 `packageFamilyName` 会通过 Windows package identity API 拆出 package name
 和 13 位 `publisherId`，再与 Partner Center 输入交叉校验。
 
-版本映射是确定性的：`0.1.0-beta.10` 只能对应 `0.1.0.10`；相同三段的
-正式版使用第四段 `65535`，确保排序高于 beta。脚本还会拒绝 manifest 中
-的 XML comment、DTD/entity 和 CDATA，避免用注释或实体伪造 Identity、
-PublisherDisplayName 或 full-trust 标记。
+版本映射是确定性且保序的：项目版本映射为
+`(major + 1).minor.(patch * 100 + channel).0`，其中 `beta.n` 仅允许
+`n=1..98` 并使用 `channel=n`，正式版使用 `channel=99`。因此
+`0.1.0-beta.10` 只能对应 `1.1.10.0`，`0.1.0` 对应 `1.1.99.0`，
+`0.1.1-beta.1` 对应 `1.1.101.0`。这同时保证 Microsoft Store 要求的首段
+非零、第四段为零，以及 beta、同 patch 正式版、下一 patch beta 的严格递增；
+项目 `major` 最大为 `65534`、`minor` 最大为 `65535`、`patch` 最大为 `654`，
+从而保证每个可接受的 beta 都存在同 patch 的正式版映射；越界输入会被拒绝。
+脚本还会拒绝 manifest 中的 XML comment、DTD/entity 和 CDATA，避免用注释或
+实体伪造 Identity、PublisherDisplayName 或 full-trust 标记。
+
+真实转换使用 `release:windows-store:msix-sandbox` 在 gitignored `reports/`
+目录创建一次性 Windows Sandbox staging。生成器要求 clean reviewed HEAD，
+并把同一 HEAD 绑定为 NSIS artifact source；转换前若发布工具有改动，必须先
+提交并重新构建 NSIS。它固定核验 Microsoft MSIX Packaging Tool
+`1.2024.405.0`、离线许可证和 Windows 11 x64 driver CAB 的 reviewed SHA-256，
+然后只向 Sandbox 映射只读 input 与独立可写 output；网络、剪贴板、音频、视频
+和打印机重定向全部关闭。真实 Partner identity 只写入 private conversion XML，
+不会出现在命令行、`plan.json`、状态文件或终端输出中。
+
+```powershell
+npm run release:windows-store:msix-sandbox -- `
+  --installer <精确NSIS路径> `
+  --expected-installer-sha256 <64位SHA-256> `
+  --tool-bundle <官方离线msixbundle> `
+  --tool-license <官方离线License.xml> `
+  --driver-cab <官方Windows-11-x64驱动CAB> `
+  --partner-identity reports/handoff/windows-store/partner-center-identity.json `
+  --reviewed-sha <完整clean HEAD> `
+  --artifact-source-sha <同一完整clean HEAD>
+```
+
+生成的 `.wsb` 会在容器中用 `/S` 运行精确 NSIS，省略所有签名输入，并只把
+MSIX、阶段状态与最终 SHA-256 写回 output。Packaging Tool 详细日志只留在
+一次性 Sandbox 内；失败状态不会回传可能含 identity 的错误正文。此步骤只生成
+未签名 Store 输入，不代表 WACK、功能验证、Partner Center 提交或认证通过。
 
 workflow dispatch 以 `partner_identity_base64` 接收这份公开 Partner Center
 identity JSON；它不是 secret，也绝不能包含令牌或签名材料。`policy` 只做

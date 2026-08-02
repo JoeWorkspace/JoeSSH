@@ -80,6 +80,12 @@ export function checkWindowsStoreRelease(rootPath = defaultRoot) {
   const build = readText(
     resolve(root, "scripts/build-windows-store-candidate.mjs"),
   );
+  const sandboxPreparation = readText(
+    resolve(root, "scripts/prepare-windows-store-msix-sandbox.mjs"),
+  );
+  const sandboxBootstrap = readText(
+    resolve(root, "scripts/windows-store-msix-sandbox-bootstrap.ps1"),
+  );
   const documentation = readText(
     resolve(root, "docs/windows-store-release.md"),
   );
@@ -92,6 +98,9 @@ export function checkWindowsStoreRelease(rootPath = defaultRoot) {
     "apps/desktop/src-tauri/tauri.microsoftstore.conf.json",
     "scripts/build-windows-store-candidate.mjs",
     "scripts/prepare-windows-store-candidate.mjs",
+    "scripts/prepare-windows-store-msix-sandbox.mjs",
+    "scripts/prepare-windows-store-msix-sandbox.test.mjs",
+    "scripts/windows-store-msix-sandbox-bootstrap.ps1",
     ".github/workflows/windows-store-candidate.yml",
     "docs/windows-store-release.md",
     "docs/microsoft-store-listing-draft.md",
@@ -126,6 +135,8 @@ export function checkWindowsStoreRelease(rootPath = defaultRoot) {
       "node scripts/build-windows-store-candidate.mjs" &&
       scripts["release:windows-store:candidate"] ===
         "node scripts/prepare-windows-store-candidate.mjs" &&
+      scripts["release:windows-store:msix-sandbox"] ===
+        "node scripts/prepare-windows-store-msix-sandbox.mjs" &&
       scripts["test:windows-store-release"]?.includes(
         "build-windows-store-candidate.test.mjs",
       ) &&
@@ -137,6 +148,9 @@ export function checkWindowsStoreRelease(rootPath = defaultRoot) {
       ) &&
       scripts["test:windows-store-release"]?.includes(
         "prepare-windows-store-candidate.test.mjs",
+      ) &&
+      scripts["test:windows-store-release"]?.includes(
+        "prepare-windows-store-msix-sandbox.test.mjs",
       ) &&
       scripts["qa:windows-store-release"]?.includes(
         "check-windows-store-release.mjs",
@@ -190,6 +204,25 @@ export function checkWindowsStoreRelease(rootPath = defaultRoot) {
       !workflow.includes("release:windows-store:build") &&
       !/(?:^|\s)--artifact(?=\s|$)/m.test(workflow),
     "Local build tooling is retained but excluded from the formal hosted workflow",
+  );
+  add(
+    results,
+    sandboxPreparation.includes("V7:EnforceMicrosoftStoreRequirements") &&
+      sandboxPreparation.includes('Arguments="/S"') &&
+      sandboxPreparation.includes("assertCleanReviewedHead") &&
+      sandboxPreparation.includes("input-manifest.json") &&
+      sandboxPreparation.includes('networking: "disabled"') &&
+      sandboxPreparation.includes('inputMapping: "read-only"') &&
+      sandboxPreparation.includes("659ae7d062ce617329842ae25ef19b935") &&
+      sandboxPreparation.includes("dceed2e0ed2add3b65870d1aba097ae79") &&
+      sandboxBootstrap.includes("Assert-InputManifest") &&
+      sandboxBootstrap.includes("Add-AppxProvisionedPackage") &&
+      sandboxBootstrap.includes("MSIXPackagingTool.Driver.cab") &&
+      sandboxBootstrap.includes('Status.ToString() -ne "NotSigned"') &&
+      !/(?:Invoke-WebRequest|Invoke-RestMethod|Start-BitsTransfer|curl\.exe|https?:\/\/)/iu.test(
+        sandboxBootstrap,
+      ),
+    "Local MSIX Sandbox conversion is offline, hash-bound, and Store-unsigned",
   );
   add(
     results,
