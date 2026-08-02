@@ -1,18 +1,74 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { readFileSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
 import {
+  assertCleanBuildHead,
   createNpmInvocation,
   createWindowsStoreIdentityConfig,
   loadWindowsStoreSigningConfig,
   normalizeSigningConfig,
   parseSigningConfigPaths,
+  windowsStoreNsisBuildProvenancePath,
+  writeWindowsStoreNsisBuildProvenance,
 } from "./build-windows-store-candidate.mjs";
 
 const THUMBPRINT = "a".repeat(40);
 const LEGAL_PUBLISHER = "Joe Developer";
+const SOURCE_COMMIT = "a".repeat(40);
+
+test("binds NSIS bytes to the clean source HEAD in an adjacent provenance file", () => {
+  const fixtureDirectory = mkdtempSync(join(tmpdir(), "joessh-build-proof-"));
+  const artifactPath = join(
+    fixtureDirectory,
+    "JoeSSH_0.1.0-beta.10_x64-setup.exe",
+  );
+  try {
+    writeFileSync(artifactPath, "exact installer bytes", "utf8");
+    const provenancePath = writeWindowsStoreNsisBuildProvenance({
+      artifactPath,
+      projectVersion: "0.1.0-beta.10",
+      sourceCommit: SOURCE_COMMIT,
+    });
+    assert.equal(
+      provenancePath,
+      windowsStoreNsisBuildProvenancePath(artifactPath),
+    );
+    const provenance = JSON.parse(readFileSync(provenancePath, "utf8"));
+    assert.equal(provenance.sourceCommit, SOURCE_COMMIT);
+    assert.equal(provenance.projectVersion, "0.1.0-beta.10");
+    assert.equal(
+      provenance.artifact.fileName,
+      artifactPath.split(/[\\/]/).at(-1),
+    );
+    assert.equal(provenance.artifact.sizeBytes, 21);
+    assert.match(provenance.artifact.sha256, /^[a-f0-9]{64}$/);
+  } finally {
+    rmSync(fixtureDirectory, { force: true, recursive: true });
+  }
+});
+
+test("clean build HEAD binding rejects dirty or changed repositories", () => {
+  const cleanSpawn = (_command, args) =>
+    args[0] === "rev-parse"
+      ? { status: 0, stdout: `${SOURCE_COMMIT}\n` }
+      : { status: 0, stdout: "" };
+  assert.equal(assertCleanBuildHead(cleanSpawn), SOURCE_COMMIT);
+  assert.throws(
+    () => assertCleanBuildHead(cleanSpawn, "b".repeat(40)),
+    /HEAD changed/,
+  );
+  assert.throws(
+    () =>
+      assertCleanBuildHead((_command, args) =>
+        args[0] === "rev-parse"
+          ? { status: 0, stdout: `${SOURCE_COMMIT}\n` }
+          : { status: 0, stdout: " M package.json\n" },
+      ),
+    /clean Git worktree/,
+  );
+});
 
 test("uses cmd.exe to launch npm scripts on Windows", () => {
   assert.deepEqual(

@@ -31,12 +31,20 @@ import {
   fileNameContainsVersion,
   readCargoVersion,
   validatePartnerCenterIdentity,
+  validateWindowsStoreNsisBuildProvenance,
 } from "./windows-store-contract.mjs";
+import {
+  buildWindowsStoreCandidate,
+  windowsStoreNsisBuildProvenancePath,
+} from "./build-windows-store-candidate.mjs";
 import { inspectPortableExecutable } from "./prepare-windows-store-candidate.mjs";
+
+export { windowsStoreNsisBuildProvenancePath };
 
 const root = resolve(import.meta.dirname, "..");
 const localStagingParent = "reports/handoff/windows-store/msix-sandbox";
 const maximumIdentityBytes = 64 * 1024;
+const maximumBuildProvenanceBytes = 16 * 1024;
 const sandboxInputPath = "C:\\JoeSSHInput";
 const sandboxOutputPath = "C:\\JoeSSHOutput";
 const approvedTooling = Object.freeze({
@@ -68,7 +76,12 @@ const identityFields = Object.freeze([
 
 export function prepareWindowsStoreMsixSandbox(
   rawArgs = process.argv.slice(2),
-  { log = console.log, platform = process.platform, spawn = spawnSync } = {},
+  {
+    build = buildWindowsStoreCandidate,
+    log = console.log,
+    platform = process.platform,
+    spawn = spawnSync,
+  } = {},
 ) {
   if (platform !== "win32") {
     throw new Error("Windows Sandbox staging requires Windows.");
@@ -81,12 +94,6 @@ export function prepareWindowsStoreMsixSandbox(
   }
 
   const reviewedSha = assertReviewedCommit(options.reviewedSha);
-  const artifactSourceSha = assertReviewedCommit(options.artifactSourceSha);
-  if (artifactSourceSha !== reviewedSha) {
-    throw new Error(
-      "Sandbox conversion requires artifact-source-sha to equal the reviewed HEAD; rebuild the NSIS input after release-tooling changes.",
-    );
-  }
   assertCleanReviewedHead(reviewedSha, spawn);
 
   assertInputFile(
@@ -103,19 +110,6 @@ export function prepareWindowsStoreMsixSandbox(
   assertPartnerCenterLegalPublisher(partnerIdentity, projectIdentity.publisher);
   assertMicrosoftStoreTauriConfig(repository.storeConfig);
   const msixVersion = deriveMsixVersion(projectIdentity.version);
-  const installerSha256 = assertExpectedSha256(options.expectedInstallerSha256);
-
-  assertInputFile(options.installer, ".exe", "NSIS conversion input");
-  if (
-    !fileNameContainsVersion(
-      basename(options.installer),
-      projectIdentity.version,
-    )
-  ) {
-    throw new Error(
-      "The NSIS conversion input name must contain the project version.",
-    );
-  }
   assertInputFile(
     options.toolBundle,
     ".msixbundle",
@@ -135,19 +129,60 @@ export function prepareWindowsStoreMsixSandbox(
     );
   }
 
+  const installerPath = build({
+    env: {
+      ...process.env,
+      ATLASTERM_WINDOWS_LEGAL_PUBLISHER: partnerIdentity.publisherDisplayName,
+      ATLASTERM_WINDOWS_STORE_SIGNING_CONFIG: "",
+    },
+    platform,
+    spawn,
+  });
+  assertCleanReviewedHead(reviewedSha, spawn);
+  assertInputFile(installerPath, ".exe", "fresh NSIS conversion input");
+  if (
+    !fileNameContainsVersion(basename(installerPath), projectIdentity.version)
+  ) {
+    throw new Error(
+      "The fresh NSIS conversion input name must contain the project version.",
+    );
+  }
+  const buildProvenancePath =
+    windowsStoreNsisBuildProvenancePath(installerPath);
+  assertInputFile(
+    buildProvenancePath,
+    ".json",
+    "adjacent NSIS build provenance",
+  );
+  const buildProvenance = readBuildProvenance(buildProvenancePath);
+  const installerSha256 = buildProvenance.artifact.sha256;
+
   let stagingCreated = false;
   try {
     const inputRoot = resolve(stagingRoot, "input");
     const outputRoot = resolve(stagingRoot, "output");
     mkdirSync(inputRoot, { mode: 0o700, recursive: true });
     mkdirSync(outputRoot, { mode: 0o700 });
+    assertCanonicalStagingTree(stagingParent, [
+      stagingRoot,
+      inputRoot,
+      outputRoot,
+    ]);
     stagingCreated = true;
 
     const installer = snapshotInput({
       destination: resolve(inputRoot, "JoeSSH-setup.exe"),
       expectedSha256: installerSha256,
       label: "NSIS conversion input",
-      source: options.installer,
+      source: installerPath,
+    });
+    assertBuildProvenanceBinding({
+      buildProvenance,
+      installerFileName: basename(installerPath),
+      installerSha256: installer.sha256,
+      installerSizeBytes: installer.sizeBytes,
+      projectVersion: projectIdentity.version,
+      reviewedSha,
     });
     const pe = inspectPortableExecutable(readFileSync(installer.path));
     if (pe.machine !== "x64") {
@@ -231,7 +266,11 @@ export function prepareWindowsStoreMsixSandbox(
       schemaVersion: 1,
       state: "prepared",
       reviewedSha,
-      artifactSourceSha,
+      artifactSourceSha: buildProvenance.sourceCommit,
+      buildProvenance: {
+        fileName: basename(buildProvenancePath),
+        sha256: sha256File(buildProvenancePath),
+      },
       projectVersion: projectIdentity.version,
       msixVersion,
       architecture: pe.machine,
@@ -253,6 +292,11 @@ export function prepareWindowsStoreMsixSandbox(
       resolve(stagingRoot, "plan.json"),
       `${JSON.stringify(plan, null, 2)}\n`,
     );
+    assertCanonicalStagingTree(stagingParent, [
+      stagingRoot,
+      inputRoot,
+      outputRoot,
+    ]);
 
     log(
       `Prepared private MSIX Sandbox staging at ${displayPath(stagingRoot)}.`,
@@ -263,8 +307,15 @@ export function prepareWindowsStoreMsixSandbox(
     return { outputRoot, sandboxConfigPath, stagingRoot };
   } catch (error) {
     if (stagingCreated) {
-      assertInside(stagingParent, stagingRoot, "failed Sandbox staging root");
-      rmSync(stagingRoot, { force: true, recursive: true });
+      try {
+        assertCanonicalStagingTree(stagingParent, [stagingRoot]);
+        rmSync(stagingRoot, { force: true, recursive: true });
+      } catch (cleanupError) {
+        throw new Error(
+          "Sandbox staging failed and automatic cleanup was refused because its canonical path boundary could not be revalidated.",
+          { cause: cleanupError },
+        );
+      }
     }
     throw error;
   }
@@ -351,13 +402,35 @@ export function createSandboxConfig({ inputRoot, memoryInMb, outputRoot }) {
 `;
 }
 
+export function assertBuildProvenanceBinding({
+  buildProvenance,
+  installerFileName,
+  installerSha256,
+  installerSizeBytes,
+  projectVersion,
+  reviewedSha,
+}) {
+  const provenance = validateWindowsStoreNsisBuildProvenance(buildProvenance);
+  const actualSha256 = assertExpectedSha256(installerSha256);
+  const expectedCommit = assertReviewedCommit(reviewedSha);
+  if (
+    provenance.sourceCommit !== expectedCommit ||
+    provenance.projectVersion !== projectVersion ||
+    provenance.artifact.fileName !== installerFileName ||
+    provenance.artifact.sha256 !== actualSha256 ||
+    provenance.artifact.sizeBytes !== installerSizeBytes
+  ) {
+    throw new Error(
+      "Adjacent NSIS build provenance does not bind the exact reviewed HEAD, project version, installer name, size, and SHA-256.",
+    );
+  }
+  return provenance;
+}
+
 export function parseArgs(args) {
   const options = {
-    artifactSourceSha: "",
     driverCab: "",
-    expectedInstallerSha256: "",
     help: false,
-    installer: "",
     memoryInMb: 6144,
     partnerIdentity: "",
     reviewedSha: "",
@@ -365,10 +438,7 @@ export function parseArgs(args) {
     toolLicense: "",
   };
   const flags = new Map([
-    ["--artifact-source-sha", "artifactSourceSha"],
     ["--driver-cab", "driverCab"],
-    ["--expected-installer-sha256", "expectedInstallerSha256"],
-    ["--installer", "installer"],
     ["--memory-mb", "memoryInMb"],
     ["--partner-identity", "partnerIdentity"],
     ["--reviewed-sha", "reviewedSha"],
@@ -377,7 +447,6 @@ export function parseArgs(args) {
   ]);
   const pathKeys = new Set([
     "driverCab",
-    "installer",
     "partnerIdentity",
     "toolBundle",
     "toolLicense",
@@ -482,6 +551,35 @@ function readPartnerIdentity(path) {
   return normalized;
 }
 
+function readBuildProvenance(path) {
+  const before = statSync(path);
+  const bytes = readFileSync(path);
+  const after = statSync(path);
+  if (
+    bytes.length < 2 ||
+    bytes.length > maximumBuildProvenanceBytes ||
+    !sameFileState(before, after) ||
+    bytes.length !== after.size
+  ) {
+    throw new Error(
+      "Adjacent NSIS build provenance has an invalid or unstable size.",
+    );
+  }
+  let text;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    throw new Error("Adjacent NSIS build provenance must be UTF-8 JSON.");
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(text.replace(/^\uFEFF/, ""));
+  } catch {
+    throw new Error("Adjacent NSIS build provenance must be UTF-8 JSON.");
+  }
+  return validateWindowsStoreNsisBuildProvenance(parsed);
+}
+
 function assertCleanReviewedHead(reviewedSha, spawn) {
   const head = runGit(["rev-parse", "HEAD"], spawn).trim().toLowerCase();
   if (head !== reviewedSha) {
@@ -506,6 +604,7 @@ function assertIgnoredStagingParent(stagingParent, spawn) {
       "Sandbox staging must remain inside the repository reports directory.",
     );
   }
+  assertUnredirectedStagingPath(root, stagingParent);
   const result = spawn("git", ["check-ignore", "--quiet", "--", relativePath], {
     cwd: root,
     encoding: "utf8",
@@ -515,6 +614,72 @@ function assertIgnoredStagingParent(stagingParent, spawn) {
   if (result.error || result.status !== 0) {
     throw new Error("Sandbox staging must be covered by .gitignore.");
   }
+}
+
+export function assertUnredirectedStagingPath(repositoryRoot, targetPath) {
+  const resolvedRepositoryRoot = resolve(repositoryRoot);
+  const resolvedTarget = resolve(targetPath);
+  assertInside(
+    resolvedRepositoryRoot,
+    resolvedTarget,
+    "Sandbox canonical staging path",
+  );
+  const rootMetadata = lstatSync(resolvedRepositoryRoot);
+  if (!rootMetadata.isDirectory()) {
+    throw new Error("Sandbox repository root must be a directory.");
+  }
+  const canonicalRepositoryRoot = realpathSync.native(resolvedRepositoryRoot);
+  const relativeTarget = relative(resolvedRepositoryRoot, resolvedTarget);
+  let current = resolvedRepositoryRoot;
+  for (const segment of relativeTarget.split(sep)) {
+    current = resolve(current, segment);
+    if (!existsSync(current)) continue;
+    const metadata = lstatSync(current);
+    if (!metadata.isDirectory() || metadata.isSymbolicLink()) {
+      throw new Error(
+        "Sandbox staging must not traverse a symbolic link, junction, reparse point, or non-directory component.",
+      );
+    }
+    const canonicalCurrent = realpathSync.native(current);
+    const expectedCanonicalCurrent = resolve(
+      canonicalRepositoryRoot,
+      relative(resolvedRepositoryRoot, current),
+    );
+    if (!samePath(canonicalCurrent, expectedCanonicalCurrent)) {
+      throw new Error(
+        "Sandbox staging must not traverse a redirected filesystem path.",
+      );
+    }
+  }
+  return resolve(canonicalRepositoryRoot, relativeTarget);
+}
+
+function assertCanonicalStagingTree(stagingParent, paths) {
+  const canonicalParent = assertUnredirectedStagingPath(root, stagingParent);
+  if (!existsSync(stagingParent)) {
+    throw new Error("Sandbox staging parent was not created.");
+  }
+  const physicalParent = realpathSync.native(stagingParent);
+  if (!samePath(canonicalParent, physicalParent)) {
+    throw new Error("Sandbox staging parent has an unexpected physical path.");
+  }
+  for (const path of paths) {
+    const canonicalPath = assertUnredirectedStagingPath(root, path);
+    if (!existsSync(path)) {
+      throw new Error("Sandbox staging path was not created.");
+    }
+    const physicalPath = realpathSync.native(path);
+    assertInside(physicalParent, physicalPath, "Sandbox physical staging path");
+    if (!samePath(canonicalPath, physicalPath)) {
+      throw new Error("Sandbox staging path has an unexpected physical path.");
+    }
+  }
+}
+
+function samePath(left, right) {
+  return process.platform === "win32"
+    ? left.toLowerCase() === right.toLowerCase()
+    : left === right;
 }
 
 function runGit(args, spawn) {
@@ -669,19 +834,17 @@ function printHelp(log) {
 JoeSSH NSIS installer into an unsigned Microsoft Store MSIX.
 
 Required:
-  --installer <path>
-  --expected-installer-sha256 <sha256>
   --tool-bundle <official 1.2024.405.0 msixbundle>
   --tool-license <official offline license XML>
   --driver-cab <official Windows 11 x64 driver CAB>
   --partner-identity <private canonical Partner Center JSON>
   --reviewed-sha <full clean HEAD>
-  --artifact-source-sha <same full clean HEAD>
 
 Optional:
   --memory-mb <4096..16384>  Default: 6144
 
 Private output is written below the gitignored ${localStagingParent} directory.
+This command rebuilds the NSIS from clean HEAD and immediately verifies its adjacent provenance.
 No Partner Center identity value is printed or copied outside the conversion XML.`);
 }
 

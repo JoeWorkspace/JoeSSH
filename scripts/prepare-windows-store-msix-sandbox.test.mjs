@@ -1,12 +1,22 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+} from "node:fs";
+import { join, resolve } from "node:path";
+import { tmpdir } from "node:os";
 import test from "node:test";
 import sax from "sax";
 import {
+  assertBuildProvenanceBinding,
+  assertUnredirectedStagingPath,
   createConversionTemplate,
   createSandboxConfig,
   parseArgs,
+  windowsStoreNsisBuildProvenancePath,
 } from "./prepare-windows-store-msix-sandbox.mjs";
 
 const commit = "a".repeat(40);
@@ -17,12 +27,8 @@ const partnerIdentity = Object.freeze({
   publisherDisplayName: "Test & Publisher",
 });
 
-test("Sandbox arguments preserve hashes and resolve only file paths", () => {
+test("Sandbox arguments preserve reviewed commit and resolve only file paths", () => {
   const options = parseArgs([
-    "--installer",
-    "candidate.exe",
-    "--expected-installer-sha256",
-    sha256,
     "--tool-bundle",
     "tool.msixbundle",
     "--tool-license",
@@ -33,31 +39,23 @@ test("Sandbox arguments preserve hashes and resolve only file paths", () => {
     "identity.json",
     "--reviewed-sha",
     commit,
-    "--artifact-source-sha",
-    commit,
     "--memory-mb",
     "8192",
   ]);
 
-  assert.equal(options.expectedInstallerSha256, sha256);
   assert.equal(options.reviewedSha, commit);
-  assert.equal(options.artifactSourceSha, commit);
-  assert.equal(options.installer, resolve("candidate.exe"));
   assert.equal(options.partnerIdentity, resolve("identity.json"));
   assert.equal(options.memoryInMb, 8192);
 });
 
 test("Sandbox arguments fail closed on missing inputs and unsafe memory sizes", () => {
-  assert.throws(() => parseArgs([]), /--artifact-source-sha is required/);
+  assert.throws(() => parseArgs([]), /--driver-cab is required/);
   const complete = [
-    "--installer=candidate.exe",
-    `--expected-installer-sha256=${sha256}`,
     "--tool-bundle=tool.msixbundle",
     "--tool-license=license.xml",
     "--driver-cab=driver.cab",
     "--partner-identity=identity.json",
     `--reviewed-sha=${commit}`,
-    `--artifact-source-sha=${commit}`,
   ];
   assert.throws(
     () => parseArgs([...complete, "--memory-mb=2048"]),
@@ -67,6 +65,114 @@ test("Sandbox arguments fail closed on missing inputs and unsafe memory sizes", 
     () => parseArgs([...complete, "--unexpected=value"]),
     /Unknown argument/,
   );
+  assert.throws(
+    () => parseArgs([...complete, "--installer=stale.exe"]),
+    /Unknown argument/,
+  );
+});
+
+test("adjacent build provenance binds every installer identity dimension", () => {
+  const installerPath = resolve("JoeSSH_0.1.0-beta.10_x64-setup.exe");
+  assert.equal(
+    windowsStoreNsisBuildProvenancePath(installerPath),
+    `${installerPath}.build-provenance.json`,
+  );
+  const buildProvenance = {
+    schemaVersion: 1,
+    format: "nsis-exe",
+    generator: "scripts/build-windows-store-candidate.mjs",
+    sourceCommit: commit,
+    projectVersion: "0.1.0-beta.10",
+    artifact: {
+      fileName: "JoeSSH_0.1.0-beta.10_x64-setup.exe",
+      sha256,
+      sizeBytes: 123,
+    },
+  };
+  assert.deepEqual(
+    assertBuildProvenanceBinding({
+      buildProvenance,
+      installerFileName: buildProvenance.artifact.fileName,
+      installerSha256: sha256,
+      installerSizeBytes: 123,
+      projectVersion: buildProvenance.projectVersion,
+      reviewedSha: commit,
+    }),
+    buildProvenance,
+  );
+
+  for (const overrides of [
+    { reviewedSha: "c".repeat(40) },
+    { installerSha256: "d".repeat(64) },
+    { installerFileName: "other.exe" },
+    { installerSizeBytes: 124 },
+    { projectVersion: "0.1.0" },
+  ]) {
+    assert.throws(
+      () =>
+        assertBuildProvenanceBinding({
+          buildProvenance,
+          installerFileName: buildProvenance.artifact.fileName,
+          installerSha256: sha256,
+          installerSizeBytes: 123,
+          projectVersion: buildProvenance.projectVersion,
+          reviewedSha: commit,
+          ...overrides,
+        }),
+      /does not bind the exact reviewed HEAD/,
+    );
+  }
+  assert.throws(
+    () =>
+      assertBuildProvenanceBinding({
+        buildProvenance: { ...buildProvenance, unexpected: true },
+        installerFileName: buildProvenance.artifact.fileName,
+        installerSha256: sha256,
+        installerSizeBytes: 123,
+        projectVersion: buildProvenance.projectVersion,
+        reviewedSha: commit,
+      }),
+    /only the reviewed fields/,
+  );
+});
+
+test("Sandbox staging rejects a junction or symlink ancestor", (t) => {
+  const repositoryRoot = mkdtempSync(join(tmpdir(), "joessh-sandbox-root-"));
+  const outsideRoot = mkdtempSync(join(tmpdir(), "joessh-sandbox-outside-"));
+  const stagingParent = join(
+    repositoryRoot,
+    "reports",
+    "handoff",
+    "windows-store",
+    "msix-sandbox",
+  );
+  mkdirSync(resolve(stagingParent, ".."), { recursive: true });
+  try {
+    try {
+      symlinkSync(
+        outsideRoot,
+        stagingParent,
+        process.platform === "win32" ? "junction" : "dir",
+      );
+    } catch (error) {
+      if (error?.code === "EPERM" || error?.code === "EACCES") {
+        t.skip("Filesystem does not permit a junction fixture");
+        return;
+      }
+      throw error;
+    }
+    assert.throws(
+      () =>
+        assertUnredirectedStagingPath(
+          repositoryRoot,
+          join(stagingParent, "candidate"),
+        ),
+      /symbolic link, junction, reparse point|redirected filesystem path/,
+    );
+  } finally {
+    rmSync(repositoryRoot, { force: true, recursive: true });
+    rmSync(outsideRoot, { force: true, recursive: true });
+  }
 });
 
 test("conversion template is valid XML with exact offline Store settings", () => {

@@ -237,8 +237,13 @@ manifest 使用 strict、namespace-aware XML parser 解析；要求唯一的 des
 
 真实转换使用 `release:windows-store:msix-sandbox` 在 gitignored `reports/`
 目录创建一次性 Windows Sandbox staging。生成器要求 clean reviewed HEAD，
-并把同一 HEAD 绑定为 NSIS artifact source；转换前若发布工具有改动，必须先
-提交并重新构建 NSIS。它固定核验 Microsoft MSIX Packaging Tool
+该命令会直接调用 `release:windows-store:build` 的构建函数，在构建前后复核 clean
+HEAD，并在 NSIS 旁生成唯一的 `.build-provenance.json`，把源码提交、项目版本、
+文件名、大小和 SHA-256 绑定在一起；Sandbox 生成器在同一进程中立即读取相邻
+证据，并与实际 NSIS 和当前 HEAD 逐项交叉验证，不接受操作员指定的旧安装包、
+artifact source 或安装包哈希。转换前若发布工具有改动，必须先提交。
+staging 父目录及新建目录在写入和失败清理前都会逐级拒绝 symlink、junction、
+reparse point 和真实路径越界。它固定核验 Microsoft MSIX Packaging Tool
 `1.2024.405.0`、离线许可证和 Windows 11 x64 driver CAB 的 reviewed SHA-256，
 然后只向 Sandbox 映射只读 input 与独立可写 output；网络、剪贴板、音频、视频
 和打印机重定向全部关闭。真实 Partner identity 只写入 private conversion XML，
@@ -246,14 +251,11 @@ manifest 使用 strict、namespace-aware XML parser 解析；要求唯一的 des
 
 ```powershell
 npm run release:windows-store:msix-sandbox -- `
-  --installer <精确NSIS路径> `
-  --expected-installer-sha256 <64位SHA-256> `
   --tool-bundle <官方离线msixbundle> `
   --tool-license <官方离线License.xml> `
   --driver-cab <官方Windows-11-x64驱动CAB> `
   --partner-identity reports/handoff/windows-store/partner-center-identity.json `
-  --reviewed-sha <完整clean HEAD> `
-  --artifact-source-sha <同一完整clean HEAD>
+  --reviewed-sha <完整clean HEAD>
 ```
 
 生成的 `.wsb` 会在容器中用 `/S` 运行精确 NSIS，省略所有签名输入，并只把

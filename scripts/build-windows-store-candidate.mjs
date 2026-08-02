@@ -1,6 +1,8 @@
+import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import {
   existsSync,
+  lstatSync,
   mkdtempSync,
   readFileSync,
   realpathSync,
@@ -15,13 +17,21 @@ import { fileURLToPath } from "node:url";
 import {
   assertMicrosoftStoreTauriConfig,
   assertProjectReleaseIdentity,
+  assertReviewedCommit,
   assertWindowsLegalPublisher,
+  createWindowsStoreNsisBuildProvenance,
   fileNameContainsVersion,
   readCargoVersion,
 } from "./windows-store-contract.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const SIGNING_CONFIG_MAX_BYTES = 64 * 1024;
+const TAURI_GENERATED_SCHEMA_PATHS = Object.freeze([
+  "apps/desktop/src-tauri/gen/schemas/acl-manifests.json",
+  "apps/desktop/src-tauri/gen/schemas/capabilities.json",
+  "apps/desktop/src-tauri/gen/schemas/desktop-schema.json",
+  "apps/desktop/src-tauri/gen/schemas/windows-schema.json",
+]);
 const SIGNING_FIELDS = new Set([
   "certificateThumbprint",
   "digestAlgorithm",
@@ -40,6 +50,9 @@ export function buildWindowsStoreCandidate({
       "Microsoft Store NSIS candidates must be built on Windows.",
     );
   }
+
+  const sourceCommit = assertCleanBuildHead(spawn);
+  const generatedSchemaSnapshots = snapshotTauriGeneratedSchemas();
 
   const storeConfigPath = resolve(
     root,
@@ -114,7 +127,7 @@ export function buildWindowsStoreCandidate({
     }
 
     console.log(
-      `Building signed-capable Microsoft Store NSIS candidate for ${identity.version}.`,
+      `Building ${signingConfig ? "signing-enabled" : "unsigned"} Microsoft Store NSIS candidate for ${identity.version}.`,
     );
     const npmInvocation = createNpmInvocation(platform, env);
     const result = spawn(npmInvocation.command, npmInvocation.args, {
@@ -159,16 +172,204 @@ export function buildWindowsStoreCandidate({
         `Expected exactly one current-version NSIS candidate, found ${candidates.length}.`,
       );
     }
+    restoreTauriGeneratedSchemas(generatedSchemaSnapshots);
+    assertCleanBuildHead(spawn, sourceCommit);
+    const provenancePath = writeWindowsStoreNsisBuildProvenance({
+      artifactPath: candidates[0],
+      projectVersion: identity.version,
+      sourceCommit,
+    });
+    assertCleanBuildHead(spawn, sourceCommit);
     console.log(`Microsoft Store build candidate: ${candidates[0]}`);
+    console.log(`Machine-verifiable local build provenance: ${provenancePath}`);
     console.log(
       "This build is not Store evidence. Run the Windows Store candidate preflight before submission.",
     );
     return candidates[0];
   } finally {
-    if (temporarySigningDirectory) {
-      rmSync(temporarySigningDirectory, { force: true, recursive: true });
+    try {
+      restoreTauriGeneratedSchemas(generatedSchemaSnapshots);
+      assertCleanBuildHead(spawn, sourceCommit);
+    } finally {
+      if (temporarySigningDirectory) {
+        rmSync(temporarySigningDirectory, { force: true, recursive: true });
+      }
     }
   }
+}
+
+export function assertCleanBuildHead(spawn = spawnSync, expectedCommit = null) {
+  const headResult = runGitForBuild(["rev-parse", "HEAD"], spawn);
+  const sourceCommit = assertReviewedCommit(headResult.stdout.trim());
+  if (expectedCommit && sourceCommit !== assertReviewedCommit(expectedCommit)) {
+    throw new Error("Git HEAD changed during the Windows Store NSIS build.");
+  }
+  const statusResult = runGitForBuild(
+    ["status", "--porcelain", "--untracked-files=all"],
+    spawn,
+  );
+  if (statusResult.stdout.trim()) {
+    throw new Error(
+      "Windows Store NSIS builds require a clean Git worktree before and after the build.",
+    );
+  }
+  return sourceCommit;
+}
+
+export function windowsStoreNsisBuildProvenancePath(artifactPath) {
+  return `${resolve(artifactPath)}.build-provenance.json`;
+}
+
+export function writeWindowsStoreNsisBuildProvenance({
+  artifactPath,
+  projectVersion,
+  sourceCommit,
+}) {
+  const artifact = snapshotBuildArtifact(artifactPath);
+  const provenance = createWindowsStoreNsisBuildProvenance({
+    artifactFileName: basename(artifact.path),
+    artifactSha256: artifact.sha256,
+    artifactSizeBytes: artifact.sizeBytes,
+    projectVersion,
+    sourceCommit,
+  });
+  const provenancePath = windowsStoreNsisBuildProvenancePath(artifact.path);
+  if (existsSync(provenancePath)) {
+    const existing = lstatSync(provenancePath);
+    if (
+      !existing.isFile() ||
+      existing.isSymbolicLink() ||
+      existing.nlink !== 1 ||
+      realpathSync(provenancePath).toLowerCase() !==
+        resolve(provenancePath).toLowerCase()
+    ) {
+      throw new Error(
+        "Refusing to replace an indirect Windows Store NSIS build provenance file.",
+      );
+    }
+    rmSync(provenancePath, { force: true });
+  }
+  const content = `${JSON.stringify(provenance, null, 2)}\n`;
+  writeFileSync(provenancePath, content, {
+    encoding: "utf8",
+    flag: "wx",
+    mode: 0o600,
+  });
+  const written = lstatSync(provenancePath);
+  if (
+    !written.isFile() ||
+    written.isSymbolicLink() ||
+    written.nlink !== 1 ||
+    readFileSync(provenancePath, "utf8") !== content
+  ) {
+    throw new Error(
+      "Windows Store NSIS build provenance failed its write verification.",
+    );
+  }
+  return provenancePath;
+}
+
+function snapshotBuildArtifact(path) {
+  const resolvedPath = resolve(path);
+  if (!existsSync(resolvedPath)) {
+    throw new Error("Windows Store NSIS build artifact is missing.");
+  }
+  const link = lstatSync(resolvedPath);
+  if (
+    !link.isFile() ||
+    link.isSymbolicLink() ||
+    link.nlink !== 1 ||
+    realpathSync(resolvedPath).toLowerCase() !== resolvedPath.toLowerCase()
+  ) {
+    throw new Error(
+      "Windows Store NSIS build artifact must be a direct, regular, single-link file.",
+    );
+  }
+  const before = statSync(resolvedPath);
+  const bytes = readFileSync(resolvedPath);
+  const after = statSync(resolvedPath);
+  if (
+    before.dev !== after.dev ||
+    before.ino !== after.ino ||
+    before.nlink !== after.nlink ||
+    before.size !== after.size ||
+    before.mtimeMs !== after.mtimeMs ||
+    before.ctimeMs !== after.ctimeMs ||
+    bytes.length !== after.size ||
+    after.size <= 0
+  ) {
+    throw new Error(
+      "Windows Store NSIS build artifact changed while provenance was generated.",
+    );
+  }
+  return {
+    path: resolvedPath,
+    sha256: createHash("sha256").update(bytes).digest("hex"),
+    sizeBytes: after.size,
+  };
+}
+
+function snapshotTauriGeneratedSchemas() {
+  return TAURI_GENERATED_SCHEMA_PATHS.map((relativePath) => {
+    const path = resolve(root, relativePath);
+    const link = lstatSync(path);
+    if (
+      !link.isFile() ||
+      link.isSymbolicLink() ||
+      link.nlink !== 1 ||
+      realpathSync(path).toLowerCase() !== path.toLowerCase()
+    ) {
+      throw new Error(
+        "Reviewed Tauri generated schemas must be direct, regular, single-link files.",
+      );
+    }
+    return { bytes: readFileSync(path), path };
+  });
+}
+
+function restoreTauriGeneratedSchemas(snapshots) {
+  for (const snapshot of snapshots) {
+    if (existsSync(snapshot.path)) {
+      const link = lstatSync(snapshot.path);
+      if (
+        !link.isFile() ||
+        link.isSymbolicLink() ||
+        link.nlink !== 1 ||
+        realpathSync(snapshot.path).toLowerCase() !==
+          snapshot.path.toLowerCase()
+      ) {
+        throw new Error(
+          "Refusing to restore a redirected Tauri generated schema.",
+        );
+      }
+      if (readFileSync(snapshot.path).equals(snapshot.bytes)) continue;
+      writeFileSync(snapshot.path, snapshot.bytes, { flag: "w" });
+    } else {
+      writeFileSync(snapshot.path, snapshot.bytes, { flag: "wx" });
+    }
+    if (!readFileSync(snapshot.path).equals(snapshot.bytes)) {
+      throw new Error("A Tauri generated schema failed exact restoration.");
+    }
+  }
+}
+
+function runGitForBuild(args, spawn) {
+  const result = spawn("git", args, {
+    cwd: root,
+    encoding: "utf8",
+    shell: false,
+    windowsHide: true,
+  });
+  if (
+    result.error ||
+    result.status !== 0 ||
+    typeof result.stdout !== "string"
+  ) {
+    throw new Error(
+      `Git ${args[0]} failed while binding the Windows Store NSIS build.`,
+    );
+  }
+  return result;
 }
 
 export function createNpmInvocation(platform, env = process.env) {

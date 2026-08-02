@@ -210,11 +210,24 @@ export function checkWindowsStoreRelease(rootPath = defaultRoot) {
     sandboxPreparation.includes("V7:EnforceMicrosoftStoreRequirements") &&
       sandboxPreparation.includes('Arguments="/S"') &&
       sandboxPreparation.includes("assertCleanReviewedHead") &&
+      sandboxPreparation.includes("assertBuildProvenanceBinding") &&
+      sandboxPreparation.includes("assertUnredirectedStagingPath") &&
+      sandboxPreparation.includes("buildWindowsStoreCandidate") &&
+      sandboxPreparation.includes(
+        'ATLASTERM_WINDOWS_STORE_SIGNING_CONFIG: ""',
+      ) &&
       sandboxPreparation.includes("input-manifest.json") &&
       sandboxPreparation.includes('networking: "disabled"') &&
       sandboxPreparation.includes('inputMapping: "read-only"') &&
       sandboxPreparation.includes("659ae7d062ce617329842ae25ef19b935") &&
       sandboxPreparation.includes("dceed2e0ed2add3b65870d1aba097ae79") &&
+      !sandboxPreparation.includes("--artifact-source-sha") &&
+      !sandboxPreparation.includes("--expected-installer-sha256") &&
+      !sandboxPreparation.includes("--installer") &&
+      build.includes("assertCleanBuildHead") &&
+      build.includes("restoreTauriGeneratedSchemas") &&
+      build.includes("writeWindowsStoreNsisBuildProvenance") &&
+      build.includes(".build-provenance.json") &&
       sandboxBootstrap.includes("Assert-InputManifest") &&
       sandboxBootstrap.includes("Add-AppxProvisionedPackage") &&
       sandboxBootstrap.includes("MSIXPackagingTool.Driver.cab") &&

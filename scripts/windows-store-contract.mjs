@@ -13,6 +13,8 @@ const MAX_MANIFEST_BYTES = 1024 * 1024;
 const MAX_XML_DEPTH = 64;
 const MAX_XML_NODES = 10_000;
 const MAX_XML_ATTRIBUTES = 100;
+const WINDOWS_STORE_NSIS_BUILD_PROVENANCE_GENERATOR =
+  "scripts/build-windows-store-candidate.mjs";
 
 export const WINDOWS_STORE_FORMATS = Object.freeze({
   EXE: "exe",
@@ -174,6 +176,109 @@ export function assertReviewedCommit(value) {
     throw new Error("A full reviewed Git commit id is required.");
   }
   return normalized;
+}
+
+export function createWindowsStoreNsisBuildProvenance({
+  artifactFileName,
+  artifactSha256,
+  artifactSizeBytes,
+  projectVersion,
+  sourceCommit,
+}) {
+  return validateWindowsStoreNsisBuildProvenance({
+    schemaVersion: 1,
+    format: "nsis-exe",
+    generator: WINDOWS_STORE_NSIS_BUILD_PROVENANCE_GENERATOR,
+    sourceCommit,
+    projectVersion,
+    artifact: {
+      fileName: artifactFileName,
+      sha256: artifactSha256,
+      sizeBytes: artifactSizeBytes,
+    },
+  });
+}
+
+export function validateWindowsStoreNsisBuildProvenance(value) {
+  assertExactObjectFields(
+    value,
+    [
+      "schemaVersion",
+      "format",
+      "generator",
+      "sourceCommit",
+      "projectVersion",
+      "artifact",
+    ],
+    "Windows Store NSIS build provenance",
+  );
+  assertExactObjectFields(
+    value.artifact,
+    ["fileName", "sha256", "sizeBytes"],
+    "Windows Store NSIS build provenance artifact",
+  );
+  if (
+    value.schemaVersion !== 1 ||
+    value.format !== "nsis-exe" ||
+    value.generator !== WINDOWS_STORE_NSIS_BUILD_PROVENANCE_GENERATOR
+  ) {
+    throw new Error(
+      "Windows Store NSIS build provenance has an unsupported contract.",
+    );
+  }
+  const sourceCommit = assertReviewedCommit(value.sourceCommit);
+  if (value.sourceCommit !== sourceCommit) {
+    throw new Error(
+      "Windows Store NSIS build provenance sourceCommit must already be canonical lowercase.",
+    );
+  }
+  if (
+    typeof value.projectVersion !== "string" ||
+    !value.projectVersion ||
+    value.projectVersion.trim() !== value.projectVersion
+  ) {
+    throw new Error(
+      "Windows Store NSIS build provenance projectVersion must be canonical.",
+    );
+  }
+  deriveMsixVersion(value.projectVersion);
+  const fileName = value.artifact.fileName;
+  if (
+    typeof fileName !== "string" ||
+    !fileName.toLowerCase().endsWith(".exe") ||
+    fileName.trim() !== fileName ||
+    /[\\/\0\r\n]/.test(fileName)
+  ) {
+    throw new Error(
+      "Windows Store NSIS build provenance artifact fileName must be a direct EXE file name.",
+    );
+  }
+  const sha256 = assertExpectedSha256(value.artifact.sha256);
+  if (value.artifact.sha256 !== sha256) {
+    throw new Error(
+      "Windows Store NSIS build provenance artifact SHA-256 must already be canonical lowercase.",
+    );
+  }
+  if (
+    !Number.isSafeInteger(value.artifact.sizeBytes) ||
+    value.artifact.sizeBytes <= 0
+  ) {
+    throw new Error(
+      "Windows Store NSIS build provenance artifact sizeBytes must be a positive safe integer.",
+    );
+  }
+  return {
+    schemaVersion: 1,
+    format: "nsis-exe",
+    generator: WINDOWS_STORE_NSIS_BUILD_PROVENANCE_GENERATOR,
+    sourceCommit,
+    projectVersion: value.projectVersion,
+    artifact: {
+      fileName,
+      sha256,
+      sizeBytes: value.artifact.sizeBytes,
+    },
+  };
 }
 
 export function validateVersionedHttpsUrl(rawUrl, artifactFileName, version) {
@@ -696,6 +801,25 @@ function requireAttribute(node, local, label) {
     throw new Error(`MSIX AppxManifest.xml is missing ${label}.`);
   }
   return value;
+}
+
+function assertExactObjectFields(value, expectedFields, label) {
+  if (
+    value === null ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    Object.getPrototypeOf(value) !== Object.prototype
+  ) {
+    throw new Error(`${label} must be a plain object.`);
+  }
+  const fields = Object.keys(value).sort();
+  const expected = [...expectedFields].sort();
+  if (
+    fields.length !== expected.length ||
+    fields.some((field, index) => field !== expected[index])
+  ) {
+    throw new Error(`${label} must contain only the reviewed fields.`);
+  }
 }
 
 function containsControlCharacters(value) {
