@@ -18,6 +18,7 @@ import {
 import { tmpdir } from "node:os";
 import {
   basename,
+  dirname,
   extname,
   isAbsolute,
   join,
@@ -946,11 +947,6 @@ export function verifyMsixCandidate(
     "MakeAppx semantic validation and unpack failed.",
   );
   validateUnpackedTree(unpackRoot);
-  const bundledThirdPartyNotices = verifyUnpackedThirdPartyNoticesForCandidate(
-    unpackRoot,
-    legalNotices,
-    temporaryRoot,
-  );
   const manifestPath = resolveUnpackedPackageFile(
     unpackRoot,
     "AppxManifest.xml",
@@ -978,6 +974,12 @@ export function verifyMsixCandidate(
     unpackRoot,
     manifestContract.desktopApplication.executable,
     "MSIX Application.Executable",
+  );
+  const bundledThirdPartyNotices = verifyUnpackedThirdPartyNoticesForCandidate(
+    unpackRoot,
+    applicationExecutable,
+    legalNotices,
+    temporaryRoot,
   );
   const applicationSnapshot = capturePrivateSnapshot(
     applicationExecutable,
@@ -1767,11 +1769,19 @@ export function verifyInstalledThirdPartyNotices(
 
 export function verifyUnpackedThirdPartyNotices(
   unpackRoot,
+  applicationExecutable,
   expectedEvidence,
   temporaryRoot,
 ) {
+  const realUnpackRoot = realpathSync(unpackRoot);
+  const realApplicationExecutable = realpathSync(applicationExecutable);
+  assertInside(
+    realUnpackRoot,
+    realApplicationExecutable,
+    "MSIX Application.Executable notices root",
+  );
   return verifyPayloadThirdPartyNotices(
-    unpackRoot,
+    dirname(realApplicationExecutable),
     expectedEvidence,
     "Unpacked MSIX third-party notices",
     temporaryRoot,

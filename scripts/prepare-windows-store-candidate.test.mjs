@@ -43,7 +43,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import {
   publishedLicenseBundleFixture,
   writePublishedLicenseSourceInputFixture,
@@ -358,13 +358,28 @@ function createMsixCandidateVerificationFixture(t, verifyNotices) {
         unpackRoot,
         "AppxManifest.xml",
         completeMsixManifest({
+          application: `<Application Id="App" Executable="VFS\\Local AppData\\JoeSSH\\JoeSSH.exe"
+      RuntimeBehavior="packagedClassicApp" TrustLevel="mediumIL" />`,
           identity: `<Identity Publisher="CN=Store Publisher" Version="1.1.10.0"
       Name="JoeSSH.Store.Assigned" ProcessorArchitecture="x64" />`,
         }),
       );
-      writeFileSync(resolve(unpackRoot, "JoeSSH.exe"), executableFixture, {
+      const executablePath = resolve(
+        unpackRoot,
+        "VFS",
+        "Local AppData",
+        "JoeSSH",
+        "JoeSSH.exe",
+      );
+      mkdirSync(dirname(executablePath), { recursive: true });
+      writeFileSync(executablePath, executableFixture, {
         flag: "wx",
       });
+      writeFixtureFile(
+        unpackRoot,
+        "VFS/Local AppData/JoeSSH/legal/THIRD-PARTY-NOTICES.txt",
+        "fixture legal notices",
+      );
     },
     verifyUnpackedThirdPartyNotices: verifyNotices,
     crossCheckPartnerCenterPackageFamily: () => ({
@@ -661,6 +676,35 @@ for (const [format, verifyPayloadNotices] of [
   ["EXE install", verifyInstalledThirdPartyNotices],
   ["MSIX package", verifyUnpackedThirdPartyNotices],
 ]) {
+  const preparePayload = (payloadRoot) => {
+    if (format !== "MSIX package") return payloadRoot;
+    const applicationExecutable = resolve(
+      payloadRoot,
+      "VFS",
+      "Local AppData",
+      "JoeSSH",
+      "JoeSSH.exe",
+    );
+    mkdirSync(dirname(applicationExecutable), { recursive: true });
+    writeFileSync(applicationExecutable, "fixture executable", { flag: "wx" });
+    return dirname(applicationExecutable);
+  };
+  const verifyPayloadNoticesForFixture = (
+    payloadRoot,
+    expectedEvidence,
+    temporaryRoot,
+  ) => {
+    if (format === "MSIX package") {
+      return verifyPayloadNotices(
+        payloadRoot,
+        resolve(payloadRoot, "VFS", "Local AppData", "JoeSSH", "JoeSSH.exe"),
+        expectedEvidence,
+        temporaryRoot,
+      );
+    }
+    return verifyPayloadNotices(payloadRoot, expectedEvidence, temporaryRoot);
+  };
+
   test(`${format} accepts exact bundled third-party notices`, (t) => {
     const temporaryRoot = mkdtempSync(
       join(tmpdir(), "joessh-store-payload-legal-"),
@@ -670,9 +714,10 @@ for (const [format, verifyPayloadNotices] of [
     t.after(() => rmSync(temporaryRoot, { force: true, recursive: true }));
 
     const content = "Reviewed third-party notices.\n";
-    writeFixtureFile(payloadRoot, "legal/THIRD-PARTY-NOTICES.txt", content);
+    const noticesRoot = preparePayload(payloadRoot);
+    writeFixtureFile(noticesRoot, "legal/THIRD-PARTY-NOTICES.txt", content);
     assert.deepEqual(
-      verifyPayloadNotices(
+      verifyPayloadNoticesForFixture(
         payloadRoot,
         {
           bundleResourcePath: "legal/THIRD-PARTY-NOTICES.txt",
@@ -699,9 +744,10 @@ for (const [format, verifyPayloadNotices] of [
     t.after(() => rmSync(temporaryRoot, { force: true, recursive: true }));
 
     const content = "Reviewed third-party notices.\n";
+    preparePayload(payloadRoot);
     assert.throws(
       () =>
-        verifyPayloadNotices(
+        verifyPayloadNoticesForFixture(
           payloadRoot,
           {
             bundleResourcePath: "legal/THIRD-PARTY-NOTICES.txt",
@@ -723,10 +769,11 @@ for (const [format, verifyPayloadNotices] of [
     t.after(() => rmSync(temporaryRoot, { force: true, recursive: true }));
 
     const content = "Reviewed third-party notices.\n";
-    writeFixtureFile(payloadRoot, "legal/THIRD-PARTY-NOTICES.txt", content);
+    const noticesRoot = preparePayload(payloadRoot);
+    writeFixtureFile(noticesRoot, "legal/THIRD-PARTY-NOTICES.txt", content);
     assert.throws(
       () =>
-        verifyPayloadNotices(
+        verifyPayloadNoticesForFixture(
           payloadRoot,
           {
             bundleResourcePath: "../THIRD-PARTY-NOTICES.txt",
@@ -744,7 +791,8 @@ for (const [format, verifyPayloadNotices] of [
       join(tmpdir(), "joessh-store-payload-legal-"),
     );
     const payloadRoot = join(temporaryRoot, "payload");
-    const legalRoot = join(payloadRoot, "legal");
+    const noticesRoot = preparePayload(payloadRoot);
+    const legalRoot = join(noticesRoot, "legal");
     mkdirSync(legalRoot, { recursive: true });
     t.after(() => rmSync(temporaryRoot, { force: true, recursive: true }));
 
@@ -763,7 +811,7 @@ for (const [format, verifyPayloadNotices] of [
 
     assert.throws(
       () =>
-        verifyPayloadNotices(
+        verifyPayloadNoticesForFixture(
           payloadRoot,
           {
             bundleResourcePath: "legal/THIRD-PARTY-NOTICES.txt",
@@ -781,7 +829,8 @@ for (const [format, verifyPayloadNotices] of [
       join(tmpdir(), "joessh-store-payload-legal-"),
     );
     const payloadRoot = join(temporaryRoot, "payload");
-    const legalRoot = join(payloadRoot, "legal");
+    const noticesRoot = preparePayload(payloadRoot);
+    const legalRoot = join(noticesRoot, "legal");
     mkdirSync(legalRoot, { recursive: true });
     t.after(() => rmSync(temporaryRoot, { force: true, recursive: true }));
 
@@ -800,7 +849,7 @@ for (const [format, verifyPayloadNotices] of [
 
     assert.throws(
       () =>
-        verifyPayloadNotices(
+        verifyPayloadNoticesForFixture(
           payloadRoot,
           {
             bundleResourcePath: "legal/THIRD-PARTY-NOTICES.txt",
@@ -822,14 +871,15 @@ for (const [format, verifyPayloadNotices] of [
     t.after(() => rmSync(temporaryRoot, { force: true, recursive: true }));
 
     const reviewed = "Reviewed third-party notices.\n";
+    const noticesRoot = preparePayload(payloadRoot);
     writeFixtureFile(
-      payloadRoot,
+      noticesRoot,
       "legal/THIRD-PARTY-NOTICES.txt",
       `${reviewed}extra\n`,
     );
     assert.throws(
       () =>
-        verifyPayloadNotices(
+        verifyPayloadNoticesForFixture(
           payloadRoot,
           {
             bundleResourcePath: "legal/THIRD-PARTY-NOTICES.txt",
@@ -852,11 +902,12 @@ for (const [format, verifyPayloadNotices] of [
 
     const reviewed = "Reviewed third-party notices.\n";
     const tampered = `X${reviewed.slice(1)}`;
-    writeFixtureFile(payloadRoot, "legal/THIRD-PARTY-NOTICES.txt", tampered);
+    const noticesRoot = preparePayload(payloadRoot);
+    writeFixtureFile(noticesRoot, "legal/THIRD-PARTY-NOTICES.txt", tampered);
     assert.equal(Buffer.byteLength(tampered), Buffer.byteLength(reviewed));
     assert.throws(
       () =>
-        verifyPayloadNotices(
+        verifyPayloadNoticesForFixture(
           payloadRoot,
           {
             bundleResourcePath: "legal/THIRD-PARTY-NOTICES.txt",
@@ -1319,8 +1370,12 @@ test("MSIX candidate returns notices evidence produced from its unpacked payload
 
   assert.equal(calls.length, 1);
   assert.equal(calls[0][0], fixture.unpackRoot);
-  assert.strictEqual(calls[0][1], fixture.input.legalNotices);
-  assert.equal(calls[0][2], fixture.input.temporaryRoot);
+  assert.equal(
+    calls[0][1],
+    resolve(fixture.unpackRoot, "VFS", "Local AppData", "JoeSSH", "JoeSSH.exe"),
+  );
+  assert.strictEqual(calls[0][2], fixture.input.legalNotices);
+  assert.equal(calls[0][3], fixture.input.temporaryRoot);
   assert.strictEqual(
     verification.bundledThirdPartyNotices,
     bundledThirdPartyNotices,
@@ -1336,6 +1391,50 @@ test("MSIX candidate propagates unpacked notices verification failures", (t) => 
   assert.throws(
     () => verifyMsixCandidate(fixture.input, fixture.runtime),
     (error) => error === noticesError,
+  );
+});
+
+test("MSIX notices verification resolves legal resources beside the nested application executable", (t) => {
+  const temporaryRoot = mkdtempSync(
+    join(tmpdir(), "joessh-msix-nested-legal-"),
+  );
+  t.after(() => rmSync(temporaryRoot, { force: true, recursive: true }));
+  const unpackRoot = resolve(temporaryRoot, "msix-unpacked");
+  const executablePath = resolve(
+    unpackRoot,
+    "VFS",
+    "Local AppData",
+    "JoeSSH",
+    "atlasterm-desktop-shell.exe",
+  );
+  const notices = "Nested legal notices.\n";
+  mkdirSync(dirname(executablePath), { recursive: true });
+  writeFileSync(executablePath, Buffer.from("fixture executable"), {
+    flag: "wx",
+  });
+  writeFixtureFile(
+    unpackRoot,
+    "VFS/Local AppData/JoeSSH/legal/THIRD-PARTY-NOTICES.txt",
+    notices,
+  );
+
+  assert.deepEqual(
+    verifyUnpackedThirdPartyNotices(
+      unpackRoot,
+      executablePath,
+      {
+        bundleResourcePath: "legal/THIRD-PARTY-NOTICES.txt",
+        sha256: sha256Text(notices),
+        sizeBytes: Buffer.byteLength(notices),
+      },
+      temporaryRoot,
+    ),
+    {
+      path: "legal/THIRD-PARTY-NOTICES.txt",
+      sha256: sha256Text(notices),
+      sizeBytes: Buffer.byteLength(notices),
+      status: "exact-match",
+    },
   );
 });
 
