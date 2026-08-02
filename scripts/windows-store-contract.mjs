@@ -8,6 +8,8 @@ const APPX_FOUNDATION_NAMESPACE =
   "http://schemas.microsoft.com/appx/manifest/foundation/windows10";
 const APPX_RESTRICTED_CAPABILITIES_NAMESPACE =
   "http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities";
+const APPROVED_MSIX_PACKAGING_TOOL_COMMENT =
+  "Package created by MSIX Packaging Tool version: ";
 const PACKAGE_PUBLISHER_ID_PATTERN = /^[a-hj-km-np-tv-z0-9]{13}$/i;
 const MAX_MANIFEST_BYTES = 1024 * 1024;
 const MAX_XML_DEPTH = 64;
@@ -529,27 +531,35 @@ export function parseMsixManifestContract(xml) {
     );
   }
   const application = applications[0];
-  const runtimeBehavior = requireAttribute(
-    application,
-    "RuntimeBehavior",
-    "Application.RuntimeBehavior",
-  );
-  const trustLevel = requireAttribute(
-    application,
-    "TrustLevel",
-    "Application.TrustLevel",
-  );
   const executable = normalizeMsixExecutablePath(
     requireAttribute(application, "Executable", "Application.Executable"),
   );
-  if (runtimeBehavior !== "packagedClassicApp") {
+  requireAttribute(application, "Id", "Application.Id");
+  const runtimeBehavior = optionalAttribute(application, "RuntimeBehavior");
+  const trustLevel = optionalAttribute(application, "TrustLevel");
+  const entryPoint = optionalAttribute(application, "EntryPoint");
+  const modernProfile =
+    hasExactUnnamespacedAttributes(application, [
+      "Executable",
+      "Id",
+      "RuntimeBehavior",
+      "TrustLevel",
+    ]) &&
+    runtimeBehavior === "packagedClassicApp" &&
+    trustLevel === "mediumIL" &&
+    entryPoint === undefined;
+  const packagingToolProfile =
+    hasExactUnnamespacedAttributes(application, [
+      "EntryPoint",
+      "Executable",
+      "Id",
+    ]) &&
+    entryPoint === "Windows.FullTrustApplication" &&
+    runtimeBehavior === undefined &&
+    trustLevel === undefined;
+  if (!modernProfile && !packagingToolProfile) {
     throw new Error(
-      "The unique MSIX desktop Application must use RuntimeBehavior=packagedClassicApp.",
-    );
-  }
-  if (trustLevel !== "mediumIL") {
-    throw new Error(
-      "The unique MSIX desktop Application must use TrustLevel=mediumIL.",
+      "The unique MSIX desktop Application must use exactly packagedClassicApp/mediumIL or the MSIX Packaging Tool Windows.FullTrustApplication profile without mixed or extra execution attributes.",
     );
   }
 
@@ -579,8 +589,8 @@ export function parseMsixManifestContract(xml) {
   return {
     desktopApplication: {
       executable,
-      runtimeBehavior,
-      trustLevel,
+      runtimeBehavior: "packagedClassicApp",
+      trustLevel: "mediumIL",
     },
     identity: {
       architecture,
@@ -679,14 +689,15 @@ function parseSafeManifestXml(xml) {
       "MSIX AppxManifest.xml must be non-empty UTF-8 text no larger than 1 MiB.",
     );
   }
-  if (/<!--|<!DOCTYPE|<!ENTITY|<!\[CDATA\[/i.test(xml)) {
+  if (/<!DOCTYPE|<!ENTITY|<!\[CDATA\[/i.test(xml)) {
     throw new Error(
-      "MSIX AppxManifest.xml comments, DTD/entity declarations, and CDATA are rejected to prevent decoy contract markers.",
+      "MSIX AppxManifest.xml DTD/entity declarations and CDATA are rejected to prevent decoy contract markers.",
     );
   }
 
   let root = null;
   let nodeCount = 0;
+  let approvedCommentCount = 0;
   const stack = [];
   const parser = sax.parser(true, {
     normalize: false,
@@ -756,8 +767,21 @@ function parseSafeManifestXml(xml) {
   parser.ondoctype = () => {
     throw new Error("MSIX AppxManifest.xml DTD declarations are rejected.");
   };
-  parser.oncomment = () => {
-    throw new Error("MSIX AppxManifest.xml comments are rejected.");
+  parser.oncomment = (comment) => {
+    const packageRoot = stack.length === 1 ? stack[0] : null;
+    if (
+      comment !== APPROVED_MSIX_PACKAGING_TOOL_COMMENT ||
+      approvedCommentCount !== 0 ||
+      packageRoot !== root ||
+      packageRoot?.local !== "Package" ||
+      packageRoot?.children.length !== 0 ||
+      packageRoot?.text.trim() !== ""
+    ) {
+      throw new Error(
+        "MSIX AppxManifest.xml permits only the exact leading MSIX Packaging Tool comment; other comments are rejected to prevent decoy contract markers.",
+      );
+    }
+    approvedCommentCount += 1;
   };
   parser.oncdata = () => {
     throw new Error("MSIX AppxManifest.xml CDATA is rejected.");
@@ -817,6 +841,19 @@ function requireAttribute(node, local, label) {
     throw new Error(`MSIX AppxManifest.xml is missing ${label}.`);
   }
   return value;
+}
+
+function hasExactUnnamespacedAttributes(node, expectedNames) {
+  const actual = node.attributes
+    .filter((attribute) => attribute.uri === "")
+    .map((attribute) => attribute.local)
+    .sort();
+  const expected = [...expectedNames].sort();
+  return (
+    actual.length === node.attributes.length &&
+    actual.length === expected.length &&
+    actual.every((name, index) => name === expected[index])
+  );
 }
 
 function assertExactObjectFields(value, expectedFields, label) {

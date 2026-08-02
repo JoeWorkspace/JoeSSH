@@ -1168,7 +1168,14 @@ test("MSIX manifests require a nonzero first component and zero revision", () =>
   );
 });
 
-test("MSIX manifest rejects comment, DTD, entity, and CDATA decoys", () => {
+test("MSIX manifest accepts only the exact leading Packaging Tool comment", () => {
+  const approved = completeMsixManifest().replace(
+    "<Identity ",
+    `<!--Package created by MSIX Packaging Tool version: -->
+      <Identity `,
+  );
+  assert.doesNotThrow(() => parseMsixManifestIdentity(approved));
+
   const decoy = completeMsixManifest().replace(
     "<Package",
     `<!-- <Identity Name="decoy" Publisher="CN=decoy"
@@ -1179,12 +1186,54 @@ test("MSIX manifest rejects comment, DTD, entity, and CDATA decoys", () => {
     () => parseMsixManifestIdentity(decoy),
     /decoy contract markers/,
   );
+
+  const misplaced = completeMsixManifest().replace(
+    "<Properties>",
+    `<!--Package created by MSIX Packaging Tool version: -->
+      <Properties>`,
+  );
+  assert.throws(
+    () => parseMsixManifestIdentity(misplaced),
+    /exact leading MSIX Packaging Tool comment/,
+  );
+});
+
+test("MSIX manifest rejects DTD, entity, and CDATA decoys", () => {
+  const manifest = completeMsixManifest();
+  const dtd = manifest.replace(
+    "<Package",
+    `<!DOCTYPE Package [<!ENTITY publisher "decoy">]>
+    <Package`,
+  );
+  const cdata = manifest.replace(
+    "JoeSSH Publisher</PublisherDisplayName>",
+    "<![CDATA[JoeSSH Publisher]]></PublisherDisplayName>",
+  );
+
+  for (const unsafe of [dtd, cdata]) {
+    assert.throws(
+      () => parseMsixManifestIdentity(unsafe),
+      /decoy contract markers/,
+    );
+  }
 });
 
 test("MSIX desktop contract binds all execution fields to one unique Application", () => {
   const contract = parseMsixManifestContract(completeMsixManifest());
   assert.deepEqual(contract.desktopApplication, {
     executable: "JoeSSH.exe",
+    runtimeBehavior: "packagedClassicApp",
+    trustLevel: "mediumIL",
+  });
+  const packagingToolContract = parseMsixManifestContract(
+    completeMsixManifest({
+      application: `<Application Id="ATLASTERMDESKTOPSHELL"
+        Executable="VFS\\Local AppData\\JoeSSH\\JoeSSH.exe"
+        EntryPoint="Windows.FullTrustApplication" />`,
+    }),
+  );
+  assert.deepEqual(packagingToolContract.desktopApplication, {
+    executable: "VFS/Local AppData/JoeSSH/JoeSSH.exe",
     runtimeBehavior: "packagedClassicApp",
     trustLevel: "mediumIL",
   });
@@ -1201,6 +1250,21 @@ test("MSIX desktop contract binds all execution fields to one unique Application
       ),
     /exactly one desktop Application/,
   );
+
+  for (const application of [
+    `<Application Id="App" Executable="JoeSSH.exe"
+      EntryPoint="Windows.FullTrustApplication"
+      RuntimeBehavior="packagedClassicApp" TrustLevel="mediumIL" />`,
+    `<Application Id="App" Executable="JoeSSH.exe"
+      EntryPoint="Windows.FullTrustApplication" StartPage="index.html" />`,
+    `<Application Id="App" Executable="JoeSSH.exe"
+      RuntimeBehavior="packagedClassicApp" />`,
+  ]) {
+    assert.throws(
+      () => parseMsixManifestContract(completeMsixManifest({ application })),
+      /exactly packagedClassicApp\/mediumIL or the MSIX Packaging Tool Windows.FullTrustApplication profile/,
+    );
+  }
 });
 
 test("MSIX Application.Executable rejects traversal, URI, and encoded paths", () => {
