@@ -235,6 +235,17 @@ test("WSB exposes only read-only input and isolated writable output", () => {
   );
 });
 
+test("WSB resolves relative host folders without rewriting Windows absolute paths", () => {
+  const config = createSandboxConfig({
+    inputRoot: "relative-input",
+    memoryInMb: 6144,
+    outputRoot: "\\\\server\\share\\output",
+  });
+
+  assert.match(config, /<HostFolder>[^<]*relative-input<\/HostFolder>/);
+  assert.match(config, /<HostFolder>\\\\server\\share\\output<\/HostFolder>/);
+});
+
 test("Sandbox bootstrap remains offline and returns sanitized result evidence", () => {
   const source = readFileSync(
     resolve(import.meta.dirname, "windows-store-msix-sandbox-bootstrap.ps1"),

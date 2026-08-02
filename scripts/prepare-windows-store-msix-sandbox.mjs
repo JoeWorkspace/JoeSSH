@@ -381,8 +381,8 @@ export function createConversionTemplate({
 }
 
 export function createSandboxConfig({ inputRoot, memoryInMb, outputRoot }) {
-  const hostInput = escapeXmlText(resolve(inputRoot));
-  const hostOutput = escapeXmlText(resolve(outputRoot));
+  const hostInput = escapeXmlText(resolveHostFolderPath(inputRoot));
+  const hostOutput = escapeXmlText(resolveHostFolderPath(outputRoot));
   return `<Configuration>
   <vGPU>Disable</vGPU>
   <Networking>Disable</Networking>
@@ -409,6 +409,13 @@ export function createSandboxConfig({ inputRoot, memoryInMb, outputRoot }) {
   </LogonCommand>
 </Configuration>
 `;
+}
+
+function resolveHostFolderPath(value) {
+  if (/^[A-Za-z]:[\\/]/.test(value) || value.startsWith("\\\\")) {
+    return value;
+  }
+  return resolve(value);
 }
 
 export function assertBuildProvenanceBinding({
