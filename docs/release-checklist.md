@@ -1,20 +1,75 @@
 # JoeSSH Public Beta Release Checklist
 
-This checklist defines the public beta bar for `0.1.0-beta.9`. The first public
+This checklist defines the public beta bar for `0.1.0-beta.10`. The first public
 release includes Desktop, Web Admin, and the self-hosted Sync Service. Mobile
 native apps stay in preflight/device-smoke validation until a later beta.
 
+## Current Desktop automation status
+
+**Automated formal signing is paused.** Desktop publication remains **No-Go**
+until an **isolated signing principal** is available outside the repository
+build job and the resulting chain has received a separate security review.
+
+`Desktop Release Artifacts` currently performs **unsigned staging** only.
+Dispatch `formal_evidence=false` to produce
+`desktop-unsigned-bundle-windows`, `desktop-unsigned-bundle-macos`, and
+`desktop-unsigned-bundle-linux` for internal smoke testing. A
+`formal_evidence=true` request must fail before checkout with
+`FORMAL_SIGNING_DISABLED`. None of the unsigned artifacts may be published,
+renamed as formal evidence, or used to satisfy a Desktop release gate.
+
+Retired formal configurator and preflight entry points are fail-closed
+compatibility guards, not signer setup tools. The only configuration action
+creates a local gitignored template that contains no secret fields; historical
+evidence download/verifiers remain for independently produced external
+evidence. None can make the current workflow produce
+`desktop-release-evidence` or a `Package Formal Desktop Evidence` job.
+
 ## Required Before Publishing
 
-- When switching the repository to public, immediately enable GitHub Private
-  Vulnerability Reporting, subscribe the maintainer to Security alerts, and
-  verify in a signed-out browser that the `Report a vulnerability` form is
-  reachable. Do not announce or distribute the release while the private
-  reporting route in `SECURITY.md` and both `security.txt` files is unavailable.
-- Configure public-repository branch protection or a ruleset for `main` that
-  requires the CI release-readiness checks and blocks force pushes and branch
-  deletion. While JoeSSH has one maintainer, do not require a separate
-  CODEOWNER approval that the maintainer cannot provide.
+- Before publishing, confirm that the repository remains public and GitHub
+  Private Vulnerability Reporting remains enabled. Keep the maintainer
+  subscribed to Security alerts, and verify in a signed-out browser that the
+  `Report a vulnerability` form is reachable. Do not announce or distribute
+  the release while the private reporting route in `SECURITY.md` and both
+  `security.txt` files is unavailable.
+- Configure direct classic branch protection for `main`; the
+  `/repos/<owner>/<repo>/branches/main/protection` API must be readable and must
+  require a pull request plus the exact `Public Release Readiness` check from
+  GitHub Actions, apply to administrators, require linear history and resolved
+  review conversations, expose no pull-request bypass allowances, and block
+  force pushes and branch deletion. JoeSSH currently uses an explicit
+  **solo-maintainer review mode**: required approval count is `0` and
+  last-push approval is disabled because GitHub cannot count the pull-request
+  author's own approval. The maintainer must review the final diff after the
+  latest push and record that review in the pull-request checklist; this is
+  self-review, not independent review. An active ruleset may add stricter
+  constraints, but it cannot replace this direct protection contract. If a
+  trusted second maintainer is added later, update the verifier, documentation,
+  branch protection, and environment rules together before restoring a required
+  independent approval.
+- Keep `windows-invite-stage-a` and `windows-release-stage-b` as manual
+  deployment pauses with the repository owner as the required reviewer,
+  `prevent_self_review=false`, administrator bypass disabled, and protected
+  branches only. This allows the sole maintainer to approve a run they
+  triggered; it is an operator confirmation and must not be described as an
+  independent security boundary.
+- GitHub Free is sufficient while the repository stays public and workflows use
+  standard GitHub-hosted runners. Do not select larger runners. Keep Actions
+  artifact/package storage within the plan allowance and cache storage within
+  the per-repository allowance; use a zero paid budget or no payment method so
+  excess metered usage is blocked rather than purchased. Record this check with
+  `--confirm-billing-ready` before a release workflow.
+- Keep `.github/workflows/desktop-release-artifacts.yml` limited to its fixed
+  policy job and unprivileged three-platform unsigned matrix. It must contain
+  no signing environment, `id-token`, GitHub signing secret, certificate
+  import, notarization step, or formal-evidence aggregate.
+- Before restoring formal Desktop automation, approve a design in which an
+  isolated signer accepts only hash-bound unsigned outputs, cannot check out
+  or build repository source, uses a separate identity and reviewer gate, and
+  is followed by independent signature/notarization and provenance
+  verification. A protected environment on the repository build job alone is
+  not an isolated signing principal.
 - Keep repository auto-merge and the
   `JOESSH_DEPENDABOT_AUTO_MERGE_ENABLED` repository variable disabled until
   those `main` protections are active. Enable both only after a test Dependabot
@@ -27,9 +82,38 @@ native apps stay in preflight/device-smoke validation until a later beta.
   checkout before running any release, tag, checksum, or GitHub draft step.
 - Confirm the release version is aligned across root package metadata, Desktop,
   Web Admin, Mobile metadata, Tauri, and Sync Service Cargo metadata.
-- Update `CHANGELOG.md` with the `0.1.0-beta.9` section.
-- Update `docs/release-notes/0.1.0-beta.9.md`; the GitHub Release draft uses
+- Keep every pinned `dtolnay/rust-toolchain` workflow step explicit at
+  `toolchain: 1.96.0`; the action commit pin secures the action implementation
+  but does not select the Rust channel that an `@stable` shorthand would imply.
+  Keep root `rust-toolchain.toml` on the same version, retain Rust `1.96` as the
+  declared package minimum, and keep every `actions/setup-node` step on
+  `22.22.2`. Any workflow `npx` call must use `--no-install`, and CI installs
+  `cargo-audit` at exact version `0.22.2`.
+- Keep `.gitattributes` LF normalization for source, lock, policy, and
+  hash-bound release inputs. Do not remove explicit binary handling for
+  installers, archives, images, fonts, or signing-certificate files.
+- Update `CHANGELOG.md` with the `0.1.0-beta.10` section.
+- Update `docs/release-notes/0.1.0-beta.10.md`; the GitHub Release draft uses
   this versioned notes file, not the release checklist.
+- Confirm the release accurately links `SUPPORT.md`, `PRIVACY.md`,
+  `TRADEMARKS.md`, and `THIRD_PARTY_NOTICES.md`, and does not advertise Pro,
+  Founder, hosted support, or a funding benefit that is not live.
+- Keep `.github/FUNDING.yml` comments-only with the exact inactive
+  `.github/funding-operator-attestation.json` unless the destination has passed
+  the separate Funding Button lane in `docs/commercial-release-readiness.md`;
+  an active URL must be exactly bound to a complete verification no more than
+  180 days old.
+- Before publishing the voluntary-support page, manually scan both personal
+  codes and confirm Weixin Pay shows `Joe(*添)` and Alipay shows
+  `慈善家(*添)`. Recheck the non-purchase, no project-operated refund, official
+  platform-dispute, and payment-privacy notices on logged-out desktop and mobile
+  views.
+- Do not enable paid checkout while `PRIVACY.md`, `REFUND_POLICY.md`,
+  `TERMS_OF_SALE.md`, or `TRADEMARKS.md` contains a `{{...}}` seller,
+  processor, contact, or governing-law placeholder.
+- Generate a build-specific third-party license inventory in addition to the
+  SBOM, and include every license or `NOTICE` text required by the distributed
+  artifact. `THIRD_PARTY_NOTICES.md` is an overview, not the complete bundle.
 - Run `npm run qa:release:public` on a clean release machine. On Windows
   release machines that use the local OpenSSH dogfood fixture, run
   `npm run qa:release:public:fixture`; it starts the fixture, writes Desktop
@@ -42,15 +126,33 @@ native apps stay in preflight/device-smoke validation until a later beta.
   `npm run qa:rust-advisory` or rely on `npm run qa:release:public` to run the
   RustSec advisory gate.
 - Run `npm run release:sbom` and retain generated SBOM files under
-  `reports/release/`.
+  `reports/release/`: `npm-desktop-sbom.cdx.json`,
+  `npm-web-sbom.cdx.json`, `cargo-workspace-sbom.cdx.json`, and
+  `tauri-cargo-sbom.cdx.json`.
 - Run `npm run release:sbom:verify`; it verifies CycloneDX SBOM structure,
   Cargo metadata structure, required Rust/Tauri workspace packages, required
   third-party dependency packages, and `reports/release/SBOM-SHA256SUMS.txt`
-  coverage for every generated SBOM/metadata file.
+  coverage for all four public npm/Cargo SBOMs. Public CycloneDX JSON is canonical and
+  must not contain random serial numbers, timestamps, absolute paths, or the
+  checkout directory name. Raw Cargo metadata remains private generation input
+  under `reports/internal/release-inputs/` and must not be uploaded.
+  `SBOM-SHA256SUMS.txt` must exactly cover all four public CycloneDX files.
+- Run `npm run release:third-party-licenses` followed by
+  `npm run release:third-party-licenses:verify`. Retain
+  `reports/release/third-party-licenses/manifest.json`,
+  `reports/release/third-party-licenses/THIRD-PARTY-NOTICES.txt`, and
+  `reports/release/THIRD-PARTY-LICENSES-SHA256SUMS.txt`. The notices resource
+  must hash-bind and contain the complete root `LICENSE` before dependency
+  notices. Platform redistributables such as an offline WebView2 runtime remain
+  a separate distribution-term review item.
+- Before every Tauri package build, run
+  `npm run release:desktop:legal-resource`. The Desktop installer must map the
+  verified source notice to the installed
+  `legal/THIRD-PARTY-NOTICES.txt` resource and expose it from Settings.
 - Build release artifacts and generate per-artifact `SHA256` checksum files
   before uploading.
 - Run `npm run release:web` and confirm the GitHub Release includes
-  `reports/release/web/joessh-web-admin-0.1.0-beta.9.zip`, not only a checksum
+  `reports/release/web/joessh-web-admin-0.1.0-beta.10.zip`, not only a checksum
   manifest for unpackaged `dist` files. The Web package self-test must keep
   `--output` and `--checksum` writes inside the repository root.
 - Run `node scripts/verify-web-release-package.mjs` or rely on
@@ -88,19 +190,23 @@ native apps stay in preflight/device-smoke validation until a later beta.
   `reports/release/desktop/release-evidence-source.json` to be covered by the
   evidence checksum manifest and to bind the evidence to the GitHub workflow run
   and `Package Formal Desktop Evidence` job that produced it.
-- When Desktop formal evidence is not yet Go, run
+- While Desktop formal evidence is disabled, run
   `npm run release:desktop:evidence-diagnostics -- --repo JoeWorkspace/JoeSSH`
   and keep `reports/handoff/desktop/formal-evidence-unblock-report.json` with
   the release handoff. The report is non-mutating and records missing Desktop
-  artifacts/evidence, signing-secret names, workflow visibility, CI annotations,
-  remote ref publication, upstream divergence, and the release tag/HEAD
-  relationship. It is handoff-only local evidence, not a release upload
-  artifact.
-- After the Desktop Release Artifacts workflow succeeds, import the
-  `desktop-release-evidence` artifact with
+  artifacts/evidence, the explicit disabled-signing boundary, workflow
+  visibility, CI annotations, remote ref publication, upstream divergence,
+  and the release tag/HEAD relationship. It does not inventory secret names.
+  It is handoff-only local evidence, not a release upload artifact.
+- Treat `desktop-release-evidence`,
+  `Package Formal Desktop Evidence`, and
   `npm run release:desktop:evidence-download -- --repo JoeWorkspace/JoeSSH --run-id <run-id>`
-  so the formal evidence source sidecar records the exact workflow run and
-  `Package Formal Desktop Evidence` job.
+  as a historical/future isolated-signer import contract. The current
+  `Desktop Release Artifacts` workflow produces none of them. Use the import
+  command only after a separately reviewed isolated signing chain succeeds;
+  its source sidecar remains
+  `reports/release/desktop/release-evidence-source.json`, covered by
+  `reports/release/desktop/release-evidence-SHA256SUMS.txt`.
 - Create the annotated release tag only after source QA is green and release
   artifacts are staged. `reports/release/` is generated release evidence and is
   allowed to be present while the source tree outside that directory remains
@@ -246,7 +352,7 @@ native apps stay in preflight/device-smoke validation until a later beta.
 - Create the GitHub Release as a draft first with `npm run release:desktop:draft`.
   The draft script requires Desktop, Web Admin, and Sync `SHA256SUMS.txt`
   manifests, a clean Git working tree outside `reports/release/`, a
-  `v0.1.0-beta.9` tag pointing at `HEAD`, authenticated GitHub CLI state, no
+  `v0.1.0-beta.10` tag pointing at `HEAD`, authenticated GitHub CLI state, no
   existing GitHub Release with that tag, the versioned release notes file, and verifies all
   staged `reports/release/**/SHA256SUMS.txt` files before invoking
   `gh release create`.
@@ -263,9 +369,25 @@ native apps stay in preflight/device-smoke validation until a later beta.
 - The draft script also verifies release SBOM files and
   `reports/release/SBOM-SHA256SUMS.txt`, so Rust/Tauri dependency inventory
   artifacts include third-party packages and are present before upload.
+- Before upload, the non-dry-run path captures every approved source file into
+  a private temporary snapshot and uploads only those captured bytes. After
+  `gh release create --draft`, it resolves the new draft by tag and then by its
+  numeric release ID, and requires the remote asset name, uploaded state, byte
+  size, and GitHub-reported `sha256:` digest to match the exact snapshot
+  allowlist.
+- A remote identity or digest mismatch triggers a destructive safety cleanup,
+  but only for the newly created draft whose exact numeric ID and tag were
+  proven by this run. The script then requires both ID and tag lookups to return
+  explicit `404` results. If deletion or identity cannot be proven, it enters
+  `MANUAL ISOLATION REQUIRED`: do not retry, publish, reuse the tag, or create another
+  draft until an operator has isolated the named release and confirmed both
+  lookups are absent.
 - Attach installers, Web Admin static package if used, Sync Service package,
   SBOM, and the relevant `SHA256SUMS.txt` files.
-- Verify downloads from the draft by checksum before publishing.
+- In a clean environment separated from the creation/upload process, download
+  the surviving draft assets and verify their checksums before publishing. The
+  automated remote digest check does not replace the maintainer's final
+  verification; this remains solo-maintainer self-review.
 - Rollback means unpublishing the broken draft/release and restoring the prior
   signed artifacts and deployment bundle. Keep the previous release artifact
   checksums visible until the new release has soaked successfully.

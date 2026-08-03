@@ -2,12 +2,16 @@ export const ar = {
   "desktop.demoScopeSummary": "عرض تجريبي — بلا جلسة SSH حقيقية",
   "desktop.demoShell": "طرفية تجريبية",
   "desktop.noSession": "لا توجد جلسة SSH",
-  "desktop.noSessionActionDetail": "اتصل بمضيف حقيقي قبل تنفيذ إجراءات الطرفية أو SFTP أو إعادة التوجيه.",
+  "desktop.noSessionActionDetail":
+    "اتصل بمضيف حقيقي قبل تنفيذ إجراءات الطرفية أو SFTP أو إعادة التوجيه.",
   "desktop.sampleDataShort": "بيانات تجريبية",
-  "desktop.terminalSessionConnectRequired": "استخدم «اتصال» لفتح جلسة SSH حقيقية قبل تنفيذ الأوامر.",
-  "desktop.terminalSessionSample": "هذا مجرد ملف تعريف اتصال تجريبي. لا توجد جلسة SSH نشطة.",
+  "desktop.terminalSessionConnectRequired":
+    "استخدم «اتصال» لفتح جلسة SSH حقيقية قبل تنفيذ الأوامر.",
+  "desktop.terminalSessionSample":
+    "هذا مجرد ملف تعريف اتصال تجريبي. لا توجد جلسة SSH نشطة.",
   "desktop.sftp": "SFTP",
-  "desktop.manifestDescription": "طرفية SSH وSFTP ووصول الفريق وإدارة الجلسات.",
+  "desktop.manifestDescription":
+    "طرفية SSH وSFTP وإعادة توجيه المنافذ وإدارة الجلسات المحلية.",
   "language.selectorLabel": "لغة العرض",
   "language.autoRegion": "تلقائي حسب المنطقة",
   "language.worldReady": "اللغات العالمية جاهزة",
@@ -16,7 +20,8 @@ export const ar = {
   "desktop.searchPlaceholder": "ابحث في المضيفين والوسوم والمستخدمين",
   "desktop.searchMatches": "{count} نتيجة",
   "desktop.searchEmptyTitle": "لا توجد اتصالات مطابقة",
-  "desktop.searchEmptyHint": "جرّب كلمة مفتاحية أخرى أو امسح عوامل تصفية الوسوم.",
+  "desktop.searchEmptyHint":
+    "جرّب كلمة مفتاحية أخرى أو امسح عوامل تصفية الوسوم.",
   "desktop.new": "جديد",
   "desktop.connections": "الاتصالات",
   "desktop.filterByTag": "تصفية حسب الوسم",
@@ -50,27 +55,35 @@ export const ar = {
   "desktop.terminalAutocompleteNavigate": "للتنقل",
   "desktop.terminalSessionConnected": "تم الاتصال بـ {name} ({group})",
   "desktop.terminalSessionReady": "الجلسة جاهزة.",
-  "desktop.terminalSessionMfaRequired": "يلزم التحقق متعدد العوامل قبل تنفيذ الأوامر.",
+  "desktop.terminalSessionMfaRequired":
+    "يلزم التحقق متعدد العوامل قبل تنفيذ الأوامر.",
   "desktop.mfaRequiredShort": "يلزم MFA",
   "desktop.commandAccepted": "تم قبول الأمر",
-  "desktop.commandAcceptedDetail": "اجتاز فحص السلامة المحلي وأضيف إلى قائمة انتظار منفذ الطرفية.",
+  "desktop.commandAcceptedDetail":
+    "اجتاز فحص السلامة المحلي وأضيف إلى قائمة انتظار منفذ الطرفية.",
   "desktop.commandBlocked": "تم حظر الأمر",
   "desktop.commandBlockedDetail": "طابق {pattern}: {reason}",
   "desktop.safetyReasonRmRoot": "يزيل جذر نظام الملفات بشكل تكراري",
   "desktop.safetyReasonMkfs": "يفرمت نظام ملفات",
   "desktop.safetyReasonForkBomb": "قنبلة fork",
   "desktop.safetyReasonRawDiskCopy": "نسخ القرص الخام قد يتلف البيانات",
-  "desktop.safetyReasonChmodRoot": "يفتح الأذونات على نطاق واسع من جذر نظام الملفات",
+  "desktop.safetyReasonChmodRoot":
+    "يفتح الأذونات على نطاق واسع من جذر نظام الملفات",
   "desktop.safetyReasonTeeBlockDevice": "يكتب مخرجات خام إلى جهاز كتلي",
-  "desktop.safetyReasonRedirectBlockDevice": "يعيد توجيه المخرجات إلى جهاز كتلي خام ويتلف محتواه",
+  "desktop.safetyReasonRedirectBlockDevice":
+    "يعيد توجيه المخرجات إلى جهاز كتلي خام ويتلف محتواه",
   "desktop.safetyReasonFindRootDelete": "يحذف الملفات بشكل تكراري من مسار جذري",
-  "desktop.safetyReasonDiskWipe": "يمسح جداول الأقسام أو محتويات الأجهزة الكتلية بشكل غير قابل للعكس",
+  "desktop.safetyReasonDiskWipe":
+    "يمسح جداول الأقسام أو محتويات الأجهزة الكتلية بشكل غير قابل للعكس",
   "desktop.safetyReasonFirewallFlush": "يمسح قواعد جدار الحماية",
   "desktop.safetyReasonRemoteShellPipe": "يمرر محتوى بعيدًا مباشرة إلى shell",
-  "desktop.safetyReasonRootDownloadOverwrite": "يستبدل مسارًا جذريًا بمحتوى تم تنزيله",
+  "desktop.safetyReasonRootDownloadOverwrite":
+    "يستبدل مسارًا جذريًا بمحتوى تم تنزيله",
   "desktop.safetyReasonHostShutdown": "يوقف المضيف فورًا",
-  "desktop.safetyReasonWindowsDestructive": "أمر Windows تدميري يستهدف الملفات أو الأقراص أو حالة المضيف",
-  "desktop.safetyReasonPowershellDestructive": "أمر PowerShell تدميري يستهدف محركًا أو مسار نظام أو قرصًا أو حالة طاقة المضيف",
+  "desktop.safetyReasonWindowsDestructive":
+    "أمر Windows تدميري يستهدف الملفات أو الأقراص أو حالة المضيف",
+  "desktop.safetyReasonPowershellDestructive":
+    "أمر PowerShell تدميري يستهدف محركًا أو مسار نظام أو قرصًا أو حالة طاقة المضيف",
   "desktop.safetyReasonDropDatabase": "يحذف قاعدة بيانات",
   "desktop.safetyReasonCommandSubstitution": "يدمج أمرًا فرعيًا قد ينفذ أي شيء",
   "desktop.context": "السياق",
@@ -108,7 +121,7 @@ export const ar = {
   "desktop.recordTerminal": "تسجيل جلسات الطرفية",
   "desktop.requiredProduction": "مطلوب لنطاقات الإنتاج",
   "desktop.syncEncrypted": "مزامنة المقاطع المشفرة",
-  "desktop.availableProBusiness": "متاح في Pro و Business",
+  "desktop.plannedUnavailable": "مخطط لها؛ غير متاحة حاليًا",
   "desktop.telemetryErrors": "تقارير أخطاء اختيارية",
   "desktop.telemetryErrorsHint": "إرسال ملخصات منقحة للأعطال والأخطاء.",
   "desktop.businessLayer": "طبقة الأعمال",
@@ -123,7 +136,8 @@ export const ar = {
   "desktop.requestElevated": "طلب وصول مرتفع",
   "desktop.palettePlaceholder": "شغل أمرا، افتح مضيفا، ابدأ سير عمل",
   "desktop.paletteEmptyTitle": "لا توجد نتائج في اللوحة",
-  "desktop.paletteEmptyHint": "جرّب مضيفا أو أمرا حديثا أو كلمة مفتاحية لسير العمل.",
+  "desktop.paletteEmptyHint":
+    "جرّب مضيفا أو أمرا حديثا أو كلمة مفتاحية لسير العمل.",
   "team.access": "وصول الفريق",
   "team.accessSummary": "ملخص وصول الفريق",
   "team.business": "Business",
@@ -215,10 +229,12 @@ export const ar = {
   "desktop.passphrase": "عبارة المرور (اختياري)",
   "desktop.pinnedFingerprint": "مفتاح المضيف المثبّت (اختياري)",
   "desktop.hostKeyConfirmTitle": "Confirm host key",
-  "desktop.hostKeyConfirmDetail": "Verify this SHA-256 fingerprint before authenticating.",
+  "desktop.hostKeyConfirmDetail":
+    "Verify this SHA-256 fingerprint before authenticating.",
   "desktop.hostKeyPresentedFingerprint": "Presented fingerprint",
   "desktop.hostKeyVerificationFailed": "Host key verification failed",
-  "desktop.hostKeyChangedDetail": "Stored host key mismatch for {host}:{port}. Expected {stored}, presented {presented}.",
+  "desktop.hostKeyChangedDetail":
+    "Stored host key mismatch for {host}:{port}. Expected {stored}, presented {presented}.",
   "desktop.trustHostKeyAndConnect": "Trust and connect",
   "desktop.connectAction": "اتصال",
   "desktop.connecting": "جارٍ الاتصال…",
@@ -227,20 +243,23 @@ export const ar = {
   "desktop.connectionSwitched": "تم التبديل إلى {name}",
   "desktop.connectionMoved": "تم نقل {connection} إلى {group}",
   "desktop.connectionsImported": "تم استيراد {count} اتصال",
-  "desktop.connectionsImportFailed": "Could not import connections. Choose a valid JoeSSH connections JSON file.",
+  "desktop.connectionsImportFailed":
+    "Could not import connections. Choose a valid JoeSSH connections JSON file.",
   "desktop.connectionConnectToast": "اتصال: {name}",
   "desktop.connectionCreated": "تم إنشاء الاتصال {name}",
   "desktop.connectionTestResult": "اختبار الاتصال: {result}",
-  "desktop.builtinConnectionEditUnavailable": "لا يمكن تحرير اتصالات العرض المدمجة",
-  "desktop.builtinConnectionDeleteUnavailable": "لا يمكن حذف اتصالات العرض المدمجة",
+  "desktop.builtinConnectionEditUnavailable":
+    "لا يمكن تحرير اتصالات العرض المدمجة",
+  "desktop.builtinConnectionDeleteUnavailable":
+    "لا يمكن حذف اتصالات العرض المدمجة",
   "desktop.connectionCopyName": "نسخة {name}",
   "desktop.connectionCopyNameNumbered": "نسخة {name} {number}",
   "desktop.connectionDuplicated": "تم تكرار {name}",
   "desktop.connectionDeleted": "تم حذف {name}",
   "desktop.connectionEdited": "تم تحرير {name}",
-  "desktop.groupCreatedToast": "تم إنشاء المجموعة \"{name}\"",
-  "desktop.groupDeletedToast": "تم حذف المجموعة \"{name}\"",
-  "desktop.groupRenamedToast": "تمت إعادة تسمية المجموعة إلى \"{name}\"",
+  "desktop.groupCreatedToast": 'تم إنشاء المجموعة "{name}"',
+  "desktop.groupDeletedToast": 'تم حذف المجموعة "{name}"',
+  "desktop.groupRenamedToast": 'تمت إعادة تسمية المجموعة إلى "{name}"',
   "desktop.sftpUploadComplete": "تم رفع {name}",
   "desktop.sftpOverwriteTitle": "استبدال الملف الموجود؟",
   "desktop.sftpOverwriteDetail": "يوجد ملف باسم {name} في هذا المجلد بالفعل.",
@@ -269,7 +288,8 @@ export const ar = {
   "team.auditCommandRecorded": "Command recorded",
   "team.auditAccessRequestApproved": "Access request approved",
   "team.auditAccessRequestRejected": "Access request rejected",
-  "team.productionElevationDetail": "Incident commander role for gateway triage",
+  "team.productionElevationDetail":
+    "Incident commander role for gateway triage",
   "web.adminNavigation": "تنقل إدارة JoeSSH",
   "web.adminConsole": "وحدة تحكم الإدارة",
   "web.skipToContent": "تخطي إلى المحتوى الرئيسي",
@@ -308,17 +328,21 @@ export const ar = {
   "web.storage": "التخزين",
   "mobile.kicker": "JoeSSH Mobile",
   "mobile.title": "المزامنة والوصول الطارئ",
-  "mobile.subtitle": "سجل هذا الهاتف، وعاين سياق الطرفية، واحتفظ بمسار استرداد قريب.",
+  "mobile.subtitle":
+    "سجل هذا الهاتف، وعاين سياق الطرفية، واحتفظ بمسار استرداد قريب.",
   "mobile.registering": "جار تسجيل الجهاز",
   "mobile.registeringMessage": "جار إنشاء هوية جوال للمزامنة والتسليم الطارئ.",
   "mobile.previewing": "جار سحب معاينة المزامنة",
-  "mobile.previewingMessage": "جار جلب الملفات الشخصية والجلسات وحالة المؤشر ومسارات الاسترداد الموثوقة.",
+  "mobile.previewingMessage":
+    "جار جلب الملفات الشخصية والجلسات وحالة المؤشر ومسارات الاسترداد الموثوقة.",
   "mobile.ready": "المعاينة جاهزة",
   "mobile.readyMessage": "تم تسجيل هذا الجهاز وأحدث استجابة للمزامنة متاحة.",
   "mobile.offline": "الاحتياطي دون اتصال نشط",
-  "mobile.offlineMessage": "المزامنة المباشرة غير متاحة. لم يتم استلام بيانات مساحة عمل مباشرة أو مخزنة مؤقتًا.",
+  "mobile.offlineMessage":
+    "المزامنة المباشرة غير متاحة. لم يتم استلام بيانات مساحة عمل مباشرة أو مخزنة مؤقتًا.",
   "mobile.readyToConnect": "جاهز للاتصال",
-  "mobile.readyToConnectMessage": "ابدأ بتسجيل هذا الهاتف وسحب معاينة آمنة من مزامنة JoeSSH.",
+  "mobile.readyToConnectMessage":
+    "ابدأ بتسجيل هذا الهاتف وسحب معاينة آمنة من مزامنة JoeSSH.",
   "mobile.profiles": "الملفات الشخصية",
   "mobile.openSessions": "الجلسات المفتوحة",
   "mobile.pendingChanges": "التغييرات المسحوبة",
@@ -338,10 +362,12 @@ export const ar = {
   "mobile.registerPull": "تسجيل وسحب المعاينة",
   "desktop.error.boundary.title": "حدث خطأ ما",
   "desktop.error.boundary.reload": "إعادة تحميل",
-  "desktop.error.boundary.message": "أعد تحميل JoeSSH أو تواصل مع الدعم إذا استمرت المشكلة.",
+  "desktop.error.boundary.message":
+    "أعد تحميل JoeSSH أو تواصل مع الدعم إذا استمرت المشكلة.",
   "mobile.error.boundary.title": "حدث خطأ ما",
   "mobile.error.boundary.reload": "إعادة تحميل",
-  "mobile.error.boundary.message": "أعد تحميل JoeSSH أو تواصل مع الدعم إذا استمرت المشكلة.",
+  "mobile.error.boundary.message":
+    "أعد تحميل JoeSSH أو تواصل مع الدعم إذا استمرت المشكلة.",
   "desktop.paletteRecent": "الأخيرة",
   "desktop.paletteRecentBadge": "حديث",
   "desktop.paletteConnections": "الاتصالات",
@@ -392,7 +418,15 @@ export const ar = {
   "team.accessRequestStatus": "حالة طلب وصول الفريق",
   "desktop.restoreWorkbench": "استعادة مساحة العمل",
   "desktop.gettingStarted": "البدء",
-  "desktop.surfaceGuide": "يفتح تطبيق سطح المكتب جلسات SSH؛ وتراقب وحدة إدارة الويب المزامنة والفرق؛ ويعمل تطبيق الجوال كأداة مرافقة.",
-  "desktop.telemetryPrivacyHint": "اختياري ومعطل افتراضيًا. لا يرسل أبدًا المضيفين أو أسماء المستخدمين أو الأوامر أو المفاتيح أو الرموز المميزة أو المسارات أو مخرجات الطرفية.",
-  "team.reviewedBy": "راجعه {reviewer}"
+  "desktop.surfaceGuide":
+    "يفتح تطبيق سطح المكتب جلسات SSH وSFTP محلية؛ وتعرض وحدة إدارة الويب لقطات مزامنة للقراءة فقط؛ وتطبيق الجوال معاينة للمزامنة ولا يشغّل SSH أو SFTP.",
+  "desktop.telemetryPrivacyHint":
+    "اختياري ومعطل افتراضيًا. لا يرسل أبدًا المضيفين أو أسماء المستخدمين أو الأوامر أو المفاتيح أو الرموز المميزة أو المسارات أو مخرجات الطرفية.",
+  "desktop.thirdPartyNotices": "التراخيص والإشعارات",
+  "desktop.thirdPartyNoticesHint":
+    "راجع نصوص التراخيص والإشعارات المضمّنة مع هذا الإصدار المحدد من التطبيق.",
+  "desktop.thirdPartyNoticesLoading": "جارٍ تحميل التراخيص…",
+  "desktop.thirdPartyNoticesUnavailable":
+    "إشعارات التراخيص غير متاحة في هذا الإصدار.",
+  "team.reviewedBy": "راجعه {reviewer}",
 } as const;

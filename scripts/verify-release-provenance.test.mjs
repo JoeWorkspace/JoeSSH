@@ -1,14 +1,30 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
+import {
+  canonicalCargoSbomFixture,
+  canonicalNpmSbomFixture,
+  publishedLicenseBundleFixture,
+} from "./release-sbom-test-fixtures.mjs";
 
-const GENERATOR_PATH = fileURLToPath(new URL("./generate-release-provenance.mjs", import.meta.url));
-const VERIFIER_PATH = fileURLToPath(new URL("./verify-release-provenance.mjs", import.meta.url));
+const GENERATOR_PATH = fileURLToPath(
+  new URL("./generate-release-provenance.mjs", import.meta.url),
+);
+const VERIFIER_PATH = fileURLToPath(
+  new URL("./verify-release-provenance.mjs", import.meta.url),
+);
 
 function createFixture(t) {
   const root = mkdtempSync(join(tmpdir(), "release-provenance-"));
@@ -16,58 +32,122 @@ function createFixture(t) {
     rmSync(root, { recursive: true, force: true });
   });
 
-  writeFile(root, "package.json", JSON.stringify({ version: "0.1.0-beta.1" }));
-  writeFile(root, "package-lock.json", JSON.stringify({
-    lockfileVersion: 3,
-    packages: {
-      "node_modules/@tauri-apps/api": { version: "2.5.0" },
-      "node_modules/@tauri-apps/cli": { version: "2.11.3" },
-    },
-  }));
-  writeFile(root, "Cargo.lock", cargoLockFixture([["atlasterm-sync", "0.1.0-beta.1"]]));
-  writeFile(root, "apps/desktop/src-tauri/Cargo.lock", cargoLockFixture([["tauri", "2.8.5"]]));
-  writeFile(root, "docs/release-notes/0.1.0-beta.1.md", "# JoeSSH 0.1.0-beta.1\n");
+  writeFile(
+    root,
+    "package.json",
+    JSON.stringify({ name: "atlasterm", version: "0.1.0-beta.1" }),
+  );
+  writeFile(
+    root,
+    "package-lock.json",
+    JSON.stringify({
+      lockfileVersion: 3,
+      packages: {
+        "node_modules/@tauri-apps/api": { version: "2.5.0" },
+        "node_modules/@tauri-apps/cli": { version: "2.11.3" },
+      },
+    }),
+  );
+  writeFile(
+    root,
+    "Cargo.lock",
+    cargoLockFixture([["atlasterm-sync", "0.1.0-beta.1"]]),
+  );
+  writeFile(
+    root,
+    "apps/desktop/src-tauri/Cargo.lock",
+    cargoLockFixture([["tauri", "2.8.5"]]),
+  );
+  writeFile(
+    root,
+    "docs/release-notes/0.1.0-beta.1.md",
+    "# JoeSSH 0.1.0-beta.1\n",
+  );
   writeReleaseSbomFixture(root);
+  writePublishedLicenseFixture(root);
   const desktopArtifacts = [
-    ["desktop installer", "reports/release/desktop/JoeSSH_0.1.0-beta.1_x64-setup.exe"],
+    [
+      "desktop installer",
+      "reports/release/desktop/JoeSSH_0.1.0-beta.1_x64-setup.exe",
+    ],
     ["macos dmg", "reports/release/desktop/JoeSSH_0.1.0-beta.1_aarch64.dmg"],
-    ["linux appimage", "reports/release/desktop/JoeSSH_0.1.0-beta.1_amd64.AppImage"],
+    [
+      "linux appimage",
+      "reports/release/desktop/JoeSSH_0.1.0-beta.1_amd64.AppImage",
+    ],
   ];
   for (const [content, path] of desktopArtifacts) {
     writeFile(root, path, content);
   }
-  writeFile(root, "reports/release/web/joessh-web-admin-0.1.0-beta.1.zip", "web bundle");
-  writeFile(root, "reports/release/sync/joessh-sync-0.1.0-beta.1-linux-x64", "sync binary");
+  writeFile(
+    root,
+    "reports/release/web/joessh-web-admin-0.1.0-beta.1.zip",
+    "web bundle",
+  );
+  writeFile(
+    root,
+    "reports/release/sync/joessh-sync-0.1.0-beta.1-linux-x64",
+    "sync binary",
+  );
   const desktopEvidence = JSON.stringify({
     artifacts: desktopArtifacts.map(([content, path]) => ({
       path,
-      platform: path.endsWith(".exe") ? "windows" : path.endsWith(".dmg") ? "macos" : "linux",
+      platform: path.endsWith(".exe")
+        ? "windows"
+        : path.endsWith(".dmg")
+          ? "macos"
+          : "linux",
       sha256: sha256(content),
     })),
   });
-  writeFile(root, "reports/release/desktop/release-evidence.json", desktopEvidence);
+  writeFile(
+    root,
+    "reports/release/desktop/release-evidence.json",
+    desktopEvidence,
+  );
   const desktopEvidenceSource = desktopEvidenceSourceFixture();
-  writeFile(root, "reports/release/desktop/release-evidence-source.json", desktopEvidenceSource);
+  writeFile(
+    root,
+    "reports/release/desktop/release-evidence-source.json",
+    desktopEvidenceSource,
+  );
   const syncEvidence = JSON.stringify({
     binary: "reports/release/sync/joessh-sync-0.1.0-beta.1-linux-x64",
     binaryManifest: "reports/release/sync/SHA256SUMS.txt",
     binarySha256: sha256("sync binary"),
   });
-  writeFile(root, "reports/release/sync/backup-restore-smoke.json", syncEvidence);
-  writeManifest(root, "reports/release/desktop/SHA256SUMS.txt", desktopArtifacts);
-  writeManifest(root, "reports/release/desktop/release-evidence-SHA256SUMS.txt", [
-    [desktopEvidence, "reports/release/desktop/release-evidence.json"],
-    [desktopEvidenceSource, "reports/release/desktop/release-evidence-source.json"],
-  ]);
+  writeFile(
+    root,
+    "reports/release/sync/backup-restore-smoke.json",
+    syncEvidence,
+  );
+  writeManifest(
+    root,
+    "reports/release/desktop/SHA256SUMS.txt",
+    desktopArtifacts,
+  );
+  writeManifest(
+    root,
+    "reports/release/desktop/release-evidence-SHA256SUMS.txt",
+    [
+      [desktopEvidence, "reports/release/desktop/release-evidence.json"],
+      [
+        desktopEvidenceSource,
+        "reports/release/desktop/release-evidence-source.json",
+      ],
+    ],
+  );
   writeManifest(root, "reports/release/web/SHA256SUMS.txt", [
     ["web bundle", "reports/release/web/joessh-web-admin-0.1.0-beta.1.zip"],
   ]);
   writeManifest(root, "reports/release/sync/SHA256SUMS.txt", [
     ["sync binary", "reports/release/sync/joessh-sync-0.1.0-beta.1-linux-x64"],
   ]);
-  writeManifest(root, "reports/release/sync/backup-restore-smoke-SHA256SUMS.txt", [
-    [syncEvidence, "reports/release/sync/backup-restore-smoke.json"],
-  ]);
+  writeManifest(
+    root,
+    "reports/release/sync/backup-restore-smoke-SHA256SUMS.txt",
+    [[syncEvidence, "reports/release/sync/backup-restore-smoke.json"]],
+  );
 
   return root;
 }
@@ -106,12 +186,34 @@ function writeReleaseSbomFixture(root) {
   const sbomFiles = [
     ["reports/release/npm-desktop-sbom.cdx.json", cyclonedxFixture("desktop")],
     ["reports/release/npm-web-sbom.cdx.json", cyclonedxFixture("web")],
-    ["reports/release/cargo-metadata.json", cargoMetadataFixture("atlasterm-sync")],
-    ["reports/release/tauri-cargo-metadata.json", cargoMetadataFixture("atlasterm-desktop-shell")],
+    [
+      "reports/release/cargo-workspace-sbom.cdx.json",
+      canonicalCargoSbomFixture(
+        "atlasterm-rust-workspace",
+        "All non-development packages reachable from the Rust workspace members, including normal and build dependencies.",
+      ),
+    ],
+    [
+      "reports/release/tauri-cargo-sbom.cdx.json",
+      canonicalCargoSbomFixture(
+        "atlasterm-tauri-shell",
+        "All non-development packages reachable from the Tauri shell workspace members, including normal and build dependencies.",
+      ),
+    ],
   ];
   for (const [path, content] of sbomFiles) {
     writeFile(root, path, content);
   }
+  writeFile(
+    root,
+    "reports/internal/release-inputs/cargo-metadata.json",
+    cargoMetadataFixture("atlasterm-sync"),
+  );
+  writeFile(
+    root,
+    "reports/internal/release-inputs/tauri-cargo-metadata.json",
+    cargoMetadataFixture("atlasterm-desktop-shell"),
+  );
   writeManifest(
     root,
     "reports/release/SBOM-SHA256SUMS.txt",
@@ -119,13 +221,27 @@ function writeReleaseSbomFixture(root) {
   );
 }
 
+function writePublishedLicenseFixture(root) {
+  const { manifestText: manifest, noticesText: notices } =
+    publishedLicenseBundleFixture();
+  writeFile(
+    root,
+    "reports/release/third-party-licenses/manifest.json",
+    manifest,
+  );
+  writeFile(
+    root,
+    "reports/release/third-party-licenses/THIRD-PARTY-NOTICES.txt",
+    notices,
+  );
+  writeManifest(root, "reports/release/THIRD-PARTY-LICENSES-SHA256SUMS.txt", [
+    [notices, "reports/release/third-party-licenses/THIRD-PARTY-NOTICES.txt"],
+    [manifest, "reports/release/third-party-licenses/manifest.json"],
+  ]);
+}
+
 function cyclonedxFixture(name) {
-  return JSON.stringify({
-    bomFormat: "CycloneDX",
-    specVersion: "1.5",
-    metadata: { component: { name } },
-    components: [{ name: `${name}-dependency`, version: "1.0.0" }],
-  });
+  return canonicalNpmSbomFixture(name);
 }
 
 function cargoMetadataFixture(name) {
@@ -234,13 +350,17 @@ function runGenerator(root, env = createFakeCommands(root)) {
 }
 
 function runVerifier(root, env = createFakeCommands(root), extraArgs = []) {
-  return spawnSync(process.execPath, [VERIFIER_PATH, "--root", root, ...extraArgs], {
-    encoding: "utf8",
-    env: {
-      ...process.env,
-      ...env,
+  return spawnSync(
+    process.execPath,
+    [VERIFIER_PATH, "--root", root, ...extraArgs],
+    {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        ...env,
+      },
     },
-  });
+  );
 }
 
 test("generates and verifies release provenance for staged release artifacts", (t) => {
@@ -250,24 +370,42 @@ test("generates and verifies release provenance for staged release artifacts", (
   const generated = runGenerator(root, env);
 
   assert.equal(generated.status, 0, generated.stdout + generated.stderr);
-  assert.equal(existsSync(join(root, "reports", "release", "release-provenance.json")), true);
-  assert.equal(existsSync(join(root, "reports", "release", "release-provenance-SHA256SUMS.txt")), true);
+  assert.equal(
+    existsSync(join(root, "reports", "release", "release-provenance.json")),
+    true,
+  );
+  assert.equal(
+    existsSync(
+      join(root, "reports", "release", "release-provenance-SHA256SUMS.txt"),
+    ),
+    true,
+  );
 
-  const provenance = JSON.parse(readFile(root, "reports/release/release-provenance.json"));
+  const provenance = JSON.parse(
+    readFile(root, "reports/release/release-provenance.json"),
+  );
   assert.equal(provenance.provenanceVersion, 1);
   assert.equal(provenance.releaseTag, "v0.1.0-beta.1");
   assert.equal(provenance.source.gitCommit, "abc123");
-  assert.equal(provenance.source.repository, "https://github.com/joessh/joessh.git");
-  assert.equal(provenance.source.gitFsckStrict, true);
-  assert.equal(provenance.releaseNotes.path, "docs/release-notes/0.1.0-beta.1.md");
-  assert.deepEqual(
-    provenance.lockfiles.map((entry) => entry.path).sort(),
-    ["Cargo.lock", "apps/desktop/src-tauri/Cargo.lock", "package-lock.json"],
+  assert.equal(
+    provenance.source.repository,
+    "https://github.com/joessh/joessh.git",
   );
+  assert.equal(provenance.source.gitFsckStrict, true);
+  assert.equal(
+    provenance.releaseNotes.path,
+    "docs/release-notes/0.1.0-beta.1.md",
+  );
+  assert.deepEqual(provenance.lockfiles.map((entry) => entry.path).sort(), [
+    "Cargo.lock",
+    "apps/desktop/src-tauri/Cargo.lock",
+    "package-lock.json",
+  ]);
   assert.deepEqual(
     provenance.checksumManifests.map((entry) => entry.path).sort(),
     [
       "reports/release/SBOM-SHA256SUMS.txt",
+      "reports/release/THIRD-PARTY-LICENSES-SHA256SUMS.txt",
       "reports/release/desktop/SHA256SUMS.txt",
       "reports/release/desktop/release-evidence-SHA256SUMS.txt",
       "reports/release/sync/SHA256SUMS.txt",
@@ -284,21 +422,36 @@ test("generates and verifies release provenance for staged release artifacts", (
 
   const verified = runVerifier(root, env);
   assert.equal(verified.status, 0, verified.stdout + verified.stderr);
-  assert.match(verified.stdout, /Release provenance verified for v0\.1\.0-beta\.1/);
+  assert.match(
+    verified.stdout,
+    /Release provenance verified for v0\.1\.0-beta\.1/,
+  );
 });
 
 test("rejects release provenance generation without Desktop evidence source coverage", (t) => {
   const root = createFixture(t);
   const env = createFakeCommands(root);
-  rmSync(join(root, "reports", "release", "desktop", "release-evidence-source.json"));
-  writeManifest(root, "reports/release/desktop/release-evidence-SHA256SUMS.txt", [
-    [readFile(root, "reports/release/desktop/release-evidence.json"), "reports/release/desktop/release-evidence.json"],
-  ]);
+  rmSync(
+    join(root, "reports", "release", "desktop", "release-evidence-source.json"),
+  );
+  writeManifest(
+    root,
+    "reports/release/desktop/release-evidence-SHA256SUMS.txt",
+    [
+      [
+        readFile(root, "reports/release/desktop/release-evidence.json"),
+        "reports/release/desktop/release-evidence.json",
+      ],
+    ],
+  );
 
   const generated = runGenerator(root, env);
 
   assert.equal(generated.status, 1);
-  assert.match(generated.stderr, /Desktop formal evidence source sidecar must be covered/);
+  assert.match(
+    generated.stderr,
+    /Desktop formal evidence source sidecar must be covered/,
+  );
 });
 
 test("rejects stale artifact hashes after provenance generation", (t) => {
@@ -306,11 +459,18 @@ test("rejects stale artifact hashes after provenance generation", (t) => {
   const env = createFakeCommands(root);
   assert.equal(runGenerator(root, env).status, 0);
 
-  writeFile(root, "reports/release/web/joessh-web-admin-0.1.0-beta.1.zip", "mutated web bundle");
+  writeFile(
+    root,
+    "reports/release/web/joessh-web-admin-0.1.0-beta.1.zip",
+    "mutated web bundle",
+  );
   const verified = runVerifier(root, env);
 
   assert.equal(verified.status, 1);
-  assert.match(verified.stderr, /artifact hash mismatch for reports\/release\/web\/joessh-web-admin-0\.1\.0-beta\.1\.zip/);
+  assert.match(
+    verified.stderr,
+    /artifact hash mismatch for reports\/release\/web\/joessh-web-admin-0\.1\.0-beta\.1\.zip/,
+  );
 });
 
 test("rejects provenance without checksum coverage for the provenance file", (t) => {
@@ -327,13 +487,27 @@ test("rejects provenance without checksum coverage for the provenance file", (t)
 
 test("rejects generation when required Public Beta checksum manifests are missing", (t) => {
   const root = createFixture(t);
-  rmSync(join(root, "reports", "release", "sync", "backup-restore-smoke-SHA256SUMS.txt"));
+  rmSync(
+    join(
+      root,
+      "reports",
+      "release",
+      "sync",
+      "backup-restore-smoke-SHA256SUMS.txt",
+    ),
+  );
 
   const generated = runGenerator(root);
 
   assert.equal(generated.status, 1);
-  assert.match(generated.stderr, /Required Public Beta checksum manifest\(s\) missing/);
-  assert.match(generated.stderr, /reports\/release\/sync\/backup-restore-smoke-SHA256SUMS\.txt/);
+  assert.match(
+    generated.stderr,
+    /Required Public Beta checksum manifest\(s\) missing/,
+  );
+  assert.match(
+    generated.stderr,
+    /reports\/release\/sync\/backup-restore-smoke-SHA256SUMS\.txt/,
+  );
 });
 
 test("rejects unexpected staged checksum manifests after provenance generation", (t) => {
@@ -348,7 +522,10 @@ test("rejects unexpected staged checksum manifests after provenance generation",
   const verified = runVerifier(root, env);
 
   assert.equal(verified.status, 1);
-  assert.match(verified.stderr, /unexpected Public Beta checksum manifest is staged/);
+  assert.match(
+    verified.stderr,
+    /unexpected Public Beta checksum manifest is staged/,
+  );
   assert.match(verified.stderr, /reports\/release\/extra-SHA256SUMS\.txt/);
 });
 
@@ -368,10 +545,16 @@ test("can skip current Git checks for draft dry-runs while preserving content ch
 test("rejects generation when git fsck --strict fails", (t) => {
   const root = createFixture(t);
 
-  const generated = runGenerator(root, createFakeCommands(root, { fsckFails: true }));
+  const generated = runGenerator(
+    root,
+    createFakeCommands(root, { fsckFails: true }),
+  );
 
   assert.equal(generated.status, 1);
-  assert.match(generated.stderr, /git fsck --strict must pass to generate release provenance/);
+  assert.match(
+    generated.stderr,
+    /git fsck --strict must pass to generate release provenance/,
+  );
 });
 
 function writeFile(root, relativePath, content) {
@@ -388,7 +571,9 @@ function writeManifest(root, relativePath, entries) {
   writeFile(
     root,
     relativePath,
-    entries.map(([content, artifactPath]) => `${sha256(content)}  ${artifactPath}`).join("\n") + "\n",
+    entries
+      .map(([content, artifactPath]) => `${sha256(content)}  ${artifactPath}`)
+      .join("\n") + "\n",
   );
 }
 
@@ -398,6 +583,9 @@ function sha256(value) {
 
 function cargoLockFixture(packages) {
   return packages
-    .map(([name, version]) => `[[package]]\nname = "${name}"\nversion = "${version}"\nsource = "registry+https://github.com/rust-lang/crates.io-index"\n`)
+    .map(
+      ([name, version]) =>
+        `[[package]]\nname = "${name}"\nversion = "${version}"\nsource = "registry+https://github.com/rust-lang/crates.io-index"\n`,
+    )
     .join("\n");
 }

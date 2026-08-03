@@ -4,26 +4,26 @@
   "short_name": "JoeSSH",
   "lang": "en",
   "dir": "ltr",
-  "description": "SSH terminal, SFTP, team access, and session management.",
+  "description": "SSH terminal, SFTP, port forwarding, and local session management.",
   "description_localized": {
     "ar": {
-      "value": "طرفية SSH وSFTP ووصول الفريق وإدارة الجلسات.",
+      "value": "طرفية SSH وSFTP وإعادة توجيه المنافذ وإدارة الجلسات المحلية.",
       "dir": "rtl"
     },
-    "de": "SSH-Terminal, SFTP, Teamzugriff und Sitzungsverwaltung.",
-    "en": "SSH terminal, SFTP, team access, and session management.",
-    "es": "Terminal SSH, SFTP, acceso de equipo y gestión de sesiones.",
-    "fr": "Terminal SSH, SFTP, accès d'équipe et gestion des sessions.",
-    "hi": "SSH टर्मिनल, SFTP, टीम एक्सेस और सत्र प्रबंधन.",
-    "id": "Terminal SSH, SFTP, akses tim, dan manajemen sesi.",
-    "ja": "SSH ターミナル、SFTP、チームアクセス、セッション管理。",
-    "ko": "SSH 터미널, SFTP, 팀 접근 및 세션 관리.",
-    "pt-BR": "Terminal SSH, SFTP, acesso da equipe e gerenciamento de sessões.",
-    "ru": "SSH-терминал, SFTP, командный доступ и управление сеансами.",
-    "th": "เทอร์มินัล SSH, SFTP, การเข้าถึงทีม และการจัดการเซสชัน",
-    "vi": "Thiết bị đầu cuối SSH, SFTP, quyền truy cập nhóm và quản lý phiên.",
-    "zh-CN": "SSH 终端、SFTP、团队访问和会话管理。",
-    "zh-TW": "SSH 終端、SFTP、團隊存取和工作階段管理。"
+    "de": "SSH-Terminal, SFTP, Portweiterleitung und lokale Sitzungsverwaltung.",
+    "en": "SSH terminal, SFTP, port forwarding, and local session management.",
+    "es": "Terminal SSH, SFTP, reenvío de puertos y gestión de sesiones locales.",
+    "fr": "Terminal SSH, SFTP, redirection de ports et gestion des sessions locales.",
+    "hi": "SSH टर्मिनल, SFTP, पोर्ट फ़ॉरवर्डिंग और स्थानीय सत्र प्रबंधन।",
+    "id": "Terminal SSH, SFTP, penerusan port, dan manajemen sesi lokal.",
+    "ja": "SSH ターミナル、SFTP、ポートフォワーディング、ローカルセッション管理。",
+    "ko": "SSH 터미널, SFTP, 포트 포워딩 및 로컬 세션 관리.",
+    "pt-BR": "Terminal SSH, SFTP, encaminhamento de portas e gerenciamento de sessões locais.",
+    "ru": "SSH-терминал, SFTP, перенаправление портов и управление локальными сеансами.",
+    "th": "เทอร์มินัล SSH, SFTP, การส่งต่อพอร์ต และการจัดการเซสชันในเครื่อง",
+    "vi": "Thiết bị đầu cuối SSH, SFTP, chuyển tiếp cổng và quản lý phiên cục bộ.",
+    "zh-CN": "SSH 终端、SFTP、端口转发和本地会话管理。",
+    "zh-TW": "SSH 終端、SFTP、連接埠轉送和本機工作階段管理。"
   },
   "start_url": "/",
   "display": "standalone",
@@ -135,52 +135,6 @@
         "zh-TW": "SFTP"
       },
       "url": "/?panel=sftp",
-      "icons": [
-        {
-          "src": "/icons/icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "Team Access",
-      "name_localized": {
-        "ar": { "value": "وصول الفريق", "dir": "rtl" },
-        "de": "Teamzugriff",
-        "en": "Team Access",
-        "es": "Acceso del equipo",
-        "fr": "Accès d'équipe",
-        "hi": "टीम पहुंच",
-        "id": "Akses tim",
-        "ja": "チームアクセス",
-        "ko": "팀 액세스",
-        "pt-BR": "Acesso da equipe",
-        "ru": "Командный доступ",
-        "th": "การเข้าถึงทีม",
-        "vi": "Quyền truy cập nhóm",
-        "zh-CN": "团队访问",
-        "zh-TW": "團隊存取"
-      },
-      "short_name": "Team",
-      "short_name_localized": {
-        "ar": { "value": "الفريق", "dir": "rtl" },
-        "de": "Team",
-        "en": "Team",
-        "es": "Equipo",
-        "fr": "Équipe",
-        "hi": "टीम",
-        "id": "Tim",
-        "ja": "チーム",
-        "ko": "팀",
-        "pt-BR": "Equipe",
-        "ru": "Команда",
-        "th": "ทีม",
-        "vi": "Nhóm",
-        "zh-CN": "团队",
-        "zh-TW": "團隊"
-      },
-      "url": "/?panel=team",
       "icons": [
         {
           "src": "/icons/icon-192.png",

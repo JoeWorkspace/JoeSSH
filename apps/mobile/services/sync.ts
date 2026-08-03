@@ -1,8 +1,13 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import Constants from 'expo-constants';
-import { Platform } from 'react-native';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Constants from "expo-constants";
+import { Platform } from "react-native";
 
-import type { RegisteredDevice, SyncConflict, SyncError, SyncPreview } from '@/models/sync';
+import type {
+  RegisteredDevice,
+  SyncConflict,
+  SyncError,
+  SyncPreview,
+} from "@/models/sync";
 
 type DeviceRegistrationRequest = {
   installId: string;
@@ -37,10 +42,14 @@ export type SyncCheckpointResult = {
 
 const REQUEST_TIMEOUT_MS = 8_000;
 const MAX_PULL_PAGES = 20;
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-export const MOBILE_SYNC_INSTALL_ID_STORAGE_KEY = 'atlasterm.mobile.sync.install-id.v1';
-export const MOBILE_SYNC_PENDING_PRESENCE_STORAGE_KEY = 'atlasterm.mobile.sync.pending-presence.v1';
-export const MOBILE_SYNC_REGISTRATION_STORAGE_KEY = 'atlasterm.mobile.sync.registration.v1';
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export const MOBILE_SYNC_INSTALL_ID_STORAGE_KEY =
+  "atlasterm.mobile.sync.install-id.v1";
+export const MOBILE_SYNC_PENDING_PRESENCE_STORAGE_KEY =
+  "atlasterm.mobile.sync.pending-presence.v1";
+export const MOBILE_SYNC_REGISTRATION_STORAGE_KEY =
+  "atlasterm.mobile.sync.registration.v1";
 
 type StoredSyncRegistration = {
   apiBaseUrl: string;
@@ -77,37 +86,50 @@ export function toSyncError(error: unknown): SyncError {
     return error;
   }
 
-  if (error instanceof Error && /network|failed to fetch|load failed/.test(error.message.toLowerCase())) {
+  if (
+    error instanceof Error &&
+    /network|failed to fetch|load failed/.test(error.message.toLowerCase())
+  ) {
     return {
-      code: 'offline',
-      title: 'Sync unavailable',
-      message: 'JoeSSH could not reach the configured sync service. No live workspace data was received.',
+      code: "offline",
+      title: "Sync unavailable",
+      message:
+        "JoeSSH could not reach the configured sync service. No live workspace data was received.",
       recoverable: true,
     };
   }
 
-  if (error instanceof Error && error.message.toLowerCase().includes('timeout')) {
+  if (
+    error instanceof Error &&
+    error.message.toLowerCase().includes("timeout")
+  ) {
     return {
-      code: 'timeout',
-      title: 'Sync timed out',
-      message: 'The sync service did not answer in time. No live workspace data was received.',
+      code: "timeout",
+      title: "Sync timed out",
+      message:
+        "The sync service did not answer in time. No live workspace data was received.",
       recoverable: true,
     };
   }
 
-  if (error instanceof Error && (error.message.includes('401') || error.message.includes('403'))) {
+  if (
+    error instanceof Error &&
+    (error.message.includes("401") || error.message.includes("403"))
+  ) {
     return {
-      code: 'unauthorized',
-      title: 'Sync authorization failed',
-      message: 'The configured sync credentials were rejected. Update the preview configuration before retrying.',
+      code: "unauthorized",
+      title: "Sync authorization failed",
+      message:
+        "The configured sync credentials were rejected. Update the preview configuration before retrying.",
       recoverable: false,
     };
   }
 
   return {
-    code: 'unknown',
-    title: 'Sync interrupted',
-    message: 'The preview could not be refreshed. Try again when the service connection is stable.',
+    code: "unknown",
+    title: "Sync interrupted",
+    message:
+      "The preview could not be refreshed. Try again when the service connection is stable.",
     recoverable: true,
   };
 }
@@ -117,20 +139,20 @@ export function asSyncError(error: unknown): SyncError {
 }
 
 export function isSyncError(error: unknown): error is SyncError {
-  if (typeof error !== 'object' || error === null) {
+  if (typeof error !== "object" || error === null) {
     return false;
   }
 
   const candidate = error as Partial<SyncError>;
 
   return (
-    (candidate.code === 'offline' ||
-      candidate.code === 'timeout' ||
-      candidate.code === 'unauthorized' ||
-      candidate.code === 'unknown') &&
-    typeof candidate.title === 'string' &&
-    typeof candidate.message === 'string' &&
-    typeof candidate.recoverable === 'boolean'
+    (candidate.code === "offline" ||
+      candidate.code === "timeout" ||
+      candidate.code === "unauthorized" ||
+      candidate.code === "unknown") &&
+    typeof candidate.title === "string" &&
+    typeof candidate.message === "string" &&
+    typeof candidate.recoverable === "boolean"
   );
 }
 
@@ -138,7 +160,7 @@ async function requestJson(path: string, init?: RequestInit): Promise<unknown> {
   const apiBaseUrl = getApiBaseUrl();
 
   if (!apiBaseUrl) {
-    throw new Error('network: sync API base URL is not configured');
+    throw new Error("network: sync API base URL is not configured");
   }
 
   const controller = new AbortController();
@@ -161,10 +183,17 @@ async function requestJson(path: string, init?: RequestInit): Promise<unknown> {
   } catch (error) {
     // On web, an aborted fetch rejects with a DOMException (name 'AbortError'),
     // which is not `instanceof Error`; on native it is a plain Error.
-    if (typeof error === 'object' && error !== null && (error as { name?: string }).name === 'AbortError') {
-      throw new Error(`timeout: sync API request exceeded ${REQUEST_TIMEOUT_MS}ms`, {
-        cause: error,
-      });
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      (error as { name?: string }).name === "AbortError"
+    ) {
+      throw new Error(
+        `timeout: sync API request exceeded ${REQUEST_TIMEOUT_MS}ms`,
+        {
+          cause: error,
+        },
+      );
     }
 
     throw error;
@@ -174,7 +203,10 @@ async function requestJson(path: string, init?: RequestInit): Promise<unknown> {
 }
 
 export function getApiBaseUrl() {
-  const apiBaseUrl = process.env.EXPO_PUBLIC_ATLASTERM_SYNC_URL?.trim().replace(/\/+$/, '');
+  const apiBaseUrl = process.env.EXPO_PUBLIC_ATLASTERM_SYNC_URL?.trim().replace(
+    /\/+$/,
+    "",
+  );
 
   return apiBaseUrl || undefined;
 }
@@ -185,14 +217,17 @@ export function getApiAuthToken() {
   return token || undefined;
 }
 
-function getRequestHeaders(initHeaders?: HeadersInit, hasBody = false): Record<string, string> {
+function getRequestHeaders(
+  initHeaders?: HeadersInit,
+  hasBody = false,
+): Record<string, string> {
   const headers: Record<string, string> = {
-    Accept: 'application/json',
+    Accept: "application/json",
   };
   const authToken = getApiAuthToken();
 
   if (hasBody) {
-    headers['Content-Type'] = 'application/json';
+    headers["Content-Type"] = "application/json";
   }
 
   if (authToken) {
@@ -219,7 +254,9 @@ function getRequestHeaders(initHeaders?: HeadersInit, hasBody = false): Record<s
     return headers;
   }
 
-  for (const [name, value] of Object.entries(initHeaders as Record<string, string>)) {
+  for (const [name, value] of Object.entries(
+    initHeaders as Record<string, string>,
+  )) {
     headers[name] = value;
   }
 
@@ -227,78 +264,101 @@ function getRequestHeaders(initHeaders?: HeadersInit, hasBody = false): Record<s
 }
 
 function hasHeaderForEach(value: HeadersInit): value is Headers {
-  return typeof (value as Headers).forEach === 'function';
+  return typeof (value as Headers).forEach === "function";
 }
 
-function parseRegisterDeviceResponse(value: unknown): SyncRegisterDeviceResponse {
-  const response = requireObject(value, 'register');
+function parseRegisterDeviceResponse(
+  value: unknown,
+): SyncRegisterDeviceResponse {
+  const response = requireObject(value, "register");
 
   return {
-    device_id: requireUuidString(response, 'device_id', 'register'),
-    server_time: requireString(response, 'server_time', 'register'),
-    sync_cursor: requireString(response, 'sync_cursor', 'register'),
+    device_id: requireUuidString(response, "device_id", "register"),
+    server_time: requireString(response, "server_time", "register"),
+    sync_cursor: requireString(response, "sync_cursor", "register"),
   };
 }
 
 function parsePushResponse(value: unknown): SyncPushResponse {
-  const response = requireObject(value, 'push');
+  const response = requireObject(value, "push");
 
   return {
-    accepted: requireNonNegativeNumber(response, 'accepted', 'push'),
-    conflicts: requireConflicts(response.conflicts, 'push'),
-    sync_cursor: requireString(response, 'sync_cursor', 'push'),
+    accepted: requireNonNegativeNumber(response, "accepted", "push"),
+    conflicts: requireConflicts(response.conflicts, "push"),
+    sync_cursor: requireString(response, "sync_cursor", "push"),
   };
 }
 
 function parsePullResponse(value: unknown): SyncPullResponse {
-  const response = requireObject(value, 'pull');
+  const response = requireObject(value, "pull");
   const changes = response.changes;
 
   if (!Array.isArray(changes)) {
-    throw new Error('invalid sync API pull response: changes must be an array');
+    throw new Error("invalid sync API pull response: changes must be an array");
   }
 
   return {
     changes,
-    device_id: requireUuidString(response, 'device_id', 'pull'),
-    has_more: requireOptionalBoolean(response, 'has_more', 'pull') ?? false,
-    next_cursor: requireString(response, 'next_cursor', 'pull'),
+    device_id: requireUuidString(response, "device_id", "pull"),
+    has_more: requireOptionalBoolean(response, "has_more", "pull") ?? false,
+    next_cursor: requireString(response, "next_cursor", "pull"),
   };
 }
 
-function requireObject(value: unknown, context: string): Record<string, unknown> {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+function requireObject(
+  value: unknown,
+  context: string,
+): Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
     throw new Error(`invalid sync API ${context} response: expected object`);
   }
 
   return value as Record<string, unknown>;
 }
 
-function requireString(response: Record<string, unknown>, field: string, context: string): string {
+function requireString(
+  response: Record<string, unknown>,
+  field: string,
+  context: string,
+): string {
   const value = response[field];
 
-  if (typeof value !== 'string' || value.length === 0) {
-    throw new Error(`invalid sync API ${context} response: ${field} must be a string`);
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error(
+      `invalid sync API ${context} response: ${field} must be a string`,
+    );
   }
 
   return value;
 }
 
-function requireUuidString(response: Record<string, unknown>, field: string, context: string): string {
+function requireUuidString(
+  response: Record<string, unknown>,
+  field: string,
+  context: string,
+): string {
   const value = requireString(response, field, context);
 
   if (!isUuidLike(value)) {
-    throw new Error(`invalid sync API ${context} response: ${field} must be a UUID`);
+    throw new Error(
+      `invalid sync API ${context} response: ${field} must be a UUID`,
+    );
   }
 
   return value;
 }
 
-function requireNonNegativeNumber(response: Record<string, unknown>, field: string, context: string): number {
+function requireNonNegativeNumber(
+  response: Record<string, unknown>,
+  field: string,
+  context: string,
+): number {
   const value = response[field];
 
-  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {
-    throw new Error(`invalid sync API ${context} response: ${field} must be a non-negative integer`);
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) {
+    throw new Error(
+      `invalid sync API ${context} response: ${field} must be a non-negative integer`,
+    );
   }
 
   return value;
@@ -315,8 +375,10 @@ function requireOptionalBoolean(
     return undefined;
   }
 
-  if (typeof value !== 'boolean') {
-    throw new Error(`invalid sync API ${context} response: ${field} must be a boolean`);
+  if (typeof value !== "boolean") {
+    throw new Error(
+      `invalid sync API ${context} response: ${field} must be a boolean`,
+    );
   }
 
   return value;
@@ -324,41 +386,47 @@ function requireOptionalBoolean(
 
 function requireConflicts(value: unknown, context: string): SyncConflict[] {
   if (!Array.isArray(value)) {
-    throw new Error(`invalid sync API ${context} response: conflicts must be an array`);
+    throw new Error(
+      `invalid sync API ${context} response: conflicts must be an array`,
+    );
   }
 
   return value.map((conflict) => {
     const record = requireObject(conflict, context);
     const reason = record.reason;
 
-    if (reason !== 'changed_after_base_cursor') {
-      throw new Error(`invalid sync API ${context} response: conflict reason is unsupported`);
+    if (reason !== "changed_after_base_cursor") {
+      throw new Error(
+        `invalid sync API ${context} response: conflict reason is unsupported`,
+      );
     }
 
     return {
-      entity_type: requireString(record, 'entity_type', context),
-      entity_id: requireString(record, 'entity_id', context),
+      entity_type: requireString(record, "entity_type", context),
+      entity_id: requireString(record, "entity_id", context),
       reason,
     };
   });
 }
 
 export function normalizePlatform(platform: string) {
-  if (platform === 'ios' || platform === 'android') {
+  if (platform === "ios" || platform === "android") {
     return platform;
   }
 
-  return 'web';
+  return "web";
 }
 
-function getFallbackDevice(request: DeviceRegistrationRequest): RegisteredDevice {
+function getFallbackDevice(
+  request: DeviceRegistrationRequest,
+): RegisteredDevice {
   return {
     id: request.installId,
     name: request.displayName,
     platform: request.platform,
     registeredAt: new Date().toISOString(),
-    connectionQuality: getApiBaseUrl() ? 'degraded' : 'offline',
-    syncCursor: '0',
+    connectionQuality: getApiBaseUrl() ? "degraded" : "offline",
+    syncCursor: "0",
   };
 }
 
@@ -372,9 +440,9 @@ export function getFallbackPreview(
     openSessionCount: 0,
     pendingChangeCount,
     cursor: {
-      workspace: '',
-      branch: '',
-      lastCommand: '',
+      workspace: "",
+      branch: "",
+      lastCommand: "",
     },
     devices: [device],
     emergencyChannels: [],
@@ -390,7 +458,7 @@ function mapRegisteredDevice(
     name: request.displayName,
     platform: request.platform,
     registeredAt: response.server_time,
-    connectionQuality: 'online',
+    connectionQuality: "online",
     syncCursor: response.sync_cursor,
   };
 }
@@ -399,25 +467,29 @@ export async function registerDevice(): Promise<RegisteredDevice> {
   const installId = await getOrCreateInstallId();
   const request: DeviceRegistrationRequest = {
     installId,
-    displayName: Constants.deviceName ?? 'JoeSSH Mobile',
+    displayName: Constants.deviceName ?? "JoeSSH Mobile",
     platform: normalizePlatform(Platform.OS),
   };
   const apiBaseUrl = getApiBaseUrl();
-  const storedRegistration = apiBaseUrl ? await getStoredRegistration(apiBaseUrl) : undefined;
+  const storedRegistration = apiBaseUrl
+    ? await getStoredRegistration(apiBaseUrl)
+    : undefined;
   const existingDeviceId = storedRegistration?.deviceId ?? installId;
 
   await delay(250);
 
   try {
     const response = parseRegisterDeviceResponse(
-      await requestJson('/v1/devices/register', {
+      await requestJson("/v1/devices/register", {
         body: JSON.stringify({
-          ...(isUuidLike(existingDeviceId) ? { device_id: existingDeviceId } : {}),
+          ...(isUuidLike(existingDeviceId)
+            ? { device_id: existingDeviceId }
+            : {}),
           platform: request.platform,
-          app_version: Constants.expoConfig?.version ?? '0.1.0',
+          app_version: Constants.expoConfig?.version ?? "0.1.0-beta.10",
           display_name: request.displayName,
         }),
-        method: 'POST',
+        method: "POST",
       }),
     );
 
@@ -427,7 +499,7 @@ export async function registerDevice(): Promise<RegisteredDevice> {
         ? { ...registeredDevice, syncCursor: storedRegistration.syncCursor }
         : registeredDevice;
 
-    await persistRegistration(apiBaseUrl, device.id, device.syncCursor ?? '0');
+    await persistRegistration(apiBaseUrl, device.id, device.syncCursor ?? "0");
 
     return device;
   } catch (error) {
@@ -439,40 +511,42 @@ export async function registerDevice(): Promise<RegisteredDevice> {
   }
 }
 
-export async function pushMobilePresenceCheckpoint(device: RegisteredDevice): Promise<SyncCheckpointResult> {
+export async function pushMobilePresenceCheckpoint(
+  device: RegisteredDevice,
+): Promise<SyncCheckpointResult> {
   if (!getApiBaseUrl()) {
     return {
       accepted: 0,
       conflicts: [],
-      syncCursor: device.syncCursor ?? '0',
+      syncCursor: device.syncCursor ?? "0",
     };
   }
 
   try {
     const pendingPresence = await getOrCreatePendingPresence(device);
     const response = parsePushResponse(
-      await requestJson('/v1/sync/push', {
+      await requestJson("/v1/sync/push", {
         body: JSON.stringify({
           device_id: device.id,
-          base_cursor: device.syncCursor ?? '0',
+          base_cursor: device.syncCursor ?? "0",
           changes: [
             {
               id: pendingPresence.changeId,
-              entity_type: 'mobile_presence',
+              entity_type: "mobile_presence",
               entity_id: device.id,
-              operation: 'update',
+              operation: "update",
               payload: {
-                client: 'atlasterm-mobile',
+                client: "atlasterm-mobile",
                 connection_quality: device.connectionQuality,
                 device_name: device.name,
                 platform: normalizePlatform(device.platform),
-                preview_intent: 'pull_sync_preview',
+                preview_intent: "pull_sync_preview",
               },
               client_time: pendingPresence.clientTime,
             },
           ],
         }),
-        method: 'POST',
+        method: "POST",
       }),
     );
 
@@ -488,7 +562,10 @@ export async function pushMobilePresenceCheckpoint(device: RegisteredDevice): Pr
   }
 }
 
-export async function fetchSyncPreview(deviceId: string, sinceCursor = '0'): Promise<SyncPreview> {
+export async function fetchSyncPreview(
+  deviceId: string,
+  sinceCursor = "0",
+): Promise<SyncPreview> {
   await delay(350);
 
   try {
@@ -504,7 +581,9 @@ export async function fetchSyncPreview(deviceId: string, sinceCursor = '0'): Pro
       );
 
       if (response.device_id !== deviceId) {
-        throw new Error('invalid sync API pull response: device_id does not match the requested device');
+        throw new Error(
+          "invalid sync API pull response: device_id does not match the requested device",
+        );
       }
 
       changes.push(...response.changes);
@@ -514,7 +593,9 @@ export async function fetchSyncPreview(deviceId: string, sinceCursor = '0'): Pro
       }
 
       if (response.next_cursor === cursor) {
-        throw new Error('invalid sync API pull response: paginated cursor did not advance');
+        throw new Error(
+          "invalid sync API pull response: paginated cursor did not advance",
+        );
       }
 
       cursor = response.next_cursor;
@@ -527,12 +608,15 @@ export async function fetchSyncPreview(deviceId: string, sinceCursor = '0'): Pro
 
     const liveDevice = getFallbackDevice({
       installId: response.device_id,
-      displayName: Constants.deviceName ?? 'JoeSSH Mobile',
+      displayName: Constants.deviceName ?? "JoeSSH Mobile",
       platform: normalizePlatform(Platform.OS),
     });
 
     const preview: SyncPreview = {
-      ...getFallbackPreview({ ...liveDevice, connectionQuality: 'online' }, changes.length),
+      ...getFallbackPreview(
+        { ...liveDevice, connectionQuality: "online" },
+        changes.length,
+      ),
       generatedAt: new Date().toISOString(),
       syncCursor: response.next_cursor,
     };
@@ -543,7 +627,7 @@ export async function fetchSyncPreview(deviceId: string, sinceCursor = '0'): Pro
   } catch (error) {
     const fallbackDevice = getFallbackDevice({
       installId: deviceId,
-      displayName: Constants.deviceName ?? 'JoeSSH Mobile',
+      displayName: Constants.deviceName ?? "JoeSSH Mobile",
       platform: normalizePlatform(Platform.OS),
     });
 
@@ -570,7 +654,9 @@ async function getOrCreateInstallId() {
 
   rememberedInstallIdPromise = (async () => {
     try {
-      const storedInstallId = await AsyncStorage.getItem(MOBILE_SYNC_INSTALL_ID_STORAGE_KEY);
+      const storedInstallId = await AsyncStorage.getItem(
+        MOBILE_SYNC_INSTALL_ID_STORAGE_KEY,
+      );
 
       if (storedInstallId && isUuidLike(storedInstallId)) {
         rememberedInstallId = storedInstallId;
@@ -605,7 +691,9 @@ async function getStoredRegistration(apiBaseUrl: string) {
   }
 
   try {
-    const value = await AsyncStorage.getItem(MOBILE_SYNC_REGISTRATION_STORAGE_KEY);
+    const value = await AsyncStorage.getItem(
+      MOBILE_SYNC_REGISTRATION_STORAGE_KEY,
+    );
 
     if (!value) {
       return undefined;
@@ -615,9 +703,9 @@ async function getStoredRegistration(apiBaseUrl: string) {
 
     if (
       candidate.apiBaseUrl !== apiBaseUrl ||
-      typeof candidate.deviceId !== 'string' ||
+      typeof candidate.deviceId !== "string" ||
       !isUuidLike(candidate.deviceId) ||
-      typeof candidate.syncCursor !== 'string' ||
+      typeof candidate.syncCursor !== "string" ||
       candidate.syncCursor.length === 0
     ) {
       return undefined;
@@ -630,7 +718,11 @@ async function getStoredRegistration(apiBaseUrl: string) {
   }
 }
 
-async function persistRegistration(apiBaseUrl: string | undefined, deviceId: string, syncCursor: string) {
+async function persistRegistration(
+  apiBaseUrl: string | undefined,
+  deviceId: string,
+  syncCursor: string,
+) {
   if (!apiBaseUrl || !isUuidLike(deviceId) || syncCursor.length === 0) {
     return;
   }
@@ -643,15 +735,20 @@ async function persistRegistration(apiBaseUrl: string | undefined, deviceId: str
   rememberedRegistration = registration;
 
   try {
-    await AsyncStorage.setItem(MOBILE_SYNC_REGISTRATION_STORAGE_KEY, JSON.stringify(registration));
+    await AsyncStorage.setItem(
+      MOBILE_SYNC_REGISTRATION_STORAGE_KEY,
+      JSON.stringify(registration),
+    );
   } catch {
     // Registration remains available in memory when durable storage is unavailable.
   }
 }
 
-async function getOrCreatePendingPresence(device: RegisteredDevice): Promise<StoredPendingPresence> {
+async function getOrCreatePendingPresence(
+  device: RegisteredDevice,
+): Promise<StoredPendingPresence> {
   const apiBaseUrl = getApiBaseUrl();
-  const baseCursor = device.syncCursor ?? '0';
+  const baseCursor = device.syncCursor ?? "0";
 
   if (!apiBaseUrl) {
     throw getOfflineError();
@@ -666,7 +763,9 @@ async function getOrCreatePendingPresence(device: RegisteredDevice): Promise<Sto
   }
 
   try {
-    const value = await AsyncStorage.getItem(MOBILE_SYNC_PENDING_PRESENCE_STORAGE_KEY);
+    const value = await AsyncStorage.getItem(
+      MOBILE_SYNC_PENDING_PRESENCE_STORAGE_KEY,
+    );
 
     if (value) {
       const candidate = JSON.parse(value) as Partial<StoredPendingPresence>;
@@ -675,9 +774,9 @@ async function getOrCreatePendingPresence(device: RegisteredDevice): Promise<Sto
         candidate.apiBaseUrl === apiBaseUrl &&
         candidate.deviceId === device.id &&
         candidate.baseCursor === baseCursor &&
-        typeof candidate.changeId === 'string' &&
+        typeof candidate.changeId === "string" &&
         isUuidLike(candidate.changeId) &&
-        typeof candidate.clientTime === 'string' &&
+        typeof candidate.clientTime === "string" &&
         !Number.isNaN(Date.parse(candidate.clientTime))
       ) {
         rememberedPendingPresence = candidate as StoredPendingPresence;
@@ -698,7 +797,10 @@ async function getOrCreatePendingPresence(device: RegisteredDevice): Promise<Sto
   rememberedPendingPresence = pendingPresence;
 
   try {
-    await AsyncStorage.setItem(MOBILE_SYNC_PENDING_PRESENCE_STORAGE_KEY, JSON.stringify(pendingPresence));
+    await AsyncStorage.setItem(
+      MOBILE_SYNC_PENDING_PRESENCE_STORAGE_KEY,
+      JSON.stringify(pendingPresence),
+    );
   } catch {
     // The pending ID remains reusable for retries during this runtime.
   }
@@ -712,9 +814,15 @@ async function clearPendingPresence(pendingPresence: StoredPendingPresence) {
   }
 
   try {
-    const value = await AsyncStorage.getItem(MOBILE_SYNC_PENDING_PRESENCE_STORAGE_KEY);
+    const value = await AsyncStorage.getItem(
+      MOBILE_SYNC_PENDING_PRESENCE_STORAGE_KEY,
+    );
 
-    if (value && (JSON.parse(value) as Partial<StoredPendingPresence>).changeId === pendingPresence.changeId) {
+    if (
+      value &&
+      (JSON.parse(value) as Partial<StoredPendingPresence>).changeId ===
+        pendingPresence.changeId
+    ) {
       await AsyncStorage.removeItem(MOBILE_SYNC_PENDING_PRESENCE_STORAGE_KEY);
     }
   } catch {
@@ -729,9 +837,9 @@ function createChangeId() {
     return randomUuid;
   }
 
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (token) => {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (token) => {
     const random = Math.floor(Math.random() * 16);
-    const value = token === 'x' ? random : (random & 0x3) | 0x8;
+    const value = token === "x" ? random : (random & 0x3) | 0x8;
 
     return value.toString(16);
   });
@@ -739,9 +847,10 @@ function createChangeId() {
 
 export function getOfflineError(): SyncError {
   return {
-    code: 'offline',
-    title: 'Sync unavailable',
-    message: 'No live sync endpoint is configured. No live or cached workspace data was loaded.',
+    code: "offline",
+    title: "Sync unavailable",
+    message:
+      "No live sync endpoint is configured. No live or cached workspace data was loaded.",
     recoverable: true,
   };
 }

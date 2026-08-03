@@ -7,21 +7,12 @@ const lockPath = resolve(root, "package-lock.json");
 
 const supportedNativePackages = [
   {
-    parent: "node_modules/esbuild",
+    parent: "node_modules/rolldown",
     packages: [
-      "@esbuild/darwin-arm64",
-      "@esbuild/darwin-x64",
-      "@esbuild/linux-x64",
-      "@esbuild/win32-x64",
-    ],
-  },
-  {
-    parent: "node_modules/rollup",
-    packages: [
-      "@rollup/rollup-darwin-arm64",
-      "@rollup/rollup-darwin-x64",
-      "@rollup/rollup-linux-x64-gnu",
-      "@rollup/rollup-win32-x64-msvc",
+      "@rolldown/binding-darwin-arm64",
+      "@rolldown/binding-darwin-x64",
+      "@rolldown/binding-linux-x64-gnu",
+      "@rolldown/binding-win32-x64-msvc",
     ],
   },
   {

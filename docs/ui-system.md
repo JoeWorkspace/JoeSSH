@@ -86,6 +86,11 @@ viewport, because operating-system scaling reduces the available CSS pixels.
 | 2560 × 1440      |  200% |         1280 × 720 |
 | 3840 × 2160      |  200% |        1920 × 1080 |
 
+The packaged Desktop minimum content viewport is `900 × 480` CSS pixels. The
+automated compact-workbench contract exercises that exact boundary, which is
+stricter than the `960 × 540` effective viewport of Full HD at 200%. This
+equivalent-viewport coverage does not replace packaged Tauri DPI testing.
+
 Composition modes:
 
 - `> 1240px`: three-column Desktop workbench and persistent Web Admin rail.
@@ -101,25 +106,34 @@ Layouts must also work with browser zoom at 80%, 90%, 100%, 110%, 125%, 150%,
 
 ## Feature Coverage
 
+This section records UI-state coverage, not a promise that every contributor
+preview is shipped. Production and Microsoft Store builds expose only the
+surfaces allowed by `desktopSurfacePolicy`; preview-only entries below must stay
+visibly unavailable or be omitted from release builds.
+
 ### Desktop
 
 - Connection library: search, tags, groups, favorites, ordering, context menu,
   new/edit/duplicate/delete, import/export, and sample/live status.
 - Session workbench: connect/disconnect, terminal tabs, command input/history,
-  search, recording, split view, focus mode, copy, and error feedback.
+  search, split view, focus mode, copy, and error feedback. Session recording is
+  a visibly unavailable future control until capture, storage, playback,
+  privacy, and deletion behavior are implemented and tested.
 - Inspector: host facts, session context, connection statistics, and runbooks.
 - SFTP: loading, disconnected, directory, upload, download, empty, and error.
-- Team: access summary, requests, review, roles, shared vault, and audit events.
+- Team contributor preview: access summary, requests, review, roles, shared
+  vault, and audit-event mock states. It is excluded from production and
+  Microsoft Store builds and is not a hosted access-control service.
 - Forwarding: configuration, start, stop, pending, active, and failure states.
 - Settings: language, theme, telemetry, connection transfer, and known hosts.
 - Overlays: onboarding, command palette, shortcuts, connection dialogs, group
   manager, confirmations, toasts, loading, and fatal error recovery.
 
-### Web Admin
+### Web Admin (read-only companion)
 
 - Sync health and snapshot provenance.
 - Active-member, role, device, and audit metrics.
-- Member and role access models.
+- Read-only member and role access models; no access changes are executed.
 - Managed device status.
 - Audit activity.
 - Loading, authentication-required, empty, unavailable, malformed, stale, and
@@ -127,7 +141,7 @@ Layouts must also work with browser zoom at 80%, 90%, 100%, 110%, 125%, 150%,
 - Language, telemetry consent, refresh, keyboard skip navigation, and printable
   output.
 
-### Mobile
+### Mobile (preview shell; not publicly distributed)
 
 - Automatic and explicit language selection.
 - Idle, registering, previewing, ready, offline, timeout, unauthorized, and
@@ -135,7 +149,8 @@ Layouts must also work with browser zoom at 80%, 90%, 100%, 110%, 125%, 150%,
 - Device registration and connection quality.
 - Pull preview and cursor context.
 - Profile, session, and pending-change metrics.
-- Live and offline emergency channels.
+- Preview-only live/offline emergency-channel status simulations; no emergency
+  SSH/SFTP or access execution is implemented.
 - Native safe areas, OS light/dark theme, RTL, and fatal error recovery.
 
 ## Component State Contract

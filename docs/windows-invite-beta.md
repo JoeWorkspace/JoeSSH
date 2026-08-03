@@ -103,7 +103,9 @@ GitHub Actions 的手工工作流
 `Windows Invite Beta` 也只生成 `stage-a-unsigned-internal-only` handoff artifact，
 只允许从受保护的 `main` 分支运行，并把整个 job 绑定到
 `windows-invite-stage-a` environment。仓库必须为该 environment 配置 required
-reviewers；审批者先独立复核完整 40 位 commit SHA，再批准 job。操作者输入只通过
+reviewer（仓库所有者）、允许 self-review、关闭 admin bypass，并仅允许 protected
+branches；单维护者先复核完整 40 位 commit SHA，再批准 job。该批准是防误操作的
+人工暂停点，不是独立审核。操作者输入只通过
 step environment 进入 PowerShell，且必须与 `github.sha` 完全一致。上传完成后，
 step summary 会记录 reviewed commit、安装包 SHA-256、artifact ID/URL 与 artifact
 digest；原生 VM 验收和 promotion 前须在工作流外独立核对这些值。状态固定为
@@ -302,9 +304,11 @@ Web Admin、Mobile、Sync device flow 和 Sync backup/restore 不在本轮任务
 - 至少 5 人明确表示会继续每周使用，并能指出一个具体价值点。
 - 签名、校验和、撤回和回退流程均至少实操 1 次。
 
-产品扩张使用更高门槛：只有达到 **10 名重复使用者 + 5 名实际赞助者**，才评估
-JoeSSH Plus 的一个便利功能；未达到时保持免费维护和范围收缩，不启动授权系统、
-托管 Sync 或团队 SaaS。
+产品扩张使用更高门槛：只有达到 **10 名重复使用者 + 5 名实际赞助者**，才开始
+访谈、申请支付渠道并原型验证一个 JoeSSH Founder/Pro 便利功能；这不授权收费。
+Founder 的真实开售仍须达到 [pricing hypotheses](pricing-hypotheses.md) 中的
+30 名外部 Windows 用户完成 SSH、且 10 人提出同一付费需求等门禁。未达到时保持
+免费维护和范围收缩，不启动授权系统、托管 Sync 或团队 SaaS。
 
 如果 90 天后激活不足 10 人、第 4 周重复使用不足 4 人，或没有人愿意持续使用，
 停止新增功能 30 天，只修复安全和稳定问题，然后在“重新定位、维持开源维护、结束

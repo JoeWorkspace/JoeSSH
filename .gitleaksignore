@@ -1,0 +1,9 @@
+9940faf60b265170bc9bb500afc1a48a0a306956:apps/mobile/services/sync.test.ts:generic-api-key:134
+9940faf60b265170bc9bb500afc1a48a0a306956:apps/mobile/services/sync.test.ts:generic-api-key:235
+d0ee222062acc5427680464e558913dcc1922428:apps/desktop/src/main.tsx:generic-api-key:206
+5e5f1eded2d1f1959193d2d76c4136fd14a81063:apps/desktop/src/safety.test.ts:curl-auth-header:248
+5e5f1eded2d1f1959193d2d76c4136fd14a81063:apps/desktop/src/safety.test.ts:curl-auth-header:249
+5e5f1eded2d1f1959193d2d76c4136fd14a81063:apps/desktop/src/terminalExecutor.test.ts:curl-auth-header:74
+5e5f1eded2d1f1959193d2d76c4136fd14a81063:crates/core/src/ssh.rs:private-key:751
+5e5f1eded2d1f1959193d2d76c4136fd14a81063:apps/desktop/src/main.tsx:generic-api-key:140
+5e5f1eded2d1f1959193d2d76c4136fd14a81063:services/sync/src/config.rs:generic-api-key:351

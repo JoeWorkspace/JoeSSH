@@ -86,12 +86,6 @@ export function createDesktopManifest(t: Translator): DesktopWebAppManifest {
         icons: [shortcutIcon],
       },
       {
-        name: t("team.access"),
-        short_name: t("desktop.team"),
-        url: "/?panel=team",
-        icons: [shortcutIcon],
-      },
-      {
         name: t("desktop.openForwarding"),
         short_name: t("desktop.forwarding"),
         url: "/?panel=forwarding",
@@ -109,7 +103,10 @@ export function createDesktopManifest(t: Translator): DesktopWebAppManifest {
   };
 }
 
-export function applyLocalizedDesktopMetadata(t: Translator, documentRef: Document = document) {
+export function applyLocalizedDesktopMetadata(
+  t: Translator,
+  documentRef: Document = document,
+) {
   const manifest = createDesktopManifest(t);
 
   for (const selector of descriptionSelectors) {

@@ -4,12 +4,12 @@ on:
   workflow_dispatch:
     inputs:
       formal_evidence:
-        description: "Package formal Desktop release evidence after platform signing/notarization verification succeeds."
+        description: "Formal signing automation is disabled; true is rejected."
         required: true
         default: false
         type: boolean
       retention_days:
-        description: "Artifact retention in days."
+        description: "Unsigned artifact retention in days."
         required: true
         default: "14"
         type: string
@@ -22,46 +22,90 @@ permissions:
   contents: read
 
 jobs:
-  build-desktop:
-    name: Build Desktop ${{ matrix.platform }}
+  policy:
+    name: Enforce unsigned staging policy
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Reject disabled formal signing
+        shell: bash
+        env:
+          FORMAL_EVIDENCE: ${{ inputs.formal_evidence }}
+          RETENTION_DAYS: ${{ inputs.retention_days }}
+        run: |
+          set -euo pipefail
+          if [[ "${FORMAL_EVIDENCE}" == "true" ]]; then
+            echo "FORMAL_SIGNING_DISABLED: Desktop formal signing and notarization automation is disabled." >&2
+            exit 1
+          fi
+          if [[ ! "${RETENTION_DAYS}" =~ ^([1-9]|[12][0-9]|30)$ ]]; then
+            echo "retention_days must be 1 through 30." >&2
+            exit 1
+          fi
+
+  build-unsigned:
+    name: Build unsigned Desktop ${{ matrix.platform }}
+    needs:
+      - policy
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
         include:
           - platform: windows
-            os: windows-latest
+            os: windows-2025
+            runner_arch: x86_64
             bundles: nsis
           - platform: macos
-            os: macos-latest
+            os: macos-15
+            runner_arch: arm64
             bundles: dmg
           - platform: linux
-            os: ubuntu-latest
+            os: ubuntu-24.04
+            runner_arch: x86_64
             bundles: appimage deb
 
     steps:
+      - name: Assert unsigned runner architecture
+        shell: bash
+        env:
+          EXPECTED_RUNNER_ARCH: ${{ matrix.runner_arch }}
+        run: |
+          set -euo pipefail
+          actual_arch="$(uname -m)"
+          if [[ "${actual_arch}" != "${EXPECTED_RUNNER_ARCH}" ]]; then
+            echo "Expected unsigned runner architecture ${EXPECTED_RUNNER_ARCH}, received ${actual_arch}." >&2
+            exit 1
+          fi
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
+          ref: ${{ github.sha }}
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          node-version: 22
-          cache: npm
+          node-version: 22.22.2
+
+      - name: Pin npm 10.9.7
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global --ignore-scripts --no-audit --no-fund npm@10.9.7
+          test "$(npm --version)" = "10.9.7"
 
       - uses: dtolnay/rust-toolchain@2c7215f132e9ebf062739d9130488b56d53c060c # master
         with:
-          toolchain: stable
-
-      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
-        with:
-          workspaces: |
-            .
-            apps/desktop/src-tauri
+          toolchain: 1.96.0
 
       - name: Install Tauri Linux dependencies
         if: runner.os == 'Linux'
+        shell: bash
         run: |
+          set -euo pipefail
           sudo apt-get update
           sudo apt-get install -y \
             build-essential \
@@ -75,287 +119,32 @@ jobs:
             patchelf \
             wget
 
-      - run: npm ci
-
-      - name: Prepare Windows signing certificate
-        if: runner.os == 'Windows' && inputs.formal_evidence
-        shell: pwsh
-        env:
-          WINDOWS_CERTIFICATE: ${{ secrets.ATLASTERM_WINDOWS_CERTIFICATE }}
-          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.ATLASTERM_WINDOWS_CERTIFICATE_PASSWORD }}
-          WINDOWS_CERTIFICATE_THUMBPRINT: ${{ secrets.ATLASTERM_WINDOWS_CERTIFICATE_THUMBPRINT }}
-          WINDOWS_TIMESTAMP_URL: ${{ secrets.ATLASTERM_WINDOWS_TIMESTAMP_URL }}
-        run: |
-          $missing = @()
-          foreach ($name in @(
-            "WINDOWS_CERTIFICATE",
-            "WINDOWS_CERTIFICATE_PASSWORD",
-            "WINDOWS_CERTIFICATE_THUMBPRINT",
-            "WINDOWS_TIMESTAMP_URL"
-          )) {
-            if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
-              $missing += $name
-            }
-          }
-          if ($missing.Count -gt 0) {
-            throw "Missing Windows signing secret(s): $($missing -join ', ')"
-          }
-
-          New-Item -ItemType Directory -Force -Path certificate | Out-Null
-          [IO.File]::WriteAllBytes(
-            "certificate\certificate.pfx",
-            [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE)
-          )
-          $password = ConvertTo-SecureString -String $env:WINDOWS_CERTIFICATE_PASSWORD -Force -AsPlainText
-          Import-PfxCertificate -FilePath certificate\certificate.pfx -CertStoreLocation Cert:\CurrentUser\My -Password $password | Out-Null
-
-          $config = @{
-            bundle = @{
-              windows = @{
-                certificateThumbprint = $env:WINDOWS_CERTIFICATE_THUMBPRINT
-                digestAlgorithm = "sha256"
-                timestampUrl = $env:WINDOWS_TIMESTAMP_URL
-              }
-            }
-          } | ConvertTo-Json -Depth 5
-          Set-Content -Path tauri.windows.signing.json -Value $config -Encoding UTF8
-          "ATLASTERM_DESKTOP_RELEASE_TAURI_CONFIGS=tauri.windows.signing.json" >> $env:GITHUB_ENV
-
-      - name: Prepare macOS signing certificate
-        if: runner.os == 'macOS' && inputs.formal_evidence
+      - name: Install locked dependencies
         shell: bash
-        env:
-          APPLE_CERTIFICATE: ${{ secrets.ATLASTERM_APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.ATLASTERM_APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_ID: ${{ secrets.ATLASTERM_APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.ATLASTERM_APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.ATLASTERM_APPLE_TEAM_ID }}
-          KEYCHAIN_PASSWORD: ${{ secrets.ATLASTERM_KEYCHAIN_PASSWORD }}
-        run: |
-          set -euo pipefail
-          missing=()
-          for name in \
-            APPLE_CERTIFICATE \
-            APPLE_CERTIFICATE_PASSWORD \
-            APPLE_ID \
-            APPLE_PASSWORD \
-            APPLE_TEAM_ID \
-            KEYCHAIN_PASSWORD; do
-            if [[ -z "${!name:-}" ]]; then
-              missing+=("${name}")
-            fi
-          done
-          if (( ${#missing[@]} > 0 )); then
-            printf 'Missing macOS signing/notarization secret(s): %s\n' "${missing[*]}" >&2
-            exit 1
-          fi
+        run: npm ci --no-audit --no-fund
 
-          echo "${APPLE_CERTIFICATE}" | base64 --decode > certificate.p12
-          security create-keychain -p "${KEYCHAIN_PASSWORD}" build.keychain
-          security default-keychain -s build.keychain
-          security unlock-keychain -p "${KEYCHAIN_PASSWORD}" build.keychain
-          security set-keychain-settings -t 3600 -u build.keychain
-          security import certificate.p12 -k build.keychain -P "${APPLE_CERTIFICATE_PASSWORD}" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${KEYCHAIN_PASSWORD}" build.keychain
-          security find-identity -v -p codesigning build.keychain
+      - name: Generate and verify Desktop legal resource
+        shell: bash
+        run: npm run release:desktop:legal-resource
 
-          cert_id="$(
-            security find-identity -v -p codesigning build.keychain |
-              awk -F '"' '/Developer ID Application/ { print $2; exit }'
-          )"
-          if [[ -z "${cert_id}" ]]; then
-            cert_id="$(
-              security find-identity -v -p codesigning build.keychain |
-                awk -F '"' '/"/ { print $2; exit }'
-            )"
-          fi
-          if [[ -z "${cert_id}" ]]; then
-            echo "No macOS codesigning identity found after certificate import." >&2
-            exit 1
-          fi
-          echo "APPLE_SIGNING_IDENTITY=${cert_id}" >> "${GITHUB_ENV}"
-
-      - name: Build Desktop bundle
-        if: runner.os != 'macOS' || inputs.formal_evidence == false
+      - name: Build unsigned Desktop bundle
         env:
           ATLASTERM_DESKTOP_RELEASE_BUNDLES: ${{ matrix.bundles }}
         run: npm run release:desktop:build
 
-      - name: Build formal macOS Desktop bundle
-        if: runner.os == 'macOS' && inputs.formal_evidence
-        env:
-          ATLASTERM_DESKTOP_RELEASE_BUNDLES: ${{ matrix.bundles }}
-          APPLE_ID: ${{ secrets.ATLASTERM_APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.ATLASTERM_APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.ATLASTERM_APPLE_TEAM_ID }}
-        run: npm run release:desktop:build
-
-      - name: Collect macOS DMG diagnostics
-        if: failure() && runner.os == 'macOS'
-        shell: bash
-        run: |
-          set +e
-          diagnostics_dir="desktop-macos-dmg-diagnostics"
-          bundle_dir="apps/desktop/src-tauri/target/release/bundle"
-          mkdir -p "${diagnostics_dir}"
-
-          {
-            echo "## macOS"
-            sw_vers
-            echo
-            echo "## Disk images"
-            hdiutil info
-            echo
-            echo "## Mounted volumes"
-            mount
-            echo
-            echo "## Bundle directory"
-            find "${bundle_dir}" -maxdepth 5 -print
-          } > "${diagnostics_dir}/diagnostics.txt" 2>&1
-
-          while IFS= read -r script; do
-            safe_name="$(echo "${script}" | tr '/ ' '__')"
-            cp "${script}" "${diagnostics_dir}/${safe_name}"
-            {
-              echo "## ${script}"
-              sed -n '1,240p' "${script}"
-            } >> "${diagnostics_dir}/bundle_dmg_scripts.txt"
-          done < <(find "${bundle_dir}" -name 'bundle_dmg.sh' -type f 2>/dev/null)
-
-          cat "${diagnostics_dir}/diagnostics.txt"
-          if [[ -f "${diagnostics_dir}/bundle_dmg_scripts.txt" ]]; then
-            cat "${diagnostics_dir}/bundle_dmg_scripts.txt"
-          fi
-
-      - name: Upload macOS DMG diagnostics
-        if: failure() && runner.os == 'macOS'
+      - name: Upload unsigned Desktop bundle
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: desktop-macos-dmg-diagnostics
-          path: desktop-macos-dmg-diagnostics/
-          if-no-files-found: warn
-          retention-days: ${{ fromJSON(inputs.retention_days) }}
-
-      - name: Verify Windows signature
-        if: runner.os == 'Windows' && inputs.formal_evidence
-        shell: pwsh
-        run: |
-          $artifact = Get-ChildItem -Path apps/desktop/src-tauri/target/release/bundle -Recurse -File -Include *.exe,*.msi,*.msix |
-            Sort-Object FullName |
-            Select-Object -First 1
-          if (-not $artifact) {
-            throw "No Windows Desktop artifact found for signature verification."
-          }
-          $signtool = Get-Command signtool.exe -ErrorAction SilentlyContinue
-          if (-not $signtool) {
-            throw "signtool.exe is required for formal Windows Desktop evidence."
-          }
-          & $signtool.Source verify /pa /v $artifact.FullName *>&1 |
-            Tee-Object -FilePath windows-signature-verification.txt
-          if ($LASTEXITCODE -ne 0) {
-            exit $LASTEXITCODE
-          }
-
-      - name: Verify macOS signature and notarization
-        if: runner.os == 'macOS' && inputs.formal_evidence
-        shell: bash
-        run: |
-          set -euo pipefail
-          artifact="$(
-            find apps/desktop/src-tauri/target/release/bundle \
-              -type f \( -name '*.dmg' -o -name '*.pkg' -o -name '*.app.tar.gz' \) |
-              sort |
-              head -n 1
-          )"
-          if [[ -z "${artifact}" ]]; then
-            echo "No macOS Desktop artifact found for signature verification." >&2
-            exit 1
-          fi
-          codesign --verify --deep --strict --verbose=2 "${artifact}" 2>&1 |
-            tee macos-signature-verification.txt
-          spctl --assess --type open --context context:primary-signature -v "${artifact}" 2>&1 |
-            tee macos-notarization-verification.txt
-
-      - name: Upload Desktop bundle
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: desktop-bundle-${{ matrix.platform }}
+          name: desktop-unsigned-bundle-${{ matrix.platform }}
           path: |
             apps/desktop/src-tauri/target/release/bundle/**/*.AppImage
-            apps/desktop/src-tauri/target/release/bundle/**/*.app.tar.gz
             apps/desktop/src-tauri/target/release/bundle/**/*.deb
             apps/desktop/src-tauri/target/release/bundle/**/*.dmg
             apps/desktop/src-tauri/target/release/bundle/**/*.exe
             apps/desktop/src-tauri/target/release/bundle/**/*.msi
             apps/desktop/src-tauri/target/release/bundle/**/*.msix
-            apps/desktop/src-tauri/target/release/bundle/**/*.pkg
-            macos-notarization-verification.txt
-            macos-signature-verification.txt
-            windows-signature-verification.txt
-          if-no-files-found: error
-          retention-days: ${{ fromJSON(inputs.retention_days) }}
-
-  package-formal-evidence:
-    name: Package Formal Desktop Evidence
-    runs-on: ubuntu-latest
-    needs: [build-desktop]
-    if: inputs.formal_evidence
-
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          persist-credentials: false
-
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with:
-          node-version: 22
-          cache: npm
-
-      - run: npm ci
-
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
-        with:
-          path: desktop-bundles
-          pattern: desktop-bundle-*
-
-      - name: Export signing evidence
-        shell: bash
-        run: |
-          set -euo pipefail
-          windows_signature="$(find desktop-bundles -name windows-signature-verification.txt -type f | sort | head -n 1)"
-          macos_signature="$(find desktop-bundles -name macos-signature-verification.txt -type f | sort | head -n 1)"
-          macos_notarization="$(find desktop-bundles -name macos-notarization-verification.txt -type f | sort | head -n 1)"
-
-          for evidence_file in "${windows_signature}" "${macos_signature}" "${macos_notarization}"; do
-            if [[ -z "${evidence_file}" || ! -s "${evidence_file}" ]]; then
-              echo "Missing formal Desktop signing/notarization evidence." >&2
-              exit 1
-            fi
-          done
-
-          {
-            echo "ATLASTERM_DESKTOP_WINDOWS_SIGNATURE_VERIFICATION<<EOF"
-            cat "${windows_signature}"
-            echo "EOF"
-            echo "ATLASTERM_DESKTOP_MACOS_SIGNATURE_VERIFICATION<<EOF"
-            cat "${macos_signature}"
-            echo "EOF"
-            echo "ATLASTERM_DESKTOP_MACOS_NOTARIZATION_VERIFICATION<<EOF"
-            cat "${macos_notarization}"
-            echo "EOF"
-          } >> "${GITHUB_ENV}"
-
-      - name: Package Desktop release evidence
-        run: |
-          node scripts/package-desktop-release.mjs \
-            --bundle-dir desktop-bundles \
-            --require-platforms windows,macos,linux
-          npm run release:desktop:verify-evidence
-
-      - name: Upload formal Desktop release evidence
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: desktop-release-evidence
-          path: reports/release/desktop/
+            reports/release/THIRD-PARTY-LICENSES-SHA256SUMS.txt
+            reports/release/third-party-licenses/manifest.json
+            reports/release/third-party-licenses/THIRD-PARTY-NOTICES.txt
           if-no-files-found: error
           retention-days: ${{ fromJSON(inputs.retention_days) }}

@@ -19,6 +19,8 @@ import {
   Network,
   Play,
   Plus,
+  Scale,
+  ScrollText,
   Settings,
   ShieldCheck,
   Trash2,
@@ -44,20 +46,14 @@ import type {
   TranslationKey,
   Translator,
 } from "@atlasterm/i18n";
+import { ThirdPartyNoticesOverlay } from "./ThirdPartyNoticesOverlay";
 import { InlineAlert } from "./InlineAlert";
 import { Sparkline } from "./sparkline";
 import { desktopGroupLabel } from "./desktopGroups";
 import { isSafeSftpEntryName } from "./sftpRemotePath";
 
 type RelativeTimeFormatUnit =
-  | "year"
-  | "quarter"
-  | "month"
-  | "week"
-  | "day"
-  | "hour"
-  | "minute"
-  | "second";
+  "year" | "quarter" | "month" | "week" | "day" | "hour" | "minute" | "second";
 
 type Connection = {
   readonly name: string;
@@ -1343,17 +1339,26 @@ export type SettingsTelemetryControl = {
   onChange: (enabled: boolean) => void;
 };
 
+export type SettingsLegalDocuments = {
+  available: boolean;
+  loadThirdPartyNotices: () => Promise<string>;
+};
+
 const CONNECTION_IMPORT_MAX_BYTES = 1024 * 1024;
 
 export const SettingsPanel = memo(function SettingsPanel({
   t,
   connectionsIO,
   knownHosts,
+  legal,
+  showFutureProductSurfaces = true,
   telemetry,
 }: {
   t: Translator;
   connectionsIO?: SettingsConnectionsIO;
   knownHosts?: SettingsKnownHosts;
+  legal?: SettingsLegalDocuments;
+  showFutureProductSurfaces?: boolean;
   telemetry?: SettingsTelemetryControl;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1361,6 +1366,11 @@ export const SettingsPanel = memo(function SettingsPanel({
     { type: "clear" } | { type: "remove"; key: string } | null
   >(null);
   const [knownHostActionBusy, setKnownHostActionBusy] = useState(false);
+  const [legalBusy, setLegalBusy] = useState(false);
+  const [legalError, setLegalError] = useState(false);
+  const [thirdPartyNotices, setThirdPartyNotices] = useState<string | null>(
+    null,
+  );
 
   function handleExportConnections() {
     const blob = new Blob(
@@ -1421,223 +1431,291 @@ export const SettingsPanel = memo(function SettingsPanel({
     }
   }
 
+  async function openThirdPartyNotices() {
+    if (!legal?.available || legalBusy) return;
+    setLegalBusy(true);
+    setLegalError(false);
+    try {
+      const notices = await legal.loadThirdPartyNotices();
+      if (notices.trim() === "") {
+        throw new Error("empty third-party notices");
+      }
+      setThirdPartyNotices(notices);
+    } catch {
+      setLegalError(true);
+    } finally {
+      setLegalBusy(false);
+    }
+  }
+
   return (
-    <div className="stack">
-      <Panel className="context-card">
-        <header>
-          <span>{t("desktop.workspaceSettings")}</span>
-          <Settings size={16} />
-        </header>
-        <label className="toggle-row">
-          <span>
-            <strong>{t("desktop.recordTerminal")}</strong>
-            <small>{t("desktop.requiredProduction")}</small>
-          </span>
-          <input checked disabled readOnly type="checkbox" />
-        </label>
-        <label className="toggle-row">
-          <span>
-            <strong>{t("desktop.syncEncrypted")}</strong>
-            <small>{t("desktop.availableProBusiness")}</small>
-          </span>
-          <input disabled readOnly type="checkbox" />
-        </label>
-        {telemetry ? (
-          <label className="toggle-row">
-            <span>
-              <strong>{t("desktop.telemetryErrors")}</strong>
-              <small>{t("desktop.telemetryPrivacyHint")}</small>
-            </span>
-            <input
-              checked={telemetry.enabled}
-              disabled={!telemetry.available}
-              onChange={(event) =>
-                telemetry.onChange(event.currentTarget.checked)
-              }
-              type="checkbox"
-            />
-          </label>
-        ) : null}
-        <div className="settings-actions">
-          <Button size="sm" variant="ghost" onClick={handleExportConnections}>
-            <FileDown size={13} /> {t("desktop.exportConnections")}
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <FileUp size={13} /> {t("desktop.importConnections")}
-          </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".json"
-            onChange={handleImportConnections}
-            aria-label={t("desktop.importConnections")}
-            style={{ display: "none" }}
-          />
-        </div>
-        {knownHosts ? (
-          <>
-            <div className="known-hosts-row">
-              <span>
-                <strong>{t("desktop.knownHosts")}</strong>
-                <small>
-                  {t("desktop.knownHostsCount", { count: knownHosts.count })}
-                </small>
-              </span>
-              {pendingKnownHostAction?.type === "clear" ? (
-                <span
-                  className="known-hosts-confirm"
-                  role="group"
-                  aria-label={t("desktop.confirmKnownHostsClear")}
-                >
-                  <small>{t("desktop.confirmKnownHostsClear")}</small>
-                  <span className="known-hosts-confirm-actions">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={knownHostActionBusy}
-                      onClick={() => setPendingKnownHostAction(null)}
-                    >
-                      <X size={13} /> {t("desktop.cancelKnownHostAction")}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={knownHostActionBusy}
-                      onClick={() => {
-                        void confirmKnownHostAction();
-                      }}
-                    >
-                      <KeyRound size={13} />{" "}
-                      {t("desktop.confirmKnownHostAction")}
-                    </Button>
-                  </span>
+    <>
+      <div className="stack">
+        <Panel className="context-card">
+          <header>
+            <span>{t("desktop.workspaceSettings")}</span>
+            <Settings size={16} />
+          </header>
+          {showFutureProductSurfaces ? (
+            <>
+              <label className="toggle-row">
+                <span>
+                  <strong>{t("desktop.recordTerminal")}</strong>
+                  <small>{t("desktop.plannedUnavailable")}</small>
                 </span>
-              ) : (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  disabled={knownHosts.count === 0}
-                  onClick={() => setPendingKnownHostAction({ type: "clear" })}
-                >
-                  <KeyRound size={13} /> {t("desktop.clearKnownHosts")}
-                </Button>
-              )}
-            </div>
-            {knownHosts.entries.length > 0 ? (
-              <div className="known-hosts-list">
-                {knownHosts.entries.map((entry) => (
-                  <div className="known-hosts-item" key={entry.key}>
-                    <span className="known-hosts-item-main">
-                      <strong>
-                        {entry.host}:{entry.port}
-                      </strong>
-                      <code>{entry.fingerprint}</code>
-                    </span>
-                    <span className="known-hosts-item-meta">
-                      <small>
-                        {t("desktop.knownHostSource", { source: entry.source })}
-                      </small>
-                      <small>
-                        {t("desktop.knownHostFirstSeen", {
-                          time: formatKnownHostTime(entry.first_seen_at_ms, t),
-                        })}
-                      </small>
-                      <small>
-                        {t("desktop.knownHostLastSeen", {
-                          time: formatKnownHostTime(entry.last_seen_at_ms, t),
-                        })}
-                      </small>
-                    </span>
-                    {pendingKnownHostAction?.type === "remove" &&
-                    pendingKnownHostAction.key === entry.key ? (
-                      <span
-                        className="known-hosts-confirm known-hosts-confirm--inline"
-                        role="group"
-                        aria-label={t("desktop.confirmKnownHostRemove", {
-                          host: `${entry.host}:${entry.port}`,
-                        })}
-                      >
-                        <small>
-                          {t("desktop.confirmKnownHostRemove", {
-                            host: `${entry.host}:${entry.port}`,
-                          })}
-                        </small>
-                        <span className="known-hosts-confirm-actions">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            disabled={knownHostActionBusy}
-                            onClick={() => setPendingKnownHostAction(null)}
-                          >
-                            <X size={13} /> {t("desktop.cancelKnownHostAction")}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            disabled={knownHostActionBusy}
-                            onClick={() => {
-                              void confirmKnownHostAction();
-                            }}
-                          >
-                            <Trash2 size={13} />{" "}
-                            {t("desktop.confirmKnownHostAction")}
-                          </Button>
-                        </span>
-                      </span>
-                    ) : (
+                <input disabled readOnly type="checkbox" />
+              </label>
+              <label className="toggle-row">
+                <span>
+                  <strong>{t("desktop.syncEncrypted")}</strong>
+                  <small>{t("desktop.plannedUnavailable")}</small>
+                </span>
+                <input disabled readOnly type="checkbox" />
+              </label>
+            </>
+          ) : null}
+          {telemetry ? (
+            <label className="toggle-row">
+              <span>
+                <strong>{t("desktop.telemetryErrors")}</strong>
+                <small>{t("desktop.telemetryPrivacyHint")}</small>
+              </span>
+              <input
+                checked={telemetry.enabled}
+                disabled={!telemetry.available}
+                onChange={(event) =>
+                  telemetry.onChange(event.currentTarget.checked)
+                }
+                type="checkbox"
+              />
+            </label>
+          ) : null}
+          <div className="settings-actions">
+            <Button size="sm" variant="ghost" onClick={handleExportConnections}>
+              <FileDown size={13} /> {t("desktop.exportConnections")}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <FileUp size={13} /> {t("desktop.importConnections")}
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json"
+              onChange={handleImportConnections}
+              aria-label={t("desktop.importConnections")}
+              style={{ display: "none" }}
+            />
+          </div>
+          {knownHosts ? (
+            <>
+              <div className="known-hosts-row">
+                <span>
+                  <strong>{t("desktop.knownHosts")}</strong>
+                  <small>
+                    {t("desktop.knownHostsCount", { count: knownHosts.count })}
+                  </small>
+                </span>
+                {pendingKnownHostAction?.type === "clear" ? (
+                  <span
+                    className="known-hosts-confirm"
+                    role="group"
+                    aria-label={t("desktop.confirmKnownHostsClear")}
+                  >
+                    <small>{t("desktop.confirmKnownHostsClear")}</small>
+                    <span className="known-hosts-confirm-actions">
                       <Button
                         size="sm"
                         variant="ghost"
                         disabled={knownHostActionBusy}
-                        onClick={() =>
-                          setPendingKnownHostAction({
-                            type: "remove",
-                            key: entry.key,
-                          })
-                        }
+                        onClick={() => setPendingKnownHostAction(null)}
                       >
-                        <Trash2 size={13} /> {t("desktop.removeKnownHost")}
+                        <X size={13} /> {t("desktop.cancelKnownHostAction")}
                       </Button>
-                    )}
-                  </div>
-                ))}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={knownHostActionBusy}
+                        onClick={() => {
+                          void confirmKnownHostAction();
+                        }}
+                      >
+                        <KeyRound size={13} />{" "}
+                        {t("desktop.confirmKnownHostAction")}
+                      </Button>
+                    </span>
+                  </span>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={knownHosts.count === 0}
+                    onClick={() => setPendingKnownHostAction({ type: "clear" })}
+                  >
+                    <KeyRound size={13} /> {t("desktop.clearKnownHosts")}
+                  </Button>
+                )}
               </div>
-            ) : (
-              <small className="known-hosts-empty">
-                {t("desktop.knownHostsEmpty")}
-              </small>
-            )}
-          </>
+              {knownHosts.entries.length > 0 ? (
+                <div className="known-hosts-list">
+                  {knownHosts.entries.map((entry) => (
+                    <div className="known-hosts-item" key={entry.key}>
+                      <span className="known-hosts-item-main">
+                        <strong>
+                          {entry.host}:{entry.port}
+                        </strong>
+                        <code>{entry.fingerprint}</code>
+                      </span>
+                      <span className="known-hosts-item-meta">
+                        <small>
+                          {t("desktop.knownHostSource", {
+                            source: entry.source,
+                          })}
+                        </small>
+                        <small>
+                          {t("desktop.knownHostFirstSeen", {
+                            time: formatKnownHostTime(
+                              entry.first_seen_at_ms,
+                              t,
+                            ),
+                          })}
+                        </small>
+                        <small>
+                          {t("desktop.knownHostLastSeen", {
+                            time: formatKnownHostTime(entry.last_seen_at_ms, t),
+                          })}
+                        </small>
+                      </span>
+                      {pendingKnownHostAction?.type === "remove" &&
+                      pendingKnownHostAction.key === entry.key ? (
+                        <span
+                          className="known-hosts-confirm known-hosts-confirm--inline"
+                          role="group"
+                          aria-label={t("desktop.confirmKnownHostRemove", {
+                            host: `${entry.host}:${entry.port}`,
+                          })}
+                        >
+                          <small>
+                            {t("desktop.confirmKnownHostRemove", {
+                              host: `${entry.host}:${entry.port}`,
+                            })}
+                          </small>
+                          <span className="known-hosts-confirm-actions">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              disabled={knownHostActionBusy}
+                              onClick={() => setPendingKnownHostAction(null)}
+                            >
+                              <X size={13} />{" "}
+                              {t("desktop.cancelKnownHostAction")}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              disabled={knownHostActionBusy}
+                              onClick={() => {
+                                void confirmKnownHostAction();
+                              }}
+                            >
+                              <Trash2 size={13} />{" "}
+                              {t("desktop.confirmKnownHostAction")}
+                            </Button>
+                          </span>
+                        </span>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={knownHostActionBusy}
+                          onClick={() =>
+                            setPendingKnownHostAction({
+                              type: "remove",
+                              key: entry.key,
+                            })
+                          }
+                        >
+                          <Trash2 size={13} /> {t("desktop.removeKnownHost")}
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <small className="known-hosts-empty">
+                  {t("desktop.knownHostsEmpty")}
+                </small>
+              )}
+            </>
+          ) : null}
+        </Panel>
+        <Panel className="context-card legal-card">
+          <header>
+            <span>{t("desktop.thirdPartyNotices")}</span>
+            <Scale aria-hidden="true" size={16} />
+          </header>
+          <p>{t("desktop.thirdPartyNoticesHint")}</p>
+          <div className="settings-actions">
+            <Button
+              disabled={!legal?.available || legalBusy}
+              onClick={() => {
+                void openThirdPartyNotices();
+              }}
+              size="sm"
+              variant="ghost"
+            >
+              <ScrollText aria-hidden="true" size={13} />
+              {legalBusy
+                ? t("desktop.thirdPartyNoticesLoading")
+                : t("desktop.thirdPartyNotices")}
+            </Button>
+          </div>
+          {!legal?.available || legalError ? (
+            <small
+              className="legal-notices-status"
+              role={legalError ? "alert" : undefined}
+            >
+              {t("desktop.thirdPartyNoticesUnavailable")}
+            </small>
+          ) : null}
+        </Panel>
+        {showFutureProductSurfaces ? (
+          <Panel className="context-card commercial-card">
+            <header>
+              <span>{t("desktop.businessLayer")}</span>
+              <Badge>{t("desktop.plannedUnavailable")}</Badge>
+            </header>
+            <div className="tier-grid">
+              <span>
+                <Boxes size={16} /> {t("desktop.sharedVaults")}
+              </span>
+              <span>
+                <Database size={16} /> {t("desktop.auditExport")}
+              </span>
+              <span>
+                <HardDrive size={16} /> {t("desktop.devicePosture")}
+              </span>
+              <span>
+                <CircleDollarSign size={16} /> {t("desktop.seatBilling")}
+              </span>
+            </div>
+            <Button disabled title={t("desktop.notAvailable")} variant="ghost">
+              <Bell size={15} /> {t("desktop.managePlan")}
+            </Button>
+          </Panel>
         ) : null}
-      </Panel>
-      <Panel className="context-card commercial-card">
-        <header>
-          <span>{t("desktop.businessLayer")}</span>
-          <Badge tone="premium">{t("desktop.team")}</Badge>
-        </header>
-        <div className="tier-grid">
-          <span>
-            <Boxes size={16} /> {t("desktop.sharedVaults")}
-          </span>
-          <span>
-            <Database size={16} /> {t("desktop.auditExport")}
-          </span>
-          <span>
-            <HardDrive size={16} /> {t("desktop.devicePosture")}
-          </span>
-          <span>
-            <CircleDollarSign size={16} /> {t("desktop.seatBilling")}
-          </span>
-        </div>
-        <Button disabled title={t("desktop.notAvailable")} variant="ghost">
-          <Bell size={15} /> {t("desktop.managePlan")}
-        </Button>
-      </Panel>
-    </div>
+      </div>
+      {thirdPartyNotices !== null ? (
+        <ThirdPartyNoticesOverlay
+          notices={thirdPartyNotices}
+          onClose={() => setThirdPartyNotices(null)}
+          t={t}
+        />
+      ) : null}
+    </>
   );
 });
 

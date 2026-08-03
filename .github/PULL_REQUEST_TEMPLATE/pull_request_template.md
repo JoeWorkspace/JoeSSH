@@ -18,6 +18,8 @@ Brief description of changes.
 - [ ] New/changed code has test coverage
 - [ ] Bundle size stays within 250KB budget
 - [ ] CSP and security headers are maintained
+- [ ] I reviewed the final diff after the latest push (solo-maintainer self-review)
+- [ ] `Public Release Readiness` is green before merge
 
 ## Related Issues
 

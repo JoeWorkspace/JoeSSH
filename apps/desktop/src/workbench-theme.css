@@ -676,7 +676,8 @@
 
 .command-palette,
 .modal,
-.getting-started-dialog {
+.getting-started-dialog,
+.third-party-notices-dialog {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 54%),
     var(--atlas-surface);
@@ -731,6 +732,20 @@
   gap: 18px;
   max-width: 800px;
   padding: 22px;
+}
+
+.third-party-notices-dialog {
+  border-radius: var(--atlas-radius-xl);
+  padding: 22px;
+}
+
+.third-party-notices-mark {
+  border-radius: var(--atlas-radius-md);
+}
+
+.third-party-notices-content {
+  background: color-mix(in srgb, var(--atlas-bg) 92%, var(--atlas-accent) 2%);
+  border-color: var(--atlas-border-strong);
 }
 
 .getting-started-mark {

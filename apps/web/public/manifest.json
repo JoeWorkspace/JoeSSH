@@ -2,7 +2,7 @@
   "id": "/",
   "name": "JoeSSH Admin",
   "short_name": "JoeSSH",
-  "description": "Team management, device status, audit logs, and sync operations.",
+  "description": "Read-only team, device, role, and audit snapshots from a configured JoeSSH Sync service.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#101820",

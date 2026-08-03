@@ -6,7 +6,9 @@ This plan turns the ambition of a world-class, finished JoeSSH into explicit sta
 
 ## Product Promise
 
-JoeSSH is the local-first remote workbench for SSH, terminal sessions, SFTP, port forwarding, encrypted sync, team access, and self-hosted operational visibility.
+JoeSSH is the local-first remote workbench for SSH, terminal sessions, SFTP,
+port forwarding, an optional self-hosted change ledger, team access, and
+self-hosted operational visibility.
 
 The product wins when it makes a real operator feel:
 
@@ -150,7 +152,8 @@ Moat candidates:
 
 - Session memory that preserves context across terminals, SFTP, forwards, and team audit.
 - Safe runbooks that turn repeated terminal operations into reviewed workflows.
-- Local-first encrypted workspace sync with transparent conflict handling.
+- A future client-side encrypted workspace sync protocol with transparent
+  conflict handling, explicit key management, and interoperability tests.
 - Operator-grade search across hosts, commands, files, forwards, and incidents.
 - Extensible command and panel model without weakening security boundaries.
 - AI assistance only where it is bounded, local-first when possible, and never exposed to secrets by default.
@@ -211,7 +214,7 @@ Week 1:
 
 - Restore or clone into a healthy Git checkout.
 - Run `node scripts/check-public-release-readiness.mjs` without local bypass.
-- Freeze `0.1.0-beta.9` scope to Desktop, Web Admin, and self-hosted Sync.
+- Freeze `0.1.0-beta.10` scope to Desktop, Web Admin, and self-hosted Sync.
 - Create a top-10 dogfood task script for SSH, PTY, SFTP, forwarding, Web Admin, and Sync.
 
 Week 2:

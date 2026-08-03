@@ -68,7 +68,7 @@ Pre-commit hooks run automatically on `git commit`:
 npm run test
 
 # Unit tests with coverage
-npx vitest run --coverage
+npx --no-install vitest run --coverage
 
 # Type checking
 npm run typecheck

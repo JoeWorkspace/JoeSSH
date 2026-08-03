@@ -1,7 +1,18 @@
 # Public Beta Privacy Note
 
+This is the engineering collection contract for Public Beta builds. The
+user-facing policy, including local device storage and self-hosted processing,
+is [PRIVACY.md](../PRIVACY.md). If the two documents diverge, release is blocked
+until the implementation and both documents agree.
+
 JoeSSH Public Beta telemetry is opt-in. The app must either keep telemetry off
 by default or ask for explicit consent before sending any error or crash report.
+
+This “must not be collected” list governs data transmitted to a
+project-configured telemetry endpoint. JoeSSH can process and retain connection
+profiles, host values, usernames, and recent commands locally to provide the
+features the user requests; that local behavior must be disclosed but must not
+leak into telemetry.
 
 ## Allowed Data After Opt-In
 

@@ -13,7 +13,9 @@ describe("ShortcutsOverlay", () => {
   it("renders the dialog with a translated title", () => {
     render(<ShortcutsOverlay onClose={vi.fn()} t={t} />);
     expect(screen.getByRole("dialog")).toBeTruthy();
-    expect(screen.getAllByText("desktop.keyboardShortcuts").length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText("desktop.keyboardShortcuts").length,
+    ).toBeGreaterThan(0);
   });
 
   it("focuses the non-interactive dialog and restores its opener", () => {
@@ -45,6 +47,19 @@ describe("ShortcutsOverlay", () => {
     expect(screen.getByText("desktop.new")).toBeTruthy();
   });
 
+  it("hides the unfinished team shortcut for release builds", () => {
+    render(
+      <ShortcutsOverlay
+        onClose={vi.fn()}
+        showFutureProductSurfaces={false}
+        t={t}
+      />,
+    );
+
+    expect(screen.queryByText("desktop.team")).toBeNull();
+    expect(screen.getByText("desktop.openForwarding")).toBeTruthy();
+  });
+
   it("closes when clicking the backdrop", () => {
     const onClose = vi.fn();
     render(<ShortcutsOverlay onClose={onClose} t={t} />);
@@ -64,7 +79,9 @@ describe("ShortcutsOverlay", () => {
     const bubbledKeyDown = vi.fn();
     window.addEventListener("keydown", bubbledKeyDown);
     render(<ShortcutsOverlay onClose={onClose} t={t} />);
-    fireEvent.keyDown(screen.getByRole("dialog").parentElement as HTMLElement, { key: "Escape" });
+    fireEvent.keyDown(screen.getByRole("dialog").parentElement as HTMLElement, {
+      key: "Escape",
+    });
     expect(onClose).toHaveBeenCalled();
     expect(bubbledKeyDown).not.toHaveBeenCalled();
     window.removeEventListener("keydown", bubbledKeyDown);
@@ -73,7 +90,9 @@ describe("ShortcutsOverlay", () => {
   it("ignores non-Escape keydown on the backdrop", () => {
     const onClose = vi.fn();
     render(<ShortcutsOverlay onClose={onClose} t={t} />);
-    fireEvent.keyDown(screen.getByRole("dialog").parentElement as HTMLElement, { key: "a" });
+    fireEvent.keyDown(screen.getByRole("dialog").parentElement as HTMLElement, {
+      key: "a",
+    });
     expect(onClose).not.toHaveBeenCalled();
   });
 });

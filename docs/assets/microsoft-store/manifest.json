@@ -1,0 +1,234 @@
+{
+  "schemaVersion": 1,
+  "kind": "microsoft-store-listing-assets",
+  "status": "provisional-not-uploadable",
+  "submissionAuthorization": "blocked",
+  "candidateBinding": null,
+  "screenshotRequirements": {
+    "count": 8,
+    "format": "png",
+    "width": 1920,
+    "height": 1080,
+    "aspectRatio": "16:9",
+    "locales": [
+      "en-US",
+      "zh-CN"
+    ],
+    "themesPerLocale": [
+      "light",
+      "dark"
+    ],
+    "sourceRequirement": "exact-candidate-capture"
+  },
+  "screenshots": [
+    {
+      "id": "en-US-connected-terminal-light",
+      "locale": "en-US",
+      "order": 1,
+      "scene": "connected-terminal",
+      "theme": "light",
+      "path": null,
+      "requiredPath": "screenshots/en-US/01-connected-terminal-light.png",
+      "status": "provisional-reference-only",
+      "compositionReference": {
+        "limitations": [
+          "development-build",
+          "not-scene-specific",
+          "not-candidate-bound",
+          "not-uploadable"
+        ],
+        "path": "tests/e2e/specs/visual-qa.spec.ts-snapshots/desktop-desktop-visual-wide-en-desktop-visual-wide-win32.png",
+        "sha256": "44f987a9a8c4f34079a973534996a2c823c36c12065df18a1a5df6337c7b9570",
+        "width": 1440,
+        "height": 900
+      }
+    },
+    {
+      "id": "en-US-host-key-review-dark",
+      "locale": "en-US",
+      "order": 2,
+      "scene": "host-key-review",
+      "theme": "dark",
+      "path": null,
+      "requiredPath": "screenshots/en-US/02-host-key-review-dark.png",
+      "status": "provisional-reference-only",
+      "compositionReference": {
+        "limitations": [
+          "development-build",
+          "not-scene-specific",
+          "not-candidate-bound",
+          "not-uploadable"
+        ],
+        "path": "tests/e2e/specs/visual-qa.spec.ts-snapshots/desktop-desktop-visual-wide-en-desktop-visual-wide-win32.png",
+        "sha256": "44f987a9a8c4f34079a973534996a2c823c36c12065df18a1a5df6337c7b9570",
+        "width": 1440,
+        "height": 900
+      }
+    },
+    {
+      "id": "en-US-sftp-transfer-light",
+      "locale": "en-US",
+      "order": 3,
+      "scene": "sftp-transfer",
+      "theme": "light",
+      "path": null,
+      "requiredPath": "screenshots/en-US/03-sftp-transfer-light.png",
+      "status": "provisional-reference-only",
+      "compositionReference": {
+        "limitations": [
+          "development-build",
+          "not-scene-specific",
+          "not-candidate-bound",
+          "not-uploadable"
+        ],
+        "path": "tests/e2e/specs/visual-qa.spec.ts-snapshots/desktop-desktop-visual-wide-en-desktop-visual-wide-win32.png",
+        "sha256": "44f987a9a8c4f34079a973534996a2c823c36c12065df18a1a5df6337c7b9570",
+        "width": 1440,
+        "height": 900
+      }
+    },
+    {
+      "id": "en-US-port-forward-stopped-dark",
+      "locale": "en-US",
+      "order": 4,
+      "scene": "port-forward-stopped",
+      "theme": "dark",
+      "path": null,
+      "requiredPath": "screenshots/en-US/04-port-forward-stopped-dark.png",
+      "status": "provisional-reference-only",
+      "compositionReference": {
+        "limitations": [
+          "development-build",
+          "not-scene-specific",
+          "not-candidate-bound",
+          "not-uploadable"
+        ],
+        "path": "tests/e2e/specs/visual-qa.spec.ts-snapshots/desktop-desktop-visual-wide-en-desktop-visual-wide-win32.png",
+        "sha256": "44f987a9a8c4f34079a973534996a2c823c36c12065df18a1a5df6337c7b9570",
+        "width": 1440,
+        "height": 900
+      }
+    },
+    {
+      "id": "zh-CN-connected-terminal-light",
+      "locale": "zh-CN",
+      "order": 1,
+      "scene": "connected-terminal",
+      "theme": "light",
+      "path": null,
+      "requiredPath": "screenshots/zh-CN/01-connected-terminal-light.png",
+      "status": "provisional-reference-only",
+      "compositionReference": {
+        "limitations": [
+          "development-build",
+          "not-scene-specific",
+          "not-candidate-bound",
+          "not-uploadable"
+        ],
+        "path": "tests/e2e/specs/visual-qa.spec.ts-snapshots/desktop-desktop-visual-wide-zh-CN-desktop-visual-wide-win32.png",
+        "sha256": "9700bd0c0616b53314c3e1b52a9a08ebe7b25cd8c396f7ac96b5e949aedb3479",
+        "width": 1440,
+        "height": 900
+      }
+    },
+    {
+      "id": "zh-CN-host-key-review-dark",
+      "locale": "zh-CN",
+      "order": 2,
+      "scene": "host-key-review",
+      "theme": "dark",
+      "path": null,
+      "requiredPath": "screenshots/zh-CN/02-host-key-review-dark.png",
+      "status": "provisional-reference-only",
+      "compositionReference": {
+        "limitations": [
+          "development-build",
+          "not-scene-specific",
+          "not-candidate-bound",
+          "not-uploadable"
+        ],
+        "path": "tests/e2e/specs/visual-qa.spec.ts-snapshots/desktop-desktop-visual-wide-zh-CN-desktop-visual-wide-win32.png",
+        "sha256": "9700bd0c0616b53314c3e1b52a9a08ebe7b25cd8c396f7ac96b5e949aedb3479",
+        "width": 1440,
+        "height": 900
+      }
+    },
+    {
+      "id": "zh-CN-sftp-transfer-light",
+      "locale": "zh-CN",
+      "order": 3,
+      "scene": "sftp-transfer",
+      "theme": "light",
+      "path": null,
+      "requiredPath": "screenshots/zh-CN/03-sftp-transfer-light.png",
+      "status": "provisional-reference-only",
+      "compositionReference": {
+        "limitations": [
+          "development-build",
+          "not-scene-specific",
+          "not-candidate-bound",
+          "not-uploadable"
+        ],
+        "path": "tests/e2e/specs/visual-qa.spec.ts-snapshots/desktop-desktop-visual-wide-zh-CN-desktop-visual-wide-win32.png",
+        "sha256": "9700bd0c0616b53314c3e1b52a9a08ebe7b25cd8c396f7ac96b5e949aedb3479",
+        "width": 1440,
+        "height": 900
+      }
+    },
+    {
+      "id": "zh-CN-port-forward-stopped-dark",
+      "locale": "zh-CN",
+      "order": 4,
+      "scene": "port-forward-stopped",
+      "theme": "dark",
+      "path": null,
+      "requiredPath": "screenshots/zh-CN/04-port-forward-stopped-dark.png",
+      "status": "provisional-reference-only",
+      "compositionReference": {
+        "limitations": [
+          "development-build",
+          "not-scene-specific",
+          "not-candidate-bound",
+          "not-uploadable"
+        ],
+        "path": "tests/e2e/specs/visual-qa.spec.ts-snapshots/desktop-desktop-visual-wide-zh-CN-desktop-visual-wide-win32.png",
+        "sha256": "9700bd0c0616b53314c3e1b52a9a08ebe7b25cd8c396f7ac96b5e949aedb3479",
+        "width": 1440,
+        "height": 900
+      }
+    }
+  ],
+  "brandingSource": {
+    "path": "apps/desktop/src-tauri/icons/joessh-icon-master-1024.png",
+    "sha256": "6f6ffbcdbdfc28fac5e260da5f9d8b2a7c90909b3dd8e268676a5b80791c8af4",
+    "width": 1024,
+    "height": 1024
+  },
+  "brandAssets": [
+    {
+      "id": "box-art-1x1",
+      "path": "branding/joessh-box-art-1x1.png",
+      "width": 1024,
+      "height": 1024,
+      "aspectRatio": "1:1",
+      "status": "generated-from-master",
+      "sha256": "1ab0248f5a43dce25f78518236e772598aae5b607f3c08491865196433c8bec4",
+      "sizeBytes": 847917
+    },
+    {
+      "id": "poster-art-2x3",
+      "path": "branding/joessh-poster-art-2x3.png",
+      "width": 1024,
+      "height": 1536,
+      "aspectRatio": "2:3",
+      "status": "generated-from-master",
+      "sha256": "80727ff2b3f99b808b10828bba71e3c08d0460af0e2b6855c854f00c7236827b",
+      "sizeBytes": 850953
+    }
+  ],
+  "blockers": [
+    "Eight final exact-candidate screenshots are missing.",
+    "The screenshot set is not bound to a candidate SHA-256.",
+    "Partner Center identity verification and final human review are outside this bundle."
+  ]
+}

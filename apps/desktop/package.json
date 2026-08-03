@@ -1,33 +1,35 @@
 {
   "name": "@atlasterm/desktop",
-  "version": "0.1.0-beta.9",
+  "version": "0.1.0-beta.10",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc -p tsconfig.json --noEmit && vite build && node inline-css.mjs && node ../../scripts/apply-subresource-integrity.mjs dist",
+    "build:microsoft-store": "tsc -p tsconfig.json --noEmit && vite build --mode microsoft-store && node inline-css.mjs && node ../../scripts/apply-subresource-integrity.mjs dist",
     "preview": "vite preview --host 127.0.0.1",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "tauri:build": "tauri build"
+    "tauri:build": "npm --prefix ../.. run release:desktop:legal-resource && tauri build"
   },
   "dependencies": {
     "@atlasterm/error-monitor": "0.1.0",
     "@atlasterm/i18n": "0.1.0",
     "@atlasterm/ui": "0.1.0",
-    "@tauri-apps/api": "2.5.0",
-    "@xterm/xterm": "5.5.0",
-    "lucide-react": "^0.468.0",
+    "@tauri-apps/api": "2.11.1",
+    "@xterm/xterm": "6.0.0",
+    "lucide-react": "^1.21.0",
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2.5.0",
+    "@types/node": "^22.20.0",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
-    "@tauri-apps/cli": "^2.5.0",
-    "@vitejs/plugin-react": "^5.0.0",
-    "typescript": "^5.9.3",
-    "vite": "^7.3.5",
+    "@vitejs/plugin-react": "^6.0.3",
+    "typescript": "^6.0.3",
+    "vite": "^8.1.0",
     "vitest": "^4.1.9"
   }
 }

@@ -2,12 +2,16 @@ export const ko = {
   "desktop.demoScopeSummary": "데모 데이터 · 실제 SSH에 연결되지 않음",
   "desktop.demoShell": "샘플 터미널",
   "desktop.noSession": "SSH에 연결되지 않음",
-  "desktop.noSessionActionDetail": "먼저 실제 호스트에 연결한 후 터미널, SFTP 또는 포트 포워딩을 사용하세요.",
+  "desktop.noSessionActionDetail":
+    "먼저 실제 호스트에 연결한 후 터미널, SFTP 또는 포트 포워딩을 사용하세요.",
   "desktop.sampleDataShort": "데모 데이터",
-  "desktop.terminalSessionConnectRequired": "“연결”을 클릭해 실제 SSH 세션을 설정한 후 명령을 실행하세요.",
-  "desktop.terminalSessionSample": "현재는 데모용 연결 설정이며 SSH 세션이 연결되지 않았습니다.",
+  "desktop.terminalSessionConnectRequired":
+    "“연결”을 클릭해 실제 SSH 세션을 설정한 후 명령을 실행하세요.",
+  "desktop.terminalSessionSample":
+    "현재는 데모용 연결 설정이며 SSH 세션이 연결되지 않았습니다.",
   "desktop.sftp": "SFTP",
-  "desktop.manifestDescription": "SSH 터미널, SFTP, 팀 접근 및 세션 관리.",
+  "desktop.manifestDescription":
+    "SSH 터미널, SFTP, 포트 포워딩 및 로컬 세션 관리.",
   "language.selectorLabel": "표시 언어",
   "language.autoRegion": "지역에 따라 자동 표시",
   "language.worldReady": "전 세계 언어 준비 완료",
@@ -53,26 +57,37 @@ export const ko = {
   "desktop.terminalSessionMfaRequired": "명령 실행 전에 MFA 인증이 필요합니다.",
   "desktop.mfaRequiredShort": "MFA 필요",
   "desktop.commandAccepted": "명령이 승인되었습니다",
-  "desktop.commandAcceptedDetail": "로컬 안전 사전 검사를 통과했으며 터미널 실행기 대기열에 추가되었습니다.",
+  "desktop.commandAcceptedDetail":
+    "로컬 안전 사전 검사를 통과했으며 터미널 실행기 대기열에 추가되었습니다.",
   "desktop.commandBlocked": "명령이 차단되었습니다",
   "desktop.commandBlockedDetail": "{pattern} 일치: {reason}",
   "desktop.safetyReasonRmRoot": "파일 시스템 루트를 재귀적으로 삭제합니다",
   "desktop.safetyReasonMkfs": "파일 시스템을 포맷합니다",
   "desktop.safetyReasonForkBomb": "포크 폭탄",
-  "desktop.safetyReasonRawDiskCopy": "원시 디스크 복사는 데이터를 파괴할 수 있습니다",
-  "desktop.safetyReasonChmodRoot": "파일 시스템 루트부터 권한을 광범위하게 엽니다",
+  "desktop.safetyReasonRawDiskCopy":
+    "원시 디스크 복사는 데이터를 파괴할 수 있습니다",
+  "desktop.safetyReasonChmodRoot":
+    "파일 시스템 루트부터 권한을 광범위하게 엽니다",
   "desktop.safetyReasonTeeBlockDevice": "원시 출력을 블록 장치에 씁니다",
-  "desktop.safetyReasonRedirectBlockDevice": "출력을 원시 블록 장치로 리디렉션하여 내용을 파괴합니다",
-  "desktop.safetyReasonFindRootDelete": "루트 경로에서 파일을 재귀적으로 삭제합니다",
-  "desktop.safetyReasonDiskWipe": "파티션 테이블 또는 블록 장치 내용을 되돌릴 수 없게 지웁니다",
+  "desktop.safetyReasonRedirectBlockDevice":
+    "출력을 원시 블록 장치로 리디렉션하여 내용을 파괴합니다",
+  "desktop.safetyReasonFindRootDelete":
+    "루트 경로에서 파일을 재귀적으로 삭제합니다",
+  "desktop.safetyReasonDiskWipe":
+    "파티션 테이블 또는 블록 장치 내용을 되돌릴 수 없게 지웁니다",
   "desktop.safetyReasonFirewallFlush": "방화벽 규칙을 비웁니다",
-  "desktop.safetyReasonRemoteShellPipe": "원격 콘텐츠를 shell로 직접 파이프합니다",
-  "desktop.safetyReasonRootDownloadOverwrite": "다운로드한 콘텐츠로 루트 경로를 덮어씁니다",
+  "desktop.safetyReasonRemoteShellPipe":
+    "원격 콘텐츠를 shell로 직접 파이프합니다",
+  "desktop.safetyReasonRootDownloadOverwrite":
+    "다운로드한 콘텐츠로 루트 경로를 덮어씁니다",
   "desktop.safetyReasonHostShutdown": "호스트를 즉시 중지합니다",
-  "desktop.safetyReasonWindowsDestructive": "Windows 파괴적 명령이 파일, 디스크 또는 호스트 상태를 대상으로 합니다",
-  "desktop.safetyReasonPowershellDestructive": "PowerShell 파괴적 명령이 드라이브, 시스템 경로, 디스크 또는 호스트 전원 상태를 대상으로 합니다",
+  "desktop.safetyReasonWindowsDestructive":
+    "Windows 파괴적 명령이 파일, 디스크 또는 호스트 상태를 대상으로 합니다",
+  "desktop.safetyReasonPowershellDestructive":
+    "PowerShell 파괴적 명령이 드라이브, 시스템 경로, 디스크 또는 호스트 전원 상태를 대상으로 합니다",
   "desktop.safetyReasonDropDatabase": "데이터베이스를 삭제합니다",
-  "desktop.safetyReasonCommandSubstitution": "무엇이든 실행할 수 있는 하위 명령을 포함합니다",
+  "desktop.safetyReasonCommandSubstitution":
+    "무엇이든 실행할 수 있는 하위 명령을 포함합니다",
   "desktop.context": "컨텍스트",
   "desktop.team": "팀",
   "desktop.settings": "설정",
@@ -108,7 +123,7 @@ export const ko = {
   "desktop.recordTerminal": "터미널 세션 녹화",
   "desktop.requiredProduction": "프로덕션 범위에 필요",
   "desktop.syncEncrypted": "암호화된 스니펫 동기화",
-  "desktop.availableProBusiness": "Pro 및 Business에서 사용 가능",
+  "desktop.plannedUnavailable": "계획 중이며 현재 사용할 수 없음",
   "desktop.telemetryErrors": "선택적 오류 보고",
   "desktop.telemetryErrorsHint": "익명화된 충돌 및 오류 요약을 보냅니다.",
   "desktop.businessLayer": "비즈니스 계층",
@@ -123,7 +138,8 @@ export const ko = {
   "desktop.requestElevated": "상승된 액세스 요청",
   "desktop.palettePlaceholder": "명령 실행, 호스트 열기, 워크플로 시작",
   "desktop.paletteEmptyTitle": "일치하는 항목 없음",
-  "desktop.paletteEmptyHint": "호스트, 최근 명령 또는 워크플로 키워드를 사용해 보세요.",
+  "desktop.paletteEmptyHint":
+    "호스트, 최근 명령 또는 워크플로 키워드를 사용해 보세요.",
   "team.access": "팀 액세스",
   "team.accessSummary": "팀 액세스 요약",
   "team.business": "Business",
@@ -167,7 +183,8 @@ export const ko = {
   "desktop.forwardActive": "활성",
   "desktop.forwardInactive": "비활성",
   "desktop.forwardNoRules": "포워딩 규칙이 없습니다",
-  "desktop.forwardNoRulesHint": "규칙을 추가해 SSH로 로컬 TCP 포트를 터널링하세요.",
+  "desktop.forwardNoRulesHint":
+    "규칙을 추가해 SSH로 로컬 TCP 포트를 터널링하세요.",
   "desktop.sftpEmpty": "이 폴더가 비어 있습니다",
   "desktop.sftpEmptyHint": "파일을 업로드하거나 다른 폴더로 이동하세요.",
   "desktop.groupProduction": "프로덕션",
@@ -215,10 +232,12 @@ export const ko = {
   "desktop.passphrase": "암호문(선택)",
   "desktop.pinnedFingerprint": "고정 호스트 키(선택)",
   "desktop.hostKeyConfirmTitle": "Confirm host key",
-  "desktop.hostKeyConfirmDetail": "Verify this SHA-256 fingerprint before authenticating.",
+  "desktop.hostKeyConfirmDetail":
+    "Verify this SHA-256 fingerprint before authenticating.",
   "desktop.hostKeyPresentedFingerprint": "Presented fingerprint",
   "desktop.hostKeyVerificationFailed": "Host key verification failed",
-  "desktop.hostKeyChangedDetail": "Stored host key mismatch for {host}:{port}. Expected {stored}, presented {presented}.",
+  "desktop.hostKeyChangedDetail":
+    "Stored host key mismatch for {host}:{port}. Expected {stored}, presented {presented}.",
   "desktop.trustHostKeyAndConnect": "Trust and connect",
   "desktop.connectAction": "연결",
   "desktop.connecting": "연결 중…",
@@ -227,20 +246,23 @@ export const ko = {
   "desktop.connectionSwitched": "{name}(으)로 전환됨",
   "desktop.connectionMoved": "{connection}을(를) {group}(으)로 이동함",
   "desktop.connectionsImported": "연결 {count}개 가져옴",
-  "desktop.connectionsImportFailed": "Could not import connections. Choose a valid JoeSSH connections JSON file.",
+  "desktop.connectionsImportFailed":
+    "Could not import connections. Choose a valid JoeSSH connections JSON file.",
   "desktop.connectionConnectToast": "연결: {name}",
   "desktop.connectionCreated": "연결 {name} 생성됨",
   "desktop.connectionTestResult": "연결 테스트: {result}",
-  "desktop.builtinConnectionEditUnavailable": "내장 데모 연결은 편집할 수 없습니다",
-  "desktop.builtinConnectionDeleteUnavailable": "내장 데모 연결은 삭제할 수 없습니다",
+  "desktop.builtinConnectionEditUnavailable":
+    "내장 데모 연결은 편집할 수 없습니다",
+  "desktop.builtinConnectionDeleteUnavailable":
+    "내장 데모 연결은 삭제할 수 없습니다",
   "desktop.connectionCopyName": "{name} 사본",
   "desktop.connectionCopyNameNumbered": "{name} 사본 {number}",
   "desktop.connectionDuplicated": "{name} 복제됨",
   "desktop.connectionDeleted": "{name} 삭제됨",
   "desktop.connectionEdited": "{name} 편집됨",
-  "desktop.groupCreatedToast": "그룹 \"{name}\" 생성됨",
-  "desktop.groupDeletedToast": "그룹 \"{name}\" 삭제됨",
-  "desktop.groupRenamedToast": "그룹 이름이 \"{name}\"(으)로 변경됨",
+  "desktop.groupCreatedToast": '그룹 "{name}" 생성됨',
+  "desktop.groupDeletedToast": '그룹 "{name}" 삭제됨',
+  "desktop.groupRenamedToast": '그룹 이름이 "{name}"(으)로 변경됨',
   "desktop.sftpUploadComplete": "{name} 업로드됨",
   "desktop.sftpOverwriteTitle": "기존 파일을 바꿀까요?",
   "desktop.sftpOverwriteDetail": "이 폴더에 {name} 파일이 이미 있습니다.",
@@ -269,14 +291,16 @@ export const ko = {
   "team.auditCommandRecorded": "Command recorded",
   "team.auditAccessRequestApproved": "Access request approved",
   "team.auditAccessRequestRejected": "Access request rejected",
-  "team.productionElevationDetail": "Incident commander role for gateway triage",
+  "team.productionElevationDetail":
+    "Incident commander role for gateway triage",
   "web.adminNavigation": "JoeSSH 관리자 탐색",
   "web.adminConsole": "관리자 콘솔",
   "web.skipToContent": "메인 콘텐츠로 건너뛰기",
   "web.teamOperations": "팀 운영",
   "web.refreshTeamDashboard": "팀 대시보드 새로 고침",
   "web.telemetryErrors": "선택적 오류 보고",
-  "web.telemetryUnavailable": "이 빌드에서는 텔레메트리가 활성화되어 있지 않습니다.",
+  "web.telemetryUnavailable":
+    "이 빌드에서는 텔레메트리가 활성화되어 있지 않습니다.",
   "web.teamMetrics": "팀 운영 메트릭",
   "web.activeMembers": "활성 멤버",
   "web.rolesConfigured": "구성된 역할",
@@ -308,17 +332,23 @@ export const ko = {
   "web.storage": "스토리지",
   "mobile.kicker": "JoeSSH Mobile",
   "mobile.title": "동기화 및 긴급 액세스",
-  "mobile.subtitle": "이 휴대폰을 등록하고 터미널 컨텍스트를 미리 보며 복구 경로를 가까이에 둡니다.",
+  "mobile.subtitle":
+    "이 휴대폰을 등록하고 터미널 컨텍스트를 미리 보며 복구 경로를 가까이에 둡니다.",
   "mobile.registering": "장치 등록 중",
-  "mobile.registeringMessage": "동기화와 긴급 인계를 위한 모바일 ID를 생성하고 있습니다.",
+  "mobile.registeringMessage":
+    "동기화와 긴급 인계를 위한 모바일 ID를 생성하고 있습니다.",
   "mobile.previewing": "동기화 미리보기 가져오는 중",
-  "mobile.previewingMessage": "프로필, 세션, 커서 상태, 신뢰된 복구 경로를 가져오고 있습니다.",
+  "mobile.previewingMessage":
+    "프로필, 세션, 커서 상태, 신뢰된 복구 경로를 가져오고 있습니다.",
   "mobile.ready": "미리보기 준비 완료",
-  "mobile.readyMessage": "이 장치는 등록되었으며 최신 동기화 응답을 사용할 수 있습니다.",
+  "mobile.readyMessage":
+    "이 장치는 등록되었으며 최신 동기화 응답을 사용할 수 있습니다.",
   "mobile.offline": "오프라인 대체 경로 활성",
-  "mobile.offlineMessage": "실시간 동기화를 사용할 수 없습니다. 실시간 또는 캐시된 작업 영역 데이터를 받지 못했습니다.",
+  "mobile.offlineMessage":
+    "실시간 동기화를 사용할 수 없습니다. 실시간 또는 캐시된 작업 영역 데이터를 받지 못했습니다.",
   "mobile.readyToConnect": "연결 준비 완료",
-  "mobile.readyToConnectMessage": "먼저 이 휴대폰을 등록하고 JoeSSH 동기화에서 안전한 미리보기를 가져오세요.",
+  "mobile.readyToConnectMessage":
+    "먼저 이 휴대폰을 등록하고 JoeSSH 동기화에서 안전한 미리보기를 가져오세요.",
   "mobile.profiles": "프로필",
   "mobile.openSessions": "열린 세션",
   "mobile.pendingChanges": "가져온 변경",
@@ -338,10 +368,12 @@ export const ko = {
   "mobile.registerPull": "등록하고 미리보기 가져오기",
   "desktop.error.boundary.title": "오류가 발생했습니다",
   "desktop.error.boundary.reload": "새로고침",
-  "desktop.error.boundary.message": "JoeSSH를 다시 불러오세요. 문제가 계속되면 지원팀에 문의하세요.",
+  "desktop.error.boundary.message":
+    "JoeSSH를 다시 불러오세요. 문제가 계속되면 지원팀에 문의하세요.",
   "mobile.error.boundary.title": "오류가 발생했습니다",
   "mobile.error.boundary.reload": "새로고침",
-  "mobile.error.boundary.message": "JoeSSH를 다시 불러오세요. 문제가 계속되면 지원팀에 문의하세요.",
+  "mobile.error.boundary.message":
+    "JoeSSH를 다시 불러오세요. 문제가 계속되면 지원팀에 문의하세요.",
   "desktop.paletteRecent": "최근",
   "desktop.paletteRecentBadge": "최근",
   "desktop.paletteConnections": "연결",
@@ -392,7 +424,15 @@ export const ko = {
   "team.accessRequestStatus": "팀 액세스 요청 상태",
   "desktop.restoreWorkbench": "작업 공간 복원",
   "desktop.gettingStarted": "시작하기",
-  "desktop.surfaceGuide": "Desktop은 SSH 세션을 열고, Web Admin은 동기화와 팀을 모니터링하며, Mobile은 보조 도구입니다.",
-  "desktop.telemetryPrivacyHint": "선택 사항이며 기본적으로 꺼져 있습니다. 호스트, 사용자 이름, 명령, 키, 토큰, 경로 또는 터미널 출력을 보내지 않습니다.",
-  "team.reviewedBy": "{reviewer} 검토"
+  "desktop.surfaceGuide":
+    "Desktop은 로컬 SSH 및 SFTP 세션을 열고, Web Admin은 읽기 전용 Sync 스냅샷을 표시합니다. Mobile은 Sync 미리보기이며 SSH 또는 SFTP를 실행하지 않습니다.",
+  "desktop.telemetryPrivacyHint":
+    "선택 사항이며 기본적으로 꺼져 있습니다. 호스트, 사용자 이름, 명령, 키, 토큰, 경로 또는 터미널 출력을 보내지 않습니다.",
+  "desktop.thirdPartyNotices": "라이선스 및 고지",
+  "desktop.thirdPartyNoticesHint":
+    "이 앱 빌드에 포함된 라이선스와 고지문 전문을 확인합니다.",
+  "desktop.thirdPartyNoticesLoading": "라이선스 불러오는 중…",
+  "desktop.thirdPartyNoticesUnavailable":
+    "이 빌드에서는 라이선스 고지문을 사용할 수 없습니다.",
+  "team.reviewedBy": "{reviewer} 검토",
 } as const;

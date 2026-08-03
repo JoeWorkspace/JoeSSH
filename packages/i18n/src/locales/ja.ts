@@ -2,12 +2,16 @@ export const ja = {
   "desktop.demoScopeSummary": "デモデータ · 実際の SSH には未接続",
   "desktop.demoShell": "サンプルターミナル",
   "desktop.noSession": "SSH 未接続",
-  "desktop.noSessionActionDetail": "実際のホストに接続してから、ターミナル、SFTP、またはポート転送を使用してください。",
+  "desktop.noSessionActionDetail":
+    "実際のホストに接続してから、ターミナル、SFTP、またはポート転送を使用してください。",
   "desktop.sampleDataShort": "デモデータ",
-  "desktop.terminalSessionConnectRequired": "「接続」をクリックして実際の SSH セッションを確立してから、コマンドを実行してください。",
-  "desktop.terminalSessionSample": "現在はデモ用接続設定のみで、SSH セッションは確立されていません。",
+  "desktop.terminalSessionConnectRequired":
+    "「接続」をクリックして実際の SSH セッションを確立してから、コマンドを実行してください。",
+  "desktop.terminalSessionSample":
+    "現在はデモ用接続設定のみで、SSH セッションは確立されていません。",
   "desktop.sftp": "SFTP",
-  "desktop.manifestDescription": "SSH ターミナル、SFTP、チームアクセス、セッション管理。",
+  "desktop.manifestDescription":
+    "SSH ターミナル、SFTP、ポート転送、ローカルセッション管理。",
   "language.selectorLabel": "表示言語",
   "language.autoRegion": "地域に合わせて自動表示",
   "language.worldReady": "グローバル言語対応済み",
@@ -16,7 +20,8 @@ export const ja = {
   "desktop.searchPlaceholder": "ホスト、タグ、ユーザーを検索",
   "desktop.searchMatches": "{count} 件",
   "desktop.searchEmptyTitle": "一致する接続がありません",
-  "desktop.searchEmptyHint": "別のキーワードを試すか、タグフィルターを解除してください。",
+  "desktop.searchEmptyHint":
+    "別のキーワードを試すか、タグフィルターを解除してください。",
   "desktop.new": "新規",
   "desktop.connections": "接続",
   "desktop.filterByTag": "タグで絞り込み",
@@ -53,26 +58,38 @@ export const ja = {
   "desktop.terminalSessionMfaRequired": "コマンド実行前に MFA 検証が必要です。",
   "desktop.mfaRequiredShort": "MFA が必要",
   "desktop.commandAccepted": "コマンドを受け付けました",
-  "desktop.commandAcceptedDetail": "ローカル安全事前チェックに合格し、ターミナル実行キューに追加されました。",
+  "desktop.commandAcceptedDetail":
+    "ローカル安全事前チェックに合格し、ターミナル実行キューに追加されました。",
   "desktop.commandBlocked": "コマンドがブロックされました",
   "desktop.commandBlockedDetail": "{pattern} に一致: {reason}",
   "desktop.safetyReasonRmRoot": "ファイルシステムのルートを再帰的に削除します",
   "desktop.safetyReasonMkfs": "ファイルシステムをフォーマットします",
   "desktop.safetyReasonForkBomb": "フォーク爆弾",
-  "desktop.safetyReasonRawDiskCopy": "raw ディスクコピーはデータを破壊する可能性があります",
-  "desktop.safetyReasonChmodRoot": "ファイルシステムのルートから権限を広く開放します",
-  "desktop.safetyReasonTeeBlockDevice": "raw 出力をブロックデバイスへ書き込みます",
-  "desktop.safetyReasonRedirectBlockDevice": "出力を raw ブロックデバイスへリダイレクトし内容を破壊します",
-  "desktop.safetyReasonFindRootDelete": "ルートパスからファイルを再帰的に削除します",
-  "desktop.safetyReasonDiskWipe": "パーティションテーブルまたはブロックデバイス内容を不可逆に消去します",
+  "desktop.safetyReasonRawDiskCopy":
+    "raw ディスクコピーはデータを破壊する可能性があります",
+  "desktop.safetyReasonChmodRoot":
+    "ファイルシステムのルートから権限を広く開放します",
+  "desktop.safetyReasonTeeBlockDevice":
+    "raw 出力をブロックデバイスへ書き込みます",
+  "desktop.safetyReasonRedirectBlockDevice":
+    "出力を raw ブロックデバイスへリダイレクトし内容を破壊します",
+  "desktop.safetyReasonFindRootDelete":
+    "ルートパスからファイルを再帰的に削除します",
+  "desktop.safetyReasonDiskWipe":
+    "パーティションテーブルまたはブロックデバイス内容を不可逆に消去します",
   "desktop.safetyReasonFirewallFlush": "ファイアウォールルールを消去します",
-  "desktop.safetyReasonRemoteShellPipe": "リモートコンテンツを直接 shell にパイプします",
-  "desktop.safetyReasonRootDownloadOverwrite": "ダウンロード内容でルートパスを上書きします",
+  "desktop.safetyReasonRemoteShellPipe":
+    "リモートコンテンツを直接 shell にパイプします",
+  "desktop.safetyReasonRootDownloadOverwrite":
+    "ダウンロード内容でルートパスを上書きします",
   "desktop.safetyReasonHostShutdown": "ホストをただちに停止します",
-  "desktop.safetyReasonWindowsDestructive": "Windows の破壊的コマンドがファイル、ディスク、またはホスト状態を対象にします",
-  "desktop.safetyReasonPowershellDestructive": "PowerShell の破壊的コマンドがドライブ、システムパス、ディスク、またはホスト電源状態を対象にします",
+  "desktop.safetyReasonWindowsDestructive":
+    "Windows の破壊的コマンドがファイル、ディスク、またはホスト状態を対象にします",
+  "desktop.safetyReasonPowershellDestructive":
+    "PowerShell の破壊的コマンドがドライブ、システムパス、ディスク、またはホスト電源状態を対象にします",
   "desktop.safetyReasonDropDatabase": "データベースを削除します",
-  "desktop.safetyReasonCommandSubstitution": "任意の内容を実行できるサブコマンドを埋め込みます",
+  "desktop.safetyReasonCommandSubstitution":
+    "任意の内容を実行できるサブコマンドを埋め込みます",
   "desktop.context": "コンテキスト",
   "desktop.team": "チーム",
   "desktop.settings": "設定",
@@ -108,9 +125,10 @@ export const ja = {
   "desktop.recordTerminal": "ターミナルセッションを録画",
   "desktop.requiredProduction": "本番スコープでは必須",
   "desktop.syncEncrypted": "暗号化スニペットを同期",
-  "desktop.availableProBusiness": "Pro と Business で利用可能",
+  "desktop.plannedUnavailable": "計画中（現在は利用できません）",
   "desktop.telemetryErrors": "任意のエラー報告",
-  "desktop.telemetryErrorsHint": "匿名化済みのクラッシュとエラー概要を送信します。",
+  "desktop.telemetryErrorsHint":
+    "匿名化済みのクラッシュとエラー概要を送信します。",
   "desktop.businessLayer": "ビジネスレイヤー",
   "desktop.sharedVaults": "共有保管庫",
   "desktop.auditExport": "監査エクスポート",
@@ -123,7 +141,8 @@ export const ja = {
   "desktop.requestElevated": "昇格アクセスを申請",
   "desktop.palettePlaceholder": "コマンド実行、ホストを開く、ワークフロー開始",
   "desktop.paletteEmptyTitle": "一致する候補がありません",
-  "desktop.paletteEmptyHint": "ホスト、最近のコマンド、またはワークフローのキーワードを試してください。",
+  "desktop.paletteEmptyHint":
+    "ホスト、最近のコマンド、またはワークフローのキーワードを試してください。",
   "team.access": "チームアクセス",
   "team.accessSummary": "チームアクセス概要",
   "team.business": "Business",
@@ -167,9 +186,11 @@ export const ja = {
   "desktop.forwardActive": "アクティブ",
   "desktop.forwardInactive": "非アクティブ",
   "desktop.forwardNoRules": "フォワーディングルールはありません",
-  "desktop.forwardNoRulesHint": "ルールを追加して、SSH 経由でローカル TCP ポートを転送します。",
+  "desktop.forwardNoRulesHint":
+    "ルールを追加して、SSH 経由でローカル TCP ポートを転送します。",
   "desktop.sftpEmpty": "このフォルダーは空です",
-  "desktop.sftpEmptyHint": "ファイルをアップロードするか、別のフォルダーに移動してください。",
+  "desktop.sftpEmptyHint":
+    "ファイルをアップロードするか、別のフォルダーに移動してください。",
   "desktop.groupProduction": "本番環境",
   "desktop.groupStaging": "ステージング環境",
   "desktop.groupCI": "CI ランナー",
@@ -206,7 +227,8 @@ export const ja = {
   "desktop.knownHostActionFailed": "Could not update known hosts",
   "desktop.sftpTransferring": "転送中…",
   "desktop.sftpTransferError": "転送に失敗しました",
-  "desktop.sftpTransferTooLarge": "ファイルが {limit} の転送制限を超えています。",
+  "desktop.sftpTransferTooLarge":
+    "ファイルが {limit} の転送制限を超えています。",
   "desktop.connectTitle": "ホストに接続",
   "desktop.port": "ポート",
   "desktop.authMethod": "認証方式",
@@ -215,10 +237,12 @@ export const ja = {
   "desktop.passphrase": "パスフレーズ（任意）",
   "desktop.pinnedFingerprint": "固定ホスト鍵（任意）",
   "desktop.hostKeyConfirmTitle": "Confirm host key",
-  "desktop.hostKeyConfirmDetail": "Verify this SHA-256 fingerprint before authenticating.",
+  "desktop.hostKeyConfirmDetail":
+    "Verify this SHA-256 fingerprint before authenticating.",
   "desktop.hostKeyPresentedFingerprint": "Presented fingerprint",
   "desktop.hostKeyVerificationFailed": "Host key verification failed",
-  "desktop.hostKeyChangedDetail": "Stored host key mismatch for {host}:{port}. Expected {stored}, presented {presented}.",
+  "desktop.hostKeyChangedDetail":
+    "Stored host key mismatch for {host}:{port}. Expected {stored}, presented {presented}.",
   "desktop.trustHostKeyAndConnect": "Trust and connect",
   "desktop.connectAction": "接続",
   "desktop.connecting": "接続中…",
@@ -227,23 +251,27 @@ export const ja = {
   "desktop.connectionSwitched": "{name} に切り替えました",
   "desktop.connectionMoved": "{connection} を {group} に移動しました",
   "desktop.connectionsImported": "{count} 件の接続をインポートしました",
-  "desktop.connectionsImportFailed": "Could not import connections. Choose a valid JoeSSH connections JSON file.",
+  "desktop.connectionsImportFailed":
+    "Could not import connections. Choose a valid JoeSSH connections JSON file.",
   "desktop.connectionConnectToast": "接続: {name}",
   "desktop.connectionCreated": "接続 {name} を作成しました",
   "desktop.connectionTestResult": "接続テスト: {result}",
-  "desktop.builtinConnectionEditUnavailable": "組み込みデモ接続は編集できません",
-  "desktop.builtinConnectionDeleteUnavailable": "組み込みデモ接続は削除できません",
+  "desktop.builtinConnectionEditUnavailable":
+    "組み込みデモ接続は編集できません",
+  "desktop.builtinConnectionDeleteUnavailable":
+    "組み込みデモ接続は削除できません",
   "desktop.connectionCopyName": "{name} コピー",
   "desktop.connectionCopyNameNumbered": "{name} コピー {number}",
   "desktop.connectionDuplicated": "{name} を複製しました",
   "desktop.connectionDeleted": "{name} を削除しました",
   "desktop.connectionEdited": "{name} を編集しました",
-  "desktop.groupCreatedToast": "グループ \"{name}\" を作成しました",
-  "desktop.groupDeletedToast": "グループ \"{name}\" を削除しました",
-  "desktop.groupRenamedToast": "グループ名を \"{name}\" に変更しました",
+  "desktop.groupCreatedToast": 'グループ "{name}" を作成しました',
+  "desktop.groupDeletedToast": 'グループ "{name}" を削除しました',
+  "desktop.groupRenamedToast": 'グループ名を "{name}" に変更しました',
   "desktop.sftpUploadComplete": "{name} をアップロードしました",
   "desktop.sftpOverwriteTitle": "既存のファイルを置き換えますか？",
-  "desktop.sftpOverwriteDetail": "このフォルダーには {name} というファイルが既にあります。",
+  "desktop.sftpOverwriteDetail":
+    "このフォルダーには {name} というファイルが既にあります。",
   "desktop.sftpOverwriteCancel": "キャンセル",
   "desktop.sftpOverwriteConfirm": "上書き",
   "desktop.sshCommandCopied": "{name} の SSH コマンドをコピーしました",
@@ -269,7 +297,8 @@ export const ja = {
   "team.auditCommandRecorded": "Command recorded",
   "team.auditAccessRequestApproved": "Access request approved",
   "team.auditAccessRequestRejected": "Access request rejected",
-  "team.productionElevationDetail": "Incident commander role for gateway triage",
+  "team.productionElevationDetail":
+    "Incident commander role for gateway triage",
   "web.adminNavigation": "JoeSSH 管理ナビゲーション",
   "web.adminConsole": "管理コンソール",
   "web.skipToContent": "メインコンテンツへスキップ",
@@ -308,17 +337,23 @@ export const ja = {
   "web.storage": "ストレージ",
   "mobile.kicker": "JoeSSH Mobile",
   "mobile.title": "同期と緊急アクセス",
-  "mobile.subtitle": "このスマートフォンを登録し、ターミナルコンテキストをプレビューして、復旧経路を手元に保ちます。",
+  "mobile.subtitle":
+    "このスマートフォンを登録し、ターミナルコンテキストをプレビューして、復旧経路を手元に保ちます。",
   "mobile.registering": "デバイスを登録中",
-  "mobile.registeringMessage": "同期と緊急引き継ぎ用のモバイル ID を作成しています。",
+  "mobile.registeringMessage":
+    "同期と緊急引き継ぎ用のモバイル ID を作成しています。",
   "mobile.previewing": "同期プレビューを取得中",
-  "mobile.previewingMessage": "プロファイル、セッション、カーソル状態、信頼済み復旧ルートを取得しています。",
+  "mobile.previewingMessage":
+    "プロファイル、セッション、カーソル状態、信頼済み復旧ルートを取得しています。",
   "mobile.ready": "プレビュー準備完了",
-  "mobile.readyMessage": "このデバイスは登録済みで、最新の同期応答を利用できます。",
+  "mobile.readyMessage":
+    "このデバイスは登録済みで、最新の同期応答を利用できます。",
   "mobile.offline": "オフラインフォールバック有効",
-  "mobile.offlineMessage": "ライブ同期は利用できません。ライブまたはキャッシュ済みのワークスペースデータは受信されていません。",
+  "mobile.offlineMessage":
+    "ライブ同期は利用できません。ライブまたはキャッシュ済みのワークスペースデータは受信されていません。",
   "mobile.readyToConnect": "接続準備完了",
-  "mobile.readyToConnectMessage": "まずこのスマートフォンを登録し、JoeSSH 同期から安全なプレビューを取得します。",
+  "mobile.readyToConnectMessage":
+    "まずこのスマートフォンを登録し、JoeSSH 同期から安全なプレビューを取得します。",
   "mobile.profiles": "プロファイル",
   "mobile.openSessions": "開いているセッション",
   "mobile.pendingChanges": "取得した変更",
@@ -338,10 +373,12 @@ export const ja = {
   "mobile.registerPull": "登録してプレビューを取得",
   "desktop.error.boundary.title": "エラーが発生しました",
   "desktop.error.boundary.reload": "再読み込み",
-  "desktop.error.boundary.message": "JoeSSH を再読み込みしてください。問題が続く場合はサポートに連絡してください。",
+  "desktop.error.boundary.message":
+    "JoeSSH を再読み込みしてください。問題が続く場合はサポートに連絡してください。",
   "mobile.error.boundary.title": "エラーが発生しました",
   "mobile.error.boundary.reload": "再読み込み",
-  "mobile.error.boundary.message": "JoeSSH を再読み込みしてください。問題が続く場合はサポートに連絡してください。",
+  "mobile.error.boundary.message":
+    "JoeSSH を再読み込みしてください。問題が続く場合はサポートに連絡してください。",
   "desktop.paletteRecent": "最近",
   "desktop.paletteRecentBadge": "最近",
   "desktop.paletteConnections": "接続",
@@ -392,7 +429,15 @@ export const ja = {
   "team.accessRequestStatus": "アクセス要求の状態",
   "desktop.restoreWorkbench": "ワークスペースを復元",
   "desktop.gettingStarted": "はじめに",
-  "desktop.surfaceGuide": "Desktop は SSH セッションを開き、Web Admin は Sync とチームを監視し、Mobile は補助ツールとして機能します。",
-  "desktop.telemetryPrivacyHint": "任意で、既定ではオフです。ホスト、ユーザー名、コマンド、鍵、トークン、パス、端末出力は送信しません。",
-  "team.reviewedBy": "{reviewer} がレビュー"
+  "desktop.surfaceGuide":
+    "Desktop はローカル SSH・SFTP セッションを開き、Web Admin は読み取り専用の Sync スナップショットを表示します。Mobile は Sync プレビューであり、SSH・SFTP は実行しません。",
+  "desktop.telemetryPrivacyHint":
+    "任意で、既定ではオフです。ホスト、ユーザー名、コマンド、鍵、トークン、パス、端末出力は送信しません。",
+  "desktop.thirdPartyNotices": "ライセンスと通知",
+  "desktop.thirdPartyNoticesHint":
+    "このアプリビルドに同梱されたライセンスと通知の全文を確認します。",
+  "desktop.thirdPartyNoticesLoading": "ライセンスを読み込み中…",
+  "desktop.thirdPartyNoticesUnavailable":
+    "このビルドではライセンス通知を利用できません。",
+  "team.reviewedBy": "{reviewer} がレビュー",
 } as const;

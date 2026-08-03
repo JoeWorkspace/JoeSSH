@@ -93,7 +93,7 @@ function writeEvidence(overrides = {}) {
       desktopSmoke: "reports/smoke/desktop/real-ssh-smoke.json",
       webRelease: `reports/release/web/joessh-web-admin-${version}.zip`,
       syncRelease: `reports/release/sync/joessh-sync-${version}-win32-x64.exe`,
-      rcAudit: "reports/release/public-beta-rc-audit.json",
+      rcAudit: "reports/handoff/release/public-beta-rc-audit.json",
     },
     tasks: completeTasks(),
     findings: [],

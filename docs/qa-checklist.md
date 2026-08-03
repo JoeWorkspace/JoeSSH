@@ -277,7 +277,7 @@
   `release-evidence.json`.
 - Web Admin public release packages are built with `npm run release:web`; the
   gate verifies the uploadable
-  `reports/release/web/joessh-web-admin-0.1.0-beta.9.zip` artifact rather than
+  `reports/release/web/joessh-web-admin-0.1.0-beta.10.zip` artifact rather than
   checksum coverage for loose `dist` files. The package self-test also rejects
   `--output` or `--checksum` paths outside the repository root so release
   artifacts cannot be written outside the staged release tree by mistake.
@@ -291,7 +291,25 @@
   `npm run release:sbom:verify`, and checksum-covered by
   `reports/release/SBOM-SHA256SUMS.txt` before release draft creation; the
   Rust workspace and Tauri shell Cargo metadata must include both workspace
-  packages and required third-party dependency packages.
+  packages and required third-party dependency packages. Only the canonical
+  npm CycloneDX files are public; raw Cargo metadata stays under
+  `reports/internal/release-inputs/`. Verification rejects random
+  `serialNumber`, `metadata.timestamp`, checkout names, absolute paths,
+  unstable key ordering, and non-LF public SBOM output.
+  The checksum manifest exactly covers the Desktop/Web npm SBOMs and the
+  sanitized `cargo-workspace-sbom.cdx.json` and
+  `tauri-cargo-sbom.cdx.json`; it never covers raw Cargo metadata.
+- Build-specific license QA runs `npm run qa:third-party-licenses` for
+  fail-closed fixtures, then runs `npm run release:third-party-licenses` and
+  `npm run release:third-party-licenses:verify` against the exact release
+  dependency graph. The public outputs are the manifest, full notices text,
+  and `THIRD-PARTY-LICENSES-SHA256SUMS.txt`. The manifest hash-binds root
+  `LICENSE`, and the installed notices render that complete product MIT license
+  before the dependency evidence.
+- Desktop Tauri QA runs `npm run release:desktop:legal-resource` before build.
+  The verified notice is bundled as `legal/THIRD-PARTY-NOTICES.txt`, and the
+  Settings legal panel must load that installed resource rather than a static
+  copy that can become stale.
 - Strict release candidates pass `npm run qa:release:strict` on a host with Cargo, Maestro, Android, and iOS simulator/emulator tooling.
 - Self-hosted Sync release candidates pass `npm run qa:sync:self-hosted-smoke` against a real local service with auth, CORS, device registration, and admin snapshot projection.
 - Sync release package hygiene passes with `npm run qa:sync-release-package`,
@@ -299,7 +317,7 @@
   preserved, and `reports/release/sync/SHA256SUMS.txt` targets the current
   platform artifact.
 - Packaged Sync release candidates pass `npm run qa:sync:release-smoke`, which
-  builds `reports/release/sync/joessh-sync-0.1.0-beta.9-<platform>-<arch>`,
+  builds `reports/release/sync/joessh-sync-0.1.0-beta.10-<platform>-<arch>`,
   verifies its checksum manifest, and runs the same local service smoke against
   the published binary.
 - Packaged Sync backup/restore release candidates pass

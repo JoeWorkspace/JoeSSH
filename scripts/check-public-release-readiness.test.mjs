@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
@@ -63,6 +69,7 @@ const releaseScriptNames = [
   "test:release-readiness",
   "test:web-admin-bundle-token-scan",
   "test:mobile-public-env",
+  "test:third-party-licenses",
   "test:sync-release-package",
   "test:sync-release-evidence",
   "test:web-release-verify",
@@ -71,23 +78,25 @@ const releaseScriptNames = [
   "qa:release-provenance",
   "qa:release-rc-audit",
   "qa:release-readiness",
+  "qa:third-party-licenses",
+  "qa:release-preparation:contracts",
+  "qa:release-preparation",
   "qa:web-admin-bundle-token-scan",
   "qa:mobile-public-env",
   "qa:sync-release-package",
   "qa:sync-release-evidence",
   "qa:sync:release-backup-restore-smoke",
   "release:desktop:build",
+  "release:desktop:legal-resource",
   "release:desktop:package",
   "release:desktop:checksums",
   "release:desktop:secret-template",
-  "release:desktop:configure-secrets",
   "release:desktop:evidence-diagnostics",
   "release:desktop:verify-evidence",
   "release:desktop:evidence-download",
-  "release:desktop:evidence-preflight",
-  "release:desktop:evidence-workflow",
   "release:desktop:draft",
   "release:desktop:unsigned-staging-report",
+  "release:history-secret-scan",
   "release:dogfood-template",
   "release:publish-preflight",
   "release:provenance",
@@ -97,6 +106,8 @@ const releaseScriptNames = [
   "release:verify-checksums",
   "release:sbom",
   "release:sbom:verify",
+  "release:third-party-licenses",
+  "release:third-party-licenses:verify",
   "release:sync",
   "release:web",
 ];
@@ -135,6 +146,15 @@ function fixtureScriptValue(name, overrides = {}) {
   if (name === "qa:desktop:real-ssh-smoke:fixture") {
     return "node scripts/run-real-ssh-smoke-fixture.mjs";
   }
+  if (name === "qa:release-preparation:contracts") {
+    return "npm run test:git-history-secrets";
+  }
+  if (name === "qa:release-preparation") {
+    return "npm run qa:release-preparation:contracts && npm run release:history-secret-scan";
+  }
+  if (name === "release:history-secret-scan") {
+    return "node scripts/check-git-history-secrets.mjs";
+  }
   if (name === "test:desktop-real-ssh-smoke-fixture") {
     return "node --test scripts/run-real-ssh-smoke-fixture.test.mjs";
   }
@@ -147,9 +167,6 @@ function fixtureScriptValue(name, overrides = {}) {
   if (name === "release:desktop:package") {
     return "node scripts/package-desktop-release.mjs --require-platforms windows,macos,linux";
   }
-  if (name === "release:desktop:configure-secrets") {
-    return "node scripts/configure-desktop-release-secrets.mjs";
-  }
   if (name === "release:desktop:evidence-diagnostics") {
     return "node scripts/diagnose-desktop-release-evidence.mjs --no-fail";
   }
@@ -159,14 +176,8 @@ function fixtureScriptValue(name, overrides = {}) {
   if (name === "qa:desktop-release-parity") {
     return "npm run test:desktop-release-parity && node scripts/check-desktop-release-evidence-parity.mjs";
   }
-  if (name === "release:desktop:evidence-preflight") {
-    return "node scripts/desktop-release-evidence-preflight.mjs";
-  }
   if (name === "release:desktop:evidence-download") {
     return "node scripts/download-desktop-release-evidence.mjs";
-  }
-  if (name === "release:desktop:evidence-workflow") {
-    return "node scripts/desktop-release-evidence-preflight.mjs --dispatch";
   }
   if (name === "release:desktop:unsigned-staging-report") {
     return "node scripts/report-desktop-unsigned-staging.mjs";
@@ -190,6 +201,106 @@ function fixtureScriptValue(name, overrides = {}) {
     return "node scripts/audit-public-beta-rc.mjs --no-fail";
   }
   return "echo ok";
+}
+
+function realSshFixtureSource() {
+  return `
+const outputPath = resolve(
+  root,
+  "reports",
+  "smoke",
+  "desktop",
+  "real-ssh-smoke.json",
+);
+const checksumPath = resolve(
+  root,
+  "reports",
+  "smoke",
+  "desktop",
+  "real-ssh-smoke-SHA256SUMS.txt",
+);
+const packageVersion = "0.1.0-beta.1";
+const wrappedCommand = {};
+const wrappedResult = runFixtureCommand();
+exitCode = wrappedResult.status ?? 1;
+const evidencePassed = writeEvidence();
+if (!evidencePassed && exitCode === 0) exitCode = 1;
+function writeEvidence() {
+  const sourceState = captureSourceState();
+  const wrappedGate = classifyWrappedGate(wrappedCommand);
+  const smokePassed = true;
+  const wrappedPassed = true;
+  const sourceBound = true;
+  const passed = smokePassed && wrappedPassed && sourceBound;
+  const evidence = {
+    status: passed ? "passed" : "failed",
+    version: packageVersion,
+    ...sourceState,
+  };
+  sha256(outputPath);
+  toReleasePath(outputPath);
+  return passed;
+}
+function captureSourceState() {
+  return { gitCommit: "abc123", gitDirty: false };
+}
+function classifyWrappedGate() {
+  return ["qa:beta:windows:source", "qa:release:public"];
+}
+JOESSH_REAL_SSH_PRIVATE_KEY_PATH;
+qa:desktop:real-ssh-smoke:required;
+local forwarding start/traffic/shutdown;
+`;
+}
+
+function releasePublishPreflightSource() {
+  return `
+const releaseRepository = "JoeWorkspace/JoeSSH";
+const githubRepositoryApiRoot = \`repos/\${releaseRepository}\`;
+Verify release Git checkout;
+rev-parse;
+--porcelain=v1;
+:(exclude)reports/release;
+must point at HEAD for publish preflight;
+verify-web-release-package.mjs;
+verify-sync-release-evidence.mjs;
+verify-desktop-release-evidence.mjs;
+--require-source;
+verify-artifact-checksums.mjs;
+--all-release;
+  verify-release-provenance.mjs;
+  verify-third-party-licenses.mjs;
+  verifyCanonicalReleaseCandidate;
+Verify GitHub CLI publish readiness;
+ATLASTERM_RELEASE_GH_COMMAND;
+function verifyGithubPublishReadiness() {
+  runGh(["auth", "status"]);
+  const head = runGit(["rev-parse", "HEAD"]);
+  const remoteTag = resolveRemoteReleaseTagCommit();
+  if (remoteTag.commit !== head.stdout.trim()) return { status: 1 };
+  const release = runGh([
+    "release",
+    "view",
+    releaseTag,
+    "--repo",
+    releaseRepository,
+    "--json",
+    "url",
+  ]);
+  if (release.status === 0) {
+    throw new Error("already exists; refusing to publish a duplicate release");
+  }
+  if (!/not found|not_found|could not find|HTTP 404/i.test(release.stderr)) {
+    throw new Error("Unable to confirm GitHub Release");
+  }
+}
+function resolveRemoteReleaseTagCommit() {
+  return readGithubApiJson();
+}
+function readGithubApiJson(endpoint) {
+  return runGh(["api", "--method", "GET", endpoint]);
+}
+`;
 }
 
 function createFixture(t, overrides = {}) {
@@ -218,8 +329,7 @@ function createFixture(t, overrides = {}) {
     "Cargo.toml": `version = "${version}"\n`,
     "crates/core/Cargo.toml":
       'russh = { version = "0.61", default-features = false, features = ["ring", "flate2"] }\n',
-    "services/sync/Cargo.toml":
-      `version = "${version}"\ndescription = "JoeSSH sync service API"\n`,
+    "services/sync/Cargo.toml": `version = "${version}"\ndescription = "JoeSSH sync service API"\n`,
     "apps/desktop/src-tauri/Cargo.toml": `version = "${version}"\n`,
     "apps/desktop/src-tauri/tauri.conf.json": JSON.stringify({
       productName: "JoeSSH",
@@ -230,7 +340,7 @@ function createFixture(t, overrides = {}) {
     }),
     ".github/workflows/ci.yml": ciFixture(),
     ".github/workflows/desktop-release-artifacts.yml":
-      "Collect macOS DMG diagnostics desktop-macos-dmg-diagnostics bundle_dmg.sh hdiutil info\n",
+      "name: Desktop Release Artifacts\nFORMAL_SIGNING_DISABLED\ndesktop-unsigned-bundle-\n",
     ".github/workflows/dependabot-auto-merge.yml": [
       "dependency-type",
       "direct:development",
@@ -248,13 +358,12 @@ function createFixture(t, overrides = {}) {
       "Package Formal Desktop Evidence --run-id is required verify-desktop-release-evidence.mjs --require-source release-evidence-source.json workflowDatabaseId artifact.expired reports/release/desktop/ check-runs/${checkRunId}/annotations\n",
     "scripts/download-desktop-release-evidence.test.mjs": "",
     "scripts/desktop-release-evidence-preflight.mjs":
-      "repos/${repo}/actions/secrets ATLASTERM_WINDOWS_CERTIFICATE ATLASTERM_APPLE_CERTIFICATE formal_evidence=true workflowRunArgs\n",
+      "FORMAL_SIGNING_DISABLED approved externally managed isolated signer historical offline evidence verification tools do not form a runnable signing chain\n",
     "scripts/desktop-release-evidence-preflight.test.mjs": "",
     "scripts/require-real-ssh-smoke-env.mjs":
       "JOESSH_REAL_SSH_SMOKE JOESSH_REAL_SSH_HOST JOESSH_REAL_SSH_PASSWORD JOESSH_REAL_SSH_PRIVATE_KEY_PATH JOESSH_REAL_SSH_REMOTE_DIR JOESSH_REAL_SSH_PORT must be an integer\n",
     "scripts/require-real-ssh-smoke-env.test.mjs": "",
-    "scripts/run-real-ssh-smoke-fixture.mjs":
-      'reports", "smoke", "desktop", "real-ssh-smoke.json JOESSH_REAL_SSH_PRIVATE_KEY_PATH qa:desktop:real-ssh-smoke:required local forwarding start/traffic/shutdown\n',
+    "scripts/run-real-ssh-smoke-fixture.mjs": realSshFixtureSource(),
     "scripts/run-real-ssh-smoke-fixture.test.mjs": "",
     "scripts/verify-public-beta-dogfood-evidence.mjs":
       "desktop-install-launch desktop-connection-host-key desktop-pty-session desktop-command-safety desktop-sftp-transfer desktop-forwarding web-admin-live-sync sync-device-flow sync-backup-restore-rollback release-evidence-review open P0 open P1\n",
@@ -266,13 +375,13 @@ function createFixture(t, overrides = {}) {
       "artifactSha256 sha256: artifactSha256 Desktop bundle source contains artifact(s) that do not include releaseVersion basename(artifact.path) validateSignatureEvidence(sourceArtifacts) Windows Desktop artifacts require --windows-signature-verification mkdirSync(outputDir\n",
     "scripts/package-desktop-release.test.mjs": "",
     "scripts/configure-desktop-release-secrets.mjs":
-      'ATLASTERM_WINDOWS_CERTIFICATE_FILE ATLASTERM_APPLE_CERTIFICATE_FILE --write-template reports/handoff/desktop secret-input-template.env "secret", "set" --body-file desktop-release-evidence-preflight.mjs\n',
+      'FORMAL_SIGNING_DISABLED --write-template reports/handoff/desktop/external-signer-input-template.env Never import, upload, copy, or pass this file to GitHub approved externally managed isolated signer flag: "wx"\n',
     "scripts/configure-desktop-release-secrets.test.mjs": "",
     "scripts/diagnose-desktop-release-evidence.mjs":
-      "reports/handoff/desktop formal-evidence-unblock-report.json release-evidence-source.json release-remote-ref desktop-signing-secrets release-desktop-stale-artifacts github-ci check-runs/${checkRunId}/annotations verify-desktop-release-evidence.mjs\n",
+      "reports/handoff/desktop formal-evidence-unblock-report.json release-evidence-source.json release-remote-ref desktop-formal-signing-disabled FORMAL_SIGNING_DISABLED approved externally managed isolated signer release-desktop-stale-artifacts github-ci check-runs/${checkRunId}/annotations verify-desktop-release-evidence.mjs\n",
     "scripts/diagnose-desktop-release-evidence.test.mjs": "",
     "scripts/check-desktop-release-evidence-parity.mjs":
-      "desktop-release-artifacts.yml Desktop Release Artifacts Package Formal Desktop Evidence desktop-release-evidence ATLASTERM_WINDOWS_CERTIFICATE ATLASTERM_APPLE_CERTIFICATE reports/handoff/desktop/formal-evidence-unblock-report.json reports/release/desktop/release-evidence-source.json\n",
+      "desktop-release-artifacts.yml Desktop Release Artifacts Package Formal Desktop Evidence desktop-release-evidence FORMAL_SIGNING_DISABLED desktop-unsigned-bundle- Desktop release workflow contains no formal artifact, signing secret, environment, or id-token chain package exposes no Desktop signing mutation, preflight, or dispatch command Desktop configurator is template-only and contains no GitHub mutation or credential-input implementation reports/handoff/desktop/formal-evidence-unblock-report.json reports/release/desktop/release-evidence-source.json\n",
     "scripts/check-desktop-release-evidence-parity.test.mjs": "",
     "scripts/package-sync-release.mjs":
       "removeStaleSyncReleaseBinaries isSyncReleaseBinaryName SHA256SUMS.txt\n",
@@ -299,21 +408,28 @@ function createFixture(t, overrides = {}) {
     "scripts/smoke-sync-backup-restore.mjs":
       '--packaged-release binaryKind binarySha256 binaryManifest "reports", "release", "sync" "reports", "smoke", "sync" evidenceDirectory\n',
     "scripts/smoke-sync-config-guard.mjs": "",
+    "scripts/generate-release-sbom.mjs": "",
     "scripts/verify-release-sbom.mjs": "",
     "scripts/verify-release-sbom.test.mjs": "",
+    "scripts/release-sbom-contract.mjs": "",
+    "scripts/generate-third-party-licenses.mjs": "",
+    "scripts/verify-third-party-licenses.mjs": "",
+    "scripts/third-party-license-contract.mjs": "",
+    "scripts/third-party-licenses.test.mjs": "",
     "scripts/generate-release-provenance.mjs":
       'gitFsckStrict ["remote", "get-url", "origin"] release-provenance-SHA256SUMS.txt checksumManifests requiredChecksumManifests reports/release/desktop/release-evidence-SHA256SUMS.txt release-evidence-source.json verify-desktop-release-evidence.mjs --require-source reports/release/sync/backup-restore-smoke-SHA256SUMS.txt\n',
     "scripts/verify-release-provenance.mjs":
       "source.repository git fsck --strict release notes hash mismatch artifact hash mismatch requiredChecksumManifests release-evidence-source.json verify-desktop-release-evidence.mjs --require-source unexpected Public Beta checksum manifest is staged\n",
     "scripts/verify-release-provenance.test.mjs": "",
     "scripts/audit-public-beta-rc.mjs":
-      'public-beta-rc-audit.json desktop-signing-secrets desktop-dogfood release-desktop-stale-artifacts publish-preflight github-ci check-runs/${checkRunId}/annotations\n',
+      'public-beta-rc-audit.json "handoff" RC audit evidence is internal handoff material desktop-formal-signing-disabled FORMAL_SIGNING_DISABLED desktop-dogfood release-desktop-stale-artifacts publish-preflight github-ci check-runs/${checkRunId}/annotations\n',
     "scripts/audit-public-beta-rc.test.mjs": "",
-    "scripts/release-publish-preflight.mjs":
-      'Verify release Git checkout rev-parse --porcelain=v1 :(exclude)reports/release must point at HEAD for publish preflight verify-web-release-package.mjs verify-sync-release-evidence.mjs verify-desktop-release-evidence.mjs --require-source verify-artifact-checksums.mjs --all-release verify-release-provenance.mjs Verify GitHub CLI publish readiness ATLASTERM_RELEASE_GH_COMMAND auth", "status release", "view", releaseTag already exists; refusing to publish a duplicate release\n',
+    "scripts/release-publish-preflight.mjs": releasePublishPreflightSource(),
     "scripts/release-publish-preflight.test.mjs": "",
+    "scripts/release-candidate-github-contract.mjs":
+      'branches/${canonicalBranch} check-runs? Public Release Readiness appId: 15368 total_count readStableCheckRuns stableProjection page === 1 compareCheckRecency started_at check.status !== "completed" check.conclusion !== "success"\n',
     "scripts/create-github-release-draft.mjs":
-      'collectFiles(resolve(root, "reports", "release"))\nprovenanceVerificationArgs\nif (dryRun)\nprovenanceVerificationArgs.push("--skip-current-git-check")\n',
+      'collectFiles(resolve(root, "reports", "release"))\nprovenanceVerificationArgs\nif (dryRun)\nprovenanceVerificationArgs.push("--skip-current-git-check")\nverifyCanonicalReleaseCandidate\nverify-third-party-licenses.mjs\n',
     "scripts/create-github-release-draft.test.mjs":
       "non-dry-run rejects release provenance from a different Git source\n",
     "apps/desktop/src-tauri/capabilities/main.json": JSON.stringify({
@@ -368,13 +484,13 @@ function createFixture(t, overrides = {}) {
     "apps/desktop/src/usePtySession.test.ts":
       "moves to closed when the pty emits exit\nresult.current.exitCode\nforwards write and resize to the open pty\nsurfaces native PTY command blocks and clears them after a safe write\n",
     "docs/release-checklist.md":
-      "Public Beta docs/repository-release-handoff.md SBOM SHA256 SBOM-SHA256SUMS.txt release-evidence.json release-evidence-source.json release-evidence-SHA256SUMS.txt reports/handoff/desktop/formal-evidence-unblock-report.json release-provenance.json release-provenance-SHA256SUMS.txt artifact sha256 manifest hash staged cargo-audit qa:rust-advisory qa:release:public:fixture qa:lighthouse release:publish-preflight backup-restore-smoke.json qa:sync:backup-restore-smoke unknown-host fingerprint changed-host-key blocking per-host known host removal runtime telemetry rollback\n",
+      "Public Beta docs/repository-release-handoff.md SBOM SHA256 SBOM-SHA256SUMS.txt cargo-workspace-sbom.cdx.json tauri-cargo-sbom.cdx.json THIRD-PARTY-LICENSES-SHA256SUMS.txt release:third-party-licenses:verify release-evidence.json release-evidence-source.json release-evidence-SHA256SUMS.txt reports/handoff/desktop/formal-evidence-unblock-report.json release-provenance.json release-provenance-SHA256SUMS.txt artifact sha256 manifest hash staged cargo-audit qa:rust-advisory qa:release:public:fixture qa:lighthouse release:publish-preflight backup-restore-smoke.json qa:sync:backup-restore-smoke unknown-host fingerprint changed-host-key blocking per-host known host removal runtime telemetry rollback\n",
     "docs/public-beta-dogfood-script.md":
       "Top 10 Tasks desktop-install-launch desktop-connection-host-key desktop-pty-session desktop-command-safety desktop-sftp-transfer desktop-forwarding web-admin-live-sync sync-device-flow sync-backup-restore-rollback release-evidence-review unsigned internal staging signed Desktop formal release evidence release:desktop:unsigned-staging-report reports/handoff/desktop/unsigned-staging-report.json qa:public-beta-dogfood reports/dogfood/public-beta/latest.json\n",
-    "docs/repository-release-handoff.md":
-      `healthy Git checkout do not publish from the damaged workspace git status --short git fsck --strict git diff --binary release-provenance.json npm run qa:release:public npm run qa:release:public:fixture release-evidence-source.json reports/handoff/desktop/formal-evidence-unblock-report.json node scripts/check-public-release-readiness.mjs v${version}\n`,
-    [`docs/release-notes/${version}.md`]:
-      `JoeSSH ${version} Desktop Web Admin Sync Service SHA256 release:publish-preflight\n`,
+    "docs/repository-release-handoff.md": `healthy Git checkout do not publish from the damaged workspace git status --short git fsck --strict git diff --binary release-provenance.json THIRD-PARTY-LICENSES-SHA256SUMS.txt release:third-party-licenses:verify npm run qa:release:public npm run qa:release:public:fixture release-evidence-source.json reports/handoff/desktop/formal-evidence-unblock-report.json node scripts/check-public-release-readiness.mjs v${version}\n`,
+    "THIRD_PARTY_NOTICES.md":
+      "release:third-party-licenses release:third-party-licenses:verify reports/internal/release-inputs/ cargo-workspace-sbom.cdx.json tauri-cargo-sbom.cdx.json THIRD-PARTY-LICENSES-SHA256SUMS.txt legal/THIRD-PARTY-NOTICES.txt release:desktop:legal-resource complete root `LICENSE`\n",
+    [`docs/release-notes/${version}.md`]: `JoeSSH ${version} Desktop Web Admin Sync Service SHA256 release:publish-preflight\n`,
     "docs/desktop-release-metadata.json": JSON.stringify({
       productName: "JoeSSH",
       identifier: "dev.atlasterm.joessh",
@@ -404,7 +520,12 @@ function createFixture(t, overrides = {}) {
       'ENV ATLASTERM_SYNC_STORAGE_PATH=/var/lib/joessh-sync/ledger.json\nVOLUME ["/var/lib/joessh-sync"]\nHEALTHCHECK CMD curl -fsS "http://127.0.0.1:${ATLASTERM_SYNC_HEALTHCHECK_PORT:-4100}/healthz" || exit 1\n',
     "services/sync/joessh-sync.service.example": "",
     "CHANGELOG.md": `[${version}]\n`,
-    "README.md": "# JoeSSH\nWeb Admin console\nnpm run qa:prod-audit\n",
+    "README.md":
+      "# JoeSSH\nReact Native/Expo sync preview shell\ndoes not currently provide public mobile SSH/SFTP or emergency-access execution\nRead-only Web Admin viewer\nHosted SaaS and mutating team operations are not currently shipped\nnpm run qa:prod-audit\ndoes not currently provide end-to-end payload encryption\n",
+    "apps/web/README.md":
+      "# JoeSSH Web Admin\nread-only viewer\ndoes not currently ship mutating admin operations, billing, or hosted SaaS\n",
+    "apps/web/public/manifest.json":
+      '{"description":"Read-only team, device, role, and audit snapshots from a configured JoeSSH Sync service."}\n',
     ".env.example":
       "# JoeSSH Environment Variables\npublic mobile beta builds\nATLASTERM_SYNC_METRICS_TOKEN\nATLASTERM_SYNC_STORAGE_PATH\nATLASTERM_SYNC_ALLOW_EPHEMERAL_STORAGE\n",
     LICENSE: "Copyright (c) 2026 JoeSSH contributors\n",
@@ -412,9 +533,9 @@ function createFixture(t, overrides = {}) {
     "apps/desktop/public/llms.txt":
       "# JoeSSH Workbench\n\nJoeSSH is a local-first remote workbench.\n",
     "apps/desktop/public/humans.txt": "JoeSSH Team\n",
-    "apps/desktop/public/sw.js": 'const CACHE_NAME = "joessh-v2";\n',
+    "apps/desktop/public/sw.js": 'const CACHE_NAME = "joessh-v3";\n',
     "apps/web/public/humans.txt": "JoeSSH Team\n",
-    "apps/web/public/sw.js": "const CACHE_NAME = 'joessh-admin-v2';\n",
+    "apps/web/public/sw.js": 'const CACHE_NAME = "joessh-admin-v3";\n',
     "packages/error-monitor/src/index.ts": errorMonitorRuntimeFixture(),
     "packages/error-monitor/src/index.test.ts":
       runtimeDisableTestFixture("error monitor"),
@@ -458,50 +579,10 @@ function runChecker(root) {
 }
 
 function ciFixture() {
-  return [
-    "npm run qa:artifact-checksums",
-    "npm run qa:desktop-release-package",
-    "npm run qa:desktop-release-evidence",
-    "npm run qa:desktop-release-secrets",
-    "npm run qa:desktop-release-diagnostics",
-    "npm run qa:desktop-release-parity",
-    "npm run qa:desktop-release-evidence-download",
-    "npm run qa:desktop-release-evidence-preflight",
-    "npm run qa:sync-release-package",
-    "npm run qa:sync-release-evidence",
-    "npm run qa:web-release",
-    "npm run qa:release-sbom",
-    "npm run qa:release-draft",
-    "npm run qa:release-publish-preflight",
-    "npm run qa:release-provenance",
-    "npm run qa:lighthouse-audit",
-    "npm run test:web-admin-bundle-token-scan",
-    "npm run qa:e2e:web-real-sync:fresh",
-    "npm run qa:e2e:visual:fresh",
-    "npm run qa:prod-audit",
-    "desktop-real-ssh-smoke",
-    'JOESSH_REAL_SSH_SMOKE: "1"',
-    "npm run qa:desktop:real-ssh-smoke",
-    "npm run qa:lighthouse",
-    "npm run qa:tauri",
-    "npm run qa:mobile:native-preflight",
-    "npm run qa:mobile-public-env",
-    "cargo install cargo-audit --locked",
-    "cargo audit --deny warnings",
-    "npm run release:sbom",
-    "npm run release:sbom:verify",
-    "npm run qa:e2e:fresh",
-    "npm run qa:web-admin-proxy-smoke",
-    "npm run qa:web-admin-bundle-token-scan",
-    "npm run qa:web-admin-sync-topology-release-smoke",
-    "npm run qa:sync:self-hosted-smoke",
-    "npm run qa:sync:release-smoke",
-    "npm run qa:sync:release-backup-restore-smoke",
-    "npm run qa:sync:config-guard-smoke",
-    "npm run qa:sync:backup-restore-smoke",
-    "node scripts/verify-sync-release-evidence.mjs",
-    "node scripts/check-public-release-readiness.mjs",
-  ].join("\n");
+  return readFileSync(
+    fileURLToPath(new URL("../.github/workflows/ci.yml", import.meta.url)),
+    "utf8",
+  );
 }
 
 function privacyFixture() {
@@ -1011,6 +1092,99 @@ test("rejects publish preflight scripts without release provenance verification"
   );
 });
 
+test("rejects real SSH evidence that is not bound to the wrapped release gate and clean source", (t) => {
+  const result = runChecker(
+    createFixture(t, {
+      "scripts/run-real-ssh-smoke-fixture.mjs": realSshFixtureSource().replace(
+        "const passed = smokePassed && wrappedPassed && sourceBound;",
+        "const passed = smokePassed;",
+      ),
+    }),
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stdout,
+    /FAIL Desktop SSH smoke fixture runner writes reusable dogfood evidence/,
+  );
+});
+
+test("rejects GitHub publish preflight that does not resolve the canonical remote tag", (t) => {
+  const result = runChecker(
+    createFixture(t, {
+      "scripts/release-publish-preflight.mjs":
+        releasePublishPreflightSource().replace(
+          "const remoteTag = resolveRemoteReleaseTagCommit();",
+          "const remoteTag = { commit: head.stdout.trim(), ok: true };",
+        ),
+    }),
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stdout,
+    /FAIL Publish preflight verifies GitHub CLI auth and duplicate-release state without mutating GitHub/,
+  );
+});
+
+test("rejects release entry points without the shared protected-main candidate contract", (t) => {
+  const result = runChecker(
+    createFixture(t, {
+      "scripts/release-candidate-github-contract.mjs": "",
+    }),
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stdout,
+    /FAIL Publish entry points share the protected-main successful-readiness candidate contract/,
+  );
+});
+
+test("rejects artifact-only license verification in either publish entry point", async (t) => {
+  for (const path of [
+    "scripts/release-publish-preflight.mjs",
+    "scripts/create-github-release-draft.mjs",
+  ]) {
+    await t.test(path, (subtest) => {
+      const root = createFixture(subtest);
+      const source = readFileSync(resolve(root, path), "utf8");
+      writeFile(root, path, `${source}\n--artifact-only\n`);
+      const result = runChecker(root);
+
+      assert.equal(result.status, 1);
+      assert.match(
+        result.stdout,
+        /FAIL Publish entry points require lock-bound third-party license verification/,
+      );
+    });
+  }
+});
+
+test("rejects replaceable license verifiers in either publish entry point", async (t) => {
+  for (const path of [
+    "scripts/release-publish-preflight.mjs",
+    "scripts/create-github-release-draft.mjs",
+  ]) {
+    await t.test(path, (subtest) => {
+      const root = createFixture(subtest);
+      const source = readFileSync(resolve(root, path), "utf8");
+      writeFile(
+        root,
+        path,
+        `${source}\nATLASTERM_RELEASE_LICENSE_VERIFIER_COMMAND\n`,
+      );
+      const result = runChecker(root);
+
+      assert.equal(result.status, 1);
+      assert.match(
+        result.stdout,
+        /FAIL Publish entry points require lock-bound third-party license verification/,
+      );
+    });
+  }
+});
+
 test("rejects public release scripts without Lighthouse release-machine gate", (t) => {
   const result = runChecker(
     createFixture(t, {
@@ -1211,6 +1385,129 @@ test("rejects CI E2E jobs that use non-fresh E2E", (t) => {
   );
 });
 
+test("rejects a Public Release Readiness job with an incomplete or reordered license chain", (t) => {
+  const unsafeCi = ciFixture().replace(
+    "      - run: npm run release:sbom:verify\n      - run: npm run release:third-party-licenses",
+    "      - run: npm run release:third-party-licenses\n      - run: npm run release:sbom:verify",
+  );
+  const result = runChecker(
+    createFixture(t, {
+      ".github/workflows/ci.yml": unsafeCi,
+    }),
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stdout,
+    /FAIL CI Public Release Readiness runs SBOM generation\/verification before full third-party license generation\/verification/,
+  );
+});
+
+test("rejects Public Release Readiness without the exact always condition", (t) => {
+  const unsafeCi = ciFixture().replace(
+    "    if: ${{ always() }}\n    needs:",
+    "    needs:",
+  );
+  const result = runChecker(
+    createFixture(t, {
+      ".github/workflows/ci.yml": unsafeCi,
+    }),
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stdout,
+    /FAIL CI Public Release Readiness always runs after every prerequisite result/,
+  );
+});
+
+test("rejects Public Release Readiness with a forged prerequisite result mapping", (t) => {
+  const unsafeCi = ciFixture().replace(
+    "          STORE_RUNTIME_WINDOWS_RESULT: ${{ needs.store-runtime-windows.result }}",
+    "          STORE_RUNTIME_WINDOWS_RESULT: success",
+  );
+  const result = runChecker(
+    createFixture(t, {
+      ".github/workflows/ci.yml": unsafeCi,
+    }),
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stdout,
+    /FAIL CI Public Release Readiness fails closed on every exact prerequisite result/,
+  );
+});
+
+test("rejects Public Release Readiness that stops asserting one prerequisite", (t) => {
+  const unsafeCi = ciFixture().replace(
+    '          require_success "store-runtime-windows" "${STORE_RUNTIME_WINDOWS_RESULT}"\n',
+    "",
+  );
+  const result = runChecker(
+    createFixture(t, {
+      ".github/workflows/ci.yml": unsafeCi,
+    }),
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stdout,
+    /FAIL CI Public Release Readiness fails closed on every exact prerequisite result/,
+  );
+});
+
+test("rejects CI tools that can float outside the lockfile", (t) => {
+  const unsafeCi = ciFixture()
+    .replaceAll(
+      "cargo install cargo-audit --version 0.22.2 --locked",
+      "cargo install cargo-audit --locked",
+    )
+    .replaceAll(
+      "npx --no-install vitest run --coverage",
+      "npx vitest run --coverage",
+    )
+    .replaceAll(
+      "npx --no-install playwright install --with-deps chromium",
+      "npx playwright install --with-deps chromium",
+    )
+    .replaceAll(
+      "npx --no-install playwright install chromium",
+      "npx playwright install chromium",
+    )
+    .replaceAll(
+      "npm install --global --ignore-scripts --no-audit --no-fund npm@10.9.7",
+      "npm --version",
+    );
+  const result = runChecker(
+    createFixture(t, {
+      ".github/workflows/ci.yml": unsafeCi,
+    }),
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stdout,
+    /FAIL CI public release gate runs 'cargo install cargo-audit --version 0\.22\.2 --locked'/,
+  );
+  assert.match(
+    result.stdout,
+    /FAIL CI public release gate runs 'npx --no-install vitest run --coverage'/,
+  );
+  assert.match(
+    result.stdout,
+    /FAIL CI public release gate runs 'npx --no-install playwright install --with-deps chromium'/,
+  );
+  assert.match(
+    result.stdout,
+    /FAIL CI public release gate runs 'npx --no-install playwright install chromium'/,
+  );
+  assert.match(
+    result.stdout,
+    /FAIL CI public release gate runs 'npm install --global --ignore-scripts --no-audit --no-fund npm@10\.9\.7'/,
+  );
+});
+
 test("rejects release provenance tooling without Git and manifest binding", (t) => {
   const result = runChecker(
     createFixture(t, {
@@ -1316,11 +1613,11 @@ test("rejects Desktop release evidence tooling without artifact hash binding", (
   );
 });
 
-test("rejects Desktop release workflow without macOS DMG failure diagnostics", (t) => {
+test("rejects a Desktop release workflow that can expose formal signing authority", (t) => {
   const result = runChecker(
     createFixture(t, {
       ".github/workflows/desktop-release-artifacts.yml":
-        "Build Desktop bundle\n",
+        "name: Desktop Release Artifacts\ndesktop-unsigned-bundle-\nenvironment: desktop-release-signing\n${{ secrets.ATLASTERM_WINDOWS_CERTIFICATE }}\n",
       "scripts/download-desktop-release-evidence.mjs":
         "Package Formal Desktop Evidence --run-id is required verify-desktop-release-evidence.mjs artifact.expired reports/release/desktop/\n",
     }),
@@ -1333,7 +1630,56 @@ test("rejects Desktop release workflow without macOS DMG failure diagnostics", (
   );
   assert.match(
     result.stdout,
-    /FAIL Desktop release workflow preserves macOS DMG failure diagnostics/,
+    /FAIL Desktop release workflow keeps formal signing disabled and unsigned staging unprivileged/,
+  );
+});
+
+test("rejects package scripts that re-expose retired Desktop signing entry points", (t) => {
+  const scripts = Object.fromEntries(
+    releaseScriptNames.map((name) => [name, fixtureScriptValue(name)]),
+  );
+  scripts["release:desktop:configure-secrets"] =
+    "node scripts/configure-desktop-release-secrets.mjs";
+  scripts["release:desktop:evidence-workflow"] =
+    "node scripts/desktop-release-evidence-preflight.mjs --dispatch";
+
+  const result = runChecker(
+    createFixture(t, {
+      "package.json": JSON.stringify({
+        scripts,
+        version: "0.1.0-beta.1",
+      }),
+    }),
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stdout,
+    /FAIL Root package exposes no Desktop signing mutation, preflight, or workflow dispatch command/,
+  );
+});
+
+test("rejects a Desktop configurator that regains GitHub mutation capability", (t) => {
+  const result = runChecker(
+    createFixture(t, {
+      "scripts/configure-desktop-release-secrets.mjs": [
+        "FORMAL_SIGNING_DISABLED",
+        "--write-template",
+        "reports/handoff/desktop/external-signer-input-template.env",
+        "Never import, upload, copy, or pass this file to GitHub",
+        'flag: "wx"',
+        "spawnSync",
+        "process.env",
+        '"secret", "set"',
+        "desktop-release-signing",
+      ].join("\n"),
+    }),
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stdout,
+    /FAIL Desktop signing configurator is limited to a local gitignored non-secret handoff template/,
   );
 });
 
@@ -1575,6 +1921,50 @@ test("rejects stale public-facing branding and audit wording", (t) => {
   assert.match(
     result.stdout,
     /FAIL Architecture public release text avoids stale 'npm audit \+ audit-ci'/,
+  );
+});
+
+test("rejects public surfaces that overclaim Web Admin or Mobile capabilities", (t) => {
+  const result = runChecker(
+    createFixture(t, {
+      "README.md":
+        "# JoeSSH\nWeb Admin console\nMobile emergency SSH/SFTP\nnpm run qa:prod-audit\ndoes not currently provide end-to-end payload encryption\n",
+      "apps/web/public/manifest.json":
+        '{"description":"Team management, audit views, and sync operations."}\n',
+    }),
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stdout,
+    /FAIL README public release text avoids stale 'Web Admin console'/,
+  );
+  assert.match(
+    result.stdout,
+    /FAIL README public release text avoids stale 'Mobile emergency SSH\/SFTP'/,
+  );
+  assert.match(
+    result.stdout,
+    /FAIL Web Admin manifest public release text avoids stale 'Team management, audit views, and sync operations\.'/,
+  );
+});
+
+test("rejects stale Desktop and Web service worker cache namespaces", (t) => {
+  const result = runChecker(
+    createFixture(t, {
+      "apps/desktop/public/sw.js": 'const CACHE_NAME = "joessh-v2";\n',
+      "apps/web/public/sw.js": "const CACHE_NAME = 'joessh-admin-v2';\n",
+    }),
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stdout,
+    /FAIL Desktop service worker public release text avoids stale 'joessh-v2'/,
+  );
+  assert.match(
+    result.stdout,
+    /FAIL Web service worker public release text avoids stale 'joessh-admin-v2'/,
   );
 });
 

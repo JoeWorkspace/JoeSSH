@@ -1,6 +1,7 @@
 # JoeSSH Web Admin
 
-Vite React admin console for JoeSSH team, device, role, and audit operations.
+Vite React read-only viewer for JoeSSH team, device, role, and audit snapshots.
+It does not currently ship mutating admin operations, billing, or hosted SaaS.
 
 ## Commands
 

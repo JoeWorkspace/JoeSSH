@@ -33,6 +33,7 @@ const requiredLockfiles = [
 ];
 const requiredChecksumManifests = [
   "reports/release/SBOM-SHA256SUMS.txt",
+  "reports/release/THIRD-PARTY-LICENSES-SHA256SUMS.txt",
   "reports/release/desktop/SHA256SUMS.txt",
   "reports/release/desktop/release-evidence-SHA256SUMS.txt",
   "reports/release/sync/SHA256SUMS.txt",
@@ -252,6 +253,7 @@ function validateVerifiers() {
     "verify-sync-release-evidence.mjs",
     "verify-desktop-release-evidence.mjs --require-source",
     "verify-release-sbom.mjs",
+    "verify-third-party-licenses.mjs",
     "verify-release-provenance.mjs",
   ];
 

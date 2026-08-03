@@ -2764,6 +2764,86 @@ kbd {
   width: min(760px, 100%);
 }
 
+.third-party-notices-scrim {
+  align-items: center;
+  padding: 20px;
+  z-index: 70;
+}
+
+.third-party-notices-dialog {
+  background: var(--atlas-bg-soft);
+  border-radius: 8px;
+  box-shadow: var(--atlas-shadow);
+  display: grid;
+  gap: 14px;
+  height: min(760px, calc(100vh - 40px));
+  max-width: 980px;
+  overflow: hidden;
+  padding: 20px;
+  width: min(980px, 100%);
+}
+
+.third-party-notices-header {
+  align-items: center;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+}
+
+.third-party-notices-header h2 {
+  font-size: 18px;
+  line-height: 1.25;
+  margin: 5px 0 0;
+}
+
+.third-party-notices-mark {
+  align-items: center;
+  background: color-mix(in srgb, var(--atlas-accent) 14%, var(--atlas-bg));
+  border: 1px solid
+    color-mix(in srgb, var(--atlas-accent) 45%, var(--atlas-border));
+  border-radius: 8px;
+  color: var(--atlas-accent);
+  display: flex;
+  height: 42px;
+  justify-content: center;
+  width: 42px;
+}
+
+.third-party-notices-dialog > p,
+.legal-card > p {
+  color: var(--atlas-text-muted);
+  font-size: 12px;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.third-party-notices-content {
+  background: var(--atlas-bg);
+  border: 1px solid var(--atlas-border);
+  border-radius: 8px;
+  color: var(--atlas-text-muted);
+  font-family: var(--atlas-font-mono);
+  font-size: 11px;
+  line-height: 1.55;
+  margin: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px;
+  scrollbar-gutter: stable;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.legal-notices-status {
+  color: var(--atlas-text-faint);
+  display: block;
+  margin-top: 8px;
+}
+
+.legal-notices-status[role="alert"] {
+  color: var(--atlas-error);
+}
+
 .getting-started-header {
   align-items: center;
   display: grid;

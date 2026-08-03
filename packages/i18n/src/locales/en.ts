@@ -2,12 +2,16 @@ export const en = {
   "desktop.demoScopeSummary": "Demo sample - no real SSH session",
   "desktop.demoShell": "sample shell",
   "desktop.noSession": "No SSH session",
-  "desktop.noSessionActionDetail": "Connect to a real host before running terminal, SFTP, or forwarding actions.",
+  "desktop.noSessionActionDetail":
+    "Connect to a real host before running terminal, SFTP, or forwarding actions.",
   "desktop.sampleDataShort": "Sample data",
-  "desktop.terminalSessionConnectRequired": "Use Connect to open a real SSH session before running commands.",
-  "desktop.terminalSessionSample": "Sample connection profile only. No SSH session is connected.",
+  "desktop.terminalSessionConnectRequired":
+    "Use Connect to open a real SSH session before running commands.",
+  "desktop.terminalSessionSample":
+    "Sample connection profile only. No SSH session is connected.",
   "desktop.sftp": "SFTP",
-  "desktop.manifestDescription": "SSH terminal, SFTP, team access, and session management.",
+  "desktop.manifestDescription":
+    "SSH terminal, SFTP, port forwarding, and local session management.",
   "language.selectorLabel": "Display language",
   "language.autoRegion": "Auto by region",
   "language.worldReady": "Global languages ready",
@@ -16,7 +20,8 @@ export const en = {
   "desktop.searchPlaceholder": "Search hosts, tags, users",
   "desktop.searchMatches": "{count} matches",
   "desktop.searchEmptyTitle": "No matching connections",
-  "desktop.searchEmptyHint": "Try a different keyword or clear the tag filters.",
+  "desktop.searchEmptyHint":
+    "Try a different keyword or clear the tag filters.",
   "desktop.new": "New",
   "desktop.connections": "Connections",
   "desktop.filterByTag": "Filter by tag",
@@ -72,10 +77,12 @@ export const en = {
   "desktop.passphrase": "Passphrase (optional)",
   "desktop.pinnedFingerprint": "Pinned host key (optional)",
   "desktop.hostKeyConfirmTitle": "Confirm host key",
-  "desktop.hostKeyConfirmDetail": "Verify this SHA-256 fingerprint before authenticating.",
+  "desktop.hostKeyConfirmDetail":
+    "Verify this SHA-256 fingerprint before authenticating.",
   "desktop.hostKeyPresentedFingerprint": "Presented fingerprint",
   "desktop.hostKeyVerificationFailed": "Host key verification failed",
-  "desktop.hostKeyChangedDetail": "Stored host key mismatch for {host}:{port}. Expected {stored}, presented {presented}.",
+  "desktop.hostKeyChangedDetail":
+    "Stored host key mismatch for {host}:{port}. Expected {stored}, presented {presented}.",
   "desktop.trustHostKeyAndConnect": "Trust and connect",
   "desktop.connectAction": "Connect",
   "desktop.connecting": "Connecting…",
@@ -84,23 +91,27 @@ export const en = {
   "desktop.connectionSwitched": "Switched to {name}",
   "desktop.connectionMoved": "Moved {connection} to {group}",
   "desktop.connectionsImported": "Imported {count} connections",
-  "desktop.connectionsImportFailed": "Could not import connections. Choose a valid JoeSSH connections JSON file.",
+  "desktop.connectionsImportFailed":
+    "Could not import connections. Choose a valid JoeSSH connections JSON file.",
   "desktop.connectionConnectToast": "Connect: {name}",
   "desktop.connectionCreated": "Connection {name} created",
   "desktop.connectionTestResult": "Test connection: {result}",
-  "desktop.builtinConnectionEditUnavailable": "Built-in demo connections cannot be edited",
-  "desktop.builtinConnectionDeleteUnavailable": "Built-in demo connections cannot be deleted",
+  "desktop.builtinConnectionEditUnavailable":
+    "Built-in demo connections cannot be edited",
+  "desktop.builtinConnectionDeleteUnavailable":
+    "Built-in demo connections cannot be deleted",
   "desktop.connectionCopyName": "{name} copy",
   "desktop.connectionCopyNameNumbered": "{name} copy {number}",
   "desktop.connectionDuplicated": "Duplicated {name}",
   "desktop.connectionDeleted": "Deleted {name}",
   "desktop.connectionEdited": "Edited {name}",
-  "desktop.groupCreatedToast": "Group \"{name}\" created",
-  "desktop.groupDeletedToast": "Group \"{name}\" deleted",
-  "desktop.groupRenamedToast": "Group renamed to \"{name}\"",
+  "desktop.groupCreatedToast": 'Group "{name}" created',
+  "desktop.groupDeletedToast": 'Group "{name}" deleted',
+  "desktop.groupRenamedToast": 'Group renamed to "{name}"',
   "desktop.sftpUploadComplete": "Uploaded {name}",
   "desktop.sftpOverwriteTitle": "Replace existing file?",
-  "desktop.sftpOverwriteDetail": "A file named {name} already exists in this folder.",
+  "desktop.sftpOverwriteDetail":
+    "A file named {name} already exists in this folder.",
   "desktop.sftpOverwriteCancel": "Cancel",
   "desktop.sftpOverwriteConfirm": "Overwrite",
   "desktop.sshCommandCopied": "SSH command for {name} copied",
@@ -118,29 +129,39 @@ export const en = {
   "desktop.terminalAutocompleteNavigate": "to navigate",
   "desktop.terminalSessionConnected": "Connected to {name} ({group})",
   "desktop.terminalSessionReady": "Session ready.",
-  "desktop.terminalSessionMfaRequired": "MFA verification required before command execution.",
+  "desktop.terminalSessionMfaRequired":
+    "MFA verification required before command execution.",
   "desktop.mfaRequiredShort": "MFA required",
   "desktop.commandAccepted": "Command accepted",
-  "desktop.commandAcceptedDetail": "Passed local safety preflight and queued for the terminal executor.",
+  "desktop.commandAcceptedDetail":
+    "Passed local safety preflight and queued for the terminal executor.",
   "desktop.commandBlocked": "Command blocked",
   "desktop.commandBlockedDetail": "Matched {pattern}: {reason}",
   "desktop.safetyReasonRmRoot": "recursively removes the filesystem root",
   "desktop.safetyReasonMkfs": "formats a filesystem",
   "desktop.safetyReasonForkBomb": "fork bomb",
   "desktop.safetyReasonRawDiskCopy": "raw disk copy can destroy data",
-  "desktop.safetyReasonChmodRoot": "opens permissions broadly from filesystem root",
+  "desktop.safetyReasonChmodRoot":
+    "opens permissions broadly from filesystem root",
   "desktop.safetyReasonTeeBlockDevice": "writes raw output to a block device",
-  "desktop.safetyReasonRedirectBlockDevice": "redirects output onto a raw block device, destroying its contents",
-  "desktop.safetyReasonFindRootDelete": "recursively deletes files from a root path",
-  "desktop.safetyReasonDiskWipe": "wipes partition tables or block-device contents irreversibly",
+  "desktop.safetyReasonRedirectBlockDevice":
+    "redirects output onto a raw block device, destroying its contents",
+  "desktop.safetyReasonFindRootDelete":
+    "recursively deletes files from a root path",
+  "desktop.safetyReasonDiskWipe":
+    "wipes partition tables or block-device contents irreversibly",
   "desktop.safetyReasonFirewallFlush": "flushes firewall rules",
   "desktop.safetyReasonRemoteShellPipe": "pipes remote content into a shell",
-  "desktop.safetyReasonRootDownloadOverwrite": "overwrites a root path with downloaded content",
+  "desktop.safetyReasonRootDownloadOverwrite":
+    "overwrites a root path with downloaded content",
   "desktop.safetyReasonHostShutdown": "halts the host immediately",
-  "desktop.safetyReasonWindowsDestructive": "Windows-side destructive command targets files, disks, or host state",
-  "desktop.safetyReasonPowershellDestructive": "PowerShell destructive command targets a drive, system path, disk, or host power state",
+  "desktop.safetyReasonWindowsDestructive":
+    "Windows-side destructive command targets files, disks, or host state",
+  "desktop.safetyReasonPowershellDestructive":
+    "PowerShell destructive command targets a drive, system path, disk, or host power state",
   "desktop.safetyReasonDropDatabase": "drops a database",
-  "desktop.safetyReasonCommandSubstitution": "embeds a sub-command that could execute anything",
+  "desktop.safetyReasonCommandSubstitution":
+    "embeds a sub-command that could execute anything",
   "desktop.context": "Context",
   "desktop.team": "Team",
   "desktop.settings": "Settings",
@@ -176,7 +197,7 @@ export const en = {
   "desktop.recordTerminal": "Record terminal sessions",
   "desktop.requiredProduction": "Required for production scopes",
   "desktop.syncEncrypted": "Sync encrypted snippets",
-  "desktop.availableProBusiness": "Available on Pro and Business",
+  "desktop.plannedUnavailable": "Planned; not currently available",
   "desktop.telemetryErrors": "Optional error reports",
   "desktop.telemetryErrorsHint": "Send redacted crash and error summaries.",
   "desktop.businessLayer": "Business Layer",
@@ -191,7 +212,8 @@ export const en = {
   "desktop.requestElevated": "Request elevated access",
   "desktop.palettePlaceholder": "Run command, open host, start workflow",
   "desktop.paletteEmptyTitle": "No palette matches",
-  "desktop.paletteEmptyHint": "Try a host, recent command, or workflow keyword.",
+  "desktop.paletteEmptyHint":
+    "Try a host, recent command, or workflow keyword.",
   "team.access": "Team Access",
   "team.accessSummary": "Team access summary",
   "team.business": "Business",
@@ -230,7 +252,8 @@ export const en = {
   "team.auditCommandRecorded": "Command recorded",
   "team.auditAccessRequestApproved": "Access request approved",
   "team.auditAccessRequestRejected": "Access request rejected",
-  "team.productionElevationDetail": "Incident commander role for gateway triage",
+  "team.productionElevationDetail":
+    "Incident commander role for gateway triage",
   "desktop.snippets": "Snippets",
   "desktop.snippetRun": "Run snippet",
   "desktop.snippetEdit": "Edit snippet",
@@ -257,7 +280,8 @@ export const en = {
   "desktop.forwardActive": "Active",
   "desktop.forwardInactive": "Inactive",
   "desktop.forwardNoRules": "No forwarding rules yet",
-  "desktop.forwardNoRulesHint": "Add a rule to tunnel a local TCP port over SSH.",
+  "desktop.forwardNoRulesHint":
+    "Add a rule to tunnel a local TCP port over SSH.",
   "desktop.sftpEmpty": "This folder is empty",
   "desktop.sftpEmptyHint": "Upload a file or navigate to another folder.",
   "web.adminNavigation": "JoeSSH admin navigation",
@@ -298,17 +322,23 @@ export const en = {
   "web.storage": "Storage",
   "mobile.kicker": "JoeSSH Mobile",
   "mobile.title": "Sync and emergency access",
-  "mobile.subtitle": "Register this phone, preview terminal context, and keep a recovery path close.",
+  "mobile.subtitle":
+    "Register this phone, preview terminal context, and keep a recovery path close.",
   "mobile.registering": "Registering device",
-  "mobile.registeringMessage": "Creating a mobile identity for sync and emergency handoff.",
+  "mobile.registeringMessage":
+    "Creating a mobile identity for sync and emergency handoff.",
   "mobile.previewing": "Pulling sync preview",
-  "mobile.previewingMessage": "Fetching profiles, sessions, cursor state, and trusted recovery routes.",
+  "mobile.previewingMessage":
+    "Fetching profiles, sessions, cursor state, and trusted recovery routes.",
   "mobile.ready": "Preview ready",
-  "mobile.readyMessage": "This device is registered and the latest sync response is available.",
+  "mobile.readyMessage":
+    "This device is registered and the latest sync response is available.",
   "mobile.offline": "Offline fallback active",
-  "mobile.offlineMessage": "Live sync is unavailable. No live or cached workspace data was received.",
+  "mobile.offlineMessage":
+    "Live sync is unavailable. No live or cached workspace data was received.",
   "mobile.readyToConnect": "Ready to connect",
-  "mobile.readyToConnectMessage": "Start by registering this phone and pulling a safe preview from JoeSSH sync.",
+  "mobile.readyToConnectMessage":
+    "Start by registering this phone and pulling a safe preview from JoeSSH sync.",
   "mobile.profiles": "Profiles",
   "mobile.openSessions": "Open sessions",
   "mobile.pendingChanges": "Changes pulled",
@@ -328,10 +358,12 @@ export const en = {
   "mobile.registerPull": "Register and Pull Preview",
   "desktop.error.boundary.title": "Something went wrong",
   "desktop.error.boundary.reload": "Reload",
-  "desktop.error.boundary.message": "Reload JoeSSH or contact support if the issue continues.",
+  "desktop.error.boundary.message":
+    "Reload JoeSSH or contact support if the issue continues.",
   "mobile.error.boundary.title": "Something went wrong",
   "mobile.error.boundary.reload": "Reload",
-  "mobile.error.boundary.message": "Reload JoeSSH or contact support if the issue continues.",
+  "mobile.error.boundary.message":
+    "Reload JoeSSH or contact support if the issue continues.",
   "desktop.paletteRecentCommands": "Recent Commands",
   "desktop.connectionHealthy": "Connection healthy",
   "desktop.connectionStatusOnline": "Online",
@@ -392,7 +424,15 @@ export const en = {
   "team.accessRequestStatus": "Team access request status",
   "desktop.restoreWorkbench": "Restore workspace",
   "desktop.gettingStarted": "Getting started",
-  "desktop.surfaceGuide": "Desktop opens SSH sessions; Web Admin monitors Sync and teams; Mobile is the companion.",
-  "desktop.telemetryPrivacyHint": "Optional and off by default. Never sends hosts, usernames, commands, keys, tokens, paths, or terminal output.",
-  "team.reviewedBy": "reviewed by {reviewer}"
+  "desktop.surfaceGuide":
+    "Desktop opens local SSH and SFTP sessions; Web Admin shows read-only Sync snapshots; Mobile is a Sync preview and does not run SSH or SFTP.",
+  "desktop.telemetryPrivacyHint":
+    "Optional and off by default. Never sends hosts, usernames, commands, keys, tokens, paths, or terminal output.",
+  "desktop.thirdPartyNotices": "Licenses and notices",
+  "desktop.thirdPartyNoticesHint":
+    "Review the license and notice text bundled with this exact app build.",
+  "desktop.thirdPartyNoticesLoading": "Loading licenses…",
+  "desktop.thirdPartyNoticesUnavailable":
+    "License notices are unavailable in this build.",
+  "team.reviewedBy": "reviewed by {reviewer}",
 } as const;

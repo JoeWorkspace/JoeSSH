@@ -18,13 +18,26 @@ const {
   root,
   skipGithub,
 } = parseArgs(process.argv.slice(2));
-const gitCommand = process.env.ATLASTERM_RC_AUDIT_GIT_COMMAND ?? process.env.ATLASTERM_RELEASE_GIT_COMMAND ?? "git";
-const gitCommandPrefixArgs = parseCommandPrefixArgs("ATLASTERM_RC_AUDIT_GIT_ARGS");
-const ghCommand = process.env.ATLASTERM_RC_AUDIT_GH_COMMAND ?? process.env.ATLASTERM_RELEASE_GH_COMMAND ?? "gh";
-const ghCommandPrefixArgs = parseCommandPrefixArgs("ATLASTERM_RC_AUDIT_GH_ARGS");
+const gitCommand =
+  process.env.ATLASTERM_RC_AUDIT_GIT_COMMAND ??
+  process.env.ATLASTERM_RELEASE_GIT_COMMAND ??
+  "git";
+const gitCommandPrefixArgs = parseCommandPrefixArgs(
+  "ATLASTERM_RC_AUDIT_GIT_ARGS",
+);
+const ghCommand =
+  process.env.ATLASTERM_RC_AUDIT_GH_COMMAND ??
+  process.env.ATLASTERM_RELEASE_GH_COMMAND ??
+  "gh";
+const ghCommandPrefixArgs = parseCommandPrefixArgs(
+  "ATLASTERM_RC_AUDIT_GH_ARGS",
+);
 const npmCommand =
-  process.env.ATLASTERM_RC_AUDIT_NPM_COMMAND ?? (process.platform === "win32" ? "npm.cmd" : "npm");
-const npmCommandPrefixArgs = parseCommandPrefixArgs("ATLASTERM_RC_AUDIT_NPM_ARGS");
+  process.env.ATLASTERM_RC_AUDIT_NPM_COMMAND ??
+  (process.platform === "win32" ? "npm.cmd" : "npm");
+const npmCommandPrefixArgs = parseCommandPrefixArgs(
+  "ATLASTERM_RC_AUDIT_NPM_ARGS",
+);
 const packageJson = readJson("package.json");
 const releaseTag = `v${packageJson.version}`;
 const repo = explicitRepo ?? resolveRepoFromOrigin();
@@ -47,11 +60,16 @@ auditReleaseManifests();
 auditDesktopArtifactVersions();
 auditDesktopDogfood();
 auditPublishPreflight();
-auditDesktopSigningSecrets();
+auditDesktopFormalSigningBoundary();
 if (!skipGithub) {
   auditLatestCi();
 } else {
-  addCheck("github-ci", "GitHub CI status", "unknown", "Skipped by --skip-github.");
+  addCheck(
+    "github-ci",
+    "GitHub CI status",
+    "unknown",
+    "Skipped by --skip-github.",
+  );
 }
 
 report.decision = blockers.length === 0 ? "go" : "no-go";
@@ -69,7 +87,13 @@ if (report.decision !== "go" && !noFail) {
 function auditGit() {
   const head = runGit(["rev-parse", "HEAD"]);
   if (head.status !== 0) {
-    addCheck("git-head", "Git HEAD resolves", "fail", commandDiagnostic(head), true);
+    addCheck(
+      "git-head",
+      "Git HEAD resolves",
+      "fail",
+      commandDiagnostic(head),
+      true,
+    );
     return;
   }
   const headSha = head.stdout.trim();
@@ -78,7 +102,13 @@ function auditGit() {
 
   const tag = runGit(["rev-parse", "--verify", `${releaseTag}^{commit}`]);
   if (tag.status !== 0) {
-    addCheck("release-tag", "Release tag exists and points at HEAD", "fail", commandDiagnostic(tag), true);
+    addCheck(
+      "release-tag",
+      "Release tag exists and points at HEAD",
+      "fail",
+      commandDiagnostic(tag),
+      true,
+    );
   } else {
     const tagSha = tag.stdout.trim();
     report.releaseTagCommit = tagSha;
@@ -86,7 +116,9 @@ function auditGit() {
       "release-tag",
       "Release tag exists and points at HEAD",
       tagSha === headSha ? "pass" : "fail",
-      tagSha === headSha ? tagSha : `${releaseTag} points at ${shortSha(tagSha)}; HEAD is ${shortSha(headSha)}.`,
+      tagSha === headSha
+        ? tagSha
+        : `${releaseTag} points at ${shortSha(tagSha)}; HEAD is ${shortSha(headSha)}.`,
       tagSha !== headSha,
     );
   }
@@ -100,7 +132,13 @@ function auditGit() {
     ":(exclude)reports",
   ]);
   if (status.status !== 0) {
-    addCheck("git-clean", "Git working tree outside reports is clean", "fail", commandDiagnostic(status), true);
+    addCheck(
+      "git-clean",
+      "Git working tree outside reports is clean",
+      "fail",
+      commandDiagnostic(status),
+      true,
+    );
   } else {
     addCheck(
       "git-clean",
@@ -114,10 +152,46 @@ function auditGit() {
 
 function auditReleaseManifests() {
   const manifests = [
-    ["release-web", "Web Admin release checksum manifest", "reports/release/web/SHA256SUMS.txt", true],
-    ["release-sync", "Sync release checksum manifest", "reports/release/sync/SHA256SUMS.txt", true],
-    ["release-sbom", "SBOM checksum manifest", "reports/release/SBOM-SHA256SUMS.txt", true],
-    ["release-desktop", "Desktop signed release checksum manifest", "reports/release/desktop/SHA256SUMS.txt", true],
+    [
+      "release-web",
+      "Web Admin release checksum manifest",
+      "reports/release/web/SHA256SUMS.txt",
+      true,
+    ],
+    [
+      "release-sync",
+      "Sync release checksum manifest",
+      "reports/release/sync/SHA256SUMS.txt",
+      true,
+    ],
+    [
+      "release-sbom",
+      "SBOM checksum manifest",
+      "reports/release/SBOM-SHA256SUMS.txt",
+      true,
+      [
+        "reports/release/cargo-workspace-sbom.cdx.json",
+        "reports/release/npm-desktop-sbom.cdx.json",
+        "reports/release/npm-web-sbom.cdx.json",
+        "reports/release/tauri-cargo-sbom.cdx.json",
+      ],
+    ],
+    [
+      "third-party-licenses",
+      "third-party license checksum manifest",
+      "reports/release/THIRD-PARTY-LICENSES-SHA256SUMS.txt",
+      true,
+      [
+        "reports/release/third-party-licenses/THIRD-PARTY-NOTICES.txt",
+        "reports/release/third-party-licenses/manifest.json",
+      ],
+    ],
+    [
+      "release-desktop",
+      "Desktop signed release checksum manifest",
+      "reports/release/desktop/SHA256SUMS.txt",
+      true,
+    ],
     [
       "release-desktop-evidence",
       "Desktop signed release evidence checksum manifest",
@@ -126,9 +200,15 @@ function auditReleaseManifests() {
     ],
   ];
 
-  for (const [id, label, relativePath, blocking] of manifests) {
-    const result = verifyChecksumManifest(relativePath);
-    addCheck(id, label, result.ok ? "pass" : "fail", result.detail, blocking && !result.ok);
+  for (const [id, label, relativePath, blocking, expectedPaths] of manifests) {
+    const result = verifyChecksumManifest(relativePath, expectedPaths);
+    addCheck(
+      id,
+      label,
+      result.ok ? "pass" : "fail",
+      result.detail,
+      blocking && !result.ok,
+    );
   }
 }
 
@@ -166,10 +246,21 @@ function auditDesktopDogfood() {
   const checksumPath = "reports/smoke/desktop/real-ssh-smoke-SHA256SUMS.txt";
   const checksum = verifyChecksumManifest(checksumPath);
   if (!checksum.ok) {
-    addCheck("desktop-dogfood-checksum", "Desktop real SSH dogfood checksum", "fail", checksum.detail, true);
+    addCheck(
+      "desktop-dogfood-checksum",
+      "Desktop real SSH dogfood checksum",
+      "fail",
+      checksum.detail,
+      true,
+    );
     return;
   }
-  addCheck("desktop-dogfood-checksum", "Desktop real SSH dogfood checksum", "pass", checksum.detail);
+  addCheck(
+    "desktop-dogfood-checksum",
+    "Desktop real SSH dogfood checksum",
+    "pass",
+    checksum.detail,
+  );
 
   const evidence = readJsonIfExists(evidencePath);
   const requiredChecks = [
@@ -180,15 +271,54 @@ function auditDesktopDogfood() {
     "PTY marker",
     "local forwarding start/traffic/shutdown",
   ];
-  const missing = requiredChecks.filter((check) => !evidence?.checks?.includes(check));
-  const passed = evidence?.status === "passed" && missing.length === 0;
+  const missing = requiredChecks.filter(
+    (check) => !evidence?.checks?.includes(check),
+  );
+  const problems = [];
+  if (evidence?.status !== "passed") {
+    problems.push("top-level status is not passed");
+  }
+  if (missing.length > 0) {
+    problems.push(`missing checks: ${missing.join(", ")}`);
+  }
+  if (
+    evidence?.fixture !== "local-openssh" ||
+    evidence?.auth !== "private-key"
+  ) {
+    problems.push(
+      "fixture/auth identity is not the reviewed local OpenSSH path",
+    );
+  }
+  if (evidence?.version !== packageJson.version) {
+    problems.push(
+      `evidence version is ${JSON.stringify(evidence?.version)}; expected ${packageJson.version}`,
+    );
+  }
+  if (typeof report.head !== "string" || evidence?.gitCommit !== report.head) {
+    problems.push(
+      `evidence commit is ${JSON.stringify(evidence?.gitCommit)}; expected current HEAD ${JSON.stringify(report.head)}`,
+    );
+  }
+  if (evidence?.gitDirty !== false) {
+    problems.push("evidence was not captured from a clean source worktree");
+  }
+  if (
+    evidence?.wrappedCommand?.provided !== true ||
+    evidence?.wrappedCommand?.gate !== "qa:release:public" ||
+    evidence?.wrappedCommand?.status !== 0
+  ) {
+    problems.push(
+      "evidence is not bound to a successful qa:release:public fixture gate",
+    );
+  }
+  const passed = problems.length === 0;
   addCheck(
     "desktop-dogfood",
     "Desktop real SSH dogfood evidence",
     passed ? "pass" : "fail",
     passed
       ? `${evidence.fixture} ${evidence.auth} finished ${evidence.finishedAt}`
-      : `Dogfood evidence missing/failed${missing.length > 0 ? `; missing checks: ${missing.join(", ")}` : ""}.`,
+      : `Dogfood evidence missing/failed: ${problems.join("; ")}.`,
     !passed,
   );
 }
@@ -204,21 +334,97 @@ function auditPublishPreflight() {
   );
 }
 
-function auditDesktopSigningSecrets() {
-  const result = runNpm(["run", "release:desktop:configure-secrets", "--", "--verify-only"]);
+function auditDesktopFormalSigningBoundary() {
+  const configuratorPath = resolve(
+    root,
+    "scripts",
+    "configure-desktop-release-secrets.mjs",
+  );
+  const preflightPath = resolve(
+    root,
+    "scripts",
+    "desktop-release-evidence-preflight.mjs",
+  );
+  const configurator = existsSync(configuratorPath)
+    ? readFileSync(configuratorPath, "utf8")
+    : "";
+  const preflight = existsSync(preflightPath)
+    ? readFileSync(preflightPath, "utf8")
+    : "";
+  const issues = [];
+  const scripts = packageJson.scripts ?? {};
+  const forbiddenCredentialPattern =
+    /ATLASTERM_(?:WINDOWS|APPLE|KEYCHAIN)_[A-Z0-9_]+/;
+  const forbiddenExternalAccessPattern =
+    /node:(?:child_process|https?|net)|\b(?:spawn|exec)(?:Sync)?\s*\(|\bfetch\s*\(/;
+
+  if (scripts["release:desktop:configure-secrets"]) {
+    issues.push("package exposes release:desktop:configure-secrets");
+  }
+  if (scripts["release:desktop:evidence-preflight"]) {
+    issues.push("package exposes release:desktop:evidence-preflight");
+  }
+  if (scripts["release:desktop:evidence-workflow"]) {
+    issues.push("package exposes release:desktop:evidence-workflow");
+  }
+  if (
+    scripts["release:desktop:secret-template"] !==
+    "node scripts/configure-desktop-release-secrets.mjs --write-template"
+  ) {
+    issues.push(
+      "offline non-secret signer template command is missing or changed",
+    );
+  }
+  if (
+    !configurator.includes("FORMAL_SIGNING_DISABLED") ||
+    !configurator.includes("--write-template") ||
+    !configurator.includes(
+      "reports/handoff/desktop/external-signer-input-template.env",
+    ) ||
+    forbiddenExternalAccessPattern.test(configurator) ||
+    configurator.includes("process.env") ||
+    configurator.includes("readFile") ||
+    configurator.includes('"secret", "set"') ||
+    configurator.includes("desktop-release-signing") ||
+    forbiddenCredentialPattern.test(configurator)
+  ) {
+    issues.push(
+      "Desktop configurator is not a fail-closed, local, template-only boundary",
+    );
+  }
+  if (
+    !preflight.includes("FORMAL_SIGNING_DISABLED") ||
+    !preflight.includes("approved externally managed isolated signer") ||
+    forbiddenExternalAccessPattern.test(preflight) ||
+    preflight.includes("process.env") ||
+    preflight.includes("formal_evidence=true") ||
+    preflight.includes("desktop-release-signing") ||
+    forbiddenCredentialPattern.test(preflight)
+  ) {
+    issues.push("Desktop evidence preflight is not a fail-closed guard");
+  }
+
   addCheck(
-    "desktop-signing-secrets",
-    "Desktop signing/notarization secret preflight",
-    result.status === 0 ? "pass" : "fail",
-    result.status === 0 ? "passed" : tail(commandDiagnostic(result)).join("\n"),
-    result.status !== 0,
+    "desktop-formal-signing-disabled",
+    "Desktop repository signing automation stays disabled",
+    issues.length === 0 ? "pass" : "fail",
+    issues.length === 0
+      ? "FORMAL_SIGNING_DISABLED boundary verified; only a local non-secret template remains."
+      : issues.join("; "),
+    issues.length > 0,
   );
 }
 
 function auditLatestCi() {
   const auth = runGh(["auth", "status"]);
   if (auth.status !== 0) {
-    addCheck("github-auth", "GitHub CLI authentication", "fail", commandDiagnostic(auth), true);
+    addCheck(
+      "github-auth",
+      "GitHub CLI authentication",
+      "fail",
+      commandDiagnostic(auth),
+      true,
+    );
     return;
   }
   addCheck("github-auth", "GitHub CLI authentication", "pass", "authenticated");
@@ -236,15 +442,29 @@ function auditLatestCi() {
     "databaseId,headSha,status,conclusion,workflowName,url,displayTitle,createdAt",
   ]);
   if (runsResult.status !== 0) {
-    addCheck("github-ci", "Latest GitHub CI for HEAD", "fail", commandDiagnostic(runsResult), true);
+    addCheck(
+      "github-ci",
+      "Latest GitHub CI for HEAD",
+      "fail",
+      commandDiagnostic(runsResult),
+      true,
+    );
     return;
   }
 
   const runs = parseJsonOrNull(runsResult.stdout) ?? [];
   const head = report.head ?? "";
-  const ciRun = runs.find((run) => run.workflowName === "CI" && run.headSha === head);
+  const ciRun = runs.find(
+    (run) => run.workflowName === "CI" && run.headSha === head,
+  );
   if (!ciRun) {
-    addCheck("github-ci", "Latest GitHub CI for HEAD", "fail", `No CI run found for ${shortSha(head)}.`, true);
+    addCheck(
+      "github-ci",
+      "Latest GitHub CI for HEAD",
+      "fail",
+      `No CI run found for ${shortSha(head)}.`,
+      true,
+    );
     return;
   }
 
@@ -271,7 +491,15 @@ function auditLatestCi() {
 }
 
 function collectRunFailureDiagnostics(runId) {
-  const view = runGh(["run", "view", String(runId), "--repo", repo, "--json", "jobs"]);
+  const view = runGh([
+    "run",
+    "view",
+    String(runId),
+    "--repo",
+    repo,
+    "--json",
+    "jobs",
+  ]);
   if (view.status !== 0) {
     return [`Unable to inspect failed CI jobs: ${commandDiagnostic(view)}`];
   }
@@ -282,21 +510,26 @@ function collectRunFailureDiagnostics(runId) {
     lines.push(`${job.name}: ${job.status}/${job.conclusion}`);
     const annotations = collectCheckRunAnnotations(job.databaseId);
     for (const annotation of annotations.slice(0, 3)) {
-      lines.push(`${job.name}: ${annotation.path ?? ".github"}: ${annotation.message}`);
+      lines.push(
+        `${job.name}: ${annotation.path ?? ".github"}: ${annotation.message}`,
+      );
     }
   }
   return lines;
 }
 
 function collectCheckRunAnnotations(checkRunId) {
-  const result = runGh(["api", `repos/${repo}/check-runs/${checkRunId}/annotations`]);
+  const result = runGh([
+    "api",
+    `repos/${repo}/check-runs/${checkRunId}/annotations`,
+  ]);
   if (result.status !== 0) {
     return [];
   }
   return parseJsonOrNull(result.stdout) ?? [];
 }
 
-function verifyChecksumManifest(relativePath) {
+function verifyChecksumManifest(relativePath, expectedPaths) {
   const manifestPath = resolve(root, relativePath);
   if (!existsSync(manifestPath)) {
     return { ok: false, detail: `${relativePath} is missing.` };
@@ -310,28 +543,61 @@ function verifyChecksumManifest(relativePath) {
     return { ok: false, detail: `${relativePath} is empty.` };
   }
 
+  const coveredPaths = [];
   for (const line of lines) {
     const match = line.match(/^(?<hash>[a-f0-9]{64})\s+\*?(?<path>.+)$/i);
     if (!match?.groups) {
-      return { ok: false, detail: `${relativePath} contains an invalid checksum line.` };
+      return {
+        ok: false,
+        detail: `${relativePath} contains an invalid checksum line.`,
+      };
     }
     if (isManifestAbsolutePath(match.groups.path)) {
-      return { ok: false, detail: `${match.groups.path} referenced by ${relativePath} must be relative.` };
+      return {
+        ok: false,
+        detail: `${match.groups.path} referenced by ${relativePath} must be relative.`,
+      };
     }
     const artifactPath = resolveManifestEntryPath(match.groups.path);
     if (!isInsideRoot(artifactPath, root)) {
-      return { ok: false, detail: `${match.groups.path} referenced by ${relativePath} escapes the release root.` };
+      return {
+        ok: false,
+        detail: `${match.groups.path} referenced by ${relativePath} escapes the release root.`,
+      };
     }
     if (!existsSync(artifactPath)) {
-      return { ok: false, detail: `${match.groups.path} referenced by ${relativePath} is missing.` };
+      return {
+        ok: false,
+        detail: `${match.groups.path} referenced by ${relativePath} is missing.`,
+      };
     }
     const actual = sha256(artifactPath);
     if (actual !== match.groups.hash.toLowerCase()) {
-      return { ok: false, detail: `${match.groups.path} hash mismatch in ${relativePath}.` };
+      return {
+        ok: false,
+        detail: `${match.groups.path} hash mismatch in ${relativePath}.`,
+      };
+    }
+    coveredPaths.push(toReleasePath(artifactPath));
+  }
+  if (expectedPaths) {
+    const actual = [...new Set(coveredPaths)].sort();
+    const expected = [...expectedPaths].sort();
+    if (
+      actual.length !== coveredPaths.length ||
+      actual.join("\0") !== expected.join("\0")
+    ) {
+      return {
+        ok: false,
+        detail: `${relativePath} must exactly cover: ${expected.join(", ")}.`,
+      };
     }
   }
 
-  return { ok: true, detail: `verified ${lines.length} checksum${lines.length === 1 ? "" : "s"}` };
+  return {
+    ok: true,
+    detail: `verified ${lines.length} checksum${lines.length === 1 ? "" : "s"}`,
+  };
 }
 
 function collectFiles(path) {
@@ -360,10 +626,18 @@ function classifyDesktopArtifact(path) {
   if (/\.(exe|msi|msix)$/.test(lower)) {
     return { platform: "windows" };
   }
-  if (lower.endsWith(".dmg") || lower.endsWith(".pkg") || lower.endsWith(".app.tar.gz")) {
+  if (
+    lower.endsWith(".dmg") ||
+    lower.endsWith(".pkg") ||
+    lower.endsWith(".app.tar.gz")
+  ) {
     return { platform: "macos" };
   }
-  if (lower.endsWith(".appimage") || lower.endsWith(".deb") || lower.endsWith(".rpm")) {
+  if (
+    lower.endsWith(".appimage") ||
+    lower.endsWith(".deb") ||
+    lower.endsWith(".rpm")
+  ) {
     return { platform: "linux" };
   }
   return null;
@@ -385,7 +659,10 @@ function writeReport() {
   mkdirSync(dirname(outputPath), { recursive: true });
   writeFileSync(outputPath, `${JSON.stringify(report, null, 2)}\n`);
   const checksumPath = checksumPathFor(outputPath);
-  writeFileSync(checksumPath, `${sha256(outputPath)}  ${toReleasePath(outputPath)}\n`);
+  writeFileSync(
+    checksumPath,
+    `${sha256(outputPath)}  ${toReleasePath(outputPath)}\n`,
+  );
 }
 
 function addCheck(id, label, status, detail, blocking = false) {
@@ -401,8 +678,12 @@ function resolveRepoFromOrigin() {
     return "unknown/unknown";
   }
   const origin = result.stdout.trim();
-  const match = origin.match(/github\.com[:/](?<owner>[^/\s]+)\/(?<repo>[^/\s]+?)(?:\.git)?$/i);
-  return match?.groups ? `${match.groups.owner}/${match.groups.repo}` : "unknown/unknown";
+  const match = origin.match(
+    /github\.com[:/](?<owner>[^/\s]+)\/(?<repo>[^/\s]+?)(?:\.git)?$/i,
+  );
+  return match?.groups
+    ? `${match.groups.owner}/${match.groups.repo}`
+    : "unknown/unknown";
 }
 
 function runGit(args) {
@@ -521,9 +802,20 @@ function parseArgs(args) {
     fail(`Unknown argument: ${arg}`);
   }
 
-  outputPath ??= resolve(root, "reports", "release", "public-beta-rc-audit.json");
+  outputPath ??= resolve(
+    root,
+    "reports",
+    "handoff",
+    "release",
+    "public-beta-rc-audit.json",
+  );
   if (!isInsideRoot(outputPath, root)) {
     fail("--output must stay inside --root.");
+  }
+  if (isInsideRoot(outputPath, resolve(root, "reports", "release"))) {
+    fail(
+      "--output must stay outside reports/release because RC audit evidence is internal handoff material.",
+    );
   }
 
   return { noFail, outputPath, repo, root, skipGithub };
@@ -545,7 +837,10 @@ function parseCommandPrefixArgs(envName) {
 
   try {
     const value = JSON.parse(raw);
-    if (Array.isArray(value) && value.every((entry) => typeof entry === "string")) {
+    if (
+      Array.isArray(value) &&
+      value.every((entry) => typeof entry === "string")
+    ) {
       return value;
     }
   } catch {
@@ -557,7 +852,10 @@ function parseCommandPrefixArgs(envName) {
 
 function isInsideRoot(path, rootPath) {
   const relativePath = relative(rootPath, path);
-  return relativePath === "" || (!relativePath.startsWith("..") && !isAbsolute(relativePath));
+  return (
+    relativePath === "" ||
+    (!relativePath.startsWith("..") && !isAbsolute(relativePath))
+  );
 }
 
 function fail(message) {

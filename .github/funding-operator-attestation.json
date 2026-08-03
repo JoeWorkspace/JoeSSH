@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "status": "inactive",
+  "fundingUrl": null,
+  "verifiedAt": null,
+  "checks": {
+    "destinationOwnedByVerifiedOperator": false,
+    "loggedOutPageReachable": false,
+    "smallPaymentCompleted": false,
+    "paymentLimitationsAndNonPurchaseWordingVerified": false,
+    "payoutCompleted": false
+  }
+}

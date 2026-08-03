@@ -92,7 +92,9 @@ describe("getRoleMessageKey", () => {
   });
 
   it("returns key for workspace admin role", () => {
-    expect(getRoleMessageKey("workspace admin")).toBe("web.role.workspaceAdmin");
+    expect(getRoleMessageKey("workspace admin")).toBe(
+      "web.role.workspaceAdmin",
+    );
   });
 
   it("returns undefined for unknown role", () => {
@@ -106,15 +108,21 @@ describe("getRoleMessageKey", () => {
 
 describe("getScopeMessageKey", () => {
   it("returns key for operator scope", () => {
-    expect(getScopeMessageKey("devices, sessions, audit read")).toBe("web.scope.operator");
+    expect(getScopeMessageKey("devices, sessions, audit read")).toBe(
+      "web.scope.operator",
+    );
   });
 
   it("returns key for admin scope", () => {
-    expect(getScopeMessageKey("members, roles, sync policy")).toBe("web.scope.admin");
+    expect(getScopeMessageKey("members, roles, sync policy")).toBe(
+      "web.scope.admin",
+    );
   });
 
   it("returns key for viewer scope", () => {
-    expect(getScopeMessageKey("read-only dashboard access")).toBe("web.scope.viewer");
+    expect(getScopeMessageKey("read-only dashboard access")).toBe(
+      "web.scope.viewer",
+    );
   });
 
   it("returns undefined for unknown scope", () => {
@@ -124,19 +132,27 @@ describe("getScopeMessageKey", () => {
 
 describe("getAuditActionKey", () => {
   it("returns key for profile changes action", () => {
-    expect(getAuditActionKey("accepted 12 profile changes")).toBe("web.event.profileChanges");
+    expect(getAuditActionKey("accepted 12 profile changes")).toBe(
+      "web.event.profileChanges",
+    );
   });
 
   it("returns key for export blocked action", () => {
-    expect(getAuditActionKey("blocked export from unmanaged device")).toBe("web.event.exportBlocked");
+    expect(getAuditActionKey("blocked export from unmanaged device")).toBe(
+      "web.event.exportBlocked",
+    );
   });
 
   it("returns key for role changed action", () => {
-    expect(getAuditActionKey("changed jordan lee role")).toBe("web.event.roleChanged");
+    expect(getAuditActionKey("changed jordan lee role")).toBe(
+      "web.event.roleChanged",
+    );
   });
 
   it("returns key for fresh cursor action", () => {
-    expect(getAuditActionKey("issued fresh cursor")).toBe("web.event.freshCursor");
+    expect(getAuditActionKey("issued fresh cursor")).toBe(
+      "web.event.freshCursor",
+    );
   });
 
   it("returns undefined for unknown action", () => {
@@ -146,11 +162,15 @@ describe("getAuditActionKey", () => {
 
 describe("getAuditTargetKey", () => {
   it("returns key for support viewer target", () => {
-    expect(getAuditTargetKey("support viewer")).toBe("web.target.supportViewer");
+    expect(getAuditTargetKey("support viewer")).toBe(
+      "web.target.supportViewer",
+    );
   });
 
   it("returns key for unknown browser target", () => {
-    expect(getAuditTargetKey("unknown browser")).toBe("web.target.unknownBrowser");
+    expect(getAuditTargetKey("unknown browser")).toBe(
+      "web.target.unknownBrowser",
+    );
   });
 
   it("returns undefined for unknown target", () => {
@@ -160,7 +180,9 @@ describe("getAuditTargetKey", () => {
 
 describe("formatLastSeen", () => {
   const mockFormatters = {
-    relativeTime: vi.fn((amount: number, unit: string) => `${Math.abs(amount)} ${unit}(s) ago`),
+    relativeTime: vi.fn(
+      (amount: number, unit: string) => `${Math.abs(amount)} ${unit}(s) ago`,
+    ),
     number: vi.fn(),
     date: vi.fn(),
     time: vi.fn(),
@@ -177,24 +199,40 @@ describe("formatLastSeen", () => {
   });
 
   it("returns relative time for minutes ago", () => {
-    const result = formatLastSeen("5 min ago", mockFormatters as any, mockT as any);
+    const result = formatLastSeen(
+      "5 min ago",
+      mockFormatters as any,
+      mockT as any,
+    );
     expect(result).toBe("5 minute(s) ago");
     expect(mockFormatters.relativeTime).toHaveBeenCalledWith(-5, "minute");
   });
 
   it("returns relative time for hours ago", () => {
-    const result = formatLastSeen("2 hr ago", mockFormatters as any, mockT as any);
+    const result = formatLastSeen(
+      "2 hr ago",
+      mockFormatters as any,
+      mockT as any,
+    );
     expect(result).toBe("2 hour(s) ago");
     expect(mockFormatters.relativeTime).toHaveBeenCalledWith(-2, "hour");
   });
 
   it("returns original value for non-matching format", () => {
-    const result = formatLastSeen("yesterday", mockFormatters as any, mockT as any);
+    const result = formatLastSeen(
+      "yesterday",
+      mockFormatters as any,
+      mockT as any,
+    );
     expect(result).toBe("yesterday");
   });
 
   it("handles case insensitivity in time format", () => {
-    const result = formatLastSeen("3 MIN AGO", mockFormatters as any, mockT as any);
+    const result = formatLastSeen(
+      "3 MIN AGO",
+      mockFormatters as any,
+      mockT as any,
+    );
     expect(result).toBe("3 minute(s) ago");
   });
 });
@@ -212,7 +250,7 @@ describe("formatClockTime", () => {
     expect(result).toBe("14:30");
     expect(mockFormatters.time).toHaveBeenCalledWith(
       Date.UTC(2026, 4, 24, 14, 30),
-      { hour: "2-digit", minute: "2-digit", timeZone: "UTC" }
+      { hour: "2-digit", minute: "2-digit", timeZone: "UTC" },
     );
   });
 
@@ -221,7 +259,7 @@ describe("formatClockTime", () => {
     expect(result).toBe("14:30");
     expect(mockFormatters.time).toHaveBeenCalledWith(
       Date.UTC(2026, 4, 24, 9, 15),
-      { hour: "2-digit", minute: "2-digit", timeZone: "UTC" }
+      { hour: "2-digit", minute: "2-digit", timeZone: "UTC" },
     );
   });
 
@@ -232,12 +270,16 @@ describe("formatClockTime", () => {
       number: vi.fn(),
       date: vi.fn(),
     };
-    const result = formatClockTime("2026-05-24T14:30:00Z", mockFormatters2 as any);
-    expect(result).toBe("formatted");
-    expect(mockFormatters2.time).toHaveBeenCalledWith(
+    const result = formatClockTime(
       "2026-05-24T14:30:00Z",
-      { hour: "2-digit", minute: "2-digit", timeZone: "UTC" }
+      mockFormatters2 as any,
     );
+    expect(result).toBe("formatted");
+    expect(mockFormatters2.time).toHaveBeenCalledWith("2026-05-24T14:30:00Z", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "UTC",
+    });
   });
 
   it("returns invalid clock strings without formatting rollover", () => {
@@ -277,7 +319,9 @@ describe("getClockDateTime", () => {
   });
 
   it("returns ISO timestamps and omits invalid dynamic strings", () => {
-    expect(getClockDateTime("2026-05-24T14:30:00Z")).toBe("2026-05-24T14:30:00Z");
+    expect(getClockDateTime("2026-05-24T14:30:00Z")).toBe(
+      "2026-05-24T14:30:00Z",
+    );
     expect(getClockDateTime("24:60")).toBeUndefined();
     expect(getClockDateTime("not-a-timestamp")).toBeUndefined();
   });
@@ -292,7 +336,7 @@ describe("web entry telemetry policy", () => {
 
     expect(content).toContain("VITE_ATLASTERM_TELEMETRY_OPT_IN");
     expect(content).toContain("createNoopErrorMonitor");
-    expect(content).toContain("0.1.0-beta.9");
+    expect(content).toContain("0.1.0-beta.10");
     expect(content).not.toContain("version: '0.1.0'");
     expect(content).not.toContain('version: "0.1.0"');
   });
@@ -321,7 +365,9 @@ describe("web release shell build", () => {
     const inlineShell = fs.readFileSync(inlineShellPath, "utf-8");
 
     expect(packageJson.scripts.build).toContain("node inline-shell.mjs");
-    expect(packageJson.scripts.build.indexOf("node inline-shell.mjs")).toBeLessThan(
+    expect(
+      packageJson.scripts.build.indexOf("node inline-shell.mjs"),
+    ).toBeLessThan(
       packageJson.scripts.build.indexOf("apply-subresource-integrity.mjs"),
     );
     expect(inlineShell).toContain("data-joessh-critical-shell");

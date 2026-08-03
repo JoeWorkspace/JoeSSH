@@ -7,31 +7,31 @@ import { auditPackageLock } from "./check-package-lock-portability.mjs";
 
 const lockPath = resolve(import.meta.dirname, "..", "package-lock.json");
 const sourceLock = JSON.parse(readFileSync(lockPath, "utf8"));
-const rollupLinuxPath = "node_modules/@rollup/rollup-linux-x64-gnu";
+const rolldownLinuxPath = "node_modules/@rolldown/binding-linux-x64-gnu";
 
 test("accepts the repository lockfile", () => {
   const result = auditPackageLock(sourceLock);
   assert.deepEqual(result.issues, []);
-  assert.ok(result.registryPackages > 900);
-  assert.ok(result.optionalPackages > 50);
+  assert.ok(result.registryPackages > 800);
+  assert.ok(result.optionalPackages > 30);
 });
 
 test("rejects a missing integrity hash", () => {
   const lock = structuredClone(sourceLock);
-  delete lock.packages[rollupLinuxPath].integrity;
+  delete lock.packages[rolldownLinuxPath].integrity;
 
   const result = auditPackageLock(lock);
 
   assert.ok(
     result.issues.includes(
-      `${rollupLinuxPath} is missing a valid integrity hash.`,
+      `${rolldownLinuxPath} is missing a valid integrity hash.`,
     ),
   );
 });
 
 test("rejects a missing cross-platform optional package", () => {
   const lock = structuredClone(sourceLock);
-  delete lock.packages[rollupLinuxPath];
+  delete lock.packages[rolldownLinuxPath];
 
   const result = auditPackageLock(lock);
 
@@ -39,22 +39,24 @@ test("rejects a missing cross-platform optional package", () => {
     result.issues.some(
       (issue) =>
         issue.includes(
-          "references missing optional package @rollup/rollup-linux-x64-gnu",
+          "references missing optional package @rolldown/binding-linux-x64-gnu",
         ) ||
-        issue.startsWith("@rollup/rollup-linux-x64-gnu must be locked at "),
+        issue.startsWith(
+          "@rolldown/binding-linux-x64-gnu must be locked at ",
+        ),
     ),
   );
 });
 
 test("rejects a local package resolution", () => {
   const lock = structuredClone(sourceLock);
-  lock.packages[rollupLinuxPath].resolved = "file:C:\\temp\\rollup";
+  lock.packages[rolldownLinuxPath].resolved = "file:C:\\temp\\rolldown";
 
   const result = auditPackageLock(lock);
 
   assert.ok(
     result.issues.includes(
-      `${rollupLinuxPath} resolves to a local path: file:C:\\temp\\rollup`,
+      `${rolldownLinuxPath} resolves to a local path: file:C:\\temp\\rolldown`,
     ),
   );
 });

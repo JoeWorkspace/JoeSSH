@@ -2,12 +2,16 @@ export const vi = {
   "desktop.demoScopeSummary": "Dữ liệu minh họa — không có phiên SSH thực",
   "desktop.demoShell": "Shell mẫu",
   "desktop.noSession": "Không có phiên SSH",
-  "desktop.noSessionActionDetail": "Hãy kết nối với máy chủ thực trước khi thực hiện tác vụ terminal, SFTP hoặc chuyển tiếp.",
+  "desktop.noSessionActionDetail":
+    "Hãy kết nối với máy chủ thực trước khi thực hiện tác vụ terminal, SFTP hoặc chuyển tiếp.",
   "desktop.sampleDataShort": "Dữ liệu mẫu",
-  "desktop.terminalSessionConnectRequired": "Hãy dùng Kết nối để mở một phiên SSH thực trước khi chạy lệnh.",
-  "desktop.terminalSessionSample": "Đây chỉ là hồ sơ kết nối mẫu. Không có phiên SSH nào đang hoạt động.",
+  "desktop.terminalSessionConnectRequired":
+    "Hãy dùng Kết nối để mở một phiên SSH thực trước khi chạy lệnh.",
+  "desktop.terminalSessionSample":
+    "Đây chỉ là hồ sơ kết nối mẫu. Không có phiên SSH nào đang hoạt động.",
   "desktop.sftp": "SFTP",
-  "desktop.manifestDescription": "Thiết bị đầu cuối SSH, SFTP, quyền truy cập nhóm và quản lý phiên.",
+  "desktop.manifestDescription":
+    "Thiết bị đầu cuối SSH, SFTP, chuyển tiếp cổng và quản lý phiên cục bộ.",
   "language.selectorLabel": "Ngôn ngữ hiển thị",
   "language.autoRegion": "Tự động theo khu vực",
   "language.worldReady": "Ngôn ngữ toàn cầu đã sẵn sàng",
@@ -50,10 +54,12 @@ export const vi = {
   "desktop.terminalAutocompleteNavigate": "để điều hướng",
   "desktop.terminalSessionConnected": "Đã kết nối tới {name} ({group})",
   "desktop.terminalSessionReady": "Phiên đã sẵn sàng.",
-  "desktop.terminalSessionMfaRequired": "Cần xác minh MFA trước khi thực thi lệnh.",
+  "desktop.terminalSessionMfaRequired":
+    "Cần xác minh MFA trước khi thực thi lệnh.",
   "desktop.mfaRequiredShort": "Cần MFA",
   "desktop.commandAccepted": "Lệnh đã được chấp nhận",
-  "desktop.commandAcceptedDetail": "Đã qua kiểm tra an toàn cục bộ và được đưa vào hàng đợi cho bộ thực thi terminal.",
+  "desktop.commandAcceptedDetail":
+    "Đã qua kiểm tra an toàn cục bộ và được đưa vào hàng đợi cho bộ thực thi terminal.",
   "desktop.commandBlocked": "Lệnh bị chặn",
   "desktop.commandBlockedDetail": "Khớp {pattern}: {reason}",
   "desktop.safetyReasonRmRoot": "xóa đệ quy gốc hệ thống tệp",
@@ -62,17 +68,24 @@ export const vi = {
   "desktop.safetyReasonRawDiskCopy": "sao chép đĩa thô có thể phá hủy dữ liệu",
   "desktop.safetyReasonChmodRoot": "mở quyền quá rộng từ gốc hệ thống tệp",
   "desktop.safetyReasonTeeBlockDevice": "ghi đầu ra thô vào thiết bị khối",
-  "desktop.safetyReasonRedirectBlockDevice": "chuyển hướng đầu ra vào thiết bị khối thô và phá hủy nội dung",
+  "desktop.safetyReasonRedirectBlockDevice":
+    "chuyển hướng đầu ra vào thiết bị khối thô và phá hủy nội dung",
   "desktop.safetyReasonFindRootDelete": "xóa tệp đệ quy từ đường dẫn gốc",
-  "desktop.safetyReasonDiskWipe": "xóa không thể đảo ngược bảng phân vùng hoặc nội dung thiết bị khối",
+  "desktop.safetyReasonDiskWipe":
+    "xóa không thể đảo ngược bảng phân vùng hoặc nội dung thiết bị khối",
   "desktop.safetyReasonFirewallFlush": "xóa sạch quy tắc tường lửa",
-  "desktop.safetyReasonRemoteShellPipe": "chuyển nội dung từ xa trực tiếp vào shell",
-  "desktop.safetyReasonRootDownloadOverwrite": "ghi đè đường dẫn gốc bằng nội dung tải xuống",
+  "desktop.safetyReasonRemoteShellPipe":
+    "chuyển nội dung từ xa trực tiếp vào shell",
+  "desktop.safetyReasonRootDownloadOverwrite":
+    "ghi đè đường dẫn gốc bằng nội dung tải xuống",
   "desktop.safetyReasonHostShutdown": "dừng máy chủ ngay lập tức",
-  "desktop.safetyReasonWindowsDestructive": "lệnh phá hủy phía Windows nhắm vào tệp, đĩa hoặc trạng thái máy chủ",
-  "desktop.safetyReasonPowershellDestructive": "lệnh phá hủy PowerShell nhắm vào ổ đĩa, đường dẫn hệ thống, đĩa hoặc trạng thái nguồn của máy chủ",
+  "desktop.safetyReasonWindowsDestructive":
+    "lệnh phá hủy phía Windows nhắm vào tệp, đĩa hoặc trạng thái máy chủ",
+  "desktop.safetyReasonPowershellDestructive":
+    "lệnh phá hủy PowerShell nhắm vào ổ đĩa, đường dẫn hệ thống, đĩa hoặc trạng thái nguồn của máy chủ",
   "desktop.safetyReasonDropDatabase": "xóa cơ sở dữ liệu",
-  "desktop.safetyReasonCommandSubstitution": "nhúng lệnh con có thể thực thi bất cứ thứ gì",
+  "desktop.safetyReasonCommandSubstitution":
+    "nhúng lệnh con có thể thực thi bất cứ thứ gì",
   "desktop.context": "Ngữ cảnh",
   "desktop.team": "Nhóm",
   "desktop.settings": "Cài đặt",
@@ -108,7 +121,7 @@ export const vi = {
   "desktop.recordTerminal": "Ghi lại phiên terminal",
   "desktop.requiredProduction": "Bắt buộc cho phạm vi sản xuất",
   "desktop.syncEncrypted": "Đồng bộ đoạn mã được mã hóa",
-  "desktop.availableProBusiness": "Có trong Pro và Business",
+  "desktop.plannedUnavailable": "Đã lên kế hoạch; hiện chưa khả dụng",
   "desktop.telemetryErrors": "Báo cáo lỗi tùy chọn",
   "desktop.telemetryErrorsHint": "Gửi tóm tắt sự cố và lỗi đã được lược bỏ.",
   "desktop.businessLayer": "Lớp kinh doanh",
@@ -123,7 +136,8 @@ export const vi = {
   "desktop.requestElevated": "Yêu cầu quyền truy cập nâng cao",
   "desktop.palettePlaceholder": "Chạy lệnh, mở máy chủ, bắt đầu quy trình",
   "desktop.paletteEmptyTitle": "Không có kết quả trong bảng lệnh",
-  "desktop.paletteEmptyHint": "Thử máy chủ, lệnh gần đây hoặc từ khóa quy trình.",
+  "desktop.paletteEmptyHint":
+    "Thử máy chủ, lệnh gần đây hoặc từ khóa quy trình.",
   "team.access": "Quyền truy cập nhóm",
   "team.accessSummary": "Tóm tắt quyền truy cập nhóm",
   "team.business": "Business",
@@ -167,7 +181,8 @@ export const vi = {
   "desktop.forwardActive": "Đang hoạt động",
   "desktop.forwardInactive": "Không hoạt động",
   "desktop.forwardNoRules": "Chưa có quy tắc chuyển tiếp",
-  "desktop.forwardNoRulesHint": "Thêm quy tắc để chuyển tiếp cổng TCP cục bộ qua SSH.",
+  "desktop.forwardNoRulesHint":
+    "Thêm quy tắc để chuyển tiếp cổng TCP cục bộ qua SSH.",
   "desktop.sftpEmpty": "Thư mục này trống",
   "desktop.sftpEmptyHint": "Tải lên một tệp hoặc chuyển đến thư mục khác.",
   "desktop.groupProduction": "Sản xuất",
@@ -215,10 +230,12 @@ export const vi = {
   "desktop.passphrase": "Cụm mật khẩu (tùy chọn)",
   "desktop.pinnedFingerprint": "Khóa máy chủ đã ghim (tùy chọn)",
   "desktop.hostKeyConfirmTitle": "Confirm host key",
-  "desktop.hostKeyConfirmDetail": "Verify this SHA-256 fingerprint before authenticating.",
+  "desktop.hostKeyConfirmDetail":
+    "Verify this SHA-256 fingerprint before authenticating.",
   "desktop.hostKeyPresentedFingerprint": "Presented fingerprint",
   "desktop.hostKeyVerificationFailed": "Host key verification failed",
-  "desktop.hostKeyChangedDetail": "Stored host key mismatch for {host}:{port}. Expected {stored}, presented {presented}.",
+  "desktop.hostKeyChangedDetail":
+    "Stored host key mismatch for {host}:{port}. Expected {stored}, presented {presented}.",
   "desktop.trustHostKeyAndConnect": "Trust and connect",
   "desktop.connectAction": "Kết nối",
   "desktop.connecting": "Đang kết nối…",
@@ -227,20 +244,23 @@ export const vi = {
   "desktop.connectionSwitched": "Đã chuyển sang {name}",
   "desktop.connectionMoved": "Đã chuyển {connection} vào {group}",
   "desktop.connectionsImported": "Đã nhập {count} kết nối",
-  "desktop.connectionsImportFailed": "Could not import connections. Choose a valid JoeSSH connections JSON file.",
+  "desktop.connectionsImportFailed":
+    "Could not import connections. Choose a valid JoeSSH connections JSON file.",
   "desktop.connectionConnectToast": "Kết nối: {name}",
   "desktop.connectionCreated": "Đã tạo kết nối {name}",
   "desktop.connectionTestResult": "Kiểm tra kết nối: {result}",
-  "desktop.builtinConnectionEditUnavailable": "Không thể chỉnh sửa kết nối demo tích hợp",
-  "desktop.builtinConnectionDeleteUnavailable": "Không thể xóa kết nối demo tích hợp",
+  "desktop.builtinConnectionEditUnavailable":
+    "Không thể chỉnh sửa kết nối demo tích hợp",
+  "desktop.builtinConnectionDeleteUnavailable":
+    "Không thể xóa kết nối demo tích hợp",
   "desktop.connectionCopyName": "{name} bản sao",
   "desktop.connectionCopyNameNumbered": "{name} bản sao {number}",
   "desktop.connectionDuplicated": "Đã nhân bản {name}",
   "desktop.connectionDeleted": "Đã xóa {name}",
   "desktop.connectionEdited": "Đã chỉnh sửa {name}",
-  "desktop.groupCreatedToast": "Đã tạo nhóm \"{name}\"",
-  "desktop.groupDeletedToast": "Đã xóa nhóm \"{name}\"",
-  "desktop.groupRenamedToast": "Đã đổi tên nhóm thành \"{name}\"",
+  "desktop.groupCreatedToast": 'Đã tạo nhóm "{name}"',
+  "desktop.groupDeletedToast": 'Đã xóa nhóm "{name}"',
+  "desktop.groupRenamedToast": 'Đã đổi tên nhóm thành "{name}"',
   "desktop.sftpUploadComplete": "Đã tải lên {name}",
   "desktop.sftpOverwriteTitle": "Thay thế tệp hiện có?",
   "desktop.sftpOverwriteDetail": "Đã có tệp tên {name} trong thư mục này.",
@@ -269,7 +289,8 @@ export const vi = {
   "team.auditCommandRecorded": "Command recorded",
   "team.auditAccessRequestApproved": "Access request approved",
   "team.auditAccessRequestRejected": "Access request rejected",
-  "team.productionElevationDetail": "Incident commander role for gateway triage",
+  "team.productionElevationDetail":
+    "Incident commander role for gateway triage",
   "web.adminNavigation": "Điều hướng quản trị JoeSSH",
   "web.adminConsole": "Bảng điều khiển quản trị",
   "web.skipToContent": "Chuyển đến nội dung chính",
@@ -308,17 +329,23 @@ export const vi = {
   "web.storage": "Lưu trữ",
   "mobile.kicker": "JoeSSH Mobile",
   "mobile.title": "Đồng bộ và truy cập khẩn cấp",
-  "mobile.subtitle": "Đăng ký điện thoại này, xem trước ngữ cảnh terminal, và giữ sẵn đường khôi phục.",
+  "mobile.subtitle":
+    "Đăng ký điện thoại này, xem trước ngữ cảnh terminal, và giữ sẵn đường khôi phục.",
   "mobile.registering": "Đang đăng ký thiết bị",
-  "mobile.registeringMessage": "Đang tạo danh tính di động cho đồng bộ và bàn giao khẩn cấp.",
+  "mobile.registeringMessage":
+    "Đang tạo danh tính di động cho đồng bộ và bàn giao khẩn cấp.",
   "mobile.previewing": "Đang kéo bản xem trước đồng bộ",
-  "mobile.previewingMessage": "Đang lấy hồ sơ, phiên, trạng thái con trỏ và tuyến khôi phục đáng tin cậy.",
+  "mobile.previewingMessage":
+    "Đang lấy hồ sơ, phiên, trạng thái con trỏ và tuyến khôi phục đáng tin cậy.",
   "mobile.ready": "Bản xem trước đã sẵn sàng",
-  "mobile.readyMessage": "Thiết bị này đã đăng ký và phản hồi đồng bộ mới nhất đã sẵn sàng.",
+  "mobile.readyMessage":
+    "Thiết bị này đã đăng ký và phản hồi đồng bộ mới nhất đã sẵn sàng.",
   "mobile.offline": "Chế độ dự phòng ngoại tuyến đang hoạt động",
-  "mobile.offlineMessage": "Đồng bộ trực tiếp không khả dụng. Không nhận được dữ liệu không gian làm việc trực tiếp hoặc đã lưu đệm.",
+  "mobile.offlineMessage":
+    "Đồng bộ trực tiếp không khả dụng. Không nhận được dữ liệu không gian làm việc trực tiếp hoặc đã lưu đệm.",
   "mobile.readyToConnect": "Sẵn sàng kết nối",
-  "mobile.readyToConnectMessage": "Bắt đầu bằng cách đăng ký điện thoại này và kéo bản xem trước an toàn từ đồng bộ JoeSSH.",
+  "mobile.readyToConnectMessage":
+    "Bắt đầu bằng cách đăng ký điện thoại này và kéo bản xem trước an toàn từ đồng bộ JoeSSH.",
   "mobile.profiles": "Hồ sơ",
   "mobile.openSessions": "Phiên đang mở",
   "mobile.pendingChanges": "Thay đổi đã tải",
@@ -331,17 +358,20 @@ export const vi = {
   "mobile.noWorkspace": "Chưa kéo không gian làm việc nào",
   "mobile.runPreview": "Chạy bản xem trước để tải trạng thái con trỏ",
   "mobile.emergencyConnection": "Kết nối khẩn cấp",
-  "mobile.emptyRoutes": "Không có tuyến khôi phục nào được cấu hình cho bản xem trước này.",
+  "mobile.emptyRoutes":
+    "Không có tuyến khôi phục nào được cấu hình cho bản xem trước này.",
   "mobile.offlineBadge": "Ngoại tuyến",
   "mobile.liveBadge": "Trực tiếp",
   "mobile.preparing": "Đang chuẩn bị bản xem trước",
   "mobile.registerPull": "Đăng ký và kéo bản xem trước",
   "desktop.error.boundary.title": "Đã xảy ra lỗi",
   "desktop.error.boundary.reload": "Tải lại",
-  "desktop.error.boundary.message": "Tải lại JoeSSH hoặc liên hệ hỗ trợ nếu sự cố tiếp diễn.",
+  "desktop.error.boundary.message":
+    "Tải lại JoeSSH hoặc liên hệ hỗ trợ nếu sự cố tiếp diễn.",
   "mobile.error.boundary.title": "Đã xảy ra lỗi",
   "mobile.error.boundary.reload": "Tải lại",
-  "mobile.error.boundary.message": "Tải lại JoeSSH hoặc liên hệ hỗ trợ nếu sự cố tiếp diễn.",
+  "mobile.error.boundary.message":
+    "Tải lại JoeSSH hoặc liên hệ hỗ trợ nếu sự cố tiếp diễn.",
   "desktop.paletteRecent": "Gần đây",
   "desktop.paletteRecentBadge": "Gần đây",
   "desktop.paletteConnections": "Kết nối",
@@ -392,7 +422,15 @@ export const vi = {
   "team.accessRequestStatus": "Trạng thái yêu cầu quyền truy cập nhóm",
   "desktop.restoreWorkbench": "Khôi phục không gian làm việc",
   "desktop.gettingStarted": "Bắt đầu",
-  "desktop.surfaceGuide": "Desktop mở phiên SSH; Web Admin giám sát Sync và nhóm; Mobile là ứng dụng đồng hành.",
-  "desktop.telemetryPrivacyHint": "Tùy chọn và tắt theo mặc định. Không bao giờ gửi máy chủ, tên người dùng, lệnh, khóa, token, đường dẫn hoặc đầu ra terminal.",
-  "team.reviewedBy": "Được {reviewer} xem xét"
+  "desktop.surfaceGuide":
+    "Desktop mở phiên SSH và SFTP cục bộ; Web Admin hiển thị ảnh chụp Sync chỉ đọc; Mobile là bản xem trước Sync và không chạy SSH hoặc SFTP.",
+  "desktop.telemetryPrivacyHint":
+    "Tùy chọn và tắt theo mặc định. Không bao giờ gửi máy chủ, tên người dùng, lệnh, khóa, token, đường dẫn hoặc đầu ra terminal.",
+  "desktop.thirdPartyNotices": "Giấy phép và thông báo",
+  "desktop.thirdPartyNoticesHint":
+    "Xem toàn bộ giấy phép và thông báo được đóng gói cùng bản dựng ứng dụng này.",
+  "desktop.thirdPartyNoticesLoading": "Đang tải giấy phép…",
+  "desktop.thirdPartyNoticesUnavailable":
+    "Thông báo giấy phép không có trong bản dựng này.",
+  "team.reviewedBy": "Được {reviewer} xem xét",
 } as const;

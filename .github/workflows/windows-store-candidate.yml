@@ -1,0 +1,1065 @@
+name: Windows Store Hosted Candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_format:
+        description: "Hosted candidate format; MSIX is the required first choice."
+        required: true
+        default: msix
+        type: choice
+        options:
+          - msix
+          - exe
+      msix_fallback_justification:
+        description: "EXE only: 40-1000 character non-placeholder reason why MSIX is blocked; MSIX must leave this empty."
+        required: false
+        default: ""
+        type: string
+      reviewed_sha:
+        description: "Full reviewed main commit SHA that produced the hosted bytes."
+        required: true
+        type: string
+      artifact_url:
+        description: "SHA-bound HTTPS transfer URL; EXE must also be immutable and versioned."
+        required: true
+        type: string
+      expected_sha256:
+        description: "Exact SHA-256 of the hosted EXE or MSIX."
+        required: true
+        type: string
+      architecture:
+        description: "Installed PE architecture for the hosted EXE route."
+        required: true
+        default: x64
+        type: choice
+        options:
+          - x64
+          - x86
+          - arm64
+      partner_identity_base64:
+        description: "MSIX only: base64 of public Partner Center identity JSON; never signing material."
+        required: false
+        type: string
+      retention_days:
+        description: "Candidate evidence retention in days (1-30)."
+        required: true
+        default: "14"
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.reviewed_sha }}-${{ inputs.candidate_format }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  policy:
+    name: Verify hosted input and live release policy
+    if: github.ref == 'refs/heads/main' && github.ref_protected == true
+    runs-on: windows-2025
+    timeout-minutes: 30
+    environment: windows-release-stage-b
+    permissions:
+      contents: read
+    outputs:
+      candidate_format: ${{ steps.inputs.outputs.candidate_format }}
+      certificate_subject: ${{ steps.live_policy.outputs.certificate_subject }}
+      certificate_thumbprint: ${{ steps.live_policy.outputs.certificate_thumbprint }}
+      legal_publisher: ${{ steps.live_policy.outputs.legal_publisher }}
+      msix_fallback_justification: ${{ steps.inputs.outputs.msix_fallback_justification }}
+      reviewed_sha: ${{ steps.inputs.outputs.reviewed_sha }}
+
+    steps:
+      - name: Validate hosted candidate inputs
+        id: inputs
+        shell: pwsh
+        env:
+          ARCHITECTURE_INPUT: ${{ inputs.architecture }}
+          ARTIFACT_URL_INPUT: ${{ inputs.artifact_url }}
+          CANDIDATE_FORMAT_INPUT: ${{ inputs.candidate_format }}
+          DISPATCH_REF: ${{ github.ref }}
+          DISPATCH_SHA: ${{ github.sha }}
+          EXPECTED_SHA256_INPUT: ${{ inputs.expected_sha256 }}
+          MSIX_FALLBACK_JUSTIFICATION_INPUT: ${{ inputs.msix_fallback_justification }}
+          PARTNER_IDENTITY_BASE64_INPUT: ${{ inputs.partner_identity_base64 }}
+          REF_PROTECTED: ${{ github.ref_protected }}
+          RETENTION_DAYS_INPUT: ${{ inputs.retention_days }}
+          REVIEWED_SHA_INPUT: ${{ inputs.reviewed_sha }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          Set-StrictMode -Version Latest
+
+          if (
+            $env:DISPATCH_REF -cne "refs/heads/main" -or
+            -not [StringComparer]::OrdinalIgnoreCase.Equals(
+              $env:REF_PROTECTED,
+              "true"
+            )
+          ) {
+            throw "Windows Store candidate verification only runs from protected main."
+          }
+          if ($env:REVIEWED_SHA_INPUT -cnotmatch "\A[0-9a-fA-F]{40}\z") {
+            throw "reviewed_sha must be exactly one full 40-character commit SHA."
+          }
+          if (
+            -not [StringComparer]::OrdinalIgnoreCase.Equals(
+              $env:REVIEWED_SHA_INPUT,
+              $env:DISPATCH_SHA
+            )
+          ) {
+            throw "reviewed_sha must exactly match github.sha."
+          }
+          if ($env:CANDIDATE_FORMAT_INPUT -notin @("exe", "msix")) {
+            throw "candidate_format must be exactly exe or msix."
+          }
+          if ($env:EXPECTED_SHA256_INPUT -cnotmatch "\A[0-9a-fA-F]{64}\z") {
+            throw "expected_sha256 must be exactly 64 hexadecimal characters."
+          }
+          if ($env:RETENTION_DAYS_INPUT -cnotmatch "\A(?:[1-9]|[12][0-9]|30)\z") {
+            throw "retention_days must be an integer from 1 through 30."
+          }
+
+          try {
+            $artifactUri = [Uri]::new(
+              $env:ARTIFACT_URL_INPUT,
+              [UriKind]::Absolute
+            )
+          } catch {
+            throw "artifact_url must be an absolute HTTPS URL."
+          }
+          if (
+            $artifactUri.Scheme -cne "https" -or
+            -not [string]::IsNullOrEmpty($artifactUri.UserInfo) -or
+            -not [string]::IsNullOrEmpty($artifactUri.Query) -or
+            -not [string]::IsNullOrEmpty($artifactUri.Fragment)
+          ) {
+            throw "artifact_url must use HTTPS without credentials, query, or fragment."
+          }
+          $expectedExtension = ".$($env:CANDIDATE_FORMAT_INPUT)"
+          $artifactLeaf = [IO.Path]::GetFileName(
+            [Uri]::UnescapeDataString($artifactUri.AbsolutePath)
+          )
+          if (
+            [string]::IsNullOrWhiteSpace($artifactLeaf) -or
+            -not $artifactLeaf.EndsWith(
+              $expectedExtension,
+              [StringComparison]::OrdinalIgnoreCase
+            )
+          ) {
+            throw "artifact_url must end with the selected candidate extension."
+          }
+
+          if ($env:CANDIDATE_FORMAT_INPUT -ceq "exe") {
+            $fallbackJustification = $env:MSIX_FALLBACK_JUSTIFICATION_INPUT
+            if (
+              $fallbackJustification -cne $fallbackJustification.Trim() -or
+              $fallbackJustification.Length -lt 40 -or
+              $fallbackJustification.Length -gt 1000 -or
+              $fallbackJustification -match "[\x00-\x1f\x7f]" -or
+              $fallbackJustification -match "(?i:\A(?:(?:change[-_ ]?me|example|placeholder|todo|tbd|unknown|not[-_ ]?set|lorem|ipsum|n/?a|none|test)[\s.,;:_-]*)+\z|<[^>]+>)" -or
+              $fallbackJustification -cnotmatch "[\p{L}\p{N}]" -or
+              $fallbackJustification -match "\A(.)\1{39,}\z"
+            ) {
+              throw "EXE requires a trimmed, bounded, non-placeholder MSIX fallback justification."
+            }
+            if ($env:ARCHITECTURE_INPUT -notin @("x64", "x86", "arm64")) {
+              throw "Hosted EXE architecture must be x64, x86, or arm64."
+            }
+            if (
+              -not [string]::IsNullOrWhiteSpace(
+                $env:PARTNER_IDENTITY_BASE64_INPUT
+              )
+            ) {
+              throw "Partner Center identity must not be supplied for EXE."
+            }
+          } else {
+            $fallbackJustification = ""
+            if ($env:MSIX_FALLBACK_JUSTIFICATION_INPUT -cne "") {
+              throw "MSIX must leave msix_fallback_justification empty."
+            }
+            if (
+              [string]::IsNullOrWhiteSpace(
+                $env:PARTNER_IDENTITY_BASE64_INPUT
+              ) -or
+              $env:PARTNER_IDENTITY_BASE64_INPUT.Length -gt 131072
+            ) {
+              throw "MSIX requires bounded public Partner Center identity JSON."
+            }
+            try {
+              $identityBytes = [Convert]::FromBase64String(
+                $env:PARTNER_IDENTITY_BASE64_INPUT
+              )
+              if ($identityBytes.Length -lt 2 -or $identityBytes.Length -gt 65536) {
+                throw "Partner Center identity JSON has an invalid size."
+              }
+              $utf8 = [Text.UTF8Encoding]::new($false, $true)
+              $identity = $utf8.GetString($identityBytes) | ConvertFrom-Json
+            } catch {
+              throw "partner_identity_base64 must contain valid UTF-8 JSON."
+            }
+            if (
+              $identity.schemaVersion -ne 1 -or
+              $identity.source -cne "partner-center"
+            ) {
+              throw "Partner Center identity input has an invalid schema or source."
+            }
+          }
+
+          "candidate_format=$($env:CANDIDATE_FORMAT_INPUT)" >> $env:GITHUB_OUTPUT
+          "msix_fallback_justification=$fallbackJustification" >> $env:GITHUB_OUTPUT
+          "reviewed_sha=$($env:REVIEWED_SHA_INPUT.ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+
+      - name: Read live direct main, environment, and format identity policy
+        id: live_policy
+        shell: pwsh
+        env:
+          CANDIDATE_FORMAT: ${{ steps.inputs.outputs.candidate_format }}
+          POLICY_READ_TOKEN: ${{ secrets.ATLASTERM_RELEASE_POLICY_READ_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          Set-StrictMode -Version Latest
+          if ([string]::IsNullOrWhiteSpace($env:POLICY_READ_TOKEN)) {
+            throw "ATLASTERM_RELEASE_POLICY_READ_TOKEN is required and must be read-only."
+          }
+          $headers = @{
+            Accept = "application/vnd.github+json"
+            Authorization = "Bearer $($env:POLICY_READ_TOKEN)"
+            "X-GitHub-Api-Version" = "2022-11-28"
+          }
+          function Get-GitHubJson([string] $path) {
+            try {
+              return Invoke-RestMethod `
+                -Headers $headers `
+                -Method Get `
+                -Uri "https://api.github.com$path"
+            } catch {
+              throw "Unable to read live release policy at ${path}: $($_.Exception.Message)"
+            }
+          }
+
+          $repositoryMetadata = Get-GitHubJson "/repos/$($env:REPOSITORY)"
+          $environment = Get-GitHubJson "/repos/$($env:REPOSITORY)/environments/windows-release-stage-b"
+          $reviewRules = @(
+            $environment.protection_rules |
+              Where-Object { $_.type -ceq "required_reviewers" }
+          )
+          $environmentReviewers = @()
+          if ($reviewRules.Count -eq 1) {
+            $environmentReviewers = @($reviewRules[0].reviewers)
+          }
+          $personalOwnerReviewerMismatch = $false
+          $ownerTypeProperty = $repositoryMetadata.owner.PSObject.Properties["type"]
+          $repositoryOwnerType = if ($null -eq $ownerTypeProperty) {
+            ""
+          } else {
+            [string]$ownerTypeProperty.Value
+          }
+          if ($repositoryOwnerType -ceq "User") {
+            $ownerIdProperty = $repositoryMetadata.owner.PSObject.Properties["id"]
+            $personalOwnerReviewerCount = 0
+            if ($null -ne $ownerIdProperty) {
+              $personalOwnerReviewerCount = @(
+                $environmentReviewers |
+                  Where-Object {
+                    $_.type -ceq "User" -and
+                    $_.reviewer.id -eq $ownerIdProperty.Value
+                  }
+              ).Count
+            }
+            $personalOwnerReviewerMismatch = $personalOwnerReviewerCount -ne 1
+          }
+          if (
+            $environment.name -cne "windows-release-stage-b" -or
+            $environment.can_admins_bypass -ne $false -or
+            $reviewRules.Count -ne 1 -or
+            $reviewRules[0].prevent_self_review -ne $false -or
+            $environmentReviewers.Count -ne 1 -or
+            $personalOwnerReviewerMismatch -or
+            $environment.deployment_branch_policy.protected_branches -ne $true -or
+            $environment.deployment_branch_policy.custom_branch_policies -ne $false
+          ) {
+            throw "windows-release-stage-b must require exactly one reviewer, use the personal repository owner when applicable, permit self-review, prevent admin bypass, and accept protected branches only."
+          }
+
+          $protection = Get-GitHubJson "/repos/$($env:REPOSITORY)/branches/main/protection"
+          $requiredStatusCheckContext = "Public Release Readiness"
+          $requiredStatusCheckAppId = 15368
+          $requiredStatusCheckMatches = @(
+            @($protection.required_status_checks.checks) |
+              Where-Object {
+                $_.context -ceq $requiredStatusCheckContext -and
+                $_.app_id -eq $requiredStatusCheckAppId
+              }
+          )
+          $pullRequestReviews = $protection.required_pull_request_reviews
+          if ($null -eq $pullRequestReviews) {
+            throw "Direct classic main protection must keep the pull request rule."
+          }
+          $bypassProperty = $pullRequestReviews.PSObject.Properties["bypass_pull_request_allowances"]
+          if ($null -eq $bypassProperty) {
+            if ($repositoryMetadata.owner.type -cne "User") {
+              throw "Bypass allowances are unreadable for a non-user-owned repository."
+            }
+            $bypassCount = 0
+          } else {
+            $bypass = $bypassProperty.Value
+            if ($null -eq $bypass) {
+              throw "Bypass allowances must be an object when present."
+            }
+            $bypassUsers = $bypass.PSObject.Properties["users"]
+            $bypassTeams = $bypass.PSObject.Properties["teams"]
+            $bypassApps = $bypass.PSObject.Properties["apps"]
+            if (
+              $null -eq $bypassUsers -or
+              $null -eq $bypassTeams -or
+              $null -eq $bypassApps
+            ) {
+              throw "Bypass allowance actor lists are unreadable."
+            }
+            $bypassCount = @($bypassUsers.Value).Count + @($bypassTeams.Value).Count + @($bypassApps.Value).Count
+          }
+          if (
+            $protection.required_status_checks.strict -ne $true -or
+            $requiredStatusCheckMatches.Count -ne 1 -or
+            $protection.enforce_admins.enabled -ne $true -or
+            $protection.required_pull_request_reviews.required_approving_review_count -ne 0 -or
+            $protection.required_pull_request_reviews.require_last_push_approval -ne $false -or
+            $bypassCount -ne 0 -or
+            $protection.required_linear_history.enabled -ne $true -or
+            $protection.required_conversation_resolution.enabled -ne $true -or
+            $protection.allow_force_pushes.enabled -ne $false -or
+            $protection.allow_deletions.enabled -ne $false
+          ) {
+            throw "Direct classic main protection does not match the release contract."
+          }
+
+          $legalPublisherVariable = Get-GitHubJson "/repos/$($env:REPOSITORY)/environments/windows-release-stage-b/variables/ATLASTERM_WINDOWS_LEGAL_PUBLISHER"
+          if ($legalPublisherVariable.name -cne "ATLASTERM_WINDOWS_LEGAL_PUBLISHER") {
+            throw "Protected legal publisher variable name is not exact."
+          }
+          $legalPublisher = [string]$legalPublisherVariable.value
+          if (
+            $legalPublisher -cne $legalPublisher.Trim() -or
+            $legalPublisher.Length -lt 2 -or
+            $legalPublisher.Length -gt 160 -or
+            $legalPublisher -match "[\x00-\x1f\x7f,=]" -or
+            $legalPublisher -match "(?i:change[-_ ]?me|example|placeholder|todo|tbd|unknown|not[-_ ]?set|<[^>]+>)" -or
+            $legalPublisher -cnotmatch "[\p{L}\p{N}]"
+          ) {
+            throw "Protected legal publisher is invalid or still a placeholder."
+          }
+
+          $subject = ""
+          $thumbprint = ""
+          if ($env:CANDIDATE_FORMAT -ceq "exe") {
+            $subjectVariable = Get-GitHubJson "/repos/$($env:REPOSITORY)/environments/windows-release-stage-b/variables/ATLASTERM_WINDOWS_CERTIFICATE_SUBJECT"
+            $thumbprintVariable = Get-GitHubJson "/repos/$($env:REPOSITORY)/environments/windows-release-stage-b/variables/ATLASTERM_WINDOWS_CERTIFICATE_THUMBPRINT"
+            if (
+              $subjectVariable.name -cne "ATLASTERM_WINDOWS_CERTIFICATE_SUBJECT" -or
+              $thumbprintVariable.name -cne "ATLASTERM_WINDOWS_CERTIFICATE_THUMBPRINT"
+            ) {
+              throw "Protected EXE certificate variable names are not exact."
+            }
+            $subject = [string]$subjectVariable.value
+            $thumbprint = [string]$thumbprintVariable.value
+            if (
+              $subject -cne $subject.Trim() -or
+              $subject.Length -lt 3 -or
+              $subject.Length -gt 512 -or
+              $subject -match "[\x00-\x1f\x7f]" -or
+              $thumbprint -cnotmatch "\A[0-9a-fA-F]{40}\z"
+            ) {
+              throw "Protected EXE certificate subject or thumbprint is invalid."
+            }
+            $commonNames = [regex]::Matches(
+              $subject,
+              "(?:^|,\s*)CN=([^,]*)(?=,|$)"
+            )
+            if (
+              $commonNames.Count -ne 1 -or
+              $commonNames[0].Groups[1].Value.Trim() -cne $legalPublisher
+            ) {
+              throw "EXE certificate subject must contain exactly one CN equal to the legal publisher."
+            }
+          } elseif ($env:CANDIDATE_FORMAT -cne "msix") {
+            throw "Live policy received an invalid candidate format."
+          }
+          "certificate_subject=$subject" >> $env:GITHUB_OUTPUT
+          "certificate_thumbprint=$($thumbprint.ToUpperInvariant())" >> $env:GITHUB_OUTPUT
+          "legal_publisher=$legalPublisher" >> $env:GITHUB_OUTPUT
+
+  verify:
+    name: Verify hosted ${{ needs.policy.outputs.candidate_format }} without signing authority
+    needs: policy
+    if: needs.policy.result == 'success'
+    runs-on: windows-2025
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    env:
+      ATLASTERM_WINDOWS_CANDIDATE_FORMAT: ${{ needs.policy.outputs.candidate_format }}
+      ATLASTERM_WINDOWS_CERTIFICATE_SUBJECT: ${{ needs.policy.outputs.certificate_subject }}
+      ATLASTERM_WINDOWS_CERTIFICATE_THUMBPRINT: ${{ needs.policy.outputs.certificate_thumbprint }}
+      ATLASTERM_WINDOWS_LEGAL_PUBLISHER: ${{ needs.policy.outputs.legal_publisher }}
+      ATLASTERM_WINDOWS_MSIX_FALLBACK_JUSTIFICATION: ${{ needs.policy.outputs.msix_fallback_justification }}
+      JOESSH_WINDOWS_RELEASE_ENVIRONMENT: windows-release-stage-b
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.policy.outputs.reviewed_sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22.22.2
+
+      - name: Pin npm 10.9.7
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global --ignore-scripts --no-audit --no-fund npm@10.9.7
+          test "$(npm --version)" = "10.9.7"
+
+      - uses: dtolnay/rust-toolchain@2c7215f132e9ebf062739d9130488b56d53c060c # pinned
+        with:
+          toolchain: 1.96.0
+
+      - name: Install locked dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Prove exact checkout and unprivileged verification boundary
+        shell: pwsh
+        env:
+          REVIEWED_SHA: ${{ needs.policy.outputs.reviewed_sha }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $actual = (git rev-parse HEAD).Trim().ToLowerInvariant()
+          if ($actual -cne $env:REVIEWED_SHA) {
+            throw "Checked-out commit $actual does not match reviewed_sha."
+          }
+          if (-not [string]::IsNullOrWhiteSpace((git status --porcelain))) {
+            throw "Verification checkout must be clean before candidate work."
+          }
+          if (
+            -not [string]::IsNullOrWhiteSpace($env:ACTIONS_ID_TOKEN_REQUEST_URL) -or
+            -not [string]::IsNullOrWhiteSpace($env:ACTIONS_ID_TOKEN_REQUEST_TOKEN)
+          ) {
+            throw "Verification job unexpectedly has GitHub OIDC authority."
+          }
+          $forbidden = @(
+            "ATLASTERM_RELEASE_POLICY_READ_TOKEN",
+            "WINDOWS_CERTIFICATE",
+            "WINDOWS_CERTIFICATE_BASE64",
+            "WINDOWS_CERTIFICATE_PASSWORD",
+            "AZURE_CLIENT_SECRET"
+          )
+          $present = @(
+            $forbidden | Where-Object {
+              -not [string]::IsNullOrWhiteSpace(
+                [Environment]::GetEnvironmentVariable($_)
+              )
+            }
+          )
+          if ($present.Count -gt 0) {
+            throw "Verification job inherited privileged state: $($present -join ', ')."
+          }
+
+      - name: Generate and verify legal resources and public SBOMs
+        run: npm run release:desktop:legal-resource
+
+      - name: Verify repository Store contract
+        run: node scripts/check-windows-store-release.mjs
+
+      - name: Build and verify the real Microsoft Store frontend surface
+        run: npm run qa:windows-store-surfaces:runtime
+
+      - name: Capture pre-execution verification baseline
+        id: baseline
+        shell: pwsh
+        env:
+          REVIEWED_SHA: ${{ needs.policy.outputs.reviewed_sha }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          Set-StrictMode -Version Latest
+
+          function Get-PathSetDigest([string[]] $paths) {
+            $records = @()
+            foreach ($path in @($paths | Sort-Object -CaseSensitive)) {
+              if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+                throw "Baseline file is missing: $path"
+              }
+              $normalizedPath = $path.Replace("\", "/")
+              $sha256 = (
+                Get-FileHash -Algorithm SHA256 -LiteralPath $path
+              ).Hash.ToLowerInvariant()
+              $records += "$normalizedPath`0$sha256"
+            }
+            $payload = [Text.Encoding]::UTF8.GetBytes(
+              ($records -join "`n") + "`n"
+            )
+            $algorithm = [Security.Cryptography.SHA256]::Create()
+            try {
+              return (
+                [Convert]::ToHexString($algorithm.ComputeHash($payload))
+              ).ToLowerInvariant()
+            } finally {
+              $algorithm.Dispose()
+            }
+          }
+
+          $actualCommit = (& git rev-parse HEAD | Out-String).Trim()
+          $trackedStatus = (
+            & git status --porcelain --untracked-files=no |
+              Out-String
+          ).Trim()
+          if (
+            $actualCommit -cne $env:REVIEWED_SHA -or
+            -not [string]::IsNullOrEmpty($trackedStatus)
+          ) {
+            throw "Pre-execution checkout is not the exact clean reviewed source."
+          }
+
+          $surfacePaths = @(
+            Get-ChildItem -LiteralPath "apps/desktop/dist" -File -Recurse |
+              ForEach-Object {
+                [IO.Path]::GetRelativePath(
+                  (Get-Location).Path,
+                  $_.FullName
+                ).Replace("\", "/")
+              }
+          )
+          if ($surfacePaths.Count -lt 2) {
+            throw "Pre-execution Store surface is incomplete."
+          }
+          $legalPaths = @(
+            "reports/release/third-party-licenses/THIRD-PARTY-NOTICES.txt"
+            "reports/release/third-party-licenses/manifest.json"
+            "reports/release/THIRD-PARTY-LICENSES-SHA256SUMS.txt"
+            "reports/release/SBOM-SHA256SUMS.txt"
+            "reports/release/cargo-workspace-sbom.cdx.json"
+            "reports/release/npm-desktop-sbom.cdx.json"
+            "reports/release/npm-web-sbom.cdx.json"
+            "reports/release/tauri-cargo-sbom.cdx.json"
+          )
+          $workflowSha256 = (
+            Get-FileHash `
+              -Algorithm SHA256 `
+              -LiteralPath ".github/workflows/windows-store-candidate.yml"
+          ).Hash.ToLowerInvariant()
+          "source_sha=$actualCommit" >> $env:GITHUB_OUTPUT
+          "workflow_sha256=$workflowSha256" >> $env:GITHUB_OUTPUT
+          "surface_tree_sha256=$(Get-PathSetDigest $surfacePaths)" >> $env:GITHUB_OUTPUT
+          "legal_inputs_sha256=$(Get-PathSetDigest $legalPaths)" >> $env:GITHUB_OUTPUT
+
+      - name: Prepare public Partner Center identity input
+        if: needs.policy.outputs.candidate_format == 'msix'
+        shell: pwsh
+        env:
+          PARTNER_IDENTITY_BASE64_INPUT: ${{ inputs.partner_identity_base64 }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $path = Join-Path $env:RUNNER_TEMP "partner-center-msix-identity.json"
+          $bytes = [Convert]::FromBase64String(
+            $env:PARTNER_IDENTITY_BASE64_INPUT
+          )
+          [IO.File]::WriteAllBytes($path, $bytes)
+          "MSIX_IDENTITY_PATH=$path" >> $env:GITHUB_ENV
+
+      - name: Preflight hosted EXE
+        if: needs.policy.outputs.candidate_format == 'exe'
+        shell: pwsh
+        env:
+          ARTIFACT_URL: ${{ inputs.artifact_url }}
+          EXPECTED_SHA256: ${{ inputs.expected_sha256 }}
+          REVIEWED_SHA: ${{ needs.policy.outputs.reviewed_sha }}
+          STORE_ARCHITECTURE: ${{ inputs.architecture }}
+        run: |
+          npm run release:windows-store:candidate -- `
+            --format exe `
+            --download-url $env:ARTIFACT_URL `
+            --expected-sha256 $env:EXPECTED_SHA256 `
+            --reviewed-sha $env:REVIEWED_SHA `
+            --artifact-source-sha $env:REVIEWED_SHA `
+            --architecture $env:STORE_ARCHITECTURE `
+            --allow-silent-install
+
+      - name: Preflight hosted MSIX
+        if: needs.policy.outputs.candidate_format == 'msix'
+        shell: pwsh
+        env:
+          ARTIFACT_URL: ${{ inputs.artifact_url }}
+          EXPECTED_SHA256: ${{ inputs.expected_sha256 }}
+          REVIEWED_SHA: ${{ needs.policy.outputs.reviewed_sha }}
+        run: |
+          npm run release:windows-store:candidate -- `
+            --format msix `
+            --download-url $env:ARTIFACT_URL `
+            --expected-sha256 $env:EXPECTED_SHA256 `
+            --reviewed-sha $env:REVIEWED_SHA `
+            --artifact-source-sha $env:REVIEWED_SHA `
+            --partner-identity $env:MSIX_IDENTITY_PATH
+
+      - name: Recheck identity, legal resources, SBOMs, and hosted bytes
+        shell: pwsh
+        env:
+          ARTIFACT_URL: ${{ inputs.artifact_url }}
+          CANDIDATE_FORMAT: ${{ needs.policy.outputs.candidate_format }}
+          EXPECTED_SHA256: ${{ inputs.expected_sha256 }}
+          MSIX_FALLBACK_JUSTIFICATION: ${{ needs.policy.outputs.msix_fallback_justification }}
+          REVIEWED_SHA: ${{ needs.policy.outputs.reviewed_sha }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $candidateFiles = @(
+            Get-ChildItem -LiteralPath reports/release/windows-store -Filter candidate.json -File -Recurse
+          )
+          if ($candidateFiles.Count -ne 1) {
+            throw "Expected exactly one candidate.json."
+          }
+          $candidatePath = $candidateFiles[0].FullName
+          $candidate = Get-Content -Raw -LiteralPath $candidatePath | ConvertFrom-Json
+          $expectedSha256 = $env:EXPECTED_SHA256.ToLowerInvariant()
+          $expectedUrl = ([Uri]$env:ARTIFACT_URL).AbsoluteUri
+          if (
+            $env:CANDIDATE_FORMAT -cne $env:ATLASTERM_WINDOWS_CANDIDATE_FORMAT -or
+            $env:MSIX_FALLBACK_JUSTIFICATION -cne $env:ATLASTERM_WINDOWS_MSIX_FALLBACK_JUSTIFICATION -or
+            $candidate.schemaVersion -ne 3 -or
+            $candidate.kind -cne "windows-store-candidate" -or
+            $candidate.format -cne $env:CANDIDATE_FORMAT -or
+            $candidate.commits.preflightCommit -cne $env:REVIEWED_SHA -or
+            $candidate.commits.artifactSourceCommit -cne $env:REVIEWED_SHA -or
+            $candidate.commits.relationship -cne "same-commit" -or
+            $candidate.artifact.source -cne "hosted-download" -or
+            $candidate.artifact.versionedHttpsUrl -cne $expectedUrl -or
+            $candidate.artifact.sha256 -cne $expectedSha256 -or
+            $candidate.artifact.stagedCopySha256 -cne $expectedSha256 -or
+            $candidate.projectIdentity.publisher -cne $env:ATLASTERM_WINDOWS_LEGAL_PUBLISHER -or
+            $candidate.attestations.protectedEnvironment.environment -cne "windows-release-stage-b" -or
+            $candidate.attestations.protectedEnvironment.legalPublisher -cne $env:ATLASTERM_WINDOWS_LEGAL_PUBLISHER -or
+            $candidate.attestations.protectedEnvironment.artifactSha256 -cne $expectedSha256 -or
+            $candidate.gates.artifactHashBound -ne $true -or
+            $candidate.gates.candidatePreflightPassed -ne $true -or
+            $candidate.gates.publicSbomsBound -ne $true -or
+            $candidate.gates.authenticatedProvenance -ne $false -or
+            $candidate.gates.storePublicationReady -ne $false -or
+            $candidate.storeSubmission.status -cne "not-submitted"
+          ) {
+            throw "Candidate evidence is not bound to the hosted input and reviewed source."
+          }
+
+          $noticePath = "reports/release/third-party-licenses/THIRD-PARTY-NOTICES.txt"
+          $licenseManifestPath = "reports/release/third-party-licenses/manifest.json"
+          $licenseChecksumsPath = "reports/release/THIRD-PARTY-LICENSES-SHA256SUMS.txt"
+          $sbomChecksumsPath = "reports/release/SBOM-SHA256SUMS.txt"
+          $noticeSha256 = (
+            Get-FileHash -Algorithm SHA256 -LiteralPath $noticePath
+          ).Hash.ToLowerInvariant()
+          $noticeSizeBytes = (Get-Item -LiteralPath $noticePath).Length
+          $licenseManifestSha256 = (
+            Get-FileHash -Algorithm SHA256 -LiteralPath $licenseManifestPath
+          ).Hash.ToLowerInvariant()
+          $licenseChecksumsSha256 = (
+            Get-FileHash -Algorithm SHA256 -LiteralPath $licenseChecksumsPath
+          ).Hash.ToLowerInvariant()
+          $sbomChecksumsSha256 = (
+            Get-FileHash -Algorithm SHA256 -LiteralPath $sbomChecksumsPath
+          ).Hash.ToLowerInvariant()
+          if (
+            $candidate.legalNotices.sourcePath -cne $noticePath -or
+            $candidate.legalNotices.bundleResourcePath -cne "legal/THIRD-PARTY-NOTICES.txt" -or
+            $candidate.legalNotices.sha256 -cne $noticeSha256 -or
+            $candidate.legalNotices.sizeBytes -ne $noticeSizeBytes -or
+            $candidate.gates.thirdPartyNoticesBundled -isnot [bool] -or
+            $candidate.gates.thirdPartyNoticesBundled -ne $true -or
+            $candidate.verification.bundledThirdPartyNotices.path -cne "legal/THIRD-PARTY-NOTICES.txt" -or
+            $candidate.verification.bundledThirdPartyNotices.path -cne $candidate.legalNotices.bundleResourcePath -or
+            $candidate.verification.bundledThirdPartyNotices.status -cne "exact-match" -or
+            $candidate.verification.bundledThirdPartyNotices.sizeBytes -ne $noticeSizeBytes -or
+            $candidate.verification.bundledThirdPartyNotices.sizeBytes -ne $candidate.legalNotices.sizeBytes -or
+            $candidate.verification.bundledThirdPartyNotices.sha256 -cne $noticeSha256 -or
+            $candidate.verification.bundledThirdPartyNotices.sha256 -cne $candidate.legalNotices.sha256 -or
+            $candidate.legalNotices.licenseManifest -cne $licenseManifestPath -or
+            $candidate.legalNotices.licenseManifestSha256 -cne $licenseManifestSha256 -or
+            $candidate.legalNotices.checksumManifest -cne $licenseChecksumsPath -or
+            $candidate.legalNotices.checksumManifestSha256 -cne $licenseChecksumsSha256 -or
+            $candidate.legalNotices.sbomChecksumManifest -cne $sbomChecksumsPath -or
+            $candidate.legalNotices.sbomChecksumSha256 -cne $sbomChecksumsSha256 -or
+            $candidate.attestations.protectedEnvironment.thirdPartyNoticesSha256 -cne $noticeSha256 -or
+            $candidate.attestations.protectedEnvironment.thirdPartyLicenseChecksumManifestSha256 -cne $licenseChecksumsSha256 -or
+            $candidate.attestations.protectedEnvironment.sbomChecksumManifestSha256 -cne $sbomChecksumsSha256
+          ) {
+            throw "Candidate legal-resource evidence does not match the reviewed files."
+          }
+
+          $expectedSbomPaths = @(
+            "reports/release/cargo-workspace-sbom.cdx.json",
+            "reports/release/npm-desktop-sbom.cdx.json",
+            "reports/release/npm-web-sbom.cdx.json",
+            "reports/release/tauri-cargo-sbom.cdx.json"
+          )
+          $candidateSboms = @($candidate.legalNotices.sboms)
+          if ($candidateSboms.Count -ne $expectedSbomPaths.Count) {
+            throw "Candidate evidence must bind exactly four public SBOMs."
+          }
+          for ($index = 0; $index -lt $expectedSbomPaths.Count; $index += 1) {
+            $expectedPath = $expectedSbomPaths[$index]
+            $actualSha256 = (
+              Get-FileHash -Algorithm SHA256 -LiteralPath $expectedPath
+            ).Hash.ToLowerInvariant()
+            if (
+              $candidateSboms[$index].path -cne $expectedPath -or
+              $candidateSboms[$index].sha256 -cne $actualSha256
+            ) {
+              throw "Candidate evidence does not bind the exact sorted public SBOM set."
+            }
+          }
+
+          if ($candidate.format -ceq "exe") {
+            if (
+              $env:MSIX_FALLBACK_JUSTIFICATION -cne $env:MSIX_FALLBACK_JUSTIFICATION.Trim() -or
+              $env:MSIX_FALLBACK_JUSTIFICATION.Length -lt 40 -or
+              $env:MSIX_FALLBACK_JUSTIFICATION.Length -gt 1000 -or
+              $env:MSIX_FALLBACK_JUSTIFICATION -match "[\x00-\x1f\x7f]" -or
+              $env:MSIX_FALLBACK_JUSTIFICATION -match "(?i:\A(?:(?:change[-_ ]?me|example|placeholder|todo|tbd|unknown|not[-_ ]?set|lorem|ipsum|n/?a|none|test)[\s.,;:_-]*)+\z|<[^>]+>)" -or
+              $env:MSIX_FALLBACK_JUSTIFICATION -cnotmatch "[\p{L}\p{N}]" -or
+              $env:MSIX_FALLBACK_JUSTIFICATION -match "\A(.)\1{39,}\z" -or
+              $candidate.verification.installerSignature.signerSubject -cne $env:ATLASTERM_WINDOWS_CERTIFICATE_SUBJECT -or
+              -not [StringComparer]::OrdinalIgnoreCase.Equals(
+                $candidate.verification.installerSignature.signerThumbprint,
+                $env:ATLASTERM_WINDOWS_CERTIFICATE_THUMBPRINT
+              ) -or
+              $candidate.verification.signerPolicy.expectedSubject -cne $env:ATLASTERM_WINDOWS_CERTIFICATE_SUBJECT -or
+              -not [StringComparer]::OrdinalIgnoreCase.Equals(
+                $candidate.verification.signerPolicy.expectedThumbprint,
+                $env:ATLASTERM_WINDOWS_CERTIFICATE_THUMBPRINT
+              ) -or
+              $candidate.verification.signerPolicy.legalPublisher -cne $env:ATLASTERM_WINDOWS_LEGAL_PUBLISHER -or
+              $candidate.verification.signerPolicy.allInstalledPeMatched -ne $true -or
+              $candidate.verification.install.arpIdentity.publisher -cne $env:ATLASTERM_WINDOWS_LEGAL_PUBLISHER -or
+              $candidate.verification.storeSigningExpected -ne $false
+            ) {
+              throw "Hosted EXE identity or installed-payload signer evidence is invalid."
+            }
+          } else {
+            if (
+              $env:MSIX_FALLBACK_JUSTIFICATION -cne "" -or
+              $env:ATLASTERM_WINDOWS_CERTIFICATE_SUBJECT -cne "" -or
+              $env:ATLASTERM_WINDOWS_CERTIFICATE_THUMBPRINT -cne "" -or
+              $candidate.verification.partnerIdentity.publisherDisplayName -cne $env:ATLASTERM_WINDOWS_LEGAL_PUBLISHER -or
+              $candidate.verification.signatureState -notin @(
+                "pending-microsoft-store-signing",
+                "valid-pre-store-signature"
+              ) -or
+              $candidate.verification.storeSigningExpected -ne $true -or
+              $candidate.storeSubmission.storeSignatureStatus -cne "not-issued"
+            ) {
+              throw "Hosted MSIX identity or pending Store-signing evidence is invalid."
+            }
+          }
+
+          $surfaceIndex = "apps/desktop/dist/index.html"
+          $surfaceText = Get-Content -Raw -LiteralPath $surfaceIndex
+          if (
+            ([regex]::Matches(
+              $surfaceText,
+              'name="joessh-release-surface-profile"\s+content="microsoft-store"'
+            )).Count -ne 1
+          ) {
+            throw "Built frontend is not the exact Microsoft Store surface."
+          }
+          $isMsixFallback = $candidate.format -ceq "exe"
+          $identityEvidence = [ordered]@{
+            legalPublisher = $env:ATLASTERM_WINDOWS_LEGAL_PUBLISHER
+          }
+          if ($isMsixFallback) {
+            $identityEvidence.certificateSubject = $env:ATLASTERM_WINDOWS_CERTIFICATE_SUBJECT
+            $identityEvidence.certificateThumbprint = $env:ATLASTERM_WINDOWS_CERTIFICATE_THUMBPRINT
+          }
+          $workflowEvidence = [ordered]@{
+            schemaVersion = 2
+            kind = "windows-store-hosted-verification"
+            reviewedCommit = $env:REVIEWED_SHA
+            releaseDecision = [ordered]@{
+              preferredFormat = "msix"
+              selectedFormat = $candidate.format
+              msixFallback = $isMsixFallback
+              msixFallbackJustification = $env:MSIX_FALLBACK_JUSTIFICATION
+            }
+            candidateJsonSha256 = (
+              Get-FileHash -Algorithm SHA256 -LiteralPath $candidatePath
+            ).Hash.ToLowerInvariant()
+            artifact = [ordered]@{
+              url = $expectedUrl
+              sha256 = $expectedSha256
+              fileName = $candidate.artifact.fileName
+            }
+            identity = $identityEvidence
+            surfaceIndexSha256 = (
+              Get-FileHash -Algorithm SHA256 -LiteralPath $surfaceIndex
+            ).Hash.ToLowerInvariant()
+            workflowSha256 = (
+              Get-FileHash -Algorithm SHA256 -LiteralPath ".github/workflows/windows-store-candidate.yml"
+            ).Hash.ToLowerInvariant()
+            toolchain = [ordered]@{
+              node = (& node --version | Out-String).Trim()
+              npm = (& npm --version | Out-String).Trim()
+              rustc = (& rustc --version | Out-String).Trim()
+              runnerImage = $env:ImageOS
+              runnerImageVersion = $env:ImageVersion
+            }
+            boundary = "Hosted candidate verification only; no build signing, Partner Center submission, certification, Store signing, or publication occurred."
+          }
+          $workflowEvidence | ConvertTo-Json -Depth 8 | Set-Content `
+            -LiteralPath (Join-Path $candidateFiles[0].Directory.FullName "hosted-workflow-evidence.json") `
+            -Encoding utf8
+
+      - name: Remove transient Partner Center identity
+        if: always()
+        shell: pwsh
+        run: |
+          if (
+            -not [string]::IsNullOrWhiteSpace($env:MSIX_IDENTITY_PATH) -and
+            (Test-Path -LiteralPath $env:MSIX_IDENTITY_PATH)
+          ) {
+            Remove-Item -LiteralPath $env:MSIX_IDENTITY_PATH -Force
+          }
+
+      - name: Finalize exact evidence allowlist and hashes
+        shell: pwsh
+        env:
+          BASELINE_LEGAL_INPUTS_SHA256: ${{ steps.baseline.outputs.legal_inputs_sha256 }}
+          BASELINE_SOURCE_SHA: ${{ steps.baseline.outputs.source_sha }}
+          BASELINE_SURFACE_TREE_SHA256: ${{ steps.baseline.outputs.surface_tree_sha256 }}
+          BASELINE_WORKFLOW_SHA256: ${{ steps.baseline.outputs.workflow_sha256 }}
+          CANDIDATE_FORMAT: ${{ needs.policy.outputs.candidate_format }}
+          EXPECTED_SHA256: ${{ inputs.expected_sha256 }}
+          MSIX_FALLBACK_JUSTIFICATION: ${{ needs.policy.outputs.msix_fallback_justification }}
+          REVIEWED_SHA: ${{ needs.policy.outputs.reviewed_sha }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          Set-StrictMode -Version Latest
+
+          function Get-PathSetDigest([string[]] $paths) {
+            $records = @()
+            foreach ($path in @($paths | Sort-Object -CaseSensitive)) {
+              if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+                throw "Final baseline file is missing: $path"
+              }
+              $normalizedPath = $path.Replace("\", "/")
+              $sha256 = (
+                Get-FileHash -Algorithm SHA256 -LiteralPath $path
+              ).Hash.ToLowerInvariant()
+              $records += "$normalizedPath`0$sha256"
+            }
+            $payload = [Text.Encoding]::UTF8.GetBytes(
+              ($records -join "`n") + "`n"
+            )
+            $algorithm = [Security.Cryptography.SHA256]::Create()
+            try {
+              return (
+                [Convert]::ToHexString($algorithm.ComputeHash($payload))
+              ).ToLowerInvariant()
+            } finally {
+              $algorithm.Dispose()
+            }
+          }
+
+          $actualCommit = (& git rev-parse HEAD | Out-String).Trim()
+          $trackedStatus = (
+            & git status --porcelain --untracked-files=no |
+              Out-String
+          ).Trim()
+          $surfacePaths = @(
+            Get-ChildItem -LiteralPath "apps/desktop/dist" -File -Recurse |
+              ForEach-Object {
+                [IO.Path]::GetRelativePath(
+                  (Get-Location).Path,
+                  $_.FullName
+                ).Replace("\", "/")
+              }
+          )
+          $legalPaths = @(
+            "reports/release/third-party-licenses/THIRD-PARTY-NOTICES.txt"
+            "reports/release/third-party-licenses/manifest.json"
+            "reports/release/THIRD-PARTY-LICENSES-SHA256SUMS.txt"
+            "reports/release/SBOM-SHA256SUMS.txt"
+            "reports/release/cargo-workspace-sbom.cdx.json"
+            "reports/release/npm-desktop-sbom.cdx.json"
+            "reports/release/npm-web-sbom.cdx.json"
+            "reports/release/tauri-cargo-sbom.cdx.json"
+          )
+          if (
+            $actualCommit -cne $env:REVIEWED_SHA -or
+            $actualCommit -cne $env:BASELINE_SOURCE_SHA -or
+            -not [string]::IsNullOrEmpty($trackedStatus) -or
+            (Get-PathSetDigest $surfacePaths) -cne $env:BASELINE_SURFACE_TREE_SHA256 -or
+            (Get-PathSetDigest $legalPaths) -cne $env:BASELINE_LEGAL_INPUTS_SHA256
+          ) {
+            throw "Reviewed source, Store surface, or legal inputs changed during candidate execution."
+          }
+
+          $evidenceRoot = (
+            Resolve-Path -LiteralPath "reports/release/windows-store"
+          ).Path
+          $candidateFiles = @(
+            Get-ChildItem -LiteralPath $evidenceRoot -Filter candidate.json -File -Recurse
+          )
+          if ($candidateFiles.Count -ne 1) {
+            throw "Expected exactly one final candidate.json."
+          }
+          $candidatePath = $candidateFiles[0].FullName
+          $candidateDir = $candidateFiles[0].Directory.FullName
+          $candidate = Get-Content -Raw -LiteralPath $candidatePath |
+            ConvertFrom-Json
+          $workflowEvidencePath = Join-Path `
+            $candidateDir `
+            "hosted-workflow-evidence.json"
+          $workflowEvidence = Get-Content `
+            -Raw `
+            -LiteralPath $workflowEvidencePath |
+            ConvertFrom-Json
+
+          $expectedFileNames = @(
+            [string]$candidate.artifact.fileName
+            [string]$candidate.legalNotices.evidenceFileName
+            "candidate.json"
+            "hosted-workflow-evidence.json"
+            "SHA256SUMS.txt"
+          )
+          if (
+            @($expectedFileNames | Sort-Object -CaseSensitive -Unique).Count -ne
+            $expectedFileNames.Count
+          ) {
+            throw "Final evidence filenames must be unique."
+          }
+          $directories = @(
+            Get-ChildItem -LiteralPath $evidenceRoot -Directory -Recurse
+          )
+          $actualFiles = @(
+            Get-ChildItem -LiteralPath $evidenceRoot -File -Recurse
+          )
+          $filesOutsideCandidateDir = @(
+            $actualFiles |
+              Where-Object { $_.Directory.FullName -cne $candidateDir }
+          )
+          $fileNameDifference = @(
+            Compare-Object `
+              -ReferenceObject @($expectedFileNames | Sort-Object -CaseSensitive) `
+              -DifferenceObject @($actualFiles.Name | Sort-Object -CaseSensitive) `
+              -CaseSensitive
+          )
+          if (
+            $directories.Count -ne 1 -or
+            $directories[0].FullName -cne $candidateDir -or
+            $actualFiles.Count -ne $expectedFileNames.Count -or
+            $filesOutsideCandidateDir.Count -ne 0 -or
+            $fileNameDifference.Count -ne 0
+          ) {
+            throw "Final evidence tree contains an unexpected file or directory."
+          }
+
+          $expectedSha256 = $env:EXPECTED_SHA256.ToLowerInvariant()
+          $artifactPath = Join-Path $candidateDir $candidate.artifact.fileName
+          $noticePath = Join-Path `
+            $candidateDir `
+            $candidate.legalNotices.evidenceFileName
+          $candidateSha256 = (
+            Get-FileHash -Algorithm SHA256 -LiteralPath $candidatePath
+          ).Hash.ToLowerInvariant()
+          $noticeSha256 = (
+            Get-FileHash -Algorithm SHA256 -LiteralPath $noticePath
+          ).Hash.ToLowerInvariant()
+          $artifactSha256 = (
+            Get-FileHash -Algorithm SHA256 -LiteralPath $artifactPath
+          ).Hash.ToLowerInvariant()
+          $workflowSha256 = (
+            Get-FileHash `
+              -Algorithm SHA256 `
+              -LiteralPath ".github/workflows/windows-store-candidate.yml"
+          ).Hash.ToLowerInvariant()
+          $surfaceSha256 = (
+            Get-FileHash `
+              -Algorithm SHA256 `
+              -LiteralPath "apps/desktop/dist/index.html"
+          ).Hash.ToLowerInvariant()
+          $expectedMsixFallback = $env:CANDIDATE_FORMAT -ceq "exe"
+          $expectedIdentityProperties = if ($expectedMsixFallback) {
+            @("certificateSubject", "certificateThumbprint", "legalPublisher")
+          } else {
+            @("legalPublisher")
+          }
+          $actualIdentityProperties = @(
+            $workflowEvidence.identity.PSObject.Properties.Name |
+              Sort-Object -CaseSensitive
+          )
+          $identityPropertyDifference = @(
+            Compare-Object `
+              -ReferenceObject $expectedIdentityProperties `
+              -DifferenceObject $actualIdentityProperties `
+              -CaseSensitive
+          )
+          if (
+            $artifactSha256 -cne $expectedSha256 -or
+            $noticeSha256 -cne $candidate.legalNotices.sha256 -or
+            $candidateSha256 -cne $workflowEvidence.candidateJsonSha256 -or
+            $workflowSha256 -cne $env:BASELINE_WORKFLOW_SHA256 -or
+            $workflowSha256 -cne $workflowEvidence.workflowSha256 -or
+            $surfaceSha256 -cne $workflowEvidence.surfaceIndexSha256 -or
+            $workflowEvidence.schemaVersion -ne 2 -or
+            $workflowEvidence.kind -cne "windows-store-hosted-verification" -or
+            $workflowEvidence.reviewedCommit -cne $env:REVIEWED_SHA -or
+            $candidate.format -cne $env:CANDIDATE_FORMAT -or
+            $workflowEvidence.releaseDecision.preferredFormat -cne "msix" -or
+            $workflowEvidence.releaseDecision.selectedFormat -cne $env:CANDIDATE_FORMAT -or
+            $workflowEvidence.releaseDecision.msixFallback -ne $expectedMsixFallback -or
+            $workflowEvidence.releaseDecision.msixFallbackJustification -cne $env:MSIX_FALLBACK_JUSTIFICATION -or
+            $workflowEvidence.artifact.sha256 -cne $expectedSha256 -or
+            $workflowEvidence.identity.legalPublisher -cne $env:ATLASTERM_WINDOWS_LEGAL_PUBLISHER -or
+            $identityPropertyDifference.Count -ne 0
+          ) {
+            throw "Final evidence hashes or reviewed bindings changed before upload."
+          }
+          if (
+            $expectedMsixFallback -and (
+              $workflowEvidence.identity.certificateSubject -cne $env:ATLASTERM_WINDOWS_CERTIFICATE_SUBJECT -or
+              -not [StringComparer]::OrdinalIgnoreCase.Equals(
+                $workflowEvidence.identity.certificateThumbprint,
+                $env:ATLASTERM_WINDOWS_CERTIFICATE_THUMBPRINT
+              )
+            )
+          ) {
+            throw "Final EXE certificate identity changed before upload."
+          }
+
+          $expectedChecksumLines = @(
+            "$artifactSha256  $($candidate.artifact.fileName)"
+            "$noticeSha256  $($candidate.legalNotices.evidenceFileName)"
+            "$candidateSha256  candidate.json"
+          )
+          $actualChecksumLines = @(
+            Get-Content -LiteralPath (Join-Path $candidateDir "SHA256SUMS.txt")
+          )
+          if ($actualChecksumLines.Count -ne $expectedChecksumLines.Count) {
+            throw "Final checksum manifest must contain exactly three entries."
+          }
+          for (
+            $index = 0;
+            $index -lt $expectedChecksumLines.Count;
+            $index += 1
+          ) {
+            if ($actualChecksumLines[$index] -cne $expectedChecksumLines[$index]) {
+              throw "Final checksum manifest changed before upload."
+            }
+          }
+
+      - name: Upload hosted candidate verification evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: windows-store-hosted-${{ needs.policy.outputs.candidate_format }}-${{ needs.policy.outputs.reviewed_sha }}
+          path: reports/release/windows-store/
+          if-no-files-found: error
+          retention-days: ${{ fromJSON(inputs.retention_days) }}
