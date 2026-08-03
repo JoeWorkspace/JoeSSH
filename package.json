@@ -258,7 +258,7 @@
     "prettier": "^3.8.4",
     "puppeteer": "^25.1.0",
     "sax": "1.6.1",
-    "size-limit": "^12.1.0",
+    "size-limit": "^13.0.3",
     "typescript-eslint": "^8.65.0",
     "yaml": "2.9.0"
   }
