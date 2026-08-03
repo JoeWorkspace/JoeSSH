@@ -19,6 +19,14 @@ evaluation/community surface rather than a hosted or mutating team service.
 > real SSH today, run the native Tauri Desktop app from source; the browser
 > Desktop preview uses demo data and cannot open a real SSH session.
 
+## Support The Maintainer
+
+JoeSSH Community remains free and MIT-licensed. If JoeSSH has helped you and
+you can comfortably do so, you can read the
+[voluntary-support notice](docs/voluntary-support.md) and support its independent
+maintainer. Support is not a purchase and does not provide paid features,
+priority support, roadmap influence, or any other entitlement.
+
 ## Screenshots
 
 | Desktop workbench (English)                                                                                                      | Desktop workbench (Simplified Chinese)                                                                                                         |

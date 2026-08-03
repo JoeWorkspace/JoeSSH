@@ -5,24 +5,30 @@ again before activation.
 
 ## Current State
 
-No sponsorship or checkout destination is configured. `.github/FUNDING.yml` is
-intentionally comments-only, so GitHub renders no unverified funding button.
-`.github/funding-operator-attestation.json` is correspondingly in the exact
-`inactive` state. JoeSSH Community remains free and Pro/Founder remain
+The repository includes an operator-supplied
+[voluntary-support page](voluntary-support.md) with Weixin Pay and Alipay QR
+codes. It is separate from product checkout and promises no reward or software
+benefit. `.github/FUNDING.yml` remains intentionally comments-only, so GitHub
+does not render a Sponsor button before both payment methods pass the complete
+live verification below. `.github/funding-operator-attestation.json` remains in
+the exact `inactive` state. JoeSSH Community remains free and Pro/Founder remain
 unavailable.
 
 ## Recommended Order
 
 1. Use the canonical repository and releases to build trust and adoption.
-2. When a verified creator page exists, add one custom funding link for
-   no-reward voluntary support. Treat any digital reward or software benefit as
-   a later sale, not as this first support lane.
-3. Apply to Paddle for a later global Pro checkout, but do not integrate until
+2. Keep the repository support page separate from Store listing copy, binaries,
+   application UI, downloads, updates, support priority, and roadmap decisions.
+3. After every displayed payment method passes the live checks below, use the
+   canonical support-page URL as the single custom GitHub Funding link. Treat
+   any digital reward or software benefit as a later sale, not as this support
+   lane.
+4. Apply to Paddle for a later global Pro checkout, but do not integrate until
    the individual account, JoeSSH product category, domain, and real payout are
    approved.
-4. Keep Lemon Squeezy as a fallback only after its store approval and the
+5. Keep Lemon Squeezy as a fallback only after its store approval and the
    Mainland PayPal payout path have been tested.
-5. Register an individual industrial and commercial household when direct
+6. Register an individual industrial and commercial household when direct
    domestic merchant checkout, invoicing, or transaction scale makes it
    appropriate; this is not the same as incorporating a company.
 
@@ -35,6 +41,7 @@ unavailable.
 | Lemon Squeezy              | Individuals and software are supported in principle; Mainland China is absent from direct bank payouts, so the practical route depends on approved store identity plus a verified PayPal payout                     |
 | GitHub Sponsors            | Mainland China is not listed as a supported recipient region; do not use Hong Kong or Macao eligibility unless the owner actually qualifies there                                                                   |
 | GitHub custom funding link | Supported; can point to one verified creator or checkout URL after activation                                                                                                                                       |
+| Direct QR support page     | Operator-supplied personal Weixin Pay and Alipay codes are prepared for no-reward support; public-display eligibility, live payment, payout, and tax handling still require operator verification                   |
 
 Official references:
 
@@ -60,21 +67,27 @@ not remove the developer's local income-reporting and tax duties.
 
 ## Activation Procedure
 
-Before adding a live no-reward voluntary-support URL:
+Before enabling the repository support page through `.github/FUNDING.yml`:
 
 1. complete the platform's identity and payout verification with truthful owner
    information;
-2. confirm in writing that the platform accepts no-reward support for the
-   JoeSSH project, disclosing its SSH port-forwarding context if requested;
-3. publish the truthful operator/contact, privacy/support route, and the
-   funding platform's applicable refund/non-purchase wording; future sale terms
-   may remain explicitly inactive;
+2. confirm from current, retainable platform rules that each displayed payment
+   method accepts public QR display for no-reward support of the JoeSSH project,
+   disclosing its SSH port-forwarding context if requested;
+3. publish the truthful operator/contact, privacy/support route, and the payment
+   limitations/non-purchase wording; future sale terms may remain explicitly
+   inactive;
 4. ensure the funding page distinguishes voluntary support from purchases;
-5. make a real small payment, exercise the applicable refund/request route, and
-   complete a payout/withdrawal;
+5. for every displayed payment method, make a real small payment, verify the
+   disclosed lack of a project-operated cancellation, reversal, refund, or
+   automatic-return capability and of any promised project-operated remedy for
+   mistaken or duplicate payments, record the platform's official
+   unauthorized-payment route, and complete a payout/withdrawal;
 6. record the platform account owner, public URL, fee schedule, payout route,
    and evidence date in a private operator record;
-7. replace the comments-only funding config with only the verified URL;
+7. verify the exact canonical support-page URL from a logged-out desktop and
+   mobile browser, then replace the comments-only funding config with only that
+   URL;
 8. in the same reviewed commit, change
    `.github/funding-operator-attestation.json` to `verified`, bind the exact same
    URL, record the real UTC verification date, and set all five reviewed checks
@@ -94,9 +107,9 @@ other secrets. Keep the private receipts and operator records outside the
 repository.
 
 The verification expires after 180 days. Repeat the ownership, logged-out page,
-small-payment, refund/non-purchase wording, and payout checks before updating
-`verifiedAt`; a future, impossible, or older date fails CI. URL changes require
-a fresh verification and an atomic update of both files. The optional
+small-payment, payment-limitations/non-purchase wording, and payout checks before
+updating `verifiedAt`; a future, impossible, or older date fails CI. URL changes
+require a fresh verification and an atomic update of both files. The optional
 `--funding-url ... --confirm-funding-verified` arguments are a one-time
 diagnostic only and never replace the committed attestation.
 
@@ -122,7 +135,7 @@ In the same commit, replace the inactive attestation with:
     "destinationOwnedByVerifiedOperator": true,
     "loggedOutPageReachable": true,
     "smallPaymentCompleted": true,
-    "refundAndNonPurchaseWordingVerified": true,
+    "paymentLimitationsAndNonPurchaseWordingVerified": true,
     "payoutCompleted": true
   }
 }

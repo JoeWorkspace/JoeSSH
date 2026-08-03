@@ -39,6 +39,25 @@ before the free Store listing is submitted. Do not commit the personal
 publisher identity or private contact material here. No customer portal or
 paid-support channel is currently offered.
 
+## Voluntary Support
+
+The [voluntary-support page](docs/voluntary-support.md) provides optional
+Weixin Pay and Alipay QR codes supplied by the independent maintainer. A support
+payment is not a purchase and creates no software entitlement, private-support
+right, response target, roadmap influence, or other benefit. JoeSSH Community
+remains free and MIT-licensed whether or not a person provides support.
+
+Payment questions are separate from product support. These are personal payment
+codes. JoeSSH creates no order, cannot use the codes to cancel, reverse, refund,
+or automatically return a payment, and does not offer or promise a
+project-operated return or remedy for mistaken, duplicate, or incorrectly
+entered payments. For suspected account misuse or an unauthorized payment, use
+the official dispute channel in the payment record or contact official Weixin
+Pay or Alipay customer service; available remedies are governed by platform
+rules and applicable law. Never post a real name, phone number, payment
+screenshot, transaction identifier, or other payment detail in a public issue,
+Discussion, or pull request.
+
 ## A Useful Bug Report
 
 Include:

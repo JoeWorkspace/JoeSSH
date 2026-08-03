@@ -21,6 +21,9 @@ const requiredFiles = [
   "docs/commercial-release-readiness.md",
   "docs/funding-and-checkout.md",
   "docs/pricing-hypotheses.md",
+  "docs/voluntary-support.md",
+  "docs/assets/funding/alipay-support-qr.jpg",
+  "docs/assets/funding/wechat-support-qr.jpg",
 ];
 
 function createFixture(t, overrides = {}) {
@@ -44,6 +47,10 @@ function createFixture(t, overrides = {}) {
     "docs/funding-and-checkout.md": "# Funding\n",
     "docs/pricing-hypotheses.md":
       "# Pricing\nCommunity is permanently free and MIT-licensed.\n",
+    "docs/voluntary-support.md":
+      "# Voluntary support\nSupport is voluntary and is not a purchase.\n",
+    "docs/assets/funding/alipay-support-qr.jpg": "test asset\n",
+    "docs/assets/funding/wechat-support-qr.jpg": "test asset\n",
     ...overrides,
   };
   for (const relativePath of requiredFiles) {
@@ -72,7 +79,7 @@ function inactiveFundingAttestation() {
       destinationOwnedByVerifiedOperator: false,
       loggedOutPageReachable: false,
       smallPaymentCompleted: false,
-      refundAndNonPurchaseWordingVerified: false,
+      paymentLimitationsAndNonPurchaseWordingVerified: false,
       payoutCompleted: false,
     },
   };
@@ -91,7 +98,7 @@ function verifiedFundingAttestation(
       destinationOwnedByVerifiedOperator: true,
       loggedOutPageReachable: true,
       smallPaymentCompleted: true,
-      refundAndNonPurchaseWordingVerified: true,
+      paymentLimitationsAndNonPurchaseWordingVerified: true,
       payoutCompleted: true,
     },
   };

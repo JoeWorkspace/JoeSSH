@@ -163,7 +163,7 @@ npm run release:commercial:preflight -- `
 恢复、取消、退款、失败付款和提现演练。`{{...}}` 不是待发布文案，而是故意
 保留的阻断器；删除占位文字本身不会让门禁通过。
 
-`.github/FUNDING.yml` 在验证收款账号所有人、未登录展示页、退款/非购买说明、
+`.github/FUNDING.yml` 在验证收款账号所有人、未登录展示页、付款限制/非购买说明、
 小额付款和提现之前保持纯注释，同时
 `.github/funding-operator-attestation.json` 保持精确 `inactive` 状态。启用时
 两个文件必须在同一审核 commit 中绑定完全相同的 URL、五项 `true` 和不超过
@@ -274,12 +274,14 @@ package identity，再用微软工具外部打包；不能把 NSIS 改后缀或�
 3. 用 3–5 名可信测试者完成 Stage A，修完 P0/P1。
 4. 以已确认的 Individual 类型办理 Partner Center、保留产品名，先完成一天的
    MSIX 可行性验证；只有失败时再办理 NSIS 所需的可信代码签名。
-5. 当前 Community 发布保持 funding、checkout、付费权益和付费支持全部关闭；
-   自愿支持不是本次发布前置条件，也不能为了收款把当前非商业发布描述改成
-   商业活动。
-6. 正式发布并完成首轮使用验证后，如要另行启用自愿支持，先核对账号资格、
-   收款账号所有人、未登录展示页、退款/非购买说明、小额付款与提现；在同一
-   审核 commit 提交精确 URL 和当前 operator attestation，且不承诺软件权益。
+5. 当前 Community 发布保持 checkout、付费权益和付费支持全部关闭。仓库可以
+   单独展示无回报的自愿支持页，但 Store 文案、应用界面、发布包、下载和更新
+   不得链接或宣传该入口，也不能为了收款把当前免费 Store 分发描述成付费产品。
+6. GitHub Funding 按钮继续关闭，直到逐个核对页面中的收款方式资格、账号
+   所有人、未登录桌面/移动展示、付款限制/非购买说明、小额付款与提现；通过后在
+   同一审核 commit 提交精确页面 URL 和当前 operator attestation，且不承诺
+   软件权益。正式提交 Individual Store 版本前，还需确认独立仓库支持页不会
+   改变 Partner Center 对本次免费、非商业 Store 分发的账户资格判断。
 7. 达到至少 10 名重复使用者和 5 名真实支持者后，只开始 MoR 申请、
    访谈和 Founder/Pro 非售卖原型；真正开售仍须达到 30 名外部 Windows 用户
    完成 SSH、且 10 人提出同一付费需求等更高门禁。

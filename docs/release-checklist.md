@@ -103,6 +103,11 @@ evidence. None can make the current workflow produce
   the separate Funding Button lane in `docs/commercial-release-readiness.md`;
   an active URL must be exactly bound to a complete verification no more than
   180 days old.
+- Before publishing the voluntary-support page, manually scan both personal
+  codes and confirm Weixin Pay shows `Joe(*添)` and Alipay shows
+  `慈善家(*添)`. Recheck the non-purchase, no project-operated refund, official
+  platform-dispute, and payment-privacy notices on logged-out desktop and mobile
+  views.
 - Do not enable paid checkout while `PRIVACY.md`, `REFUND_POLICY.md`,
   `TERMS_OF_SALE.md`, or `TRADEMARKS.md` contains a `{{...}}` seller,
   processor, contact, or governing-law placeholder.

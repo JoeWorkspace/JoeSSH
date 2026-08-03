@@ -14,6 +14,9 @@ const REQUIRED_FILES = [
   "docs/commercial-release-readiness.md",
   "docs/funding-and-checkout.md",
   "docs/pricing-hypotheses.md",
+  "docs/voluntary-support.md",
+  "docs/assets/funding/alipay-support-qr.jpg",
+  "docs/assets/funding/wechat-support-qr.jpg",
 ];
 const CUSTOMER_POLICIES = [
   "PRIVACY.md",
@@ -43,7 +46,7 @@ const FUNDING_ATTESTATION_CHECK_KEYS = [
   "destinationOwnedByVerifiedOperator",
   "loggedOutPageReachable",
   "smallPaymentCompleted",
-  "refundAndNonPurchaseWordingVerified",
+  "paymentLimitationsAndNonPurchaseWordingVerified",
   "payoutCompleted",
 ];
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -156,15 +159,15 @@ function checkFundingConfiguration() {
     addCheck(
       "funding:attestation-inactive",
       inactiveAttestation,
-      "Comments-only funding uses the exact inactive persistent attestation",
+      "Comments-only GitHub Funding uses the exact inactive persistent attestation",
       inactiveAttestation
-        ? "No funding destination is activated."
+        ? "No GitHub Sponsor button destination is activated."
         : "Keep the attestation inactive with a null URL/date and every verification check false.",
     );
     addCheck(
       "funding:community-boundary",
       inactiveAttestation,
-      "Community candidate has no unverified active funding destination",
+      "Community candidate has no unverified GitHub Sponsor button destination",
     );
     checkFundingCliPreflight("");
     return;
@@ -221,7 +224,7 @@ function checkFundingConfiguration() {
   addCheck(
     "funding:attestation-checks",
     attestationChecksComplete,
-    "Persistent funding attestation confirms ownership, logged-out access, small payment, refund/non-purchase wording, and payout",
+    "Persistent funding attestation confirms ownership, logged-out access, small payment, payment-limitations/non-purchase wording, and payout",
     attestationChecksComplete
       ? "All five operator checks are explicitly true."
       : "Every exact verification field must be present and true.",

@@ -26,6 +26,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with Playwright in CI and the formal hosted verifier.
 - Support, privacy, refund, sale, trademark, third-party notice, pricing, and
   funding drafts that keep all unverified seller and checkout data blocked.
+- A bilingual voluntary-support page with maintainer-supplied Weixin Pay and
+  Alipay QR codes, explicit non-purchase/privacy safeguards, and a fail-closed
+  GitHub Sponsor button pending live recipient, payment, platform-rules, and
+  payout verification.
 - A read-only remote release-control audit for repository visibility, protected
   `main`, vulnerability reporting, release environments, Actions artifacts,
   caches, and externally confirmed billing readiness.

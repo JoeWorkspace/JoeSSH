@@ -78,8 +78,17 @@ but Community release notes must not advertise unavailable paid benefits.
 
 - [ ] The destination is owned by the verified project operator.
 - [ ] The page clearly distinguishes voluntary support from a purchase.
-- [ ] The page works while logged out; a real small payment, refund wording, and
-      payout/withdrawal have been tested.
+- [ ] Every payment method displayed on the destination has separately passed
+      ownership, public-display, recipient-display, small-payment,
+      platform-rules, and payout checks.
+- [ ] The page works while logged out on desktop and mobile, and a real scan
+      shows the exact disclosed recipient: Weixin Pay `Joe(*添)` and Alipay
+      `慈善家(*添)`.
+- [ ] The page discloses that JoeSSH cannot cancel, reverse, refund, or
+      automatically return personal-code payments and does not promise a
+      project-operated remedy for mistaken or duplicate payments; it names the
+      platforms' official unauthorized-payment routes and warns against posting
+      payment details publicly.
 - [ ] `.github/FUNDING.yml` contains exactly one public HTTPS custom URL, with no
       placeholder.
 - [ ] `.github/funding-operator-attestation.json` uses the exact reviewed schema,

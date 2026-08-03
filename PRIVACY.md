@@ -165,6 +165,23 @@ record, or payment-card flow is used for this release. Checkout must remain
 disabled until a later policy names the real providers, information exchanged,
 retention periods, customer rights, and verified live account.
 
+### Voluntary support
+
+The optional [voluntary-support page](docs/voluntary-support.md) displays
+maintainer-provided Weixin Pay and Alipay QR codes. This is separate from the
+JoeSSH application and from product checkout. Scanning a code opens the selected
+payment platform, whose own terms and privacy practices govern that interaction.
+JoeSSH does not receive a payment password or full payment credentials.
+
+The payment platform may show the maintainer a payer display name, avatar,
+masked identity information, amount, time, note, transaction identifier, and
+fraud or dispute status. The maintainer may use and retain the minimum data
+needed for reconciliation, fraud prevention, responding to platform disputes,
+and applicable accounting or tax duties. Payment notes must not contain
+passwords, SSH host information, keys, tokens, or other secrets. Providing
+support does not create an application account or change the Community client's
+local-first data flow.
+
 ## 9. Purposes And Legal Grounds
 
 Where applicable law requires a legal ground, information may be processed:

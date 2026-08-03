@@ -79,19 +79,32 @@ be recoverable, but this does not reduce mandatory rights.
 
 A payment made solely to support development, with no advertised product or
 service in return, is distinct from a Pro purchase. The funding page must state
-that distinction before payment. Refund requests for such support follow the
-funding platform's rules and applicable law.
+that distinction before payment.
+
+The current [voluntary-support page](docs/voluntary-support.md) uses personal
+Weixin Pay and Alipay collection codes. JoeSSH creates no order, cannot use the
+codes to cancel, reverse, refund, or automatically return a payment, and does
+not offer or promise a project-operated return or remedy for mistaken,
+duplicate, or incorrectly entered payments. A person who cannot accept that
+limitation should not pay. Suspected account misuse or an unauthorized payment
+should be reported through the official dispute channel in the payment record
+or to official Weixin Pay or Alipay customer service. Any available remedy
+follows platform rules and applicable law, and this notice does not waive rights
+provided by either. Payment details must not be posted in a public GitHub issue,
+Discussion, or pull request.
 
 Never label a software license, update entitlement, membership deliverable, or
 support commitment as a “donation” to avoid this policy or consumer duties.
 
-## 6. Chargebacks
+## 6. Future Paid-Offer Chargebacks
 
-Contact the support route first when practical so duplicate charges, delivery
-failures, or refund eligibility can be resolved. This request does not limit a
-purchaser's right to contact the payment provider or card issuer. Fraudulent or
-abusive chargeback activity may result in suspension of a paid service, but
-cannot revoke rights in MIT-licensed Community code already received.
+This section applies only if a future paid offer launches; it does not apply to
+the personal collection codes described above. For a future purchase, contact
+the support route first when practical so duplicate charges, delivery failures,
+or refund eligibility can be resolved. This request does not limit a purchaser's
+right to contact the payment provider or card issuer. Fraudulent or abusive
+chargeback activity may result in suspension of a paid service, but cannot
+revoke rights in MIT-licensed Community code already received.
 
 ## 7. Required Seller Details
 

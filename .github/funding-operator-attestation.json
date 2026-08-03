@@ -7,7 +7,7 @@
     "destinationOwnedByVerifiedOperator": false,
     "loggedOutPageReachable": false,
     "smallPaymentCompleted": false,
-    "refundAndNonPurchaseWordingVerified": false,
+    "paymentLimitationsAndNonPurchaseWordingVerified": false,
     "payoutCompleted": false
   }
 }
