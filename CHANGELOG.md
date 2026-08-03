@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-> The changes below are staged for the `[0.1.0-beta.10]` release candidate.
+> The changes below are staged for the `[0.1.0-beta.11]` release candidate.
 > They remain unreleased until the annotated tag points to the reviewed commit
 > and every external release gate is closed.
 
