@@ -1,7 +1,7 @@
 # Build from the repository root:
 #   docker build -f services/sync/Dockerfile -t joessh-sync:0.1.0-beta.10 .
 
-FROM rust:1.96.0-bookworm@sha256:5e2214abe154fe26e39f64488952e5c991eeed1d6d6da7cc8381ae83927f0cfc AS build
+FROM rust:1.97.1-bookworm@sha256:77fac8b98f9f46062bb680b6d25d5bcaabfc400143952ebc572e924bcbedc3fa AS build
 WORKDIR /src
 
 COPY Cargo.toml Cargo.lock ./
