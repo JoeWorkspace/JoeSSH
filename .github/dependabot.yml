@@ -5,7 +5,8 @@ updates:
     schedule:
       interval: weekly
       day: monday
-    open-pull-requests-limit: 10
+    # Keep Dependabot metadata scanning without creating version-update branches.
+    open-pull-requests-limit: 0
     labels:
       - dependencies
       - security
@@ -47,7 +48,8 @@ updates:
     schedule:
       interval: weekly
       day: monday
-    open-pull-requests-limit: 5
+    # Keep Dependabot metadata scanning without creating version-update branches.
+    open-pull-requests-limit: 0
     labels:
       - dependencies
       - ci
@@ -57,7 +59,8 @@ updates:
     schedule:
       interval: weekly
       day: monday
-    open-pull-requests-limit: 5
+    # Keep Dependabot metadata scanning without creating version-update branches.
+    open-pull-requests-limit: 0
     labels:
       - dependencies
       - security
