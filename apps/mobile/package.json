@@ -36,6 +36,6 @@
     "@vitest/coverage-v8": "4.1.9",
     "react-test-renderer": "19.2.3",
     "typescript": "^6.0.3",
-    "vitest": "4.1.9"
+    "vitest": "4.1.10"
   }
 }
