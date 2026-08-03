@@ -27,6 +27,27 @@ you can comfortably do so, you can read the
 maintainer. Support is not a purchase and does not provide paid features,
 priority support, roadmap influence, or any other entitlement.
 
+<p>
+  <a href="docs/voluntary-support.md">
+    <img
+      src="docs/assets/funding/wechat-support-qr.jpg"
+      alt="Personal Weixin Pay QR code for voluntarily supporting the JoeSSH maintainer"
+      width="260"
+    />
+  </a>
+  <a href="docs/voluntary-support.md">
+    <img
+      src="docs/assets/funding/alipay-support-qr.jpg"
+      alt="Personal Alipay QR code for voluntarily supporting the JoeSSH maintainer"
+      width="260"
+    />
+  </a>
+</p>
+
+Before paying, read the complete notice and verify the recipient shown in the
+payment app. These are personal collection codes; JoeSSH cannot cancel,
+reverse, refund, or automatically return payments made through them.
+
 ## Screenshots
 
 | Desktop workbench (English)                                                                                                      | Desktop workbench (Simplified Chinese)                                                                                                         |
