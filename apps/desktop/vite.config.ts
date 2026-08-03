@@ -27,7 +27,7 @@ export default defineConfig(({ mode }) => ({
     sri: true,
     cssMinify: true,
     target: "es2020",
-    minify: "esbuild",
+    minify: "oxc",
     assetsInlineLimit: 65536,
     chunkSizeWarningLimit: 250,
     rollupOptions: {

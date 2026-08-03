@@ -135,7 +135,7 @@ export function buildThirdPartyLicenseBundle(inputRoot) {
       noticeFiles:
         "Every top-level NOTICE or COPYRIGHT file shipped in an installed dependency source package is embedded.",
       npmTrustBoundary:
-        "Each npm cache archive must match its package-lock sha512 integrity, and installed package.json plus every embedded npm license/notice file must byte-match that archive.",
+        "Each npm cache archive must match its package-lock sha512 integrity, and installed package.json plus every embedded npm license/notice file must byte-match that archive. An npm reviewed-fallback checksum is the same 64-byte SHA-512 digest decoded from that canonical integrity and rendered as 128 lowercase hexadecimal characters.",
       cargoTrustBoundary:
         "Each Cargo source archive must match its Cargo.lock SHA-256 checksum, and every embedded Cargo license or notice file must byte-match that archive.",
     },
@@ -856,8 +856,7 @@ function assertPublishedEvidenceList({
       );
       const canonical = vendoredSpdxTexts[fallback.selectedLicense];
       if (
-        entry.note !==
-          "Official SPDX canonical license template; package attribution is recorded separately from lock-bound Cargo metadata and is not substituted into the template." ||
+        entry.note !== reviewedFallbackEvidenceNote(fallback.ecosystem) ||
         entry.sha256 !== canonical?.sha256 ||
         entry.sourceFile !== canonical?.path ||
         entry.spdxLicense !== fallback.selectedLicense ||
@@ -1387,7 +1386,7 @@ function applyReviewedFallbacks(packages, texts, policy) {
     packageEntry.licenseTexts = [
       {
         kind: "spdx-canonical",
-        note: "Official SPDX canonical license template; package attribution is recorded separately from lock-bound Cargo metadata and is not substituted into the template.",
+        note: reviewedFallbackEvidenceNote(packageEntry.ecosystem),
         sha256: canonical.sha256,
         sourceFile: canonical.path,
         spdxLicense: fallback.selectedLicense,
@@ -1496,8 +1495,8 @@ function loadReviewedFallbackPolicy(root) {
       ],
       `${reviewedFallbackPolicyPath} fallback`,
     );
-    if (entry.ecosystem !== "cargo") {
-      fail(`${reviewedFallbackPolicyPath} fallbacks are Cargo-only.`);
+    if (entry.ecosystem !== "cargo" && entry.ecosystem !== "npm") {
+      fail(`${reviewedFallbackPolicyPath} fallback ecosystem is unsupported.`);
     }
     const candidate = {
       checksum: requireNonEmptyString(
@@ -1508,15 +1507,21 @@ function loadReviewedFallbackPolicy(root) {
         entry.declaredLicense,
         "reviewed fallback declaredLicense",
       ),
-      ecosystem: "cargo",
+      ecosystem: entry.ecosystem,
       name: requireNonEmptyString(entry.name, "reviewed fallback name"),
       version: requireNonEmptyString(
         entry.version,
         "reviewed fallback version",
       ),
     };
-    if (!/^[a-f0-9]{64}$/.test(candidate.checksum)) {
-      fail(`${reviewedFallbackPolicyPath} fallback checksum must be SHA-256.`);
+    const checksumPattern =
+      candidate.ecosystem === "npm" ? /^[a-f0-9]{128}$/ : /^[a-f0-9]{64}$/;
+    if (!checksumPattern.test(candidate.checksum)) {
+      fail(
+        candidate.ecosystem === "npm"
+          ? `${reviewedFallbackPolicyPath} npm fallback checksum must be lowercase SHA-512 hex decoded from package-lock integrity.`
+          : `${reviewedFallbackPolicyPath} Cargo fallback checksum must be SHA-256.`,
+      );
     }
     validateLicenseExpression(
       candidate.declaredLicense,
@@ -1525,7 +1530,11 @@ function loadReviewedFallbackPolicy(root) {
     if (
       !Object.hasOwn(vendoredSpdxTexts, entry.selectedLicense) ||
       typeof entry.review !== "string" ||
-      !entry.review.includes("Exact Cargo.lock package reviewed")
+      !entry.review.includes(
+        entry.ecosystem === "npm"
+          ? "Exact package-lock.json npm package reviewed"
+          : "Exact Cargo.lock package reviewed",
+      )
     ) {
       fail(`${reviewedFallbackPolicyPath} fallback review is incomplete.`);
     }
@@ -1539,7 +1548,38 @@ function loadReviewedFallbackPolicy(root) {
 }
 
 function reviewedFallbackKey(packageEntry) {
-  return `${packageEntry.ecosystem}:${packageEntry.name}@${packageEntry.version}\0${packageEntry.declaredLicense}\0${packageEntry.checksum ?? ""}`;
+  const checksum =
+    packageEntry.checksum ??
+    (packageEntry.ecosystem === "npm"
+      ? npmReviewedFallbackChecksum(
+          packageEntry.integrity,
+          `${packageEntry.name}@${packageEntry.version}`,
+        )
+      : "");
+  return `${packageEntry.ecosystem}:${packageEntry.name}@${packageEntry.version}\0${packageEntry.declaredLicense}\0${checksum}`;
+}
+
+function npmReviewedFallbackChecksum(integrity, owner) {
+  if (
+    typeof integrity !== "string" ||
+    !/^sha512-[A-Za-z0-9+/]+={0,2}$/.test(integrity)
+  ) {
+    fail(`${owner} must use a sha512 package-lock integrity.`);
+  }
+  const digest = Buffer.from(integrity.slice("sha512-".length), "base64");
+  if (
+    digest.length !== 64 ||
+    `sha512-${digest.toString("base64")}` !== integrity
+  ) {
+    fail(`${owner} has malformed canonical sha512 package-lock integrity.`);
+  }
+  return digest.toString("hex");
+}
+
+function reviewedFallbackEvidenceNote(ecosystem) {
+  return ecosystem === "npm"
+    ? "Official SPDX canonical license template; package attribution is recorded separately from lock-bound npm metadata and is not substituted into the template."
+    : "Official SPDX canonical license template; package attribution is recorded separately from lock-bound Cargo metadata and is not substituted into the template.";
 }
 
 function assertExactObjectKeys(value, expectedKeys, label) {
@@ -1588,8 +1628,11 @@ export function renderThirdPartyNotices(manifest) {
     "bound by the release evidence manifest. Platform redistributables and",
     "other non-npm/Cargo payloads require separate distribution-term review.",
     "A canonical fallback is used only for an exact",
-    "reviewed Cargo package/checksum when its source archive ships no license",
-    `file; fallback bodies are hash-pinned official SPDX v${spdxLicenseListVersion} texts.`,
+    "reviewed npm or Cargo package/license/checksum when its lock-bound source",
+    "archive ships no license file; npm checksums are the decoded package-lock",
+    "SHA-512 digest rendered as lowercase hex, while Cargo uses its lockfile",
+    "SHA-256 checksum;",
+    `fallback bodies are hash-pinned official SPDX v${spdxLicenseListVersion} texts.`,
     "",
     "JoeSSH Product License",
     "----------------------",

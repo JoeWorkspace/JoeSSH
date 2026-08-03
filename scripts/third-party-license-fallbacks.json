@@ -508,6 +508,15 @@
       "selectedLicense": "MIT",
       "checksum": "ecc8ac4bc1dc3381b7f59c34f00b67e18f910c2c0f50015669dde7def656a736",
       "review": "Exact Cargo.lock package reviewed because its crates.io archive contains no LICENSE/COPYING file; use only the pinned official SPDX body and retain any archive NOTICE/COPYRIGHT evidence."
+    },
+    {
+      "ecosystem": "npm",
+      "name": "babel-plugin-react-compiler",
+      "version": "1.0.0",
+      "declaredLicense": "MIT",
+      "selectedLicense": "MIT",
+      "checksum": "2319bcb457e828a20f61d0822984ecaaff85778209d0342a3321229a8fa9c5438c511f5c54f9704eb16df40beefb771be99a77980ce5fadd4cac6d9fc712acc7",
+      "review": "Exact package-lock.json npm package reviewed because its registry archive contains no LICENSE/COPYING file; this checksum is the 64-byte SHA-512 digest decoded from the canonical package-lock integrity and rendered as 128 lowercase hexadecimal characters; use only the pinned official SPDX body and retain any archive NOTICE/COPYRIGHT evidence."
     }
   ]
 }

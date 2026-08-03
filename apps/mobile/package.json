@@ -18,14 +18,14 @@
     "@atlasterm/error-monitor": "0.1.0",
     "@atlasterm/i18n": "0.1.0",
     "@react-native-async-storage/async-storage": "2.2.0",
-    "expo": "~56.0.17",
-    "expo-constants": "~56.0.22",
-    "expo-linking": "~56.0.16",
-    "expo-router": "~56.2.16",
-    "expo-status-bar": "~56.0.4",
+    "expo": "~57.0.9",
+    "expo-constants": "~57.0.8",
+    "expo-linking": "~57.0.4",
+    "expo-router": "~57.0.9",
+    "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "react-native": "0.85.3",
+    "react-native": "0.86.2",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
     "react-native-web": "~0.21.2"
@@ -33,8 +33,9 @@
   "devDependencies": {
     "@types/react": "^19.1.1",
     "@types/react-test-renderer": "^19.0.0",
+    "@vitest/coverage-v8": "4.1.9",
     "react-test-renderer": "19.2.3",
-    "typescript": "~6.0.3",
+    "typescript": "^6.0.3",
     "vitest": "4.1.9"
   }
 }

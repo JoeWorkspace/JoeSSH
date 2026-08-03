@@ -272,3 +272,27 @@ test("rejects signing evidence that is not bound to the artifact path or hash", 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /signatureVerification must mention the artifact path, artifact file name, or artifact sha256/);
 });
+
+test("rejects signing evidence that reports failed verification", (t) => {
+  const root = createFixture(t);
+  const evidence = completeEvidence();
+  evidence[0].signatureVerification = `signtool verify /pa ${FIXTURE_ARTIFACTS[0][0]} failed`;
+  writeEvidence(root, evidence);
+
+  const result = runChecker(root);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /signatureVerification must not report a failed verification/);
+});
+
+test("rejects signing evidence that lacks a successful verification result", (t) => {
+  const root = createFixture(t);
+  const evidence = completeEvidence();
+  evidence[1].notarizationVerification = `spctl --assess ${FIXTURE_ARTIFACTS[1][0]}`;
+  writeEvidence(root, evidence);
+
+  const result = runChecker(root);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /notarizationVerification must show a successful verification/);
+});

@@ -344,6 +344,7 @@ function validatePlatformEvidence(label, artifact) {
     requireBoolean(label, artifact, "signed", true);
     requireNonEmptyString(label, artifact, "signatureVerification");
     requireEvidenceBinding(label, artifact, "signatureVerification");
+    requireEvidenceSuccess(label, artifact, "signatureVerification");
     return;
   }
 
@@ -354,6 +355,8 @@ function validatePlatformEvidence(label, artifact) {
     requireNonEmptyString(label, artifact, "notarizationVerification");
     requireEvidenceBinding(label, artifact, "signatureVerification");
     requireEvidenceBinding(label, artifact, "notarizationVerification");
+    requireEvidenceSuccess(label, artifact, "signatureVerification");
+    requireEvidenceSuccess(label, artifact, "notarizationVerification");
     return;
   }
 
@@ -394,6 +397,28 @@ function requireEvidenceBinding(label, artifact, field) {
   if (!value.includes(artifact.path) && !value.includes(artifactName) && !value.includes(artifact.sha256)) {
     errors.push(`${label}.${field} must mention the artifact path, artifact file name, or artifact sha256`);
   }
+}
+
+function requireEvidenceSuccess(label, artifact, field) {
+  const value = typeof artifact[field] === "string" ? artifact[field] : "";
+  if (proofReportsFailure(value)) {
+    errors.push(`${label}.${field} must not report a failed verification`);
+  }
+  if (!proofReportsSuccess(value)) {
+    errors.push(`${label}.${field} must show a successful verification`);
+  }
+}
+
+function proofReportsFailure(proofText) {
+  return /\b(fail(?:ed|ure)?|error|invalid|rejected|denied|cannot|unable)\b|\bnot\s+(?:signed|notarized|valid|accepted)\b/i.test(
+    proofText,
+  );
+}
+
+function proofReportsSuccess(proofText) {
+  return /\b(pass(?:ed|es)?|success(?:ful|fully)?|valid|verified|accepted|notarized|stapled)\b/i.test(
+    proofText,
+  );
 }
 
 function classifyPlatform(path) {

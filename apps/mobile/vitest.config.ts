@@ -29,7 +29,6 @@ export default defineConfig({
       'react-native-safe-area-context': path.resolve(__dirname, 'test/reactNativeMock.ts'),
     },
   },
-  esbuild: { jsx: 'automatic' },
   test: {
     environment: 'node',
     restoreMocks: true,

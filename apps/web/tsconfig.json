@@ -2,11 +2,7 @@
   "compilerOptions": {
     "target": "ES2020",
     "useDefineForClassFields": true,
-    "lib": [
-      "DOM",
-      "DOM.Iterable",
-      "ES2020"
-    ],
+    "lib": ["DOM", "DOM.Iterable", "ES2020"],
     "allowJs": false,
     "skipLibCheck": true,
     "esModuleInterop": true,
@@ -14,19 +10,15 @@
     "strict": true,
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
-    "moduleResolution": "Node",
-    "baseUrl": ".",
+    "moduleResolution": "Bundler",
+    "types": ["node"],
     "paths": {
-      "@atlasterm/i18n": [
-        "../../packages/i18n/src/index.ts"
-      ]
+      "@atlasterm/i18n": ["../../packages/i18n/src/index.ts"]
     },
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx"
   },
-  "include": [
-    "src"
-  ]
+  "include": ["src"]
 }

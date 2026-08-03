@@ -310,6 +310,65 @@ test("rejects a URL-only package without an exact reviewed SPDX fallback", (t) =
   );
 });
 
+test("binds an npm reviewed fallback to the canonical lock integrity digest", (t) => {
+  const root = createFixture(t, {
+    includeNpmLicenseText: false,
+    includeNpmReviewedFallback: true,
+  });
+  const generated = run(generator, root);
+  assert.equal(generated.status, 0, generated.stderr);
+
+  const manifest = JSON.parse(
+    readFileSync(
+      join(root, "reports", "release", "third-party-licenses", "manifest.json"),
+      "utf8",
+    ),
+  );
+  const npmPackage = manifest.packages.find(
+    ({ ecosystem }) => ecosystem === "npm",
+  );
+  assert.deepEqual(npmPackage.licenseTexts, [
+    {
+      kind: "spdx-canonical",
+      note: "Official SPDX canonical license template; package attribution is recorded separately from lock-bound npm metadata and is not substituted into the template.",
+      sha256: npmPackage.licenseTexts[0].sha256,
+      sourceFile: "scripts/spdx-license-texts/v3.28.0/MIT.txt",
+      spdxLicense: "MIT",
+      spdxListVersion: "3.28.0",
+    },
+  ]);
+  const artifactOnly = run(verifier, root, ["--artifact-only"]);
+  assert.equal(artifactOnly.status, 0, artifactOnly.stderr);
+
+  const policyPath = join(
+    root,
+    "scripts",
+    "third-party-license-fallbacks.json",
+  );
+  const policy = JSON.parse(readFileSync(policyPath, "utf8"));
+  const npmFallback = policy.reviewedFallbacks.find(
+    ({ ecosystem }) => ecosystem === "npm",
+  );
+  npmFallback.checksum = "f".repeat(64);
+  writeJson(policyPath, policy);
+
+  const malformed = run(generator, root);
+  assert.notEqual(malformed.status, 0);
+  assert.match(
+    malformed.stderr,
+    /npm fallback checksum must be lowercase SHA-512 hex decoded from package-lock integrity/,
+  );
+
+  npmFallback.checksum = "f".repeat(128);
+  writeJson(policyPath, policy);
+  const mismatched = run(generator, root);
+  assert.notEqual(mismatched.status, 0);
+  assert.match(
+    mismatched.stderr,
+    /no embedded license text and no exact reviewed SPDX fallback/,
+  );
+});
+
 test("verifier rejects tampered or missing release license artifacts", (t) => {
   const root = createFixture(t);
   assert.equal(run(generator, root).status, 0);
@@ -641,7 +700,12 @@ test("artifact-only verifier rejects unreferenced embedded dependency text", (t)
 
 function createFixture(
   t,
-  { includeNpmDependency = true, includeReviewedFallback = true } = {},
+  {
+    includeNpmDependency = true,
+    includeNpmLicenseText = true,
+    includeNpmReviewedFallback = false,
+    includeReviewedFallback = true,
+  } = {},
 ) {
   const root = mkdtempSync(join(tmpdir(), "joessh-third-party-license-"));
   t.after(() => rmSync(root, { force: true, recursive: true }));
@@ -665,7 +729,9 @@ function createFixture(
   };
   let npmPackage = null;
   if (includeNpmDependency) {
-    npmPackage = writeNpmPackage(root);
+    npmPackage = writeNpmPackage(root, {
+      includeLicenseText: includeNpmLicenseText,
+    });
     packageLock.packages["node_modules/npm-license-package"] = {
       version: "1.0.0",
       resolved:
@@ -864,6 +930,9 @@ checksum = "${missing.checksum}"
   );
   writeFallbackPolicy(root, {
     checksum: missing.checksum,
+    npmChecksum: includeNpmReviewedFallback
+      ? npmPackage.fallbackChecksum
+      : null,
     includeReviewedFallback,
   });
   return root;
@@ -889,7 +958,7 @@ function cargoSbomComponent(name, version, checksum) {
   };
 }
 
-function writeNpmPackage(root) {
+function writeNpmPackage(root, { includeLicenseText = true } = {}) {
   const packageJsonText = `${JSON.stringify(
     {
       name: "npm-license-package",
@@ -904,14 +973,17 @@ function writeNpmPackage(root) {
     join(root, "node_modules", "npm-license-package", "package.json"),
     packageJsonText,
   );
-  writeText(
-    join(root, "node_modules", "npm-license-package", "LICENSE"),
-    licenseText,
-  );
-  const archive = createTarGzip({
-    "package/LICENSE": Buffer.from(licenseText, "utf8"),
+  const archiveFiles = {
     "package/package.json": Buffer.from(packageJsonText, "utf8"),
-  });
+  };
+  if (includeLicenseText) {
+    writeText(
+      join(root, "node_modules", "npm-license-package", "LICENSE"),
+      licenseText,
+    );
+    archiveFiles["package/LICENSE"] = Buffer.from(licenseText, "utf8");
+  }
+  const archive = createTarGzip(archiveFiles);
   const digest = createHash("sha512").update(archive).digest();
   const hex = digest.toString("hex");
   const cachePath = join(
@@ -926,10 +998,16 @@ function writeNpmPackage(root) {
   );
   mkdirSync(dirname(cachePath), { recursive: true });
   writeFileSync(cachePath, archive);
-  return { integrity: `sha512-${digest.toString("base64")}` };
+  return {
+    fallbackChecksum: digest.toString("hex"),
+    integrity: `sha512-${digest.toString("base64")}`,
+  };
 }
 
-function writeFallbackPolicy(root, { checksum, includeReviewedFallback }) {
+function writeFallbackPolicy(
+  root,
+  { checksum, includeReviewedFallback, npmChecksum = null },
+) {
   const textHashes = {
     "Apache-2.0":
       "074e6e32c86a4c0ef8b3ed25b721ca23aca83df277cd88106ef7177c354615ff",
@@ -961,20 +1039,36 @@ function writeFallbackPolicy(root, { checksum, includeReviewedFallback }) {
       source: "https://github.com/spdx/license-list-data/tree/v3.28.0/text",
       texts,
     },
-    reviewedFallbacks: includeReviewedFallback
-      ? [
-          {
-            ecosystem: "cargo",
-            name: "cargo-without-license-file",
-            version: "2.0.0",
-            declaredLicense: "MIT",
-            selectedLicense: "MIT",
-            checksum,
-            review:
-              "Exact Cargo.lock package reviewed because its crates.io archive contains no LICENSE/COPYING file; use only the pinned official SPDX body and retain any archive NOTICE/COPYRIGHT evidence.",
-          },
-        ]
-      : [],
+    reviewedFallbacks: [
+      ...(includeReviewedFallback
+        ? [
+            {
+              ecosystem: "cargo",
+              name: "cargo-without-license-file",
+              version: "2.0.0",
+              declaredLicense: "MIT",
+              selectedLicense: "MIT",
+              checksum,
+              review:
+                "Exact Cargo.lock package reviewed because its crates.io archive contains no LICENSE/COPYING file; use only the pinned official SPDX body and retain any archive NOTICE/COPYRIGHT evidence.",
+            },
+          ]
+        : []),
+      ...(npmChecksum
+        ? [
+            {
+              ecosystem: "npm",
+              name: "npm-license-package",
+              version: "1.0.0",
+              declaredLicense: "MIT",
+              selectedLicense: "MIT",
+              checksum: npmChecksum,
+              review:
+                "Exact package-lock.json npm package reviewed because its registry archive contains no LICENSE/COPYING file; this checksum is the 64-byte SHA-512 digest decoded from the canonical package-lock integrity and rendered as 128 lowercase hexadecimal characters; use only the pinned official SPDX body and retain any archive NOTICE/COPYRIGHT evidence.",
+            },
+          ]
+        : []),
+    ],
   });
 }
 

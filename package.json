@@ -232,15 +232,19 @@
     "esbuild": "^0.28.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "react-native-worklets": "0.10.3",
     "react-test-renderer": "19.2.3",
     "uuid": "11.1.1"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.3",
+    "@emnapi/core": "2.0.0-alpha.3",
+    "@emnapi/runtime": "2.0.0-alpha.3",
     "@eslint/js": "^10.0.1",
     "@size-limit/file": "^12.1.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
+    "@types/node": "^22.20.0",
     "@vitest/coverage-v8": "^4.1.7",
     "audit-ci": "^7.1.0",
     "eslint": "^10.8.0",
@@ -250,12 +254,12 @@
     "happy-dom": "^20.10.6",
     "husky": "^9.1.7",
     "lighthouse": "^13.4.0",
-    "lint-staged": "^15.5.2",
+    "lint-staged": "^17.0.8",
     "prettier": "^3.8.4",
     "puppeteer": "^25.1.0",
     "sax": "1.6.1",
     "size-limit": "^12.1.0",
-    "typescript-eslint": "^8.60.0",
+    "typescript-eslint": "^8.65.0",
     "yaml": "2.9.0"
   }
 }

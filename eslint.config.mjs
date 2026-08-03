@@ -13,6 +13,8 @@ export default tseslint.config(
       "**/build/**",
       "**/.expo/**",
       "**/playwright-report/**",
+      "**/playwright-visual-report/**",
+      "**/test-results/**",
       "**/coverage/**",
       "**/*.config.{js,mjs}",
       "**/metro.config.js",
