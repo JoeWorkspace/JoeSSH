@@ -1,6 +1,6 @@
 # Microsoft Store Listing Draft
 
-Status: internal draft for JoeSSH `0.1.0-beta.10`. Do not submit or publish this
+Status: internal draft for JoeSSH `0.1.0-beta.11`. Do not submit or publish this
 listing until the release gates in `release-preparation.md` and
 `windows-store-release.md` pass with real external evidence.
 
@@ -19,7 +19,7 @@ self-generated JSON cannot serve as formal listing or publication evidence.
 ## Submission Positioning
 
 - Product name: `JoeSSH`
-- Release maturity: Public Beta, version `0.1.0-beta.10`
+- Release maturity: Public Beta, version `0.1.0-beta.11`
 - Offer: free Community desktop app; no ads or in-app purchases
 - Primary category: Developer tools
 - Supported device family: Windows desktop

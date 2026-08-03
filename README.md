@@ -13,11 +13,13 @@ Mobile is outside the current public distribution scope; Web Admin remains an
 evaluation/community surface rather than a hosted or mutating team service.
 
 > [!IMPORTANT]
-> **Release status:** `0.1.0-beta.10` is a source-first release candidate, not
-> a published installer release. Signed/notarized Desktop installers are not
-> available yet, and unsigned CI bundles are for staging review only. To use
-> real SSH today, run the native Tauri Desktop app from source; the browser
-> Desktop preview uses demo data and cannot open a real SSH session.
+> **Release status:** `0.1.0-beta.11` is the current Public Beta candidate. Its
+> x64 MSIX (`1.1.11.0`) is validated in the Microsoft Partner Center submission
+> draft but is not yet certified, Store-signed, or published. No public installer is
+> available yet; unsigned CI bundles and local candidate files remain staging
+> evidence only. To use real SSH today, run the native Tauri Desktop app from
+> source; the browser Desktop preview uses demo data and cannot open a real
+> SSH session.
 
 ## Support The Maintainer
 
@@ -93,7 +95,7 @@ connection walkthrough, host-key safety, and the supported deployment paths.
 
 | Surface      | Current boundary                                                                                                                         | Guide                                                |
 | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| Desktop      | Build/run from source or review unsigned staging bundles; public distribution waits for platform signing and notarization where required | [Desktop distribution](docs/desktop-distribution.md) |
+| Desktop      | Run from source for real SSH; the beta.11 x64 MSIX is under Partner Center analysis and is not a public download; unsigned CI bundles remain staging-only | [Desktop distribution](docs/desktop-distribution.md) |
 | Web Admin    | Static, read-only companion; live data requires a same-origin authenticated proxy                                                        | [Web Admin deployment](docs/web-admin-deployment.md) |
 | Sync Service | Self-hosted, single-process Public Beta service with a durable JSON ledger                                                               | [Sync self-hosting](docs/self-hosting-sync.md)       |
 | Mobile       | Preview shell only; no public SSH/SFTP execution                                                                                         | Source evaluation only                               |
@@ -269,7 +271,7 @@ GitHub Actions runs on push, PR, and a weekly Monday schedule:
 - [SUPPORT.md](SUPPORT.md) - Community support scope and safe reporting guidance
 - [PRIVACY.md](PRIVACY.md) - Local-first privacy policy and fail-closed hosted/paid disclosures
 - [docs/product-excellence-plan.md](docs/product-excellence-plan.md) - World-class product completion plan and operating cadence
-- [docs/release-preparation.md](docs/release-preparation.md) - Windows-first beta.10 release operator runbook and external blockers
+- [docs/release-preparation.md](docs/release-preparation.md) - Windows-first release operator runbook and external blockers
 - [docs/windows-invite-beta.md](docs/windows-invite-beta.md) - 90-day Windows Desktop invite-only Beta playbook, safety boundaries, and success gates
 - [docs/windows-store-release.md](docs/windows-store-release.md) - Separate Store EXE and external-MSIX candidate paths
 - [docs/microsoft-store-listing-draft.md](docs/microsoft-store-listing-draft.md) - Fail-closed en-US/zh-CN Store copy, asset plan, and submission-field checklist
