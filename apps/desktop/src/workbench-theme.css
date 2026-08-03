@@ -488,6 +488,11 @@
   scrollbar-color: #33434b transparent;
 }
 
+.xterm-host .xterm,
+.xterm-host .xterm-screen {
+  color: var(--atlas-terminal-text);
+}
+
 .terminal-search-bar,
 .terminal-command {
   background: color-mix(
