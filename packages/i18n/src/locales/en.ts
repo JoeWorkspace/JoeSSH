@@ -9,6 +9,10 @@ export const en = {
     "Use Connect to open a real SSH session before running commands.",
   "desktop.terminalSessionSample":
     "Sample connection profile only. No SSH session is connected.",
+  "desktop.gettingStartedSampleData":
+    "JoeSSH starts with sample data so you can explore safely; it never opens a real SSH session automatically.",
+  "desktop.gettingStartedRealConnection":
+    "Create a new connection with your host details to start a real SSH session.",
   "desktop.sftp": "SFTP",
   "desktop.manifestDescription":
     "SSH terminal, SFTP, port forwarding, and local session management.",

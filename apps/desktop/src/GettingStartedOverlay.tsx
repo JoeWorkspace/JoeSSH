@@ -98,7 +98,14 @@ export const GettingStartedOverlay = memo(function GettingStartedOverlay({
             <Info size={17} aria-hidden="true" />
             <span>
               <strong>{t("desktop.sampleDataShort")}</strong>
-              <small>{t("desktop.terminalSessionSample")}</small>
+              <small>{t("desktop.gettingStartedSampleData")}</small>
+            </span>
+          </div>
+          <div>
+            <Plus size={17} aria-hidden="true" />
+            <span>
+              <strong>{t("desktop.newConnection")}</strong>
+              <small>{t("desktop.gettingStartedRealConnection")}</small>
             </span>
           </div>
           <div>

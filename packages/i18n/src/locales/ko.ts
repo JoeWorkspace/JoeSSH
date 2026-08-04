@@ -9,6 +9,10 @@ export const ko = {
     "“연결”을 클릭해 실제 SSH 세션을 설정한 후 명령을 실행하세요.",
   "desktop.terminalSessionSample":
     "현재는 데모용 연결 설정이며 SSH 세션이 연결되지 않았습니다.",
+  "desktop.gettingStartedSampleData":
+    "JoeSSH는 안전하게 둘러볼 수 있도록 샘플 데이터로 시작하며 실제 SSH 세션을 자동으로 열지 않습니다.",
+  "desktop.gettingStartedRealConnection":
+    "호스트 정보로 새 연결을 만들어 실제 SSH 세션을 시작하세요.",
   "desktop.sftp": "SFTP",
   "desktop.manifestDescription":
     "SSH 터미널, SFTP, 포트 포워딩 및 로컬 세션 관리.",
@@ -47,7 +51,7 @@ export const ko = {
   "desktop.ptyOpen": "Terminal connected",
   "desktop.ptyClosed": "Terminal exited",
   "desktop.ptyError": "Terminal failed to open",
-  "desktop.ptyBlocked": "Terminal input blocked by safety policy",
+  "desktop.ptyBlocked": "안전 정책에 따라 터미널 입력이 차단되었습니다",
   "desktop.ptyReconnect": "Reconnect",
   "desktop.terminalInputPlaceholder": "명령을 입력하고 Enter를 누르세요",
   "desktop.terminalAutocompleteComplete": "완성",

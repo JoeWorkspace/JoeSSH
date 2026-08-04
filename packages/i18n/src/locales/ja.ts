@@ -9,6 +9,10 @@ export const ja = {
     "「接続」をクリックして実際の SSH セッションを確立してから、コマンドを実行してください。",
   "desktop.terminalSessionSample":
     "現在はデモ用接続設定のみで、SSH セッションは確立されていません。",
+  "desktop.gettingStartedSampleData":
+    "JoeSSH は安全に試せるようサンプルデータで開始し、実際の SSH セッションを自動では開きません。",
+  "desktop.gettingStartedRealConnection":
+    "ホスト情報を入力して新しい接続を作成すると、実際の SSH セッションを開始できます。",
   "desktop.sftp": "SFTP",
   "desktop.manifestDescription":
     "SSH ターミナル、SFTP、ポート転送、ローカルセッション管理。",
@@ -48,7 +52,7 @@ export const ja = {
   "desktop.ptyOpen": "Terminal connected",
   "desktop.ptyClosed": "Terminal exited",
   "desktop.ptyError": "Terminal failed to open",
-  "desktop.ptyBlocked": "Terminal input blocked by safety policy",
+  "desktop.ptyBlocked": "安全ポリシーによりターミナル入力がブロックされました",
   "desktop.ptyReconnect": "Reconnect",
   "desktop.terminalInputPlaceholder": "コマンドを入力して Enter を押す",
   "desktop.terminalAutocompleteComplete": "で補完",

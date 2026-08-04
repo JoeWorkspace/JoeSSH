@@ -8,6 +8,10 @@ export const zhCN = {
   "desktop.terminalSessionConnectRequired":
     "请点击“连接”建立真实 SSH 会话后再执行命令。",
   "desktop.terminalSessionSample": "当前仅为演示连接配置，尚未建立 SSH 会话。",
+  "desktop.gettingStartedSampleData":
+    "JoeSSH 首次启动会提供示例数据，便于安全体验；不会自动打开真实 SSH 会话。",
+  "desktop.gettingStartedRealConnection":
+    "填写主机信息并新建连接，即可开始真实 SSH 会话。",
   "desktop.sftp": "SFTP",
   "desktop.manifestDescription": "SSH 终端、SFTP、端口转发和本地会话管理。",
   "language.selectorLabel": "显示语言",
@@ -115,7 +119,7 @@ export const zhCN = {
   "desktop.ptyOpen": "终端已连接",
   "desktop.ptyClosed": "终端已退出",
   "desktop.ptyError": "终端打开失败",
-  "desktop.ptyBlocked": "Terminal input blocked by safety policy",
+  "desktop.ptyBlocked": "终端输入已被安全策略拦截",
   "desktop.ptyReconnect": "重新连接",
   "desktop.terminalInputPlaceholder": "输入命令并按 Enter",
   "desktop.terminalAutocompleteComplete": "补全",

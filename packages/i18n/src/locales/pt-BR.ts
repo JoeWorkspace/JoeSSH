@@ -9,6 +9,10 @@ export const ptBR = {
     "Use “Conectar” para abrir uma sessão SSH real antes de executar comandos.",
   "desktop.terminalSessionSample":
     "Apenas um perfil de conexão de exemplo. Não há nenhuma sessão SSH ativa.",
+  "desktop.gettingStartedSampleData":
+    "O JoeSSH começa com dados de exemplo para você explorar com segurança; nunca abre uma sessão SSH real automaticamente.",
+  "desktop.gettingStartedRealConnection":
+    "Crie uma nova conexão com os dados do host para iniciar uma sessão SSH real.",
   "desktop.sftp": "SFTP",
   "desktop.manifestDescription":
     "Terminal SSH, SFTP, encaminhamento de portas e gerenciamento de sessões locais.",
@@ -48,7 +52,7 @@ export const ptBR = {
   "desktop.ptyOpen": "Terminal connected",
   "desktop.ptyClosed": "Terminal exited",
   "desktop.ptyError": "Terminal failed to open",
-  "desktop.ptyBlocked": "Terminal input blocked by safety policy",
+  "desktop.ptyBlocked": "Entrada do terminal bloqueada pela política de segurança",
   "desktop.ptyReconnect": "Reconnect",
   "desktop.terminalInputPlaceholder": "Digite um comando e pressione Enter",
   "desktop.terminalAutocompleteComplete": "para completar",

@@ -10,6 +10,10 @@ export const ru = {
     "Нажмите «Подключиться», чтобы открыть реальный сеанс SSH перед выполнением команд.",
   "desktop.terminalSessionSample":
     "Это только пример профиля подключения. Активного сеанса SSH нет.",
+  "desktop.gettingStartedSampleData":
+    "JoeSSH запускается с демонстрационными данными для безопасного изучения и не открывает реальный SSH-сеанс автоматически.",
+  "desktop.gettingStartedRealConnection":
+    "Создайте новое подключение, указав данные хоста, чтобы начать реальный SSH-сеанс.",
   "desktop.sftp": "SFTP",
   "desktop.manifestDescription":
     "SSH-терминал, SFTP, перенаправление портов и управление локальными сеансами.",
@@ -49,7 +53,7 @@ export const ru = {
   "desktop.ptyOpen": "Terminal connected",
   "desktop.ptyClosed": "Terminal exited",
   "desktop.ptyError": "Terminal failed to open",
-  "desktop.ptyBlocked": "Terminal input blocked by safety policy",
+  "desktop.ptyBlocked": "Ввод в терминале заблокирован политикой безопасности",
   "desktop.ptyReconnect": "Reconnect",
   "desktop.terminalInputPlaceholder": "Введите команду и нажмите Enter",
   "desktop.terminalAutocompleteComplete": "для автодополнения",

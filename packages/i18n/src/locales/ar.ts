@@ -9,6 +9,10 @@ export const ar = {
     "استخدم «اتصال» لفتح جلسة SSH حقيقية قبل تنفيذ الأوامر.",
   "desktop.terminalSessionSample":
     "هذا مجرد ملف تعريف اتصال تجريبي. لا توجد جلسة SSH نشطة.",
+  "desktop.gettingStartedSampleData":
+    "تبدأ JoeSSH ببيانات تجريبية لاستكشافها بأمان؛ ولا تفتح جلسة SSH حقيقية تلقائيًا.",
+  "desktop.gettingStartedRealConnection":
+    "أنشئ اتصالًا جديدًا وأدخل بيانات المضيف لبدء جلسة SSH حقيقية.",
   "desktop.sftp": "SFTP",
   "desktop.manifestDescription":
     "طرفية SSH وSFTP وإعادة توجيه المنافذ وإدارة الجلسات المحلية.",
@@ -48,7 +52,7 @@ export const ar = {
   "desktop.ptyOpen": "Terminal connected",
   "desktop.ptyClosed": "Terminal exited",
   "desktop.ptyError": "Terminal failed to open",
-  "desktop.ptyBlocked": "Terminal input blocked by safety policy",
+  "desktop.ptyBlocked": "تم حظر إدخال الطرفية وفقًا لسياسة الأمان",
   "desktop.ptyReconnect": "Reconnect",
   "desktop.terminalInputPlaceholder": "أدخل أمرا واضغط Enter",
   "desktop.terminalAutocompleteComplete": "للإكمال",

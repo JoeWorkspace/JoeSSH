@@ -9,6 +9,10 @@ export const zhTWComplete = {
     "請按一下「連線」建立真實 SSH 工作階段後，再執行指令。",
   "desktop.terminalSessionSample":
     "目前僅為示範連線設定，尚未建立 SSH 工作階段。",
+  "desktop.gettingStartedSampleData":
+    "JoeSSH 首次啟動會提供範例資料，方便安全探索；不會自動開啟真實 SSH 工作階段。",
+  "desktop.gettingStartedRealConnection":
+    "填寫主機資訊並新增連線，即可開始真實 SSH 工作階段。",
   "desktop.sftp": "SFTP",
   "desktop.manifestDescription":
     "SSH 終端、SFTP、連接埠轉送和本機工作階段管理。",
@@ -47,7 +51,7 @@ export const zhTWComplete = {
   "desktop.ptyOpen": "終端已連線",
   "desktop.ptyClosed": "終端已退出",
   "desktop.ptyError": "終端開啟失敗",
-  "desktop.ptyBlocked": "Terminal input blocked by safety policy",
+  "desktop.ptyBlocked": "終端機輸入已遭安全性原則封鎖",
   "desktop.ptyReconnect": "重新連線",
   "desktop.terminalInputPlaceholder": "輸入命令並按 Enter",
   "desktop.terminalAutocompleteComplete": "補全",

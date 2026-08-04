@@ -9,6 +9,10 @@ export const de = {
     "Wählen Sie „Verbinden“, um eine echte SSH-Sitzung zu öffnen, bevor Sie Befehle ausführen.",
   "desktop.terminalSessionSample":
     "Nur ein Beispiel-Verbindungsprofil. Es besteht keine SSH-Sitzung.",
+  "desktop.gettingStartedSampleData":
+    "JoeSSH startet mit Beispieldaten zur sicheren Erkundung; automatisch wird keine echte SSH-Sitzung geöffnet.",
+  "desktop.gettingStartedRealConnection":
+    "Erstellen Sie mit Ihren Hostdaten eine neue Verbindung, um eine echte SSH-Sitzung zu starten.",
   "desktop.sftp": "SFTP",
   "desktop.manifestDescription":
     "SSH-Terminal, SFTP, Portweiterleitung und lokale Sitzungsverwaltung.",
@@ -48,7 +52,7 @@ export const de = {
   "desktop.ptyOpen": "Terminal connected",
   "desktop.ptyClosed": "Terminal exited",
   "desktop.ptyError": "Terminal failed to open",
-  "desktop.ptyBlocked": "Terminal input blocked by safety policy",
+  "desktop.ptyBlocked": "Terminaleingabe durch Sicherheitsrichtlinie blockiert",
   "desktop.ptyReconnect": "Reconnect",
   "desktop.terminalInputPlaceholder": "Befehl eingeben und Enter drücken",
   "desktop.terminalAutocompleteComplete": "zum Vervollständigen",

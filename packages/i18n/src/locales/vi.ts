@@ -9,6 +9,10 @@ export const vi = {
     "Hãy dùng Kết nối để mở một phiên SSH thực trước khi chạy lệnh.",
   "desktop.terminalSessionSample":
     "Đây chỉ là hồ sơ kết nối mẫu. Không có phiên SSH nào đang hoạt động.",
+  "desktop.gettingStartedSampleData":
+    "JoeSSH bắt đầu bằng dữ liệu mẫu để bạn khám phá an toàn; ứng dụng không tự động mở phiên SSH thật.",
+  "desktop.gettingStartedRealConnection":
+    "Tạo kết nối mới với thông tin máy chủ để bắt đầu phiên SSH thật.",
   "desktop.sftp": "SFTP",
   "desktop.manifestDescription":
     "Thiết bị đầu cuối SSH, SFTP, chuyển tiếp cổng và quản lý phiên cục bộ.",
@@ -47,7 +51,7 @@ export const vi = {
   "desktop.ptyOpen": "Terminal connected",
   "desktop.ptyClosed": "Terminal exited",
   "desktop.ptyError": "Terminal failed to open",
-  "desktop.ptyBlocked": "Terminal input blocked by safety policy",
+  "desktop.ptyBlocked": "Đầu vào terminal bị chặn theo chính sách an toàn",
   "desktop.ptyReconnect": "Reconnect",
   "desktop.terminalInputPlaceholder": "Nhập lệnh rồi nhấn Enter",
   "desktop.terminalAutocompleteComplete": "để hoàn tất",

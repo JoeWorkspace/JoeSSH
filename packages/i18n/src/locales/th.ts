@@ -10,6 +10,10 @@ export const th = {
     "ใช้ “เชื่อมต่อ” เพื่อเปิดเซสชัน SSH จริงก่อนเรียกใช้คำสั่ง",
   "desktop.terminalSessionSample":
     "นี่เป็นเพียงโปรไฟล์การเชื่อมต่อตัวอย่าง ไม่มีเซสชัน SSH ที่ใช้งานอยู่",
+  "desktop.gettingStartedSampleData":
+    "JoeSSH เริ่มต้นด้วยข้อมูลตัวอย่างเพื่อให้สำรวจได้อย่างปลอดภัย และจะไม่เปิดเซสชัน SSH จริงโดยอัตโนมัติ",
+  "desktop.gettingStartedRealConnection":
+    "สร้างการเชื่อมต่อใหม่พร้อมรายละเอียดโฮสต์เพื่อเริ่มเซสชัน SSH จริง",
   "desktop.sftp": "SFTP",
   "desktop.manifestDescription":
     "เทอร์มินัล SSH, SFTP, การส่งต่อพอร์ต และการจัดการเซสชันภายในเครื่อง",
@@ -48,7 +52,7 @@ export const th = {
   "desktop.ptyOpen": "Terminal connected",
   "desktop.ptyClosed": "Terminal exited",
   "desktop.ptyError": "Terminal failed to open",
-  "desktop.ptyBlocked": "Terminal input blocked by safety policy",
+  "desktop.ptyBlocked": "นโยบายความปลอดภัยบล็อกการป้อนข้อมูลในเทอร์มินัล",
   "desktop.ptyReconnect": "Reconnect",
   "desktop.terminalInputPlaceholder": "ป้อนคำสั่งแล้วกด Enter",
   "desktop.terminalAutocompleteComplete": "เพื่อเติมให้ครบ",

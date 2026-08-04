@@ -10,6 +10,10 @@ export const fr = {
     "Utilisez « Se connecter » pour ouvrir une session SSH réelle avant d’exécuter des commandes.",
   "desktop.terminalSessionSample":
     "Profil de connexion d’exemple uniquement. Aucune session SSH n’est active.",
+  "desktop.gettingStartedSampleData":
+    "JoeSSH démarre avec des données d’exemple pour une exploration sûre ; aucune session SSH réelle n’est ouverte automatiquement.",
+  "desktop.gettingStartedRealConnection":
+    "Créez une nouvelle connexion avec les informations de votre hôte pour démarrer une session SSH réelle.",
   "desktop.sftp": "SFTP",
   "desktop.manifestDescription":
     "Terminal SSH, SFTP, redirection de ports et gestion des sessions locales.",
@@ -49,7 +53,7 @@ export const fr = {
   "desktop.ptyOpen": "Terminal connected",
   "desktop.ptyClosed": "Terminal exited",
   "desktop.ptyError": "Terminal failed to open",
-  "desktop.ptyBlocked": "Terminal input blocked by safety policy",
+  "desktop.ptyBlocked": "Saisie du terminal bloquée par la politique de sécurité",
   "desktop.ptyReconnect": "Reconnect",
   "desktop.terminalInputPlaceholder":
     "Saisissez une commande et appuyez sur Entrée",

@@ -9,6 +9,10 @@ export const id = {
     "Gunakan Hubungkan untuk membuka sesi SSH nyata sebelum menjalankan perintah.",
   "desktop.terminalSessionSample":
     "Ini hanya profil koneksi sampel. Tidak ada sesi SSH aktif.",
+  "desktop.gettingStartedSampleData":
+    "JoeSSH dimulai dengan data contoh agar Anda dapat menjelajah dengan aman; sesi SSH nyata tidak pernah dibuka otomatis.",
+  "desktop.gettingStartedRealConnection":
+    "Buat koneksi baru dengan detail host untuk memulai sesi SSH nyata.",
   "desktop.sftp": "SFTP",
   "desktop.manifestDescription":
     "Terminal SSH, SFTP, penerusan port, dan manajemen sesi lokal.",
@@ -47,7 +51,7 @@ export const id = {
   "desktop.ptyOpen": "Terminal connected",
   "desktop.ptyClosed": "Terminal exited",
   "desktop.ptyError": "Terminal failed to open",
-  "desktop.ptyBlocked": "Terminal input blocked by safety policy",
+  "desktop.ptyBlocked": "Input terminal diblokir oleh kebijakan keamanan",
   "desktop.ptyReconnect": "Reconnect",
   "desktop.terminalInputPlaceholder": "Masukkan perintah lalu tekan Enter",
   "desktop.terminalAutocompleteComplete": "untuk melengkapi",

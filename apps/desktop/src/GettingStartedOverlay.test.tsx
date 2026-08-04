@@ -22,6 +22,8 @@ describe("GettingStartedOverlay", () => {
       screen.getByRole("dialog", { name: "desktop.gettingStarted" }),
     ).toBeTruthy();
     expect(screen.getByText("desktop.surfaceGuide")).toBeTruthy();
+    expect(screen.getByText("desktop.gettingStartedSampleData")).toBeTruthy();
+    expect(screen.getByText("desktop.gettingStartedRealConnection")).toBeTruthy();
     expect(screen.getByText("desktop.telemetryPrivacyHint")).toBeTruthy();
     expect(
       screen.queryByRole("button", { name: "desktop.newConnection" }),
@@ -94,5 +96,25 @@ describe("GettingStartedOverlay", () => {
     expect(onClose).toHaveBeenCalledOnce();
     expect(bubbledKeyDown).not.toHaveBeenCalled();
     window.removeEventListener("keydown", bubbledKeyDown);
+  });
+
+  it("keeps onboarding content inside an RTL workbench", () => {
+    render(
+      <div dir="rtl">
+        <GettingStartedOverlay
+          desktopRuntime
+          onClose={vi.fn()}
+          onCreateConnection={vi.fn()}
+          t={t}
+        />
+      </div>,
+    );
+
+    const dialog = screen.getByRole("dialog", {
+      name: "desktop.gettingStarted",
+    });
+    expect(dialog.closest('[dir="rtl"]')).toBeTruthy();
+    expect(screen.getByText("desktop.gettingStartedSampleData")).toBeTruthy();
+    expect(screen.getByText("desktop.gettingStartedRealConnection")).toBeTruthy();
   });
 });

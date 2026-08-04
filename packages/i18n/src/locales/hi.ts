@@ -9,6 +9,10 @@ export const hi = {
     "कमांड चलाने से पहले “कनेक्ट करें” से वास्तविक SSH सत्र खोलें।",
   "desktop.terminalSessionSample":
     "यह केवल नमूना कनेक्शन प्रोफ़ाइल है। कोई SSH सत्र सक्रिय नहीं है।",
+  "desktop.gettingStartedSampleData":
+    "सुरक्षित तरीके से देखने के लिए JoeSSH उदाहरण डेटा से शुरू होता है; यह अपने-आप वास्तविक SSH सत्र नहीं खोलता।",
+  "desktop.gettingStartedRealConnection":
+    "वास्तविक SSH सत्र शुरू करने के लिए अपने होस्ट विवरण के साथ नया कनेक्शन बनाएं।",
   "desktop.sftp": "SFTP",
   "desktop.manifestDescription":
     "SSH टर्मिनल, SFTP, पोर्ट फ़ॉरवर्डिंग और स्थानीय सत्र प्रबंधन।",
@@ -48,7 +52,7 @@ export const hi = {
   "desktop.ptyOpen": "Terminal connected",
   "desktop.ptyClosed": "Terminal exited",
   "desktop.ptyError": "Terminal failed to open",
-  "desktop.ptyBlocked": "Terminal input blocked by safety policy",
+  "desktop.ptyBlocked": "सुरक्षा नीति के कारण टर्मिनल इनपुट अवरुद्ध है",
   "desktop.ptyReconnect": "Reconnect",
   "desktop.terminalInputPlaceholder": "कमांड दर्ज करें और Enter दबाएं",
   "desktop.terminalAutocompleteComplete": "पूरा करने के लिए",
