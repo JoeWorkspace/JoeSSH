@@ -27,6 +27,14 @@ export const NATIVE_REVIEW_STATUSES = new Set([
   "native-reviewed",
   "native-approved",
 ]);
+export const SUBMISSION_STATUSES = new Set([
+  "draft-not-submitted",
+  "ready-for-human-submission",
+]);
+export const STORE_CATALOG_STATUSES = new Set([
+  "partner-center-exact-code-confirmation-pending",
+  "partner-center-export-confirmed",
+]);
 
 export const EXPECTED_RTL = new Set(["ar-SA", "he-IL", "ur-PK", "ug-CN"]);
 export const EXPECTED_REVIEW_LOCALES = new Set([
@@ -589,6 +597,92 @@ function hasReviewedScreenshotBinding(entry) {
   );
 }
 
+function validatePartnerCenterLanguageOptionEvidence(root) {
+  const failures = [];
+  let evidence;
+  try {
+    evidence = readManifest(
+      resolve(root, STORE_LOCALE_CATALOG_SOURCE.evidencePath),
+    );
+  } catch (error) {
+    return [`evidence:${error.message}`];
+  }
+
+  if (
+    evidence.schemaVersion !== 1 ||
+    evidence.kind !== "joessh-partner-center-language-option-evidence"
+  ) {
+    failures.push("schema");
+  }
+  if (!isValidReviewTimestamp(evidence.observedAt)) {
+    failures.push("observedAt");
+  }
+  if (evidence.status !== "all-target-options-observed-exact-codes-pending") {
+    failures.push("status");
+  }
+  if (
+    evidence.source?.productId !== "9NK5LLMF8LHM" ||
+    evidence.source?.submissionId !== "1152921505701586331" ||
+    evidence.source?.availableOptionCount !== 830 ||
+    evidence.source?.saveClicked !== false
+  ) {
+    failures.push("source");
+  }
+
+  const options = Array.isArray(evidence.options) ? evidence.options : [];
+  const canonicalLocales = options.map((entry) => entry?.canonicalLocale);
+  const storeLocales = options.map((entry) => entry?.storeLocale);
+  const languageIds = options.map((entry) => entry?.languageId);
+  const labels = options.map((entry) => entry?.label);
+  if (
+    options.length !== STORE_LOCALE_CATALOG.length ||
+    !setEquals(
+      new Set(canonicalLocales),
+      new Set(EXPECTED_CANONICAL_LOCALES),
+    ) ||
+    !setEquals(new Set(storeLocales), new Set(EXPECTED_STORE_LOCALES))
+  ) {
+    failures.push("locale-collection");
+  }
+  if (
+    !unique(languageIds) ||
+    languageIds.some(
+      (languageId) => !Number.isInteger(languageId) || languageId <= 0,
+    )
+  ) {
+    failures.push("language-ids");
+  }
+  if (
+    !unique(labels) ||
+    labels.some((label) => typeof label !== "string" || label.trim() === "")
+  ) {
+    failures.push("labels");
+  }
+  const mappingFailures = options.filter(
+    (entry) =>
+      STORE_LOCALE_BY_CANONICAL.get(entry?.canonicalLocale)?.storeLocale !==
+      entry?.storeLocale,
+  );
+  if (mappingFailures.length > 0) failures.push("catalog-mapping");
+
+  const existingCodes = new Map(
+    (Array.isArray(evidence.existingListingCodes)
+      ? evidence.existingListingCodes
+      : []
+    ).map((entry) => [entry?.canonicalLocale, entry]),
+  );
+  if (
+    existingCodes.get("en-US")?.languageId !== 4 ||
+    existingCodes.get("en-US")?.languageCode !== "en-us" ||
+    existingCodes.get("zh-CN")?.languageId !== 479 ||
+    existingCodes.get("zh-CN")?.languageCode !== "zh-hans-cn"
+  ) {
+    failures.push("existing-listing-codes");
+  }
+
+  return failures;
+}
+
 export function checkMicrosoftStoreLocalization(root = repositoryRoot) {
   const actualManifestPath = resolve(
     root,
@@ -626,9 +720,9 @@ export function checkMicrosoftStoreLocalizationManifest(
       : fail("manifest schema version", `got ${manifest.schemaVersion}`),
   );
   results.push(
-    manifest.submissionStatus === "draft-not-submitted"
-      ? pass("draft status", "no Partner Center submission claim")
-      : fail("draft status", `got ${manifest.submissionStatus}`),
+    SUBMISSION_STATUSES.has(manifest.submissionStatus)
+      ? pass("submission state", "no Partner Center submission claim")
+      : fail("submission state", `got ${manifest.submissionStatus}`),
   );
   results.push(
     sameJson(manifest.product, EXPECTED_PRODUCT)
@@ -709,11 +803,32 @@ export function checkMicrosoftStoreLocalizationManifest(
       : fail("Microsoft Store locale mapping", mappingFailures.join(", ")),
   );
   results.push(
-    manifest.storeLocaleCatalog?.status === STORE_LOCALE_CATALOG_SOURCE.status
+    STORE_CATALOG_STATUSES.has(manifest.storeLocaleCatalog?.status) &&
+      manifest.storeLocaleCatalog?.authority ===
+        STORE_LOCALE_CATALOG_SOURCE.authority &&
+      manifest.storeLocaleCatalog?.reference ===
+        STORE_LOCALE_CATALOG_SOURCE.reference &&
+      manifest.storeLocaleCatalog?.liveOptionsStatus ===
+        STORE_LOCALE_CATALOG_SOURCE.liveOptionsStatus &&
+      manifest.storeLocaleCatalog?.evidencePath ===
+        STORE_LOCALE_CATALOG_SOURCE.evidencePath
       ? pass("Store catalog provenance", "catalog source status is explicit")
       : fail(
           "Store catalog provenance",
           "catalog source status is missing or drifted",
+        ),
+  );
+  const optionEvidenceResults =
+    validatePartnerCenterLanguageOptionEvidence(root);
+  results.push(
+    optionEvidenceResults.length === 0
+      ? pass(
+          "Partner Center live language options",
+          "all 80 target options have unique live labels and language IDs",
+        )
+      : fail(
+          "Partner Center live language options",
+          optionEvidenceResults.join(", "),
         ),
   );
   results.push(
@@ -1069,8 +1184,23 @@ export function checkMicrosoftStoreLocalizationManifest(
 }
 
 export function checkMicrosoftStoreSubmissionReadiness(root = repositoryRoot) {
+  let manifest;
+  try {
+    manifest = readManifest(
+      resolve(root, "docs/assets/microsoft-store/localization-manifest.json"),
+    );
+  } catch (error) {
+    return [fail("submission manifest", error.message)];
+  }
+  return checkMicrosoftStoreSubmissionReadinessManifest(manifest, root);
+}
+
+export function checkMicrosoftStoreSubmissionReadinessManifest(
+  manifest,
+  root = repositoryRoot,
+) {
   const results = [];
-  const draftResults = checkMicrosoftStoreLocalization(root);
+  const draftResults = checkMicrosoftStoreLocalizationManifest(manifest, root);
   const draftFailures = draftResults.filter((result) => !result.passed);
   results.push(
     draftFailures.length === 0
@@ -1081,18 +1211,13 @@ export function checkMicrosoftStoreSubmissionReadiness(root = repositoryRoot) {
         ),
   );
 
-  let manifest;
-  try {
-    manifest = readManifest(
-      resolve(root, "docs/assets/microsoft-store/localization-manifest.json"),
-    );
-  } catch (error) {
-    return results.concat(fail("submission manifest", error.message));
-  }
-
-  const unreviewed = manifest.locales
-    .filter((entry) => !hasNativeReviewProvenance(entry))
-    .map((entry) => entry.locale);
+  const locales = Array.isArray(manifest?.locales) ? manifest.locales : [];
+  const unreviewed =
+    locales.length > 0
+      ? locales
+          .filter((entry) => !hasNativeReviewProvenance(entry))
+          .map((entry) => entry.locale)
+      : ["<manifest-locales>"];
   results.push(
     unreviewed.length === 0
       ? pass(
@@ -1102,9 +1227,12 @@ export function checkMicrosoftStoreSubmissionReadiness(root = repositoryRoot) {
       : fail("native review approval", `unreviewed=${unreviewed.join(",")}`),
   );
 
-  const missingScreenshots = manifest.locales
-    .filter((entry) => !hasReviewedScreenshotBinding(entry))
-    .map((entry) => entry.locale);
+  const missingScreenshots =
+    locales.length > 0
+      ? locales
+          .filter((entry) => !hasReviewedScreenshotBinding(entry))
+          .map((entry) => entry.locale)
+      : ["<manifest-locales>"];
   results.push(
     missingScreenshots.length === 0
       ? pass(
@@ -1115,7 +1243,7 @@ export function checkMicrosoftStoreSubmissionReadiness(root = repositoryRoot) {
   );
 
   results.push(
-    typeof manifest.productSourceCommit === "string" &&
+    typeof manifest?.productSourceCommit === "string" &&
       /^[0-9a-f]{40}$/u.test(manifest.productSourceCommit) &&
       manifest.productSourceCommit === manifest.candidateArtifactSourceCommit
       ? pass(
@@ -1128,20 +1256,25 @@ export function checkMicrosoftStoreSubmissionReadiness(root = repositoryRoot) {
         ),
   );
   results.push(
-    manifest.storeLocaleCatalog?.status === "partner-center-export-confirmed"
+    manifest?.storeLocaleCatalog?.status ===
+      "partner-center-export-confirmed" &&
+      typeof manifest.storeLocaleCatalog?.confirmedAt === "string" &&
+      isValidReviewTimestamp(manifest.storeLocaleCatalog.confirmedAt) &&
+      typeof manifest.storeLocaleCatalog?.exportSha256 === "string" &&
+      /^[0-9a-f]{64}$/u.test(manifest.storeLocaleCatalog.exportSha256)
       ? pass(
           "Partner Center locale confirmation",
-          "Store values have export evidence",
+          "Store values have timestamped, checksum-bound export evidence",
         )
       : fail(
           "Partner Center locale confirmation",
-          "current catalog still requires Partner Center export confirmation",
+          "live options are confirmed, but exact import codes still require timestamped, checksum-bound export evidence",
         ),
   );
   results.push(
-    manifest.submissionStatus === "ready-for-human-submission"
+    manifest?.submissionStatus === "ready-for-human-submission"
       ? pass("submission status", "ready for final human submission")
-      : fail("submission status", `got ${manifest.submissionStatus}`),
+      : fail("submission status", `got ${manifest?.submissionStatus}`),
   );
 
   return results;

@@ -28,12 +28,16 @@ export function csvCell(value, label = "CSV cell") {
   return `"${text.replace(/"/gu, '""')}"`;
 }
 
-export function parseCsv(text) {
+export function parseCsv(
+  text,
+  { allowBom = false, allowCellLineBreaks = false } = {},
+) {
   if (typeof text !== "string") {
     throw new TypeError("CSV input must be a UTF-8 string");
   }
   if (text.startsWith("\ufeff")) {
-    throw new Error("CSV input must not contain a BOM");
+    if (!allowBom) throw new Error("CSV input must not contain a BOM");
+    text = text.slice(1);
   }
 
   const rows = [];
@@ -44,7 +48,10 @@ export function parseCsv(text) {
   let afterClosingQuote = false;
 
   const pushCell = () => {
-    if (hasDisallowedCsvControl(cell)) {
+    const safetyValue = allowCellLineBreaks
+      ? cell.replace(/[\r\n]/gu, "")
+      : cell;
+    if (hasDisallowedCsvControl(safetyValue)) {
       throw new Error("CSV cell contains a disallowed control character");
     }
     if (isUnsafeCsvCell(cell)) {

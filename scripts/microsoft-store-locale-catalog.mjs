@@ -4,7 +4,10 @@ export const STORE_LOCALE_CATALOG_SOURCE = {
   authority: "Microsoft BCP 47 and Windows locale identifiers",
   reference:
     "https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msi/add-and-edit-store-listing-info",
-  status: "partner-center-export-confirmation-pending",
+  status: "partner-center-exact-code-confirmation-pending",
+  liveOptionsStatus: "all-target-options-observed",
+  evidencePath:
+    "docs/assets/microsoft-store/partner-center-language-options.json",
 };
 
 const STORE_LOCALE_CODES = [
@@ -16,8 +19,8 @@ const STORE_LOCALE_CODES = [
   "eu-ES",
   "bg-BG",
   "ca-ES",
-  "zh-CN",
-  "zh-TW",
+  "zh-Hans-CN",
+  "zh-Hant-TW",
   "hr-HR",
   "cs-CZ",
   "da-DK",
@@ -91,6 +94,8 @@ const STORE_LOCALE_CODES = [
 ];
 
 const CANONICAL_OVERRIDES = {
+  "zh-Hans-CN": "zh-CN",
+  "zh-Hant-TW": "zh-TW",
   // Windows/Microsoft uses quz-PE; the canonical BCP 47 language subtag is qu.
   "quz-PE": "qu-PE",
 };

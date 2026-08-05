@@ -15,7 +15,9 @@
   "storeLocaleCatalog": {
     "authority": "Microsoft BCP 47 and Windows locale identifiers",
     "reference": "https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msi/add-and-edit-store-listing-info",
-    "status": "partner-center-export-confirmation-pending"
+    "status": "partner-center-exact-code-confirmation-pending",
+    "liveOptionsStatus": "all-target-options-observed",
+    "evidencePath": "docs/assets/microsoft-store/partner-center-language-options.json"
   },
   "product": {
     "name": "JoeSSH",
@@ -377,7 +379,7 @@
     },
     {
       "locale": "zh-CN",
-      "storeLocale": "zh-CN",
+      "storeLocale": "zh-Hans-CN",
       "sourceName": "中文简体",
       "languageName": "Simplified Chinese",
       "nativeName": "简体中文",
@@ -416,7 +418,7 @@
     },
     {
       "locale": "zh-TW",
-      "storeLocale": "zh-TW",
+      "storeLocale": "zh-Hant-TW",
       "sourceName": "中文繁体",
       "languageName": "Traditional Chinese",
       "nativeName": "繁體中文",
@@ -1276,7 +1278,7 @@
       "locale": "kn-IN",
       "storeLocale": "kn-IN",
       "sourceName": "埃纳德语",
-      "languageName": "Kannada (provisional mapping)",
+      "languageName": "Kannada",
       "nativeName": "ಕನ್ನಡ",
       "direction": "ltr",
       "appUiLocale": null,
@@ -1284,7 +1286,7 @@
       "reviewStatus": "translation-draft",
       "reviewRequired": true,
       "nativeReview": null,
-      "mappingNote": "用户名称“埃纳德语”按 Kannada/卡纳达语暂映射；提交前必须人工确认。",
+      "mappingNote": "Partner Center 实时语言目录将“埃纳德语(印度)”显示为 Kannada (India)，languageId=52；仍需母语审核。",
       "listing": {
         "title": "JoeSSH",
         "shortDescription": "Windows x64 ನಲ್ಲಿ ಸ್ಥಳೀಯ SSH, SFTP ಮತ್ತು ಪೋರ್ಟ್ ಫಾರ್ವರ್ಡಿಂಗ್‌ಗಾಗಿ ಉಚಿತ, ಮುಕ್ತ ಮೂಲದ Public Beta.",
@@ -1752,7 +1754,7 @@
       "reviewStatus": "translation-draft",
       "reviewRequired": true,
       "nativeReview": null,
-      "mappingNote": "“西班牙语拉丁美洲”暂映射为 es-MX；提交前必须在 Partner Center 确认该区域 locale。",
+      "mappingNote": "Partner Center 没有单独的 Latin America 选项；明确采用 Spanish (Mexico)，languageId=66，作为拉丁美洲西班牙语区域版本；仍需母语审核。",
       "listing": {
         "title": "JoeSSH",
         "shortDescription": "Public Beta gratis y de código abierto para SSH local, SFTP y reenvío de puertos en Windows x64.",
@@ -3117,7 +3119,7 @@
       "reviewStatus": "translation-draft",
       "reviewRequired": true,
       "nativeReview": null,
-      "mappingNote": "巴伦西亚语使用 ca-ES-valencia 变体代码；提交前必须在 Partner Center 确认可选值。",
+      "mappingNote": "Partner Center 实时语言目录确认 Valencian，languageId=117；Store 变体值使用 ca-ES-valencia，仍需母语审核。",
       "listing": {
         "title": "JoeSSH",
         "shortDescription": "Public Beta gratuïta i de codi obert per a SSH local, SFTP i reenviament de ports en Windows x64.",

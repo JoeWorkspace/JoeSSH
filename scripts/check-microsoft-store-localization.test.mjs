@@ -527,6 +527,61 @@ test("draft status remains allowed while submission readiness fails closed", () 
   );
 });
 
+test("submission readiness can pass when every fail-closed evidence gate is satisfied", (t) => {
+  const fixture = createFixture(t);
+  const manifest = readManifest(fixture);
+  const reviewedAt = "2026-08-05T15:32:55.110Z";
+  for (const entry of manifest.locales) {
+    entry.reviewStatus = "native-approved";
+    entry.nativeReview = {
+      reviewer: "TEST-FIXTURE-native-reviewer",
+      reviewedAt,
+      provenance: "TEST-FIXTURE-native-review-record",
+    };
+    entry.listing.assets = {
+      screenshotUrls: [
+        `https://developer.microsoft.com/test-fixture/${entry.storeLocale}.png`,
+      ],
+      screenshotBinding: {
+        status: "reviewed",
+        reviewer: "TEST-FIXTURE-screenshot-reviewer",
+        reviewedAt,
+        provenance: "TEST-FIXTURE-screenshot-record",
+      },
+    };
+  }
+  manifest.productSourceCommit = manifest.candidateArtifactSourceCommit;
+  manifest.storeLocaleCatalog.status = "partner-center-export-confirmed";
+  manifest.storeLocaleCatalog.confirmedAt = reviewedAt;
+  manifest.storeLocaleCatalog.exportSha256 = "a".repeat(64);
+  manifest.submissionStatus = "ready-for-human-submission";
+  writeManifest(fixture, manifest);
+
+  assert.deepEqual(
+    checkMicrosoftStoreSubmissionReadiness(fixture).filter(
+      (result) => !result.passed,
+    ),
+    [],
+  );
+});
+
+test("the live Partner Center option evidence rejects catalog drift", (t) => {
+  const fixture = createFixture(t);
+  const evidencePath = join(
+    fixture,
+    "docs/assets/microsoft-store/partner-center-language-options.json",
+  );
+  const evidence = JSON.parse(readFileSync(evidencePath, "utf8"));
+  evidence.options[0].languageId = evidence.options[1].languageId;
+  writeFileSync(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`, "utf8");
+
+  const result = checkMicrosoftStoreLocalization(fixture).find(
+    (candidate) => candidate.label === "Partner Center live language options",
+  );
+  assert.equal(result?.passed, false);
+  assert.match(result?.detail ?? "", /language-ids/u);
+});
+
 test("native-reviewed status without provenance remains blocked", (t) => {
   const fixture = createFixture(t);
   const manifest = readManifest(fixture);
@@ -662,6 +717,16 @@ function createFixture(t) {
       "docs/assets/microsoft-store/localization-manifest.json",
     ),
     join(root, "docs/assets/microsoft-store/localization-manifest.json"),
+  );
+  cpSync(
+    join(
+      repositoryRoot,
+      "docs/assets/microsoft-store/partner-center-language-options.json",
+    ),
+    join(
+      root,
+      "docs/assets/microsoft-store/partner-center-language-options.json",
+    ),
   );
   cpSync(
     join(repositoryRoot, "packages/i18n/src/index.ts"),

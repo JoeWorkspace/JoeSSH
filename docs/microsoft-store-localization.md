@@ -39,20 +39,35 @@ negation, grammar, terminology, or native-language quality.
 ## Locale Model
 
 `locale` is the canonical BCP 47 value. `storeLocale` is the Microsoft/Windows
-Store value from the reviewed draft allowlist. The explicit example is:
+Store value from the reviewed draft allowlist. Script-qualified Chinese values
+and the Microsoft Quechua value remain distinct from their canonical BCP 47
+values:
 
-| Canonical BCP 47 | Store value | Status                                                |
-| ---------------- | ----------- | ----------------------------------------------------- |
-| `qu-PE`          | `quz-PE`    | Confirm against a Partner Center export before import |
+| Canonical BCP 47 | Store value  | Status                                                 |
+| ---------------- | ------------ | ------------------------------------------------------ |
+| `zh-CN`          | `zh-Hans-CN` | Existing `zh-hans-cn` listing code confirmed by export |
+| `zh-TW`          | `zh-Hant-TW` | Live option observed; exact import code still pending  |
+| `qu-PE`          | `quz-PE`     | Live Peru option observed; confirm code before import  |
 
-The catalog source is recorded in the manifest. Its status is intentionally
-`partner-center-export-confirmation-pending`; no live Store value is invented.
-The four mappings needing human confirmation are:
+The live Partner Center **Add languages** dialog exposed 830 options. All 80
+target labels and unique language IDs were observed without saving a change;
+the bounded evidence is recorded in
+[partner-center-language-options.json](assets/microsoft-store/partner-center-language-options.json).
+The dialog does not expose `languageCode` for an unconfigured listing. Only the
+existing `en-us` and `zh-hans-cn` codes are therefore export-confirmed, and the
+catalog remains `partner-center-exact-code-confirmation-pending` until an export
+contains every target locale column.
 
-- `kn-IN`: confirm that the source label “埃纳德语” means Kannada.
-- `qu-PE` / `quz-PE`: confirm the Peru market and Store value.
-- `es-MX`: confirm the requested “Spanish (Latin America)” regional value.
-- `ca-ES-valencia`: confirm that the Valencian variant is selectable.
+Four entries retain `reviewRequired: true` for mapping or source-name decisions:
+
+- `kn-IN`: Partner Center resolves the supplied source name to Kannada (India),
+  language ID 52; native review is still required.
+- `qu-PE` / `quz-PE`: Quechua (Peru), language ID 147, is selectable; the exact
+  import code and Quechua copy still require confirmation.
+- `es-MX`: Partner Center has no generic Latin America option, so Spanish
+  (Mexico), language ID 66, is the explicit regional choice.
+- `ca-ES-valencia`: Valencian, language ID 117, is selectable; the variant code
+  remains subject to the full export check.
 
 These four entries remain `reviewRequired: true`. The Quechua copy is a
 consistent draft, not a native approval.
@@ -175,6 +190,22 @@ and screenshot assets to the explicit output JSON. The output is created with
 exclusive-write semantics, validated before and after writing, and remains
 `draft-not-submitted`; it is not a Partner Center submission payload.
 
+Once native review, screenshot evidence, candidate-source binding, and a
+checksum-bound full Partner Center export are all present in that reviewed
+manifest, merge it into an official Partner Center listing export:
+
+```powershell
+npm run generate:partner-center-listing-import -- --template=C:\path\partner-center-export.csv --manifest=C:\path\reviewed-manifest.json --output=C:\path\partner-center-import.csv
+```
+
+The importer preserves unsupported template fields, replaces the reviewed
+listing fields, writes all 80 locale columns (including `zh-hans-cn` and
+`zh-hant-tw`), accepts the official BOM and quoted multiline cells, and uses an
+exclusive output write. It fails closed if any submission-readiness gate is
+missing, if template field IDs drift, if an unexpected locale is present, or if
+the output would overwrite an input or existing file. The current tracked draft
+is intentionally rejected.
+
 Draft validation also performs mechanical Unicode normalization and control-code
 checks, expected-script checks for non-Latin listings, cross-language paragraph
 duplicate checks, CSV formula-injection checks, and a `known translation error
@@ -188,9 +219,10 @@ requires at least one reviewed HTTPS screenshot URL for every locale.
 
 ## Next Submission
 
-After the current certification and code freeze are complete:
+After the code freeze and evidence collection are complete:
 
-1. Obtain a Partner Center locale export and update the reviewed catalog values.
+1. Obtain a Partner Center export containing all 80 locale columns, record its
+   SHA-256 and timestamp, and update the reviewed catalog values.
 2. Bind `productSourceCommit` to the exact candidate artifact source commit.
 3. Obtain native review provenance for all 80 entries, including the four flagged
    mappings.

@@ -657,7 +657,7 @@ const rows = [
   [
     "kn-IN",
     "埃纳德语",
-    "Kannada (provisional mapping)",
+    "Kannada",
     "ಕನ್ನಡ",
     "ltr",
     null,
@@ -671,7 +671,7 @@ const rows = [
       "loopback ಮಾತ್ರದ ಸ್ಥಳೀಯ ಪೋರ್ಟ್ ಫಾರ್ವರ್ಡಿಂಗ್",
       "ಸ್ಥಳೀಯ ಸಂಪರ್ಕ ಪ್ರೊಫೈಲ್‌ಗಳು",
     ],
-    "用户名称“埃纳德语”按 Kannada/卡纳达语暂映射；提交前必须人工确认。",
+    "Partner Center 实时语言目录将“埃纳德语(印度)”显示为 Kannada (India)，languageId=52；仍需母语审核。",
   ],
   [
     "kk-KZ",
@@ -888,7 +888,7 @@ const rows = [
       "Reenvío de puertos local solo mediante loopback",
       "Perfiles de conexión locales",
     ],
-    "“西班牙语拉丁美洲”暂映射为 es-MX；提交前必须在 Partner Center 确认该区域 locale。",
+    "Partner Center 没有单独的 Latin America 选项；明确采用 Spanish (Mexico)，languageId=66，作为拉丁美洲西班牙语区域版本；仍需母语审核。",
   ],
   [
     "pl-PL",
@@ -1411,7 +1411,7 @@ const rows = [
       "Loopbackllawan puertokunapa ñawpaqman apay",
       "Tinkiy perfilkuna",
     ],
-    "克丘亚语按 Microsoft/Windows 区域锚点暂映射为 quz-PE；提交前需确认目标市场。",
+    "Partner Center 实时语言目录确认 Quechua (Peru)，languageId=147；Microsoft Store 值使用 quz-PE，仍需母语审核。",
   ],
   [
     "gd-GB",
@@ -1520,7 +1520,7 @@ const rows = [
       "Reenviament de ports local només per loopback",
       "Perfils de connexió locals",
     ],
-    "巴伦西亚语使用 ca-ES-valencia 变体代码；提交前必须在 Partner Center 确认可选值。",
+    "Partner Center 实时语言目录确认 Valencian，languageId=117；Store 变体值使用 ca-ES-valencia，仍需母语审核。",
   ],
   [
     "cy-GB",
