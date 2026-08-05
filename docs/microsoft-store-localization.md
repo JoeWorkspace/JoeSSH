@@ -199,12 +199,14 @@ npm run generate:partner-center-listing-import -- --template=C:\path\partner-cen
 ```
 
 The importer preserves unsupported template fields, replaces the reviewed
-listing fields, writes all 80 locale columns (including `zh-hans-cn` and
-`zh-hant-tw`), accepts the official BOM and quoted multiline cells, and uses an
-exclusive output write. It fails closed if any submission-readiness gate is
-missing, if template field IDs drift, if an unexpected locale is present, or if
-the output would overwrite an input or existing file. The current tracked draft
-is intentionally rejected.
+listing fields, requires and writes all 80 locale columns (including
+`zh-hans-cn` and `zh-hant-tw`), accepts the official BOM and quoted multiline
+cells, and uses an exclusive output write. It computes the SHA-256 of the exact
+template bytes and compares it with `storeLocaleCatalog.exportSha256`; it never
+invents missing locale columns. It fails closed if any submission-readiness gate
+is missing, if template field IDs drift, if an unexpected or missing locale is
+present, if the export hash does not match, or if the output would overwrite an
+input or existing file. The current tracked draft is intentionally rejected.
 
 Draft validation also performs mechanical Unicode normalization and control-code
 checks, expected-script checks for non-Latin listings, cross-language paragraph

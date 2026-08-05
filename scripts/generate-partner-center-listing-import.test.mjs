@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import {
   existsSync,
   mkdtempSync,
@@ -20,6 +21,9 @@ const trackedManifestPath = join(
   repositoryRoot,
   "docs/assets/microsoft-store/localization-manifest.json",
 );
+const targetStoreLocales = JSON.parse(
+  readFileSync(trackedManifestPath, "utf8"),
+).locales.map((entry) => entry.storeLocale.toLowerCase());
 
 test("the Partner Center import contains all 80 reviewed locale columns", () => {
   const manifest = makeReadyManifest();
@@ -93,6 +97,19 @@ test("the Partner Center template rejects required field ID drift", () => {
   );
 });
 
+test("the Partner Center template rejects a missing reviewed locale column", () => {
+  assert.throws(
+    () =>
+      buildPartnerCenterListingImport({
+        manifest: makeReadyManifest(),
+        templateCsv: buildTemplateCsv({
+          storeLocales: targetStoreLocales.slice(0, -1),
+        }),
+      }),
+    /missing reviewed locale columns: cy-gb/u,
+  );
+});
+
 test("the tracked draft manifest is refused for Partner Center import", (t) => {
   const directory = makeTemporaryDirectory(t);
   const outputPath = join(directory, "refused.csv");
@@ -113,14 +130,16 @@ test("a fully reviewed manifest uses repository evidence and an exclusive output
   const directory = makeTemporaryDirectory(t);
   const manifestPath = join(directory, "reviewed-manifest.json");
   const outputPath = join(directory, "nested", "listing-import.csv");
+  const templatePath = writeTemplate(directory);
+  const templateBytes = readFileSync(templatePath);
   writeFileSync(
     manifestPath,
-    `${JSON.stringify(makeReadyManifest(), null, 2)}\n`,
+    `${JSON.stringify(makeReadyManifest({ templateBytes }), null, 2)}\n`,
     "utf8",
   );
 
   const result = runPartnerCenterListingImport({
-    templatePath: writeTemplate(directory),
+    templatePath,
     manifestPath,
     outputPath,
     root: join(directory, "untrusted-root"),
@@ -139,6 +158,33 @@ test("a fully reviewed manifest uses repository evidence and an exclusive output
   );
 });
 
+test("a reviewed manifest rejects a template whose bytes do not match the export hash", (t) => {
+  const directory = makeTemporaryDirectory(t);
+  const templatePath = writeTemplate(directory);
+  const manifestPath = join(directory, "reviewed-manifest.json");
+  const outputPath = join(directory, "listing-import.csv");
+  writeFileSync(
+    manifestPath,
+    `${JSON.stringify(
+      makeReadyManifest({ templateBytes: Buffer.from("different export") }),
+      null,
+      2,
+    )}\n`,
+    "utf8",
+  );
+
+  assert.throws(
+    () =>
+      runPartnerCenterListingImport({
+        templatePath,
+        manifestPath,
+        outputPath,
+      }),
+    /template SHA-256 does not match export evidence/u,
+  );
+  assert.equal(existsSync(outputPath), false);
+});
+
 test("submission readiness fails closed for a malformed manifest", async () => {
   const { checkMicrosoftStoreSubmissionReadinessManifest } =
     await import("./check-microsoft-store-localization.mjs");
@@ -150,7 +196,7 @@ test("submission readiness fails closed for a malformed manifest", async () => {
   assert.equal(failures.length > 0, true);
 });
 
-function makeReadyManifest() {
+function makeReadyManifest({ templateBytes } = {}) {
   const manifest = JSON.parse(readFileSync(trackedManifestPath, "utf8"));
   const reviewedAt = "2026-08-05T15:32:55.110Z";
   for (const entry of manifest.locales) {
@@ -175,19 +221,25 @@ function makeReadyManifest() {
   manifest.productSourceCommit = manifest.candidateArtifactSourceCommit;
   manifest.storeLocaleCatalog.status = "partner-center-export-confirmed";
   manifest.storeLocaleCatalog.confirmedAt = reviewedAt;
-  manifest.storeLocaleCatalog.exportSha256 = "a".repeat(64);
+  manifest.storeLocaleCatalog.exportSha256 = templateBytes
+    ? sha256(templateBytes)
+    : "a".repeat(64);
   manifest.submissionStatus = "ready-for-human-submission";
   return manifest;
 }
 
-function buildTemplateCsv({ includeMultilineNote = false } = {}) {
+function buildTemplateCsv({
+  includeMultilineNote = false,
+  storeLocales = targetStoreLocales,
+} = {}) {
+  const existingValues = () => storeLocales.map(() => "existing");
   const rows = [
-    ["Field", "ID", "Type (type)", "default", "en-us", "zh-hans-cn"],
-    ["Description", "2", "text", "", "existing", "existing"],
-    ["", "", "", "", "", ""],
-    ["Title", "4", "text", "", "JoeSSH", "JoeSSH"],
-    ["ShortDescription", "8", "text", "", "existing", "existing"],
-    ["DesktopScreenshot1", "100", "url", "", "existing", "existing"],
+    ["Field", "ID", "Type (type)", "default", ...storeLocales],
+    ["Description", "2", "text", "", ...existingValues()],
+    ["", "", "", "", ...storeLocales.map(() => "")],
+    ["Title", "4", "text", "", ...storeLocales.map(() => "JoeSSH")],
+    ["ShortDescription", "8", "text", "", ...existingValues()],
+    ["DesktopScreenshot1", "100", "url", "", ...existingValues()],
   ];
   for (let index = 1; index <= 20; index += 1) {
     rows.push([
@@ -195,8 +247,7 @@ function buildTemplateCsv({ includeMultilineNote = false } = {}) {
       String(699 + index),
       "text",
       "",
-      "existing",
-      "existing",
+      ...existingValues(),
     ]);
   }
   for (let index = 1; index <= 7; index += 1) {
@@ -205,17 +256,28 @@ function buildTemplateCsv({ includeMultilineNote = false } = {}) {
       String(899 + index),
       "text",
       "",
-      "existing",
-      "existing",
+      ...existingValues(),
     ]);
   }
   if (includeMultilineNote) {
-    rows.push(["PublisherNote", "999", "text", "", "line one\r\nline two", ""]);
+    rows.push([
+      "PublisherNote",
+      "999",
+      "text",
+      "",
+      ...storeLocales.map((locale) =>
+        locale === "en-us" ? "line one\r\nline two" : "",
+      ),
+    ]);
   }
-  rows.push(["", "", "", "", "", ""]);
+  rows.push(["", "", "", "", ...storeLocales.map(() => "")]);
   return `\ufeff${rows
     .map((row) => row.map((value) => csvCell(value)).join(","))
     .join("\r\n")}\r\n`;
+}
+
+function sha256(value) {
+  return createHash("sha256").update(value).digest("hex");
 }
 
 function makeTemporaryDirectory(t) {

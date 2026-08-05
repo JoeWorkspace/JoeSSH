@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -51,9 +52,19 @@ export function runPartnerCenterListingImport({
     );
   }
 
+  const templateBytes = readFileSync(resolvedTemplatePath);
+  const actualExportSha256 = createHash("sha256")
+    .update(templateBytes)
+    .digest("hex");
+  if (actualExportSha256 !== manifest.storeLocaleCatalog.exportSha256) {
+    throw new Error(
+      `Partner Center import refused: template SHA-256 does not match export evidence (expected ${manifest.storeLocaleCatalog.exportSha256}, got ${actualExportSha256})`,
+    );
+  }
+
   const output = buildPartnerCenterListingImport({
     manifest,
-    templateCsv: readFileSync(resolvedTemplatePath, "utf8"),
+    templateCsv: templateBytes.toString("utf8"),
   });
   mkdirSync(dirname(resolvedOutputPath), { recursive: true });
   writeFileSync(resolvedOutputPath, output, { encoding: "utf8", flag: "wx" });
@@ -91,6 +102,14 @@ export function buildPartnerCenterListingImport({ manifest, templateCsv }) {
   if (unexpectedHeaders.length > 0) {
     throw new Error(
       `Template contains locales outside the reviewed manifest: ${unexpectedHeaders.join(",")}`,
+    );
+  }
+  const missingHeaders = targetHeaders.filter(
+    (header) => !existingLocaleColumns.has(header),
+  );
+  if (missingHeaders.length > 0) {
+    throw new Error(
+      `Template is missing reviewed locale columns: ${missingHeaders.join(",")}`,
     );
   }
 

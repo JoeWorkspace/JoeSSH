@@ -608,6 +608,10 @@ function validatePartnerCenterLanguageOptionEvidence(root) {
     return [`evidence:${error.message}`];
   }
 
+  if (!evidence || typeof evidence !== "object" || Array.isArray(evidence)) {
+    return ["schema"];
+  }
+
   if (
     evidence.schemaVersion !== 1 ||
     evidence.kind !== "joessh-partner-center-language-option-evidence"

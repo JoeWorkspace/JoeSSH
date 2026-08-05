@@ -582,6 +582,21 @@ test("the live Partner Center option evidence rejects catalog drift", (t) => {
   assert.match(result?.detail ?? "", /language-ids/u);
 });
 
+test("the live Partner Center option evidence rejects a non-object root", (t) => {
+  const fixture = createFixture(t);
+  const evidencePath = join(
+    fixture,
+    "docs/assets/microsoft-store/partner-center-language-options.json",
+  );
+  writeFileSync(evidencePath, "null\n", "utf8");
+
+  const result = checkMicrosoftStoreLocalization(fixture).find(
+    (candidate) => candidate.label === "Partner Center live language options",
+  );
+  assert.equal(result?.passed, false);
+  assert.match(result?.detail ?? "", /schema/u);
+});
+
 test("native-reviewed status without provenance remains blocked", (t) => {
   const fixture = createFixture(t);
   const manifest = readManifest(fixture);
