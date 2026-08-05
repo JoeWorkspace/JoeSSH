@@ -439,4 +439,24 @@ export const ko = {
   "desktop.thirdPartyNoticesUnavailable":
     "이 빌드에서는 라이선스 고지문을 사용할 수 없습니다.",
   "team.reviewedBy": "{reviewer} 검토",
+  "desktop.gettingStartedStepCreate": "연결 만들기",
+  "desktop.gettingStartedStepCreateDetail":
+    "새 연결에서 호스트, 포트, 사용자 이름을 입력한 뒤 로컬 프로필을 저장하세요. 샘플 데이터는 실제 세션이 아닙니다.",
+  "desktop.gettingStartedStepSecure": "안전하게 연결하기",
+  "desktop.gettingStartedStepSecureDetail":
+    "해당 프로필의 연결을 열어 인증 방식을 선택하고 자격 증명을 입력하세요. 알 수 없는 호스트는 계속하기 전에 신뢰할 수 있는 경로로 SHA-256 호스트 키 지문을 확인하세요.",
+  "desktop.gettingStartedStepUse": "JoeSSH 사용 시작",
+  "desktop.gettingStartedStepUseDetail":
+    "연결을 확인한 뒤 대화형 셸은 터미널에서, 파일 전송은 SFTP에서, 로컬 터널은 loopback으로만 제한된 포트 전달에서 시작할 수 있습니다. 위험한 원격 작업은 필요하지 않습니다.",
+  "desktop.gettingStartedStepCount": "{total}단계 중 {current}단계",
+  "desktop.gettingStartedPrevious": "이전",
+  "desktop.gettingStartedNext": "다음",
+  "desktop.gettingStartedSkip": "건너뛰기",
+  "desktop.gettingStartedComplete": "완료",
+  "desktop.gettingStartedOpenConnect": "연결 열기",
+  "desktop.gettingStartedSecurityNote":
+    "JoeSSH는 알 수 없거나 변경된 호스트 키를 자동으로 신뢰하지 않습니다. 먼저 SHA-256 지문을 확인하세요.",
+  "desktop.gettingStartedOpenTerminal": "터미널 열기",
+  "desktop.gettingStartedOpenSftp": "SFTP 열기",
+  "desktop.gettingStartedOpenForwarding": "포트 전달 열기",
 } as const;

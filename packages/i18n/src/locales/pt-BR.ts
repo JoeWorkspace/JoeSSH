@@ -52,7 +52,8 @@ export const ptBR = {
   "desktop.ptyOpen": "Terminal connected",
   "desktop.ptyClosed": "Terminal exited",
   "desktop.ptyError": "Terminal failed to open",
-  "desktop.ptyBlocked": "Entrada do terminal bloqueada pela política de segurança",
+  "desktop.ptyBlocked":
+    "Entrada do terminal bloqueada pela política de segurança",
   "desktop.ptyReconnect": "Reconnect",
   "desktop.terminalInputPlaceholder": "Digite um comando e pressione Enter",
   "desktop.terminalAutocompleteComplete": "para completar",
@@ -445,4 +446,24 @@ export const ptBR = {
   "desktop.thirdPartyNoticesUnavailable":
     "Os avisos de licença não estão disponíveis nesta versão.",
   "team.reviewedBy": "revisado por {reviewer}",
+  "desktop.gettingStartedStepCreate": "Criar uma conexão",
+  "desktop.gettingStartedStepCreateDetail":
+    "Use Nova conexão para informar host, porta e nome de usuário e salve um perfil local. Os dados de exemplo não são uma sessão real.",
+  "desktop.gettingStartedStepSecure": "Proteger a conexão",
+  "desktop.gettingStartedStepSecureDetail":
+    "Abra Conectar para esse perfil, escolha um método de autenticação e informe as credenciais. Para um host desconhecido, verifique a impressão digital SHA-256 da chave do host por um canal confiável antes de continuar.",
+  "desktop.gettingStartedStepUse": "Começar a usar o JoeSSH",
+  "desktop.gettingStartedStepUseDetail":
+    "Depois de verificar a conexão, abra o Terminal para um shell interativo, o SFTP para transferências ou o encaminhamento de portas para túneis locais limitados a loopback. Nenhuma ação remota perigosa é necessária.",
+  "desktop.gettingStartedStepCount": "Etapa {current} de {total}",
+  "desktop.gettingStartedPrevious": "Anterior",
+  "desktop.gettingStartedNext": "Próxima",
+  "desktop.gettingStartedSkip": "Pular",
+  "desktop.gettingStartedComplete": "Concluir",
+  "desktop.gettingStartedOpenConnect": "Abrir conexão",
+  "desktop.gettingStartedSecurityNote":
+    "O JoeSSH nunca confia automaticamente em uma chave de host desconhecida ou alterada. Verifique primeiro a impressão digital SHA-256.",
+  "desktop.gettingStartedOpenTerminal": "Abrir Terminal",
+  "desktop.gettingStartedOpenSftp": "Abrir SFTP",
+  "desktop.gettingStartedOpenForwarding": "Abrir encaminhamento de portas",
 } as const;

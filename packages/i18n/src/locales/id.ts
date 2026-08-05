@@ -443,4 +443,24 @@ export const id = {
   "desktop.thirdPartyNoticesUnavailable":
     "Pemberitahuan lisensi tidak tersedia dalam build ini.",
   "team.reviewedBy": "ditinjau oleh {reviewer}",
+  "desktop.gettingStartedStepCreate": "Buat koneksi",
+  "desktop.gettingStartedStepCreateDetail":
+    "Gunakan Koneksi baru untuk memasukkan host, port, dan nama pengguna, lalu simpan profil lokal. Data contoh bukan sesi nyata.",
+  "desktop.gettingStartedStepSecure": "Amankan koneksi",
+  "desktop.gettingStartedStepSecureDetail":
+    "Buka Hubungkan untuk profil tersebut, pilih metode autentikasi, dan berikan kredensial. Untuk host yang tidak dikenal, verifikasi sidik jari kunci host SHA-256 melalui jalur tepercaya sebelum melanjutkan.",
+  "desktop.gettingStartedStepUse": "Mulai menggunakan JoeSSH",
+  "desktop.gettingStartedStepUseDetail":
+    "Setelah koneksi diverifikasi, buka Terminal untuk shell interaktif, SFTP untuk transfer berkas, atau penerusan port untuk terowongan lokal yang hanya melalui loopback. Tidak diperlukan tindakan jarak jauh yang berisiko.",
+  "desktop.gettingStartedStepCount": "Langkah {current} dari {total}",
+  "desktop.gettingStartedPrevious": "Sebelumnya",
+  "desktop.gettingStartedNext": "Berikutnya",
+  "desktop.gettingStartedSkip": "Lewati",
+  "desktop.gettingStartedComplete": "Selesai",
+  "desktop.gettingStartedOpenConnect": "Buka Hubungkan",
+  "desktop.gettingStartedSecurityNote":
+    "JoeSSH tidak pernah mempercayai kunci host yang tidak dikenal atau berubah secara otomatis. Periksa sidik jari SHA-256 terlebih dahulu.",
+  "desktop.gettingStartedOpenTerminal": "Buka Terminal",
+  "desktop.gettingStartedOpenSftp": "Buka SFTP",
+  "desktop.gettingStartedOpenForwarding": "Buka penerusan port",
 } as const;

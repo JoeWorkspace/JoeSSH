@@ -439,4 +439,24 @@ export const en = {
   "desktop.thirdPartyNoticesUnavailable":
     "License notices are unavailable in this build.",
   "team.reviewedBy": "reviewed by {reviewer}",
+  "desktop.gettingStartedStepCreate": "Create a connection",
+  "desktop.gettingStartedStepCreateDetail":
+    "Use New connection to enter the host, port, and username, then save a local profile. The sample data is not a real session.",
+  "desktop.gettingStartedStepSecure": "Secure the connection",
+  "desktop.gettingStartedStepSecureDetail":
+    "Open Connect for that profile to choose an authentication method and provide credentials. For an unknown host, verify its SHA-256 host-key fingerprint through a trusted channel before deciding whether to continue.",
+  "desktop.gettingStartedStepUse": "Start using JoeSSH",
+  "desktop.gettingStartedStepUseDetail":
+    "After the connection is verified, open Terminal for an interactive shell, SFTP for file transfers, or Port forwarding for loopback-only local tunnels. No risky remote action is required.",
+  "desktop.gettingStartedStepCount": "Step {current} of {total}",
+  "desktop.gettingStartedPrevious": "Previous",
+  "desktop.gettingStartedNext": "Next",
+  "desktop.gettingStartedSkip": "Skip",
+  "desktop.gettingStartedComplete": "Finish",
+  "desktop.gettingStartedOpenConnect": "Open Connect",
+  "desktop.gettingStartedSecurityNote":
+    "JoeSSH never trusts an unknown or changed host key automatically. Check the SHA-256 fingerprint first.",
+  "desktop.gettingStartedOpenTerminal": "Open Terminal",
+  "desktop.gettingStartedOpenSftp": "Open SFTP",
+  "desktop.gettingStartedOpenForwarding": "Open port forwarding",
 } as const;

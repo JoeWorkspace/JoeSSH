@@ -417,4 +417,24 @@ export const zhCN = {
   "desktop.thirdPartyNoticesLoading": "正在加载许可证…",
   "desktop.thirdPartyNoticesUnavailable": "此版本中无法读取许可证声明。",
   "team.reviewedBy": "{reviewer} 已审核",
+  "desktop.gettingStartedStepCreate": "创建连接",
+  "desktop.gettingStartedStepCreateDetail":
+    "使用“新建连接”填写主机、端口和用户名，然后保存本地配置。示例数据不是真实会话。",
+  "desktop.gettingStartedStepSecure": "安全连接",
+  "desktop.gettingStartedStepSecureDetail":
+    "打开该配置的“连接”，选择认证方式并提供凭据。首次遇到未知主机时，请通过可信渠道核对 SHA-256 主机密钥指纹，再决定是否继续。",
+  "desktop.gettingStartedStepUse": "开始使用 JoeSSH",
+  "desktop.gettingStartedStepUseDetail":
+    "连接并完成核对后，可打开终端进行交互式操作，使用 SFTP 传输文件，或打开端口转发创建仅限 loopback 的本地隧道。无需执行危险的远程操作。",
+  "desktop.gettingStartedStepCount": "第 {current} 步，共 {total} 步",
+  "desktop.gettingStartedPrevious": "上一步",
+  "desktop.gettingStartedNext": "下一步",
+  "desktop.gettingStartedSkip": "跳过",
+  "desktop.gettingStartedComplete": "完成",
+  "desktop.gettingStartedOpenConnect": "打开连接",
+  "desktop.gettingStartedSecurityNote":
+    "JoeSSH 不会自动信任未知或已变更的主机密钥。请先核对 SHA-256 指纹。",
+  "desktop.gettingStartedOpenTerminal": "打开终端",
+  "desktop.gettingStartedOpenSftp": "打开 SFTP",
+  "desktop.gettingStartedOpenForwarding": "打开端口转发",
 } as const;

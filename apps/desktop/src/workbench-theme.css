@@ -736,6 +736,7 @@
   border-radius: var(--atlas-radius-xl);
   gap: 18px;
   max-width: 800px;
+  min-width: 0;
   padding: 22px;
 }
 
@@ -1635,29 +1636,6 @@ kbd {
   box-shadow: var(--atlas-shadow-soft);
   max-height: 220px;
   overflow-y: auto;
-}
-
-.getting-started-surfaces {
-  background: color-mix(in srgb, var(--atlas-bg) 35%, transparent);
-  border: 1px solid var(--atlas-border);
-  border-radius: var(--atlas-radius-lg);
-  overflow: hidden;
-}
-
-.getting-started-surfaces section {
-  min-height: 128px;
-  padding: 17px;
-}
-
-.getting-started-surfaces section:hover {
-  background: var(--atlas-bg-hover);
-}
-
-.getting-started-notes > div {
-  background: color-mix(in srgb, var(--atlas-bg-raised) 38%, transparent);
-  border: 1px solid var(--atlas-border);
-  border-radius: var(--atlas-radius-md);
-  padding: 12px;
 }
 
 .getting-started-actions {

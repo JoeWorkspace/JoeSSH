@@ -447,4 +447,24 @@ export const ru = {
   "desktop.thirdPartyNoticesUnavailable":
     "Уведомления о лицензиях недоступны в этой сборке.",
   "team.reviewedBy": "Проверил {reviewer}",
+  "desktop.gettingStartedStepCreate": "Создайте подключение",
+  "desktop.gettingStartedStepCreateDetail":
+    "В окне «Новое подключение» укажите хост, порт и имя пользователя, затем сохраните локальный профиль. Примеры не являются реальным сеансом.",
+  "desktop.gettingStartedStepSecure": "Защитите подключение",
+  "desktop.gettingStartedStepSecureDetail":
+    "Откройте «Подключиться» для этого профиля, выберите способ аутентификации и укажите учётные данные. Для неизвестного узла проверьте SHA-256 отпечаток ключа по доверенному каналу, прежде чем продолжать.",
+  "desktop.gettingStartedStepUse": "Начните работу с JoeSSH",
+  "desktop.gettingStartedStepUseDetail":
+    "После проверки подключения откройте терминал для интерактивной оболочки, SFTP для передачи файлов или перенаправление портов для локальных туннелей только через loopback. Опасные удалённые действия не требуются.",
+  "desktop.gettingStartedStepCount": "Шаг {current} из {total}",
+  "desktop.gettingStartedPrevious": "Назад",
+  "desktop.gettingStartedNext": "Далее",
+  "desktop.gettingStartedSkip": "Пропустить",
+  "desktop.gettingStartedComplete": "Готово",
+  "desktop.gettingStartedOpenConnect": "Открыть подключение",
+  "desktop.gettingStartedSecurityNote":
+    "JoeSSH никогда не доверяет автоматически неизвестному или изменённому ключу узла. Сначала проверьте SHA-256 отпечаток.",
+  "desktop.gettingStartedOpenTerminal": "Открыть терминал",
+  "desktop.gettingStartedOpenSftp": "Открыть SFTP",
+  "desktop.gettingStartedOpenForwarding": "Открыть перенаправление портов",
 } as const;

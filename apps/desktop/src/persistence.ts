@@ -10,14 +10,25 @@ export const CUSTOM_CONNECTIONS_STORAGE_KEY = "atlasterm.customConnections";
 export const FORWARD_RULES_STORAGE_KEY = "atlasterm.forwardRules";
 export const LAYOUT_STORAGE_KEY = "atlasterm.layout";
 export const GETTING_STARTED_STORAGE_KEY = "atlasterm.gettingStarted";
+export const GETTING_STARTED_STATE_VERSION = 2 as const;
 
 export type PersistedRightPanel =
-  | "inspector"
-  | "sftp"
-  | "team"
-  | "forwarding"
-  | "settings";
+  "inspector" | "sftp" | "team" | "forwarding" | "settings";
 export type PersistedTheme = "dark" | "light" | "system";
+export type GettingStartedStep = 0 | 1 | 2;
+export type GettingStartedStatus =
+  "unseen" | "in-progress" | "skipped" | "completed";
+export type GettingStartedState = Readonly<{
+  version: typeof GETTING_STARTED_STATE_VERSION;
+  status: GettingStartedStatus;
+  lastStep: GettingStartedStep;
+}>;
+
+export const DEFAULT_GETTING_STARTED_STATE: GettingStartedState = {
+  version: GETTING_STARTED_STATE_VERSION,
+  status: "unseen",
+  lastStep: 0,
+};
 
 export type DesktopLayoutState = {
   activeConnection: string;
@@ -61,6 +72,19 @@ function isTheme(value: unknown): value is PersistedTheme {
   return typeof value === "string" && themes.has(value as PersistedTheme);
 }
 
+function isGettingStartedStep(value: unknown): value is GettingStartedStep {
+  return value === 0 || value === 1 || value === 2;
+}
+
+function isGettingStartedStatus(value: unknown): value is GettingStartedStatus {
+  return (
+    value === "unseen" ||
+    value === "in-progress" ||
+    value === "skipped" ||
+    value === "completed"
+  );
+}
+
 function isActiveTab(value: unknown, maxActiveTab: number): value is number {
   return (
     typeof value === "number" &&
@@ -96,6 +120,84 @@ function readStorageJson(key: string): unknown {
   } catch {
     return undefined;
   }
+}
+
+export function readStoredGettingStartedState(): GettingStartedState {
+  const storedText = readStorageText(GETTING_STARTED_STORAGE_KEY);
+
+  // The original implementation stored the bare text "dismissed", not JSON.
+  // Migrate it once so v2 can show the new guide exactly once after upgrade.
+  if (storedText === "dismissed") {
+    const migratedState: GettingStartedState = {
+      version: GETTING_STARTED_STATE_VERSION,
+      status: "unseen",
+      lastStep: 0,
+    };
+    writeStorageJson(GETTING_STARTED_STORAGE_KEY, migratedState);
+    return migratedState;
+  }
+
+  const raw = readStorageJson(GETTING_STARTED_STORAGE_KEY);
+
+  // Also accept a JSON-encoded legacy marker from interrupted migrations.
+  if (raw === "dismissed") {
+    const migratedState: GettingStartedState = {
+      version: GETTING_STARTED_STATE_VERSION,
+      status: "unseen",
+      lastStep: 0,
+    };
+    writeStorageJson(GETTING_STARTED_STORAGE_KEY, migratedState);
+    return migratedState;
+  }
+
+  if (!isRecord(raw)) {
+    return DEFAULT_GETTING_STARTED_STATE;
+  }
+
+  if (raw.version === 1) {
+    const status =
+      raw.status === "skipped"
+        ? "skipped"
+        : raw.status === "dismissed"
+          ? "unseen"
+          : raw.status === "completed"
+            ? "completed"
+            : raw.status === "in-progress"
+              ? "in-progress"
+              : "unseen";
+    const migratedState: GettingStartedState = {
+      version: GETTING_STARTED_STATE_VERSION,
+      status,
+      lastStep:
+        raw.status === "dismissed"
+          ? 0
+          : isGettingStartedStep(raw.lastStep)
+            ? raw.lastStep
+            : 0,
+    };
+    writeStorageJson(GETTING_STARTED_STORAGE_KEY, migratedState);
+    return migratedState;
+  }
+
+  if (
+    raw.version !== GETTING_STARTED_STATE_VERSION ||
+    !isGettingStartedStatus(raw.status) ||
+    !isGettingStartedStep(raw.lastStep)
+  ) {
+    return DEFAULT_GETTING_STARTED_STATE;
+  }
+
+  return {
+    version: GETTING_STARTED_STATE_VERSION,
+    status: raw.status,
+    lastStep: raw.lastStep,
+  };
+}
+
+export function writeStoredGettingStartedState(
+  state: GettingStartedState,
+): boolean {
+  return writeStorageJson(GETTING_STARTED_STORAGE_KEY, state);
 }
 
 export function readStoredTheme(defaultTheme: PersistedTheme): PersistedTheme {

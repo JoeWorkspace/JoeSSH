@@ -447,4 +447,24 @@ export const de = {
   "desktop.thirdPartyNoticesUnavailable":
     "Lizenzhinweise sind in diesem Build nicht verfügbar.",
   "team.reviewedBy": "geprüft von {reviewer}",
+  "desktop.gettingStartedStepCreate": "Verbindung erstellen",
+  "desktop.gettingStartedStepCreateDetail":
+    "Geben Sie unter Neue Verbindung Host, Port und Benutzername ein und speichern Sie ein lokales Profil. Die Beispieldaten sind keine echte Sitzung.",
+  "desktop.gettingStartedStepSecure": "Verbindung absichern",
+  "desktop.gettingStartedStepSecureDetail":
+    "Öffnen Sie für dieses Profil Verbinden, wählen Sie eine Authentifizierungsmethode und geben Sie die Anmeldedaten ein. Prüfen Sie bei einem unbekannten Host den SHA-256-Fingerabdruck des Hostschlüssels über einen vertrauenswürdigen Kanal, bevor Sie fortfahren.",
+  "desktop.gettingStartedStepUse": "JoeSSH verwenden",
+  "desktop.gettingStartedStepUseDetail":
+    "Nach der Prüfung öffnen Sie Terminal für eine interaktive Shell, SFTP für Dateiübertragungen oder Portweiterleitung für lokale, auf loopback beschränkte Tunnel. Keine riskante Remote-Aktion ist erforderlich.",
+  "desktop.gettingStartedStepCount": "Schritt {current} von {total}",
+  "desktop.gettingStartedPrevious": "Zurück",
+  "desktop.gettingStartedNext": "Weiter",
+  "desktop.gettingStartedSkip": "Überspringen",
+  "desktop.gettingStartedComplete": "Fertig",
+  "desktop.gettingStartedOpenConnect": "Verbinden öffnen",
+  "desktop.gettingStartedSecurityNote":
+    "JoeSSH vertraut unbekannten oder geänderten Hostschlüsseln niemals automatisch. Prüfen Sie zuerst den SHA-256-Fingerabdruck.",
+  "desktop.gettingStartedOpenTerminal": "Terminal öffnen",
+  "desktop.gettingStartedOpenSftp": "SFTP öffnen",
+  "desktop.gettingStartedOpenForwarding": "Portweiterleitung öffnen",
 } as const;

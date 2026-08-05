@@ -420,4 +420,24 @@ export const zhTWComplete = {
   "desktop.thirdPartyNoticesLoading": "正在載入授權條款…",
   "desktop.thirdPartyNoticesUnavailable": "此版本無法讀取授權聲明。",
   "team.reviewedBy": "{reviewer} 已審查",
+  "desktop.gettingStartedStepCreate": "建立連線",
+  "desktop.gettingStartedStepCreateDetail":
+    "使用「新增連線」填寫主機、連接埠和使用者名稱，然後儲存本機設定檔。範例資料不是真實工作階段。",
+  "desktop.gettingStartedStepSecure": "安全連線",
+  "desktop.gettingStartedStepSecureDetail":
+    "開啟該設定檔的「連線」，選擇驗證方式並提供認證資料。第一次遇到未知主機時，請透過可信任的管道核對 SHA-256 主機金鑰指紋，再決定是否繼續。",
+  "desktop.gettingStartedStepUse": "開始使用 JoeSSH",
+  "desktop.gettingStartedStepUseDetail":
+    "完成連線核對後，可開啟終端機進行互動操作、使用 SFTP 傳輸檔案，或開啟連接埠轉送建立僅限 loopback 的本機通道。不需要執行危險的遠端操作。",
+  "desktop.gettingStartedStepCount": "第 {current} 步，共 {total} 步",
+  "desktop.gettingStartedPrevious": "上一步",
+  "desktop.gettingStartedNext": "下一步",
+  "desktop.gettingStartedSkip": "跳過",
+  "desktop.gettingStartedComplete": "完成",
+  "desktop.gettingStartedOpenConnect": "開啟連線",
+  "desktop.gettingStartedSecurityNote":
+    "JoeSSH 不會自動信任未知或已變更的主機金鑰。請先核對 SHA-256 指紋。",
+  "desktop.gettingStartedOpenTerminal": "開啟終端機",
+  "desktop.gettingStartedOpenSftp": "開啟 SFTP",
+  "desktop.gettingStartedOpenForwarding": "開啟連接埠轉送",
 } as const;

@@ -140,6 +140,49 @@ describe("main entry point", () => {
     );
   });
 
+  it("keeps onboarding lifecycle and ordinary new-connection entry points separate", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const mainPath = path.resolve(__dirname, "./main.tsx");
+    const content = fs.readFileSync(mainPath, "utf-8");
+
+    expect(content).toContain("GETTING_STARTED_STATE_VERSION");
+    expect(content).toContain(
+      'state.status === "unseen" || state.status === "in-progress"',
+    );
+    expect(content).toContain("onClick={() => setGettingStartedOpen(true)}");
+    expect(content).toContain("<CircleHelp size={16} />");
+    expect(content).toContain('status: "in-progress"');
+    expect(content).toContain("initialStep={gettingStartedState.lastStep}");
+    expect(content).toContain("onStepChange={updateGettingStartedStep}");
+    expect(content).toContain("onSkip={skipGettingStarted}");
+    expect(content).toContain("onComplete={completeGettingStarted}");
+    expect(content).toContain("onNewConnection={openNewConnection}");
+    expect(content).toContain("openOnboardingNewConnection");
+    expect(content).toContain("setGettingStartedCreatePending(false)");
+    expect(content).toContain("if (gettingStartedCreatePending)");
+    expect(content).toContain('updateGettingStartedState("in-progress", 1)');
+    expect(content).toContain("setConnectProfileName(connection.name)");
+    expect(content).toContain("setConnectOpen(true)");
+    expect(content).toContain(
+      "onHostKeyProbe={isDesktopRuntime() ? sshHostKeyProbe : undefined}",
+    );
+
+    const ordinaryEntry = content.match(
+      /const openNewConnection = useCallback\(\(\) => \{[\s\S]*?\n[ ]{2}\}, \[\]\);/,
+    )?.[0];
+    expect(ordinaryEntry).toContain("setGettingStartedCreatePending(false)");
+    expect(ordinaryEntry).not.toContain("setConnectOpen(true)");
+
+    const onboardingCreate = content.match(
+      /if \(gettingStartedCreatePending\) \{[\s\S]*?\n[ ]{14}\}/,
+    )?.[0];
+    expect(onboardingCreate).toContain("setConnectOpen(true)");
+    expect(onboardingCreate).toContain(
+      'updateGettingStartedState("in-progress", 1)',
+    );
+  });
+
   it("wires every public PWA shortcut to an implemented launch intent", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");

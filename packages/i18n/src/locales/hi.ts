@@ -442,4 +442,24 @@ export const hi = {
   "desktop.thirdPartyNoticesUnavailable":
     "इस बिल्ड में लाइसेंस सूचनाएँ उपलब्ध नहीं हैं।",
   "team.reviewedBy": "{reviewer} द्वारा समीक्षा की गई",
+  "desktop.gettingStartedStepCreate": "कनेक्शन बनाएँ",
+  "desktop.gettingStartedStepCreateDetail":
+    "नया कनेक्शन खोलकर होस्ट, पोर्ट और उपयोगकर्ता नाम भरें, फिर स्थानीय प्रोफ़ाइल सहेजें। नमूना डेटा वास्तविक सत्र नहीं है।",
+  "desktop.gettingStartedStepSecure": "कनेक्शन सुरक्षित करें",
+  "desktop.gettingStartedStepSecureDetail":
+    "इस प्रोफ़ाइल के लिए कनेक्ट खोलें, प्रमाणीकरण विधि चुनें और क्रेडेंशियल दें। अज्ञात होस्ट के लिए आगे बढ़ने से पहले विश्वसनीय माध्यम से उसके SHA-256 होस्ट-कुंजी फ़िंगरप्रिंट की जाँच करें।",
+  "desktop.gettingStartedStepUse": "JoeSSH का उपयोग शुरू करें",
+  "desktop.gettingStartedStepUseDetail":
+    "कनेक्शन सत्यापित होने पर इंटरैक्टिव शेल के लिए टर्मिनल, फ़ाइल स्थानांतरण के लिए SFTP या केवल loopback तक सीमित स्थानीय टनल के लिए पोर्ट फ़ॉरवर्डिंग खोलें। किसी जोखिमपूर्ण रिमोट कार्रवाई की आवश्यकता नहीं है।",
+  "desktop.gettingStartedStepCount": "चरण {current} / {total}",
+  "desktop.gettingStartedPrevious": "पिछला",
+  "desktop.gettingStartedNext": "अगला",
+  "desktop.gettingStartedSkip": "छोड़ें",
+  "desktop.gettingStartedComplete": "समाप्त",
+  "desktop.gettingStartedOpenConnect": "कनेक्ट खोलें",
+  "desktop.gettingStartedSecurityNote":
+    "JoeSSH अज्ञात या बदली हुई होस्ट कुंजी पर कभी भी अपने-आप भरोसा नहीं करता। पहले SHA-256 फ़िंगरप्रिंट जाँचें।",
+  "desktop.gettingStartedOpenTerminal": "टर्मिनल खोलें",
+  "desktop.gettingStartedOpenSftp": "SFTP खोलें",
+  "desktop.gettingStartedOpenForwarding": "पोर्ट फ़ॉरवर्डिंग खोलें",
 } as const;

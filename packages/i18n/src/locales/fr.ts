@@ -53,7 +53,8 @@ export const fr = {
   "desktop.ptyOpen": "Terminal connected",
   "desktop.ptyClosed": "Terminal exited",
   "desktop.ptyError": "Terminal failed to open",
-  "desktop.ptyBlocked": "Saisie du terminal bloquée par la politique de sécurité",
+  "desktop.ptyBlocked":
+    "Saisie du terminal bloquée par la politique de sécurité",
   "desktop.ptyReconnect": "Reconnect",
   "desktop.terminalInputPlaceholder":
     "Saisissez une commande et appuyez sur Entrée",
@@ -452,4 +453,24 @@ export const fr = {
   "desktop.thirdPartyNoticesUnavailable":
     "Les mentions de licence sont indisponibles dans cette version.",
   "team.reviewedBy": "examiné par {reviewer}",
+  "desktop.gettingStartedStepCreate": "Créer une connexion",
+  "desktop.gettingStartedStepCreateDetail":
+    "Utilisez Nouvelle connexion pour saisir l’hôte, le port et le nom d’utilisateur, puis enregistrez un profil local. Les données d’exemple ne sont pas une session réelle.",
+  "desktop.gettingStartedStepSecure": "Sécuriser la connexion",
+  "desktop.gettingStartedStepSecureDetail":
+    "Ouvrez Connecter pour ce profil, choisissez une méthode d’authentification et fournissez les identifiants. Pour un hôte inconnu, vérifiez son empreinte SHA-256 de clé d’hôte par un canal fiable avant de continuer.",
+  "desktop.gettingStartedStepUse": "Commencer avec JoeSSH",
+  "desktop.gettingStartedStepUseDetail":
+    "Après vérification, ouvrez Terminal pour un shell interactif, SFTP pour les transferts ou le transfert de ports pour des tunnels locaux limités à loopback. Aucune opération distante dangereuse n’est requise.",
+  "desktop.gettingStartedStepCount": "Étape {current} sur {total}",
+  "desktop.gettingStartedPrevious": "Précédent",
+  "desktop.gettingStartedNext": "Suivant",
+  "desktop.gettingStartedSkip": "Ignorer",
+  "desktop.gettingStartedComplete": "Terminer",
+  "desktop.gettingStartedOpenConnect": "Ouvrir Connecter",
+  "desktop.gettingStartedSecurityNote":
+    "JoeSSH ne fait jamais confiance automatiquement à une clé d’hôte inconnue ou modifiée. Vérifiez d’abord l’empreinte SHA-256.",
+  "desktop.gettingStartedOpenTerminal": "Ouvrir Terminal",
+  "desktop.gettingStartedOpenSftp": "Ouvrir SFTP",
+  "desktop.gettingStartedOpenForwarding": "Ouvrir le transfert de ports",
 } as const;

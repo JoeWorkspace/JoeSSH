@@ -156,7 +156,7 @@ export function checkWindowsStoreSurfaces(
       countOccurrences(panels, "showFutureProductSurfaces ? (") >= 2 &&
       statusBar.includes("showTeamAccess ? (") &&
       shortcuts.includes('(showFutureProductSurfaces || key !== "Ctrl+3")') &&
-      countOccurrences(onboarding, "showCompanionProductSurfaces ? (") >= 2,
+      countOccurrences(onboarding, "showCompanionProductSurfaces ? (") === 1,
     "Settings, status, shortcuts, and onboarding all obey the release policy",
   );
   add(
@@ -169,9 +169,12 @@ export function checkWindowsStoreSurfaces(
       ) &&
       tests.includes("hides the unfinished team surface for release builds") &&
       tests.includes("hides the unfinished team shortcut for release builds") &&
-      tests.includes(
-        "keeps the Store onboarding focused on the shipped Desktop surface",
-      ),
+      (tests.includes(
+        "keeps Store onboarding to the three shipped Desktop tasks",
+      ) ||
+        tests.includes(
+          "keeps the Store onboarding focused on the shipped Desktop surface",
+        )),
     "Component and policy tests cover every hidden Store surface",
   );
   add(
