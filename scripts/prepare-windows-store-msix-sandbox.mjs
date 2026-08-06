@@ -406,7 +406,7 @@ export function createSandboxConfig({ inputRoot, memoryInMb, outputRoot }) {
     </MappedFolder>
   </MappedFolders>
   <LogonCommand>
-    <Command>powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File C:\\JoeSSHInput\\bootstrap.ps1</Command>
+    <Command>powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File C:\\JoeSSHInput\\bootstrap.ps1 -SkipWebViewPrewarm</Command>
   </LogonCommand>
 </Configuration>
 `;

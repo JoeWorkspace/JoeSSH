@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
-  [switch]$Elevated
+  [switch]$Elevated,
+  [switch]$SkipWebViewPrewarm
 )
 
 Set-StrictMode -Version Latest
@@ -233,7 +234,9 @@ try {
 
   $currentStage = "webview-prewarm"
   Write-Status -State "running" -Stage $currentStage
-  Prewarm-WebView2Runtime
+  if (-not $SkipWebViewPrewarm) {
+    Prewarm-WebView2Runtime
+  }
 
   $currentStage = "conversion"
   Write-Status -State "running" -Stage $currentStage

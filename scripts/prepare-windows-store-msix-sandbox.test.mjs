@@ -233,6 +233,7 @@ test("WSB exposes only read-only input and isolated writable output", () => {
     config,
     /<SandboxFolder>C:\\JoeSSHOutput<\/SandboxFolder>\s*<ReadOnly>false<\/ReadOnly>/,
   );
+  assert.match(config, /bootstrap\.ps1 -SkipWebViewPrewarm<\/Command>/);
 });
 
 test("WSB resolves relative host folders without rewriting Windows absolute paths", () => {
@@ -264,6 +265,7 @@ test("Sandbox bootstrap remains offline and returns sanitized result evidence", 
   assert.match(source, /Prewarm-WebView2Runtime/);
   assert.match(source, /webview-prewarm/);
   assert.match(source, /uninstall\.exe/);
+  assert.match(source, /SkipWebViewPrewarm/);
   assert.doesNotMatch(
     source,
     /Invoke-WebRequest|Invoke-RestMethod|Start-BitsTransfer|curl\.exe|https?:\/\//i,
