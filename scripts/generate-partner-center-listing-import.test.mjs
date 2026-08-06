@@ -97,6 +97,21 @@ test("the Partner Center template rejects required field ID drift", () => {
   );
 });
 
+test("the Partner Center template rejects official header drift", () => {
+  const templateCsv = buildTemplateCsv().replace(
+    '"Type (type)"',
+    '"Type"',
+  );
+  assert.throws(
+    () =>
+      buildPartnerCenterListingImport({
+        manifest: makeReadyManifest(),
+        templateCsv,
+      }),
+    /template header is not recognized/u,
+  );
+});
+
 test("the Partner Center template rejects a missing reviewed locale column", () => {
   assert.throws(
     () =>
@@ -107,6 +122,37 @@ test("the Partner Center template rejects a missing reviewed locale column", () 
         }),
       }),
     /missing reviewed locale columns: cy-gb/u,
+  );
+});
+
+test("the Partner Center builder rejects a manifest with locale order drift", () => {
+  const manifest = makeReadyManifest();
+  [manifest.locales[0], manifest.locales[1]] = [
+    manifest.locales[1],
+    manifest.locales[0],
+  ];
+  assert.throws(
+    () =>
+      buildPartnerCenterListingImport({
+        manifest,
+        templateCsv: buildTemplateCsv(),
+      }),
+    /exact ordered 80 Store locales/u,
+  );
+});
+
+test("the Partner Center builder rejects a manifest with fewer than 80 locales", () => {
+  const manifest = makeReadyManifest();
+  manifest.locales = manifest.locales.slice(0, -1);
+  assert.throws(
+    () =>
+      buildPartnerCenterListingImport({
+        manifest,
+        templateCsv: buildTemplateCsv({
+          storeLocales: targetStoreLocales.slice(0, -1),
+        }),
+      }),
+    /exact ordered 80 Store locales/u,
   );
 });
 

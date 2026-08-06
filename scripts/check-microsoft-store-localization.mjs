@@ -777,6 +777,22 @@ export function checkMicrosoftStoreLocalizationManifest(
           "manifest Store values differ from catalog",
         ),
   );
+  const canonicalOrderMatches =
+    codes.length === EXPECTED_CANONICAL_LOCALES.length &&
+    codes.every(
+      (code, index) => code === EXPECTED_CANONICAL_LOCALES[index],
+    );
+  const storeOrderMatches =
+    storeCodes.length === EXPECTED_STORE_LOCALES.length &&
+    storeCodes.every((code, index) => code === EXPECTED_STORE_LOCALES[index]);
+  results.push(
+    canonicalOrderMatches && storeOrderMatches
+      ? pass("locale ordering", "manifest order matches the locale catalog")
+      : fail(
+          "locale ordering",
+          "manifest canonical and Store locale order differs from the catalog",
+        ),
+  );
   const nonCanonicalLocales = locales
     .filter((entry) => {
       try {

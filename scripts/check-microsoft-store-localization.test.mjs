@@ -26,6 +26,22 @@ test("the 80-locale Store draft passes structural validation", () => {
   assert.deepEqual(failures, []);
 });
 
+test("the Store draft rejects locale order drift", (t) => {
+  const fixture = createFixture(t);
+  const manifest = readManifest(fixture);
+  [manifest.locales[0], manifest.locales[1]] = [
+    manifest.locales[1],
+    manifest.locales[0],
+  ];
+  writeManifest(fixture, manifest);
+
+  const result = checkMicrosoftStoreLocalization(fixture).find(
+    (candidate) => candidate.label === "locale ordering",
+  );
+  assert.equal(result?.passed, false);
+  assert.match(result?.detail ?? "", /order differs from the catalog/u);
+});
+
 test("the technical fact anchor gate accepts standard 25 MiB for ru-RU", (t) => {
   const fixture = createFixture(t);
   const manifest = readManifest(fixture);

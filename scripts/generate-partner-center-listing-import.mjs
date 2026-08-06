@@ -3,6 +3,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { checkMicrosoftStoreSubmissionReadinessManifest } from "./check-microsoft-store-localization.mjs";
+import { EXPECTED_STORE_LOCALES } from "./microsoft-store-locale-catalog.mjs";
 import { csvCell, parseCsv } from "./microsoft-store-csv.mjs";
 import { sameExistingFile } from "./microsoft-store-file-safety.mjs";
 
@@ -87,13 +88,30 @@ export function buildPartnerCenterListingImport({ manifest, templateCsv }) {
       .slice(4)
       .map((header, index) => [header.toLowerCase(), index + 4]),
   );
-  const locales = manifest.locales;
-  const targetHeaders = locales.map((entry) => entry.storeLocale.toLowerCase());
+  const locales = Array.isArray(manifest?.locales) ? manifest.locales : [];
+  const targetHeaders = locales.map((entry) =>
+    typeof entry?.storeLocale === "string"
+      ? entry.storeLocale.toLowerCase()
+      : "",
+  );
   if (
     targetHeaders.length === 0 ||
     new Set(targetHeaders).size !== targetHeaders.length
   ) {
     throw new Error("Reviewed manifest must contain unique Store locales");
+  }
+  const expectedTargetHeaders = EXPECTED_STORE_LOCALES.map((locale) =>
+    locale.toLowerCase(),
+  );
+  if (
+    targetHeaders.length !== expectedTargetHeaders.length ||
+    targetHeaders.some(
+      (header, index) => header !== expectedTargetHeaders[index],
+    )
+  ) {
+    throw new Error(
+      `Reviewed manifest must contain the exact ordered ${expectedTargetHeaders.length} Store locales`,
+    );
   }
   const targetHeaderSet = new Set(targetHeaders);
   const unexpectedHeaders = [...existingLocaleColumns.keys()].filter(
@@ -154,6 +172,7 @@ function validateTemplate(rows) {
     width < 4 ||
     rows[0][0] !== "Field" ||
     rows[0][1] !== "ID" ||
+    rows[0][2] !== "Type (type)" ||
     rows[0][3] !== "default"
   ) {
     throw new Error("Partner Center template header is not recognized");

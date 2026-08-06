@@ -45,7 +45,7 @@ values:
 
 | Canonical BCP 47 | Store value  | Status                                                 |
 | ---------------- | ------------ | ------------------------------------------------------ |
-| `zh-CN`          | `zh-Hans-CN` | Existing `zh-hans-cn` listing code confirmed by export |
+| `zh-CN`          | `zh-Hans-CN` | Existing `zh-hans-cn` listing code observed in the configured listing |
 | `zh-TW`          | `zh-Hant-TW` | Live option observed; exact import code still pending  |
 | `qu-PE`          | `quz-PE`     | Live Peru option observed; confirm code before import  |
 
@@ -53,9 +53,10 @@ The live Partner Center **Add languages** dialog exposed 830 options. All 80
 target labels and unique language IDs were observed without saving a change;
 the bounded evidence is recorded in
 [partner-center-language-options.json](assets/microsoft-store/partner-center-language-options.json).
-The dialog does not expose `languageCode` for an unconfigured listing. Only the
-existing `en-us` and `zh-hans-cn` codes are therefore export-confirmed, and the
-catalog remains `partner-center-exact-code-confirmation-pending` until an export
+The dialog does not expose `languageCode` for an unconfigured listing. The
+existing `en-us` and `zh-hans-cn` codes are confirmed only for the currently
+configured listings; they are not a complete export confirmation. The catalog
+remains `partner-center-exact-code-confirmation-pending` until an export
 contains every target locale column.
 
 Four entries retain `reviewRequired: true` for mapping or source-name decisions:
