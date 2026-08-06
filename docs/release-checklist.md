@@ -1,6 +1,6 @@
 # JoeSSH Public Beta Release Checklist
 
-This checklist defines the public beta bar for `0.1.0-beta.11`. The first public
+This checklist defines the public beta bar for `0.1.0-beta.12`. The first public
 release includes Desktop, Web Admin, and the self-hosted Sync Service. Mobile
 native apps stay in preflight/device-smoke validation until a later beta.
 
@@ -92,8 +92,8 @@ evidence. None can make the current workflow produce
 - Keep `.gitattributes` LF normalization for source, lock, policy, and
   hash-bound release inputs. Do not remove explicit binary handling for
   installers, archives, images, fonts, or signing-certificate files.
-- Update `CHANGELOG.md` with the `0.1.0-beta.11` section.
-- Update `docs/release-notes/0.1.0-beta.11.md`; the GitHub Release draft uses
+- Update `CHANGELOG.md` with the `0.1.0-beta.12` section.
+- Update `docs/release-notes/0.1.0-beta.12.md`; the GitHub Release draft uses
   this versioned notes file, not the release checklist.
 - Confirm the release accurately links `SUPPORT.md`, `PRIVACY.md`,
   `TRADEMARKS.md`, and `THIRD_PARTY_NOTICES.md`, and does not advertise Pro,
@@ -152,7 +152,7 @@ evidence. None can make the current workflow produce
 - Build release artifacts and generate per-artifact `SHA256` checksum files
   before uploading.
 - Run `npm run release:web` and confirm the GitHub Release includes
-  `reports/release/web/joessh-web-admin-0.1.0-beta.11.zip`, not only a checksum
+  `reports/release/web/joessh-web-admin-0.1.0-beta.12.zip`, not only a checksum
   manifest for unpackaged `dist` files. The Web package self-test must keep
   `--output` and `--checksum` writes inside the repository root.
 - Run `node scripts/verify-web-release-package.mjs` or rely on
@@ -352,7 +352,7 @@ evidence. None can make the current workflow produce
 - Create the GitHub Release as a draft first with `npm run release:desktop:draft`.
   The draft script requires Desktop, Web Admin, and Sync `SHA256SUMS.txt`
   manifests, a clean Git working tree outside `reports/release/`, a
-  `v0.1.0-beta.11` tag pointing at `HEAD`, authenticated GitHub CLI state, no
+  `v0.1.0-beta.12` tag pointing at `HEAD`, authenticated GitHub CLI state, no
   existing GitHub Release with that tag, the versioned release notes file, and verifies all
   staged `reports/release/**/SHA256SUMS.txt` files before invoking
   `gh release create`.

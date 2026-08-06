@@ -134,6 +134,7 @@ export function prepareWindowsStoreMsixSandbox(
       ...process.env,
       ATLASTERM_WINDOWS_LEGAL_PUBLISHER: partnerIdentity.publisherDisplayName,
       ATLASTERM_WINDOWS_STORE_SIGNING_CONFIG: "",
+      ATLASTERM_WINDOWS_STORE_SANDBOX_SKIP_WEBVIEW: "1",
     },
     platform,
     spawn,

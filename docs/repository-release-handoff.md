@@ -20,7 +20,7 @@ git rev-parse --is-inside-work-tree
 git fsck --strict
 ```
 
-For `0.1.0-beta.11`, the first public release target remains Desktop, Web Admin,
+For `0.1.0-beta.12`, the first public release target remains Desktop, Web Admin,
 and the self-hosted Sync Service. Mobile device smoke stays a strict-release
 route, not a blocker for the first Public Beta.
 
@@ -92,9 +92,9 @@ route, not a blocker for the first Public Beta.
    remote peeled tag and compare it with the reviewed commit:
 
    ```bash
-   RELEASE_TAG=v0.1.0-beta.11
+   RELEASE_TAG=v0.1.0-beta.12
    REVIEWED_COMMIT="$(git rev-parse HEAD)"
-   git tag -a v0.1.0-beta.11 -m "JoeSSH 0.1.0-beta.11"
+   git tag -a v0.1.0-beta.12 -m "JoeSSH 0.1.0-beta.12"
    git push origin "refs/tags/${RELEASE_TAG}:refs/tags/${RELEASE_TAG}"
    REMOTE_TAG_COMMIT="$(
      git ls-remote origin "refs/tags/${RELEASE_TAG}^{}" |
@@ -137,7 +137,7 @@ Keep these outputs with the release handoff notes:
   the local OpenSSH dogfood fixture to supply `JOESSH_REAL_SSH_*` evidence.
 - `node scripts/check-public-release-readiness.mjs` result without
   `--allow-unhealthy-git`.
-- `gh --version`, `gh auth status`, and the `gh release view v0.1.0-beta.11`
+- `gh --version`, `gh auth status`, and the `gh release view v0.1.0-beta.12`
   not-found check from `npm run release:publish-preflight`.
 - The exact `origin/main` SHA, local annotated tag SHA, remote peeled tag SHA,
   and their equality check.

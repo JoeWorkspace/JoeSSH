@@ -20,7 +20,7 @@ describe("mobile entry telemetry policy", () => {
       /messageLabel=\{t\(["']mobile\.error\.boundary\.message["']\)\}/,
     );
     expect(content).not.toContain("this.state.error.message");
-    expect(content).toContain("0.1.0-beta.11");
+    expect(content).toContain("0.1.0-beta.12");
     expect(content).not.toContain("version: '0.1.0'");
     expect(content).not.toContain('version: "0.1.0"');
     expect(content).toContain("<MobileLocaleProvider>");

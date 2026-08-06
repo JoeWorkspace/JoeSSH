@@ -13,10 +13,10 @@ Mobile is outside the current public distribution scope; Web Admin remains an
 evaluation/community surface rather than a hosted or mutating team service.
 
 > [!IMPORTANT]
-> **Release status:** `0.1.0-beta.11` is the current Public Beta candidate. Its
-> x64 MSIX (`1.1.11.0`) is validated in the Microsoft Partner Center submission
-> draft but is not yet certified, Store-signed, or published. No public installer is
-> available yet; unsigned CI bundles and local candidate files remain staging
+> **Release status:** `0.1.0-beta.12` is the current Public Beta candidate. Its
+> x64 MSIX (`1.1.12.0`) is the pending Microsoft Partner Center submission
+> candidate and is not yet certified, Store-signed, or published. No public installer
+> is available yet; unsigned CI bundles and local candidate files remain staging
 > evidence only. To use real SSH today, run the native Tauri Desktop app from
 > source; the browser Desktop preview uses demo data and cannot open a real
 > SSH session.
