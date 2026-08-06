@@ -7,7 +7,7 @@
   "productSourceCommit": null,
   "candidateArtifactSourceCommit": "1e9d3328209f52ff146a926564adb22c05ea723c",
   "generation": {
-    "sourceCommit": "4384c82b72372d7e9c05f28d6b38bc01a26f013e",
+    "sourceCommit": "4384c82b72372d7e9c5f28d6b38bc01a26f013e",
     "sourceState": "dirty-working-tree",
     "generatedBy": "working-tree-generator"
   },
@@ -15,7 +15,10 @@
   "storeLocaleCatalog": {
     "authority": "Microsoft BCP 47 and Windows locale identifiers",
     "reference": "https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msi/add-and-edit-store-listing-info",
-    "status": "partner-center-exact-code-confirmation-pending",
+    "status": "partner-center-export-confirmed",
+    "confirmedAt": "2026-08-06T02:31:09.000Z",
+    "exportSha256": "5fca727e00dd47c457ddab8ddcbda318c1464427ff3af02ca921a48981e375bf",
+    "exportEvidencePath": "docs/assets/microsoft-store/partner-center-export-1152921505701586331.csv",
     "liveOptionsStatus": "all-target-options-observed",
     "evidencePath": "docs/assets/microsoft-store/partner-center-language-options.json"
   },
@@ -1549,7 +1552,7 @@
     },
     {
       "locale": "mk-MK",
-      "storeLocale": "mk-MK",
+      "storeLocale": "mk",
       "sourceName": "马其顿语",
       "languageName": "Macedonian",
       "nativeName": "Македонски",

@@ -46,29 +46,31 @@ values:
 | Canonical BCP 47 | Store value  | Status                                                 |
 | ---------------- | ------------ | ------------------------------------------------------ |
 | `zh-CN`          | `zh-Hans-CN` | Existing `zh-hans-cn` listing code observed in the configured listing |
-| `zh-TW`          | `zh-Hant-TW` | Live option observed; exact import code still pending  |
-| `qu-PE`          | `quz-PE`     | Live Peru option observed; confirm code before import  |
+| `zh-TW`          | `zh-Hant-TW` | Exact code confirmed in the full Partner Center export |
+| `qu-PE`          | `quz-PE`     | Exact Peru code confirmed in the full Partner Center export |
+| `mk-MK`          | `mk`         | Partner Center exports Macedonian as the bare `mk` code |
 
 The live Partner Center **Add languages** dialog exposed 830 options. All 80
-target labels and unique language IDs were observed without saving a change;
-the bounded evidence is recorded in
+target labels and unique language IDs were observed; the bounded dialog
+evidence is recorded in
 [partner-center-language-options.json](assets/microsoft-store/partner-center-language-options.json).
-The dialog does not expose `languageCode` for an unconfigured listing. The
-existing `en-us` and `zh-hans-cn` codes are confirmed only for the currently
-configured listings; they are not a complete export confirmation. The catalog
-remains `partner-center-exact-code-confirmation-pending` until an export
-contains every target locale column.
+The complete 80-locale export is recorded in
+[partner-center-export-1152921505701586331.csv](assets/microsoft-store/partner-center-export-1152921505701586331.csv)
+with SHA-256 `5fca727e00dd47c457ddab8ddcbda318c1464427ff3af02ca921a48981e375bf`.
+It confirms the exact import code for every target locale, including `mk` for
+Macedonian, `zh-hant-tw`, and `quz-pe`.
 
 Four entries retain `reviewRequired: true` for mapping or source-name decisions:
 
 - `kn-IN`: Partner Center resolves the supplied source name to Kannada (India),
   language ID 52; native review is still required.
-- `qu-PE` / `quz-PE`: Quechua (Peru), language ID 147, is selectable; the exact
-  import code and Quechua copy still require confirmation.
+- `qu-PE` / `quz-PE`: Quechua (Peru), language ID 147, is selectable and its
+  `quz-pe` import code is confirmed; the Quechua copy still requires native
+  review.
 - `es-MX`: Partner Center has no generic Latin America option, so Spanish
   (Mexico), language ID 66, is the explicit regional choice.
-- `ca-ES-valencia`: Valencian, language ID 117, is selectable; the variant code
-  remains subject to the full export check.
+- `ca-ES-valencia`: Valencian, language ID 117, is selectable and its variant
+  code is confirmed by the full export; native review remains required.
 
 These four entries remain `reviewRequired: true`. The Quechua copy is a
 consistent draft, not a native approval.
@@ -224,8 +226,8 @@ requires at least one reviewed HTTPS screenshot URL for every locale.
 
 After the code freeze and evidence collection are complete:
 
-1. Obtain a Partner Center export containing all 80 locale columns, record its
-   SHA-256 and timestamp, and update the reviewed catalog values.
+1. The full 80-locale Partner Center export is recorded with its SHA-256 and
+   timestamp; keep it attached to the submission evidence.
 2. Bind `productSourceCommit` to the exact candidate artifact source commit.
 3. Obtain native review provenance for all 80 entries, including the four flagged
    mappings.

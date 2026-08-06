@@ -1,10 +1,15 @@
-// This catalog is the reviewed draft allowlist used by the generator and
-// validators. Partner Center export confirmation remains a submission gate.
+// This catalog is the reviewed allowlist used by the generator and validators.
+// The recorded Partner Center export confirms the exact Store codes.
 export const STORE_LOCALE_CATALOG_SOURCE = {
   authority: "Microsoft BCP 47 and Windows locale identifiers",
   reference:
     "https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msi/add-and-edit-store-listing-info",
-  status: "partner-center-exact-code-confirmation-pending",
+  status: "partner-center-export-confirmed",
+  confirmedAt: "2026-08-06T02:31:09.000Z",
+  exportSha256:
+    "5fca727e00dd47c457ddab8ddcbda318c1464427ff3af02ca921a48981e375bf",
+  exportEvidencePath:
+    "docs/assets/microsoft-store/partner-center-export-1152921505701586331.csv",
   liveOptionsStatus: "all-target-options-observed",
   evidencePath:
     "docs/assets/microsoft-store/partner-center-language-options.json",
@@ -49,7 +54,7 @@ const STORE_LOCALE_CODES = [
   "lo-LA",
   "lv-LV",
   "lt-LT",
-  "mk-MK",
+  "mk",
   "ms-MY",
   "ml-IN",
   "nb-NO",
@@ -96,6 +101,8 @@ const STORE_LOCALE_CODES = [
 const CANONICAL_OVERRIDES = {
   "zh-Hans-CN": "zh-CN",
   "zh-Hant-TW": "zh-TW",
+  // Partner Center exports Macedonian as the bare Store code `mk`.
+  mk: "mk-MK",
   // Windows/Microsoft uses quz-PE; the canonical BCP 47 language subtag is qu.
   "quz-PE": "qu-PE",
 };
