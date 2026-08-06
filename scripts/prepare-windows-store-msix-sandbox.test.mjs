@@ -261,6 +261,9 @@ test("Sandbox bootstrap remains offline and returns sanitized result evidence", 
   assert.match(source, /Get-FileHash/);
   assert.match(source, /Get-AuthenticodeSignature/);
   assert.match(source, /Status\.ToString\(\) -ne "NotSigned"/);
+  assert.match(source, /Prewarm-WebView2Runtime/);
+  assert.match(source, /webview-prewarm/);
+  assert.match(source, /uninstall\.exe/);
   assert.doesNotMatch(
     source,
     /Invoke-WebRequest|Invoke-RestMethod|Start-BitsTransfer|curl\.exe|https?:\/\//i,
