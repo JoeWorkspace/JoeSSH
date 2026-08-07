@@ -223,6 +223,25 @@ describe("GettingStartedOverlay", () => {
     window.removeEventListener("keydown", bubbledKeyDown);
   });
 
+  it("ignores non-Escape keydown on the backdrop", () => {
+    const onClose = vi.fn();
+    render(
+      <GettingStartedOverlay
+        desktopRuntime
+        onClose={onClose}
+        onCreateConnection={vi.fn()}
+        t={t}
+      />,
+    );
+
+    fireEvent.keyDown(
+      screen.getByRole("dialog", { name: "desktop.gettingStarted" })
+        .parentElement as HTMLElement,
+      { key: "Enter" },
+    );
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it("keeps onboarding content inside an RTL workbench", () => {
     render(
       <div dir="rtl">

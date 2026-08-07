@@ -458,4 +458,18 @@ describe("ConnectModal", () => {
     fireEvent.click(screen.getByRole("dialog"));
     expect(onClose).toHaveBeenCalledTimes(2);
   });
+
+  it("ignores non-Escape keydown on the dialog", () => {
+    const onClose = vi.fn();
+    render(
+      <ConnectModal
+        onClose={onClose}
+        onConnect={vi.fn()}
+        onConnected={vi.fn()}
+        t={t}
+      />,
+    );
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Enter" });
+    expect(onClose).not.toHaveBeenCalled();
+  });
 });

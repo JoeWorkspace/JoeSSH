@@ -100,6 +100,11 @@ describe("desktop manifest metadata", () => {
     expect(cleanup).toBeUndefined();
   });
 
+  it("ignores missing social description metadata", () => {
+    expect(applyLocalizedDesktopMetadata(t)).toBeUndefined();
+    expect(document.head.querySelectorAll("meta")).toHaveLength(0);
+  });
+
   it("keeps the static install manifest localized and structurally stable", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");

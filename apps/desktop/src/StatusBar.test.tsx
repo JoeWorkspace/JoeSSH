@@ -123,6 +123,19 @@ describe("StatusBar", () => {
     expect(screen.getByText("desktop.mfaRequiredShort")).toBeTruthy();
   });
 
+  it("hides sample latency behind the localized unavailable label", () => {
+    render(
+      <StatusBar
+        activeConnection={{ latencyLabelKey: "desktop.sampleDataShort" }}
+        formatters={createLocaleFormatters("en")}
+        onPanelChange={vi.fn()}
+        t={t}
+        teamAccess={defaultTeamAccess}
+      />,
+    );
+    expect(screen.getByText("desktop.notAvailable")).toBeTruthy();
+  });
+
   it("prioritizes numeric latency over latencyLabelKey", () => {
     render(
       <StatusBar
@@ -261,5 +274,21 @@ describe("StatusBar", () => {
 
     expect(screen.queryByLabelText("team.accessSummary")).toBeNull();
     expect(screen.queryByText("team.summary", { exact: false })).toBeNull();
+  });
+
+  it("ignores non-Escape key presses on the status bar", () => {
+    const onPanelChange = vi.fn();
+    render(
+      <StatusBar
+        activeConnection={{ latencyMs: 10 }}
+        formatters={createLocaleFormatters("en")}
+        onPanelChange={onPanelChange}
+        t={t}
+        teamAccess={defaultTeamAccess}
+      />,
+    );
+
+    fireEvent.keyDown(screen.getByRole("contentinfo"), { key: "Enter" });
+    expect(onPanelChange).not.toHaveBeenCalled();
   });
 });
