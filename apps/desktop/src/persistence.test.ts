@@ -1,9 +1,10 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   CONNECTION_GROUPS_STORAGE_KEY,
   CONNECTION_ORDER_STORAGE_KEY,
   CUSTOM_CONNECTIONS_STORAGE_KEY,
+  CUSTOM_SNIPPETS_STORAGE_KEY,
   FAVORITES_KEY,
   FORWARD_RULES_STORAGE_KEY,
   GETTING_STARTED_STORAGE_KEY,
@@ -15,10 +16,13 @@ import {
   readStoredConnectionGroups,
   readStoredConnectionOrder,
   readStoredCustomConnections,
+  readStoredCustomSnippets,
   readStoredForwardRules,
   readStoredLayout,
   readStoredStringList,
   readStoredTheme,
+  writeStorageJsonTransaction,
+  writeStoredCustomSnippets,
   writeStorageJson,
   writeStorageText,
   type DesktopLayoutState,
@@ -53,6 +57,9 @@ function installStorage(
 
       values.set(key, value);
     },
+    removeItem(key: string) {
+      values.delete(key);
+    },
   };
 
   Object.defineProperty(globalThis, "window", {
@@ -71,6 +78,65 @@ afterEach(() => {
 });
 
 describe("desktop persistence helpers", () => {
+  it("normalizes custom snippets and rejects malformed, unsafe, and duplicate entries", () => {
+    installStorage({
+      [CUSTOM_SNIPPETS_STORAGE_KEY]: JSON.stringify([
+        { name: " Deploy ", command: "  systemctl status sshd  " },
+        { name: "deploy", command: "duplicate" },
+        { name: "bad\u0000name", command: "echo no" },
+        { name: "missing command", command: "" },
+      ]),
+    });
+
+    expect(readStoredCustomSnippets()).toEqual([
+      expect.objectContaining({
+        name: "Deploy",
+        command: "systemctl status sshd",
+      }),
+    ]);
+  });
+
+  it("rolls back every key when a multi-key storage transaction fails", () => {
+    const values = installStorage({
+      "transaction-a": JSON.stringify({ before: true }),
+    });
+    const storage = window.localStorage;
+    storage.setItem("transaction-a", JSON.stringify({ before: true }));
+    values.delete("transaction-b");
+    const originalSetItem = storage.setItem.bind(storage);
+    let writes = 0;
+    vi.spyOn(storage, "setItem").mockImplementation((key, value) => {
+      writes += 1;
+      if (writes === 2) throw new Error("quota");
+      originalSetItem(key, value);
+    });
+
+    expect(
+      writeStorageJsonTransaction([
+        ["transaction-a", { after: true }],
+        ["transaction-b", { created: true }],
+      ]),
+    ).toBe(false);
+    expect(storage.getItem("transaction-a")).toBe(
+      JSON.stringify({ before: true }),
+    );
+    expect(storage.getItem("transaction-b")).toBeNull();
+    vi.restoreAllMocks();
+  });
+
+  it("limits custom snippets to the supported local-only count", () => {
+    installStorage({
+      [CUSTOM_SNIPPETS_STORAGE_KEY]: JSON.stringify(
+        Array.from({ length: 60 }, (_, index) => ({
+          name: `snippet-${index}`,
+          command: `echo ${index}`,
+        })),
+      ),
+    });
+
+    expect(readStoredCustomSnippets()).toHaveLength(50);
+  });
+
   it("migrates the legacy bare dismissed marker to a one-time v2 unseen state", () => {
     const values = installStorage({
       [GETTING_STARTED_STORAGE_KEY]: "dismissed",
@@ -303,6 +369,11 @@ describe("desktop persistence helpers", () => {
     expect(readStoredTheme("system")).toBe("system");
     expect(writeStorageText(THEME_STORAGE_KEY, "light")).toBe(false);
     expect(writeStorageJson(LAYOUT_STORAGE_KEY, defaultLayout)).toBe(false);
+    expect(
+      writeStoredCustomSnippets([
+        { id: "snippet-test", name: "Status", command: "systemctl status sshd" },
+      ]),
+    ).toBe(false);
   });
 
   it("writes text and JSON values when storage is available", () => {

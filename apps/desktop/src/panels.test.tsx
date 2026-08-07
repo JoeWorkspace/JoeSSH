@@ -1305,12 +1305,14 @@ describe("extracted desktop panels", () => {
     expect(html).toContain("settings");
   });
 
-  it("exports the provided custom connections as a JSON download", () => {
+  it("exports the provided custom connections and snippets as a v2 JSON download", async () => {
     const created = vi.fn();
+    let exportedBlob: Blob | null = null;
     let downloadedFilename = "";
     const origCreate = URL.createObjectURL;
     const origRevoke = URL.revokeObjectURL;
-    URL.createObjectURL = () => {
+    URL.createObjectURL = (blob: Blob | MediaSource) => {
+      exportedBlob = blob instanceof Blob ? blob : null;
       created();
       return "blob:x";
     };
@@ -1327,7 +1329,13 @@ describe("extracted desktop panels", () => {
       const { container } = render(
         <SettingsPanel
           t={t}
-          connectionsIO={{ exportConnections: conns, onImport: vi.fn() }}
+          connectionsIO={{
+            exportConnections: conns,
+            exportSnippets: [
+              { id: "snippet-1", name: "Health", command: "uptime" },
+            ],
+            onImport: vi.fn(),
+          }}
         />,
       );
       const exportBtn = Array.from(container.querySelectorAll("button")).find(
@@ -1337,6 +1345,16 @@ describe("extracted desktop panels", () => {
       expect(created).toHaveBeenCalled();
       expect(clickSpy).toHaveBeenCalled();
       expect(downloadedFilename).toBe("joessh-connections.json");
+      expect(exportedBlob).not.toBeNull();
+      if (!exportedBlob) throw new Error("expected an exported blob");
+      const payload = JSON.parse(
+        await (exportedBlob as unknown as { text: () => Promise<string> }).text(),
+      );
+      expect(payload.version).toBe(2);
+      expect(payload.connections).toEqual(conns);
+      expect(payload.snippets).toEqual([
+        { id: "snippet-1", name: "Health", command: "uptime" },
+      ]);
     } finally {
       URL.createObjectURL = origCreate;
       URL.revokeObjectURL = origRevoke;

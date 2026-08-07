@@ -80,6 +80,7 @@ import {
 } from "./ipc";
 import { ConnectModal } from "./ConnectModal";
 import { NewConnectionModal } from "./NewConnectionModal";
+import { CommandSnippetModal } from "./CommandSnippetModal";
 import type { PtyDeps } from "./usePtySession";
 import { useSftpDirectory } from "./useSftpDirectory";
 import { joinSftpRemoteEntryPath } from "./sftpRemotePath";
@@ -88,12 +89,21 @@ import { SFTP_TRANSFER_MAX_BYTES, useSftpTransfer } from "./useSftpTransfer";
 import {
   LOCALE_STORAGE_KEY,
   LAYOUT_STORAGE_KEY,
+  CUSTOM_CONNECTIONS_STORAGE_KEY,
+  CUSTOM_SNIPPETS_STORAGE_KEY,
   FORWARD_RULES_STORAGE_KEY,
   GETTING_STARTED_STATE_VERSION,
   THEME_STORAGE_KEY,
   readStoredGettingStartedState,
   readStorageText,
   readStoredCustomConnections,
+  readStoredCustomSnippets,
+  MAX_CUSTOM_SNIPPETS,
+  MAX_CUSTOM_CONNECTIONS,
+  normalizePersistedCommandSnippet,
+  normalizePersistedConnection,
+  writeStorageJsonTransaction,
+  writeStoredCustomSnippets,
   readStoredForwardRules,
   readStoredLayout,
   readStoredTheme,
@@ -106,7 +116,15 @@ import {
   type PersistedTheme,
   type DesktopLayoutState,
   type PersistedConnection,
+  type PersistedCommandSnippet,
+  type CommandSnippetDraft,
+  type CommandSnippetSaveResult,
 } from "./persistence";
+import {
+  interceptTerminalCommand,
+  redactLogLine,
+  validateSnippetCommand,
+} from "./safety";
 import type { ForwardRule } from "./panels";
 import { useGroupManager } from "./useGroupManager";
 import { useCustomConnections } from "./useCustomConnections";
@@ -135,6 +153,7 @@ import { StatusBar } from "./StatusBar";
 import { ToastContainer } from "./ToastContainer";
 import { DesktopErrorBoundary } from "./DesktopErrorBoundary";
 import { GettingStartedOverlay } from "./GettingStartedOverlay";
+import { useFocusTrap } from "./useFocusTrap";
 import { isKeyboardShortcutsToggle } from "./keyboardShortcuts";
 import {
   createConnectionTerminalSession,
@@ -324,16 +343,16 @@ const commandSnippets = [
   },
   {
     nameKey: "desktop.snippetTailLogs",
-    command: "tail -f /var/log/joessh/session.log",
+    command: "tail -n 100 /var/log/joessh/session.log",
   },
-  { nameKey: "desktop.snippetDiskUsage", command: "df -h | head -10" },
+  { nameKey: "desktop.snippetDiskUsage", command: "df -h" },
   {
     nameKey: "desktop.snippetActiveConnections",
-    command: "ss -tlnp | grep -E ':(22|443|8080)'",
+    command: "ss -tlnp",
   },
   {
     nameKey: "desktop.snippetMemoryTop",
-    command: "ps aux --sort=-%mem | head -6",
+    command: "ps aux --sort=-%mem",
   },
 ] as const;
 
@@ -497,12 +516,89 @@ function App({
     [connections[0].name]: initialTerminalSession,
   }));
   const [commandInput, setCommandInput] = useState("");
+  const [customSnippets, setCustomSnippets] = useState<
+    PersistedCommandSnippet[]
+  >(readStoredCustomSnippets);
+  const [snippetModal, setSnippetModal] = useState<
+    { mode: "add" } | { mode: "edit"; snippet: PersistedCommandSnippet } | null
+  >(null);
+  const [pendingSnippet, setPendingSnippet] = useState<
+    | {
+        snippet: PersistedCommandSnippet;
+        connectionName: string;
+        host: string;
+        sessionId: string;
+      }
+    | null
+  >(null);
+  const [approvedSnippetInput, setApprovedSnippetInput] = useState<{
+    command: string;
+    connectionName: string;
+    sessionId: string;
+  } | null>(null);
+  const pendingSnippetFocusRef = useFocusTrap<HTMLDivElement>(
+    pendingSnippet !== null,
+  );
+  const [snippetExecutionBusy, setSnippetExecutionBusy] = useState(false);
   const [commandFeedback, setCommandFeedback] =
     useState<CommandFeedback | null>(null);
   const [activeConnectionName, setActiveConnectionName] = useState<string>(
     storedLayout.activeConnection,
   );
   const teamAccess = getTeamAccessSummary();
+
+  const sidebarSnippets = useMemo(
+    () => [
+      ...commandSnippets,
+      ...customSnippets.map((snippet) => ({
+        name: snippet.name,
+        command: snippet.command,
+        id: snippet.id,
+      })),
+    ],
+    [customSnippets],
+  );
+
+  const saveCustomSnippet = useCallback(
+    (snippet: CommandSnippetDraft): CommandSnippetSaveResult => {
+      const normalizedSnippet = normalizePersistedCommandSnippet(snippet);
+      if (!normalizedSnippet) return "validation";
+      const normalizedName = normalizedSnippet.name.toLocaleLowerCase();
+      const editingId =
+        snippetModal?.mode === "edit" ? snippetModal.snippet.id : null;
+      if (
+        snippetModal?.mode !== "edit" &&
+        customSnippets.length >= MAX_CUSTOM_SNIPPETS
+      ) {
+        return "limit";
+      }
+      if (
+        customSnippets.some(
+          (item) =>
+            item.name.toLocaleLowerCase() === normalizedName &&
+            item.id !== editingId,
+        ) ||
+        commandSnippets.some(
+          (item) =>
+            item.nameKey &&
+            t(item.nameKey).trim().toLowerCase() === normalizedName,
+        )
+      ) {
+        return "duplicate";
+      }
+
+      const nextSnippets =
+        snippetModal?.mode !== "edit"
+          ? [...customSnippets, normalizedSnippet]
+          : customSnippets.map((item) =>
+              item.id === snippetModal.snippet.id ? normalizedSnippet : item,
+            );
+      if (!writeStoredCustomSnippets(nextSnippets)) return "storage";
+      setCustomSnippets(nextSnippets);
+      return "saved";
+    },
+    [customSnippets, snippetModal, t],
+  );
 
   // User-created connections (persisted), reserving built-in names.
   const customConnections = useCustomConnections(connectionNames);
@@ -714,6 +810,23 @@ function App({
     desktopSessionsRef.current[activeConnection.name];
   const hasActiveDesktopSession =
     isDesktopRuntime() && Boolean(activeDesktopSessionId);
+  useEffect(() => {
+    setApprovedSnippetInput((approved) =>
+      approved &&
+      (approved.connectionName !== activeConnection.name ||
+        approved.sessionId !== activeDesktopSessionId)
+        ? null
+        : approved,
+    );
+    setPendingSnippet((pending) =>
+      pending &&
+      (pending.connectionName !== activeConnection.name ||
+        pending.host !== activeConnection.host ||
+        pending.sessionId !== activeDesktopSessionId)
+        ? null
+        : pending,
+    );
+  }, [activeConnection.host, activeConnection.name, activeDesktopSessionId]);
   const terminalSession =
     terminalSessions[activeConnection.name] ??
     createConnectionTerminalSession(
@@ -830,18 +943,63 @@ function App({
   }
 
   function handleImportConnections(parsed: unknown) {
-    const list =
-      isRecord(parsed) &&
-      Array.isArray((parsed as { connections?: unknown }).connections)
-        ? (parsed as { connections: unknown[] }).connections
-        : Array.isArray(parsed)
-          ? parsed
-          : null;
-    if (!list) {
+    // Keep accepting the pre-v2 array/object exports while allowing v2 to
+    // carry local-only command snippets alongside connection profiles.
+    const payload = isRecord(parsed) ? parsed : null;
+    const hasConnections = payload
+      ? Object.prototype.hasOwnProperty.call(payload, "connections")
+      : false;
+    const hasSnippets = payload
+      ? Object.prototype.hasOwnProperty.call(payload, "snippets")
+      : false;
+    const list: unknown[] | null = Array.isArray(parsed)
+      ? parsed
+      : payload && (!hasConnections || Array.isArray(payload.connections))
+        ? hasConnections
+          ? (payload.connections as unknown[])
+          : []
+        : null;
+    const snippetList: unknown[] | null = hasSnippets
+      ? Array.isArray(payload?.snippets)
+        ? payload.snippets
+        : null
+      : [];
+    if (!list || !snippetList) {
       addToast(connectionsImportFailedToast(t), "error");
       return;
     }
-    let added = 0;
+    const acceptedSnippets: PersistedCommandSnippet[] = [];
+    const existingSnippetIds = new Set(customSnippets.map((snippet) => snippet.id));
+    const existingSnippetNames = new Set(
+      customSnippets.map((snippet) => snippet.name.toLocaleLowerCase()),
+    );
+    for (const item of snippetList.slice(0, MAX_CUSTOM_SNIPPETS)) {
+      const snippet = normalizePersistedCommandSnippet(item);
+      if (!snippet) continue;
+      const normalizedName = snippet.name.toLocaleLowerCase();
+      if (
+        existingSnippetIds.has(snippet.id) ||
+        existingSnippetNames.has(normalizedName) ||
+        customSnippets.length + acceptedSnippets.length >= MAX_CUSTOM_SNIPPETS ||
+        acceptedSnippets.some(
+          (candidate) => candidate.name.toLocaleLowerCase() === normalizedName,
+        ) ||
+        commandSnippets.some(
+          (builtin) =>
+            builtin.nameKey &&
+            t(builtin.nameKey).trim().toLocaleLowerCase() === normalizedName,
+        )
+      ) {
+        continue;
+      }
+      existingSnippetIds.add(snippet.id);
+      existingSnippetNames.add(normalizedName);
+      acceptedSnippets.push(snippet);
+    }
+    const acceptedConnections: PersistedConnection[] = [];
+    const existingConnectionNames = new Set(
+      customConnections.connections.map((connection) => connection.name),
+    );
     for (const item of list.slice(0, 100)) {
       if (
         isRecord(item) &&
@@ -852,42 +1010,84 @@ function App({
           typeof item.group === "string" && item.group.trim()
             ? item.group.trim()
             : (groupOrder[0] ?? "Production");
+        const normalized = normalizePersistedConnection({
+          name: item.name,
+          host: item.host,
+          group: importedGroup,
+          port:
+            typeof item.port === "number" &&
+            Number.isInteger(item.port) &&
+            item.port >= 1 &&
+            item.port <= 65535
+              ? item.port
+              : undefined,
+          tags: Array.isArray(item.tags)
+            ? item.tags.filter(
+                (tag): tag is string => typeof tag === "string",
+              )
+            : [],
+          username:
+            typeof item.username === "string" ? item.username : undefined,
+        });
         if (
-          customConnections.add({
-            name: item.name,
-            host: item.host,
-            group: importedGroup,
-            port:
-              typeof item.port === "number" &&
-              Number.isInteger(item.port) &&
-              item.port >= 1 &&
-              item.port <= 65535
-                ? item.port
-                : undefined,
-            tags: Array.isArray(item.tags)
-              ? item.tags.filter(
-                  (tag): tag is string => typeof tag === "string",
-                )
-              : [],
-            username:
-              typeof item.username === "string" ? item.username : undefined,
-          })
+          normalized &&
+          !builtinConnectionNameSet.has(normalized.name) &&
+          !existingConnectionNames.has(normalized.name) &&
+          customConnections.connections.length + acceptedConnections.length <
+            MAX_CUSTOM_CONNECTIONS
         ) {
-          if (!allGroupNames.includes(importedGroup)) {
-            groupDispatch({
-              type: "ADD_CUSTOM_GROUP",
-              name: importedGroup,
-            });
-          }
-          added += 1;
+          existingConnectionNames.add(normalized.name);
+          acceptedConnections.push(normalized);
         }
       }
     }
-    if (added === 0) {
+    const added = acceptedConnections.length;
+    if (added === 0 && acceptedSnippets.length === 0) {
       addToast(connectionsImportFailedToast(t), "error");
       return;
     }
-    addToast(connectionsImportedToast(t, added), "success");
+
+    const nextConnections = [
+      ...customConnections.connections,
+      ...acceptedConnections,
+    ];
+    const nextSnippets = [...customSnippets, ...acceptedSnippets];
+    const transactionEntries: (readonly [string, unknown])[] = [];
+    if (acceptedConnections.length > 0) {
+      transactionEntries.push([
+        CUSTOM_CONNECTIONS_STORAGE_KEY,
+        nextConnections,
+      ]);
+    }
+    if (acceptedSnippets.length > 0) {
+      transactionEntries.push([CUSTOM_SNIPPETS_STORAGE_KEY, nextSnippets]);
+    }
+    if (!writeStorageJsonTransaction(transactionEntries)) {
+      addToast(t("desktop.snippetStorageFailed"), "error");
+      return;
+    }
+
+    if (acceptedConnections.length > 0) {
+      customConnections.replaceInMemory(nextConnections);
+      for (const connection of acceptedConnections) {
+        if (!allGroupNames.includes(connection.group)) {
+          groupDispatch({
+            type: "ADD_CUSTOM_GROUP",
+            name: connection.group,
+          });
+        }
+      }
+    }
+    if (acceptedSnippets.length > 0) {
+      setCustomSnippets(nextSnippets);
+    }
+    addToast(
+      connectionsImportedToast(
+        t,
+        added + acceptedSnippets.length,
+      ),
+      "success",
+    );
   }
 
   async function handleClearKnownHosts() {
@@ -1067,8 +1267,8 @@ function App({
   const openConnectionTab = useCallback((name: string) => {
     setOpenTerminalTabs((tabs) => addTerminalTab(tabs, name));
   }, []);
-  const clearPreparedTerminalInput = useCallback(() => {
-    setCommandInput("");
+  const clearApprovedSnippetInput = useCallback(() => {
+    setApprovedSnippetInput(null);
   }, []);
 
   const activateConnection = useCallback(
@@ -1095,6 +1295,7 @@ function App({
       );
       openConnectionTab(connection.name);
       setActiveConnectionName(connection.name);
+      setPendingSnippet(null);
       recordConnection(connection.name);
     },
     [effectiveConnections, openConnectionTab, recordConnection, t],
@@ -1120,6 +1321,8 @@ function App({
     }
 
     delete desktopSessionsRef.current[activeConnection.name];
+    setPendingSnippet(null);
+    setApprovedSnippetInput(null);
     setConnectVersion((version) => version + 1);
     setCommandInput("");
     setCommandFeedback(null);
@@ -1205,6 +1408,14 @@ function App({
         if (event.key === "Escape") {
           event.preventDefault();
           closeGettingStarted();
+        }
+        return;
+      }
+
+      if (pendingSnippet) {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          setPendingSnippet(null);
         }
         return;
       }
@@ -1349,6 +1560,7 @@ function App({
     paletteState.open,
     shortcutsOpen,
     gettingStartedOpen,
+    pendingSnippet,
     terminalMaximized,
     closePalette,
     closeGettingStarted,
@@ -1645,8 +1857,33 @@ function App({
   ) {
     event.preventDefault();
 
-    const desktopSessionId = desktopSessionsRef.current[activeConnection.name];
-    if (!isDesktopRuntime() || !desktopSessionId) {
+    await executeTerminalCommand(commandInput);
+  }
+
+  async function executeTerminalCommand(
+    command: string,
+    target: { connectionName: string; sessionId: string } = {
+      connectionName: activeConnection.name,
+      sessionId: desktopSessionsRef.current[activeConnection.name] ?? "",
+    },
+  ) {
+    const targetConnection = effectiveConnections.find(
+      (connection) => connection.name === target.connectionName,
+    );
+    if (!targetConnection) return;
+    const desktopSessionId = desktopSessionsRef.current[target.connectionName];
+    const targetTerminalSession =
+      terminalSessions[target.connectionName] ??
+      createConnectionTerminalSession(
+        { ...targetConnection, status: "sample" },
+        t,
+        initialTerminalSession,
+      );
+    if (
+      !isDesktopRuntime() ||
+      !desktopSessionId ||
+      desktopSessionId !== target.sessionId
+    ) {
       setCommandFeedback({
         detail: t("desktop.noSessionActionDetail"),
         title: t("desktop.noSession"),
@@ -1662,8 +1899,8 @@ function App({
     };
 
     const result = await submitTerminalCommand(
-      terminalSession,
-      commandInput,
+      targetTerminalSession,
+      command,
       `[local] ${t("desktop.commandAcceptedDetail")}`,
       runRemote,
     );
@@ -1685,9 +1922,15 @@ function App({
       return;
     }
 
+    // Do not apply a delayed response after the target was disconnected or
+    // replaced by a new SSH session while the remote command was running.
+    if (desktopSessionsRef.current[target.connectionName] !== target.sessionId) {
+      return;
+    }
+
     setTerminalSessions((prev) => ({
       ...prev,
-      [activeConnection.name]: result.session,
+      [target.connectionName]: result.session,
     }));
     setCommandFeedback({
       detail: t("desktop.commandAcceptedDetail"),
@@ -1695,7 +1938,61 @@ function App({
       tone: "accepted",
     });
     addToast(`${result.event.displayCommand}`, "success");
-    setCommandInput("");
+    if (activeConnectionName === target.connectionName) setCommandInput("");
+  }
+
+  async function confirmSnippetExecution() {
+    const pending = pendingSnippet;
+    if (!pending) return;
+    const currentSessionId = desktopSessionsRef.current[activeConnection.name];
+    if (
+      pending.connectionName !== activeConnection.name ||
+      pending.host !== activeConnection.host ||
+      pending.sessionId !== currentSessionId ||
+      !currentSessionId ||
+      !validateSnippetCommand(pending.snippet.command).valid
+    ) {
+      setPendingSnippet(null);
+      addToast(t("desktop.snippetSessionChanged"), "warning");
+      return;
+    }
+    const decision = interceptTerminalCommand(pending.snippet.command);
+    if (decision.action !== "allow") {
+      setPendingSnippet(null);
+      addToast(t("desktop.commandBlocked"), "error");
+      return;
+    }
+    setPendingSnippet(null);
+    if (ptyDeps) {
+      setApprovedSnippetInput({
+        command: decision.command,
+        connectionName: pending.connectionName,
+        sessionId: pending.sessionId,
+      });
+      return;
+    }
+    setSnippetExecutionBusy(true);
+    try {
+      await executeTerminalCommand(pending.snippet.command, {
+        connectionName: pending.connectionName,
+        sessionId: pending.sessionId,
+      });
+    } finally {
+      setSnippetExecutionBusy(false);
+    }
+  }
+
+  function requestSnippetExecution(snippet: PersistedCommandSnippet) {
+    if (!hasActiveDesktopSession || !activeDesktopSessionId) {
+      addToast(t("desktop.noSession"), "warning");
+      return;
+    }
+    setPendingSnippet({
+      snippet,
+      connectionName: activeConnection.name,
+      host: activeConnection.host,
+      sessionId: activeDesktopSessionId,
+    });
   }
 
   return (
@@ -1714,7 +2011,7 @@ function App({
         activeTagFilters={activeTagFilters}
         allGroupNames={allGroupNames}
         allTags={allTags}
-        commandSnippets={commandSnippets}
+        commandSnippets={sidebarSnippets}
         collapsedGroups={groupState.collapsedGroups}
         connectionCounts={connectionCounts}
         direction={direction}
@@ -1727,7 +2024,7 @@ function App({
         languageChoice={languageChoice}
         locale={locale}
         onActivateConnection={activateConnection}
-        onCommandInputChange={setCommandInput}
+        onSnippetSelect={requestSnippetExecution}
         onGroupDispatch={groupDispatch}
         onLanguageChoiceChange={onLanguageChoiceChange}
         onOpenPalette={openPalette}
@@ -1757,8 +2054,73 @@ function App({
         collapsed={sidebarCollapsed}
         onToggleCollapsed={() => setSidebarCollapsed((value) => !value)}
         onNewConnection={openNewConnection}
+        onAddSnippet={() => setSnippetModal({ mode: "add" })}
+        onEditSnippet={(snippet) => setSnippetModal({ mode: "edit", snippet })}
+        onDeleteSnippet={(snippet) => {
+          const nextSnippets = customSnippets.filter(
+            (item) => item.id !== snippet.id,
+          );
+          if (!writeStoredCustomSnippets(nextSnippets)) {
+            addToast(t("desktop.snippetStorageFailed"), "error");
+            return;
+          }
+          setCustomSnippets(nextSnippets);
+        }}
         snippetsEnabled={hasActiveDesktopSession}
       />
+
+      {pendingSnippet ? (
+        <div
+          className="modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="snippet-confirm-title"
+          onClick={() => setPendingSnippet(null)}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              event.preventDefault();
+              event.stopPropagation();
+              setPendingSnippet(null);
+            }
+          }}
+        >
+          <div
+            className="modal command-snippet-modal"
+            ref={pendingSnippetFocusRef}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="modal-header">
+              <h2 id="snippet-confirm-title">{t("desktop.snippetConfirmRun")}</h2>
+              <IconButton label={t("desktop.close")} onClick={() => setPendingSnippet(null)}>
+                <X size={16} />
+              </IconButton>
+            </header>
+            <div className="connect-form">
+              <p>
+                {t("desktop.snippetConfirmHost", {
+                  host: pendingSnippet.host,
+                })}
+              </p>
+              <pre className="snippet-command-preview" dir="ltr">
+                {redactLogLine(pendingSnippet.snippet.command)}
+              </pre>
+              <div className="connect-actions">
+                <Button
+                  onClick={() => {
+                    void confirmSnippetExecution();
+                  }}
+                  disabled={snippetExecutionBusy}
+                >
+                  {t("desktop.snippetConfirmRun")}
+                </Button>
+                <Button variant="ghost" onClick={() => setPendingSnippet(null)}>
+                  {t("desktop.snippetCancel")}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <section className="terminal-zone" id="terminal-zone" tabIndex={-1}>
         <header className="topbar">
@@ -1899,8 +2261,14 @@ function App({
                     <LazyXtermTerminal
                       deps={ptyDeps}
                       label={t("desktop.xtermTerminalLabel")}
-                      onPreparedInputConsumed={clearPreparedTerminalInput}
-                      preparedInput={commandInput}
+                      onPreparedInputConsumed={clearApprovedSnippetInput}
+                      preparedInput={
+                        approvedSnippetInput?.connectionName ===
+                          activeConnection.name &&
+                        approvedSnippetInput.sessionId === activeDesktopSessionId
+                          ? `${approvedSnippetInput.command}\r`
+                          : undefined
+                      }
                       search={{
                         closeLabel: t("desktop.searchClose"),
                         matchesLabel: (count) =>
@@ -2000,7 +2368,11 @@ function App({
               formatters={formatters}
               hasActiveSession={hasActiveDesktopSession}
               onPrepareCommand={() =>
-                setCommandInput(`${commandSnippets[0].command}\r`)
+                requestSnippetExecution({
+                  id: "builtin:desktop.snippetPodStatus",
+                  name: t("desktop.snippetPodStatus"),
+                  command: commandSnippets[0].command,
+                })
               }
               onOpenForwarding={() => setRightPanel("forwarding")}
               sessionContext={inspectorSessionContext}
@@ -2073,6 +2445,7 @@ function App({
               t={t}
               connectionsIO={{
                 exportConnections: customConnections.connections,
+                exportSnippets: customSnippets,
                 onImport: handleImportConnections,
                 onImportError: () =>
                   addToast(connectionsImportFailedToast(t), "error"),
@@ -2417,6 +2790,14 @@ function App({
             }
             return created;
           }}
+          t={t}
+        />
+      ) : null}
+      {snippetModal ? (
+        <CommandSnippetModal
+          edit={snippetModal.mode === "edit" ? snippetModal.snippet : undefined}
+          onClose={() => setSnippetModal(null)}
+          onSave={saveCustomSnippet}
           t={t}
         />
       ) : null}

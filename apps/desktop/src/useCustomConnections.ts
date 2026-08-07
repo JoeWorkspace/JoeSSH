@@ -87,5 +87,24 @@ export function useCustomConnections(reservedNames: readonly string[] = []) {
     setConnections(next);
   }, []);
 
-  return { connections, isNameAvailable, add, remove, update };
+  /**
+   * Update the hook after an import transaction has already persisted the
+   * complete connection list. Keeping this separate from `add` avoids the
+   * per-item localStorage writes that would make a multi-record import
+   * partially visible when storage runs out of quota.
+   */
+  const replaceInMemory = useCallback((next: readonly PersistedConnection[]) => {
+    const snapshot = [...next];
+    connectionsRef.current = snapshot;
+    setConnections(snapshot);
+  }, []);
+
+  return {
+    connections,
+    isNameAvailable,
+    add,
+    remove,
+    update,
+    replaceInMemory,
+  };
 }

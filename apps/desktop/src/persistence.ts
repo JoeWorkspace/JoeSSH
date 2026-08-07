@@ -1,3 +1,5 @@
+import { validateSnippetCommand } from "./safety";
+
 export const LOCALE_STORAGE_KEY = "atlasterm.locale";
 export const RECENT_CONNECTIONS_KEY = "atlasterm.recentConnections";
 export const RECENT_COMMANDS_KEY = "atlasterm.recentCommands";
@@ -7,6 +9,7 @@ export const GROUPS_STORAGE_KEY = "atlasterm.customGroups";
 export const CONNECTION_GROUPS_STORAGE_KEY = "atlasterm.connectionGroups";
 export const CONNECTION_ORDER_STORAGE_KEY = "atlasterm.connectionOrder";
 export const CUSTOM_CONNECTIONS_STORAGE_KEY = "atlasterm.customConnections";
+export const CUSTOM_SNIPPETS_STORAGE_KEY = "atlasterm.customSnippets";
 export const FORWARD_RULES_STORAGE_KEY = "atlasterm.forwardRules";
 export const LAYOUT_STORAGE_KEY = "atlasterm.layout";
 export const GETTING_STARTED_STORAGE_KEY = "atlasterm.gettingStarted";
@@ -356,6 +359,67 @@ export function writeStorageText(key: string, value: string): boolean {
   }
 }
 
+/**
+ * Persist several JSON values as one best-effort localStorage transaction.
+ *
+ * localStorage does not provide multi-key transactions. We therefore capture
+ * the previous raw values, write all new values, and restore the captured
+ * values if any write fails. Callers only update in-memory state after this
+ * function returns true, so a quota/security failure cannot leave a partially
+ * imported bundle visible to the app.
+ */
+export function writeStorageJsonTransaction(
+  entries: readonly (readonly [key: string, value: unknown])[],
+): boolean {
+  const storage = getLocalStorage();
+  if (!storage || entries.length === 0) return false;
+
+  const serialized = new Map<string, string>();
+  for (const [key, value] of entries) {
+    if (serialized.has(key)) return false;
+    try {
+      const encoded = JSON.stringify(value);
+      if (typeof encoded !== "string") return false;
+      serialized.set(key, encoded);
+    } catch {
+      return false;
+    }
+  }
+
+  const previous = new Map<string, string | null>();
+  try {
+    for (const key of serialized.keys()) {
+      previous.set(key, storage.getItem(key));
+    }
+  } catch {
+    return false;
+  }
+
+  try {
+    for (const [key, value] of serialized) {
+      storage.setItem(key, value);
+    }
+    return true;
+  } catch {
+    // Restore every touched key, including keys that were absent before the
+    // transaction. Rollback is best effort because a failing Storage backend
+    // may reject further writes as well.
+    for (const [key, value] of previous) {
+      try {
+        if (value === null) {
+          storage.removeItem(key);
+        } else {
+          storage.setItem(key, value);
+        }
+      } catch {
+        // Keep trying the remaining keys so a per-key failure does not stop
+        // the rest of the rollback.
+      }
+    }
+    return false;
+  }
+}
+
 export function writeStorageJson(key: string, value: unknown): boolean {
   try {
     return writeStorageText(key, JSON.stringify(value));
@@ -383,7 +447,7 @@ export type PersistedForwardRule = {
   targetPort: number;
 };
 
-const MAX_CUSTOM_CONNECTIONS = 100;
+export const MAX_CUSTOM_CONNECTIONS = 100;
 const MAX_CONNECTION_NAME_LENGTH = 128;
 const MAX_CONNECTION_HOST_LENGTH = 1_024;
 const MAX_CONNECTION_GROUP_LENGTH = 128;
@@ -392,6 +456,111 @@ const MAX_CONNECTION_TAGS = 20;
 const MAX_CONNECTION_TAG_LENGTH = 64;
 // eslint-disable-next-line no-control-regex -- persisted identifiers must reject ASCII control characters
 const CONTROL_CHARACTER_PATTERN = /[\u0000-\u001f\u007f]/;
+
+export type PersistedCommandSnippet = {
+  id: string;
+  name: string;
+  command: string;
+};
+
+export type CommandSnippetDraft = {
+  id?: string;
+  name: string;
+  command: string;
+};
+
+export const MAX_CUSTOM_SNIPPETS = 50;
+export const MAX_SNIPPET_NAME_LENGTH = 64;
+export const MAX_SNIPPET_COMMAND_LENGTH = 2_048;
+
+export function normalizePersistedCommandSnippet(
+  value: unknown,
+): PersistedCommandSnippet | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const providedId = typeof value.id === "string" ? value.id.trim() : "";
+  const name = typeof value.name === "string" ? value.name.trim() : "";
+  const command = typeof value.command === "string" ? value.command.trim() : "";
+
+  if (
+    (providedId.length > 128 ||
+      CONTROL_CHARACTER_PATTERN.test(providedId)) ||
+    !name ||
+    name.length > MAX_SNIPPET_NAME_LENGTH ||
+    CONTROL_CHARACTER_PATTERN.test(name) ||
+    !command ||
+    command.length > MAX_SNIPPET_COMMAND_LENGTH ||
+    CONTROL_CHARACTER_PATTERN.test(command)
+  ) {
+    return null;
+  }
+
+  if (!validateSnippetCommand(command).valid) {
+    return null;
+  }
+
+  return {
+    id: providedId || createCommandSnippetId(name, command),
+    name,
+    command,
+  };
+}
+
+function createCommandSnippetId(name: string, command: string): string {
+  const source = `${name}\u0000${command}`;
+  let hash = 2166136261;
+  for (let index = 0; index < source.length; index += 1) {
+    hash ^= source.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `snippet-${(hash >>> 0).toString(16).padStart(8, "0")}`;
+}
+
+export type CommandSnippetSaveResult =
+  "saved" | "duplicate" | "validation" | "limit" | "storage";
+
+export function writeStoredCustomSnippets(
+  snippets: readonly PersistedCommandSnippet[],
+): boolean {
+  return writeStorageJson(CUSTOM_SNIPPETS_STORAGE_KEY, snippets);
+}
+
+/** Read local-only command snippets, dropping malformed or duplicate entries. */
+export function readStoredCustomSnippets(): PersistedCommandSnippet[] {
+  const raw = readStorageJson(CUSTOM_SNIPPETS_STORAGE_KEY);
+
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+
+  const seenIds = new Set<string>();
+  const seenNames = new Set<string>();
+  const result: PersistedCommandSnippet[] = [];
+  for (const item of raw) {
+    const snippet = normalizePersistedCommandSnippet(item);
+    const identity = snippet?.id;
+    const nameIdentity = snippet?.name.toLocaleLowerCase();
+    if (
+      !snippet ||
+      !identity ||
+      !nameIdentity ||
+      seenIds.has(identity) ||
+      seenNames.has(nameIdentity)
+    ) {
+      continue;
+    }
+    seenIds.add(identity);
+    seenNames.add(nameIdentity);
+    result.push(snippet);
+    if (result.length >= MAX_CUSTOM_SNIPPETS) {
+      break;
+    }
+  }
+
+  return result;
+}
 
 function isStringArray(value: unknown): value is string[] {
   return (

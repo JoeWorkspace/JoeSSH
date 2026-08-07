@@ -27,6 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A resumable three-step Desktop first-use guide covering local profile
   creation, explicit host-key verification in Connect, and entry points for
   Terminal, SFTP, and loopback-only forwarding; Help can reopen it at any time.
+- Local-only command snippets with stable IDs, guarded single-command
+  validation, explicit host/session review before execution, and v2 backup
+  import/export compatibility. Snippets remain outside Sync and are never
+  advertised as encrypted.
 - An 80-locale Microsoft Store discoverability draft backed by the 15 shipped
   application UI locales; Store listing locales that share a UI pack are kept
   distinct from the app's actual translation coverage.

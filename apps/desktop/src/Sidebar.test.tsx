@@ -65,7 +65,7 @@ function setup(overrides: Partial<React.ComponentProps<typeof Sidebar>> = {}) {
     languageChoice: "auto",
     locale: "en",
     onActivateConnection: vi.fn(),
-    onCommandInputChange: vi.fn(),
+    onSnippetSelect: vi.fn(),
     onGroupDispatch: vi.fn(),
     onLanguageChoiceChange: vi.fn(),
     onOpenPalette: vi.fn(),
@@ -177,20 +177,59 @@ describe("Sidebar", () => {
   });
 
   it("loads a snippet command on click", () => {
-    const props = setup({ snippetsEnabled: true });
+    const props = setup({ snippetsEnabled: true, onSnippetSelect: vi.fn() });
     fireEvent.click(screen.getByText("desktop.snippetPodStatus"));
-    expect(props.onCommandInputChange).toHaveBeenCalledWith("kubectl get pods");
+    expect(props.onSnippetSelect).toHaveBeenCalledWith({
+      id: "builtin:desktop.snippetPodStatus",
+      name: "desktop.snippetPodStatus",
+      command: "kubectl get pods",
+    });
   });
 
   it("disables snippets when no live terminal can receive them", () => {
-    const props = setup({ snippetsEnabled: false });
+    const props = setup({ snippetsEnabled: false, onSnippetSelect: vi.fn() });
     const snippet = screen
       .getByText("desktop.snippetPodStatus")
       .closest("button") as HTMLButtonElement;
 
     expect(snippet.disabled).toBe(true);
     fireEvent.click(snippet);
-    expect(props.onCommandInputChange).not.toHaveBeenCalled();
+    expect(props.onSnippetSelect).not.toHaveBeenCalled();
+  });
+
+  it("manages local custom snippets without changing the run behavior", () => {
+    const props = setup({
+      snippetsEnabled: true,
+      commandSnippets: [
+        {
+          id: "snippet-deploy",
+          name: "Deploy",
+          command: "systemctl status sshd",
+        },
+      ] as any,
+      onEditSnippet: vi.fn(),
+      onDeleteSnippet: vi.fn(),
+      onSnippetSelect: vi.fn(),
+    });
+    fireEvent.click(screen.getByText("Deploy"));
+    expect(props.onSnippetSelect).toHaveBeenCalledWith({
+      id: "snippet-deploy",
+      name: "Deploy",
+      command: "systemctl status sshd",
+    });
+    fireEvent.click(screen.getByLabelText("desktop.snippetEdit"));
+    expect(props.onEditSnippet).toHaveBeenCalledWith({
+      id: "snippet-deploy",
+      name: "Deploy",
+      command: "systemctl status sshd",
+    });
+    fireEvent.click(screen.getByLabelText("desktop.snippetDelete"));
+    fireEvent.click(screen.getByLabelText("desktop.confirmKnownHostAction"));
+    expect(props.onDeleteSnippet).toHaveBeenCalledWith({
+      id: "snippet-deploy",
+      name: "Deploy",
+      command: "systemctl status sshd",
+    });
   });
 
   it("shows Alt-number hints from the global connection order", () => {

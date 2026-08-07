@@ -218,8 +218,8 @@ describe("main entry point", () => {
     const content = fs.readFileSync(mainPath, "utf-8");
 
     expect(content).toContain("connectionsImportFailedToast");
-    expect(content).toContain("if (!list)");
-    expect(content).toContain("if (added === 0)");
+    expect(content).toContain("if (!list || !snippetList)");
+    expect(content).toContain("if (added === 0 && acceptedSnippets.length === 0)");
     expect(content).toContain("onImportError: () =>");
     expect(content).toContain(
       'addToast(connectionsImportFailedToast(t), "error")',

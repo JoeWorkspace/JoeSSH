@@ -1,9 +1,10 @@
-import { memo } from "react";
+import { memo, useState } from "react";
 import {
   Boxes,
   Braces,
   ChevronDown,
   ChevronRight,
+  Check,
   Command,
   Folder,
   Lock,
@@ -13,6 +14,9 @@ import {
   Search,
   Star,
   TerminalSquare,
+  Pencil,
+  Trash2,
+  X,
 } from "lucide-react";
 import { Badge, Button, IconButton } from "@atlasterm/ui";
 import type {
@@ -26,6 +30,8 @@ import { Sparkline } from "./sparkline";
 import type { DesktopConnection } from "./main";
 import type { GroupAction } from "./useGroupManager";
 import { desktopGroupLabel } from "./desktopGroups";
+import type { PersistedCommandSnippet } from "./persistence";
+import { redactLogLine } from "./safety";
 
 type LanguageChoice = AtlasLocale | "auto";
 
@@ -35,9 +41,12 @@ type SidebarProps = {
   allGroupNames: readonly string[];
   allTags: readonly string[];
   commandSnippets: readonly {
-    readonly nameKey: TranslationKey;
+    readonly nameKey?: TranslationKey;
+    readonly name?: string;
     readonly command: string;
+    readonly id?: string;
   }[];
+  customSnippets?: readonly PersistedCommandSnippet[];
   collapsedGroups: Set<string>;
   connectionCounts: Record<string, number>;
   direction: "ltr" | "rtl";
@@ -50,7 +59,7 @@ type SidebarProps = {
   languageChoice: LanguageChoice;
   locale: AtlasLocale;
   onActivateConnection: (name: string) => void;
-  onCommandInputChange: (value: string) => void;
+  onSnippetSelect: (snippet: PersistedCommandSnippet) => void;
   onGroupDispatch: (action: GroupAction) => void;
   onLanguageChoiceChange: (choice: LanguageChoice) => void;
   onOpenPalette: () => void;
@@ -75,6 +84,9 @@ type SidebarProps = {
   collapsed?: boolean;
   onToggleCollapsed: () => void;
   onNewConnection?: () => void;
+  onAddSnippet?: () => void;
+  onEditSnippet?: (snippet: PersistedCommandSnippet) => void;
+  onDeleteSnippet?: (snippet: PersistedCommandSnippet) => void;
   snippetsEnabled?: boolean;
 };
 
@@ -121,7 +133,7 @@ export const Sidebar = memo(function Sidebar({
   languageChoice,
   locale,
   onActivateConnection,
-  onCommandInputChange,
+  onSnippetSelect,
   onGroupDispatch,
   onLanguageChoiceChange,
   onOpenPalette,
@@ -141,8 +153,14 @@ export const Sidebar = memo(function Sidebar({
   collapsed,
   onToggleCollapsed,
   onNewConnection,
+  onAddSnippet,
+  onEditSnippet,
+  onDeleteSnippet,
   snippetsEnabled = false,
 }: SidebarProps) {
+  const [pendingDelete, setPendingDelete] =
+    useState<PersistedCommandSnippet | null>(null);
+
   return (
     <aside
       className={`sidebar${collapsed ? " is-collapsed" : ""}`}
@@ -437,25 +455,88 @@ export const Sidebar = memo(function Sidebar({
       <section className="snippets-section" aria-label={t("desktop.snippets")}>
         <header>
           <span>{t("desktop.snippets")}</span>
+          <IconButton label={t("desktop.snippetAdd")} onClick={onAddSnippet}>
+            <Plus size={14} aria-hidden="true" />
+          </IconButton>
         </header>
         <div className="snippet-list">
           {commandSnippets.map((snippet) => (
-            <button
-              className="snippet-item"
-              disabled={!snippetsEnabled}
-              key={snippet.nameKey}
-              onClick={() => onCommandInputChange(snippet.command)}
-              title={
-                snippetsEnabled
-                  ? snippet.command
-                  : t("desktop.noSessionActionDetail")
-              }
-              type="button"
+            <div
+              className="snippet-row"
+              key={snippet.id ?? snippet.nameKey ?? snippet.name}
             >
-              <Braces size={14} />
-              <span>{t(snippet.nameKey)}</span>
-              <small>{snippet.command}</small>
-            </button>
+              <button
+                className="snippet-item"
+                disabled={!snippetsEnabled}
+                onClick={() => {
+                  const selectedSnippet = {
+                    id: snippet.id ?? `builtin:${snippet.nameKey ?? snippet.name}`,
+                    name:
+                      snippet.name ??
+                      (snippet.nameKey ? t(snippet.nameKey) : ""),
+                    command: snippet.command,
+                  };
+                  onSnippetSelect(selectedSnippet);
+                }}
+                title={
+                  snippetsEnabled
+                    ? redactLogLine(snippet.command)
+                    : t("desktop.noSessionActionDetail")
+                }
+                type="button"
+              >
+                <Braces size={14} />
+                <span>
+                  {snippet.name ?? (snippet.nameKey ? t(snippet.nameKey) : "")}
+                </span>
+                <small>{redactLogLine(snippet.command)}</small>
+              </button>
+              {snippet.name ? (
+                <span className="snippet-actions">
+                  <IconButton
+                    label={t("desktop.snippetEdit")}
+                    onClick={() =>
+                      onEditSnippet?.(snippet as PersistedCommandSnippet)
+                    }
+                  >
+                    <Pencil size={12} aria-hidden="true" />
+                  </IconButton>
+                  <IconButton
+                    label={t("desktop.snippetDelete")}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setPendingDelete(snippet as PersistedCommandSnippet);
+                    }}
+                  >
+                    <Trash2 size={12} aria-hidden="true" />
+                  </IconButton>
+                </span>
+              ) : null}
+              {snippet.name && pendingDelete?.id === snippet.id ? (
+                <div
+                  className="snippet-delete-confirm"
+                  role="group"
+                  aria-label={t("desktop.snippetDeleteConfirm")}
+                >
+                  <span>{t("desktop.snippetDeleteConfirm")}</span>
+                  <IconButton
+                    label={t("desktop.confirmKnownHostAction")}
+                    onClick={() => {
+                      if (pendingDelete) onDeleteSnippet?.(pendingDelete);
+                      setPendingDelete(null);
+                    }}
+                  >
+                    <Check size={12} aria-hidden="true" />
+                  </IconButton>
+                  <IconButton
+                    label={t("desktop.cancelKnownHostAction")}
+                    onClick={() => setPendingDelete(null)}
+                  >
+                    <X size={12} aria-hidden="true" />
+                  </IconButton>
+                </div>
+              ) : null}
+            </div>
           ))}
         </div>
       </section>

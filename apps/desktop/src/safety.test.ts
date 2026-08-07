@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { detectDangerousCommand, interceptTerminalCommand, redactLogLine } from "./safety";
+import {
+  detectDangerousCommand,
+  interceptTerminalCommand,
+  redactLogLine,
+  validateSnippetCommand,
+} from "./safety";
 
 describe("terminal safety helpers", () => {
   it("returns translation keys for every dangerous command reason", () => {
@@ -295,6 +300,39 @@ describe("terminal safety helpers", () => {
       action: "block",
       displayCommand: "sudo rm -rf /",
       match: { pattern: "rm -rf /", reasonKey: "desktop.safetyReasonRmRoot" },
+    });
+  });
+
+  it("accepts safe single-command snippets and rejects secrets or shell composition", () => {
+    expect(validateSnippetCommand("systemctl status sshd")).toEqual({
+      valid: true,
+    });
+    expect(validateSnippetCommand("--token abc")).toMatchObject({
+      valid: false,
+      reason: "sensitive",
+    });
+    expect(validateSnippetCommand("TOKEN=abc curl https://api.example")).toMatchObject({
+      valid: false,
+      reason: "sensitive",
+    });
+    expect(
+      validateSnippetCommand("curl -H 'Authorization: Bearer abc123' https://api.example"),
+    ).toMatchObject({ valid: false, reason: "sensitive" });
+    expect(validateSnippetCommand("echo ok; uname")).toMatchObject({
+      valid: false,
+      reason: "separator",
+    });
+    expect(validateSnippetCommand("echo ok | cat")).toMatchObject({
+      valid: false,
+      reason: "separator",
+    });
+    expect(validateSnippetCommand("echo `whoami`")).toMatchObject({
+      valid: false,
+      reason: "separator",
+    });
+    expect(validateSnippetCommand("echo $(whoami)")).toMatchObject({
+      valid: false,
+      reason: "separator",
     });
   });
 });

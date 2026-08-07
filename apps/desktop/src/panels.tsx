@@ -1314,6 +1314,12 @@ export type SettingsConnectionsIO = {
     group: string;
     tags: readonly string[];
   }[];
+  /** Local-only command snippets included in workspace exports. */
+  exportSnippets?: readonly {
+    id: string;
+    name: string;
+    command: string;
+  }[];
   onImport: (parsed: unknown) => void;
   onImportError?: () => void;
 };
@@ -1376,7 +1382,11 @@ export const SettingsPanel = memo(function SettingsPanel({
     const blob = new Blob(
       [
         JSON.stringify(
-          { connections: connectionsIO?.exportConnections ?? [] },
+          {
+            version: 2,
+            connections: connectionsIO?.exportConnections ?? [],
+            snippets: connectionsIO?.exportSnippets ?? [],
+          },
           null,
           2,
         ),

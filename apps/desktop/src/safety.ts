@@ -134,6 +134,43 @@ export function detectDangerousCommand(command: string): DangerousCommandMatch |
   return hit ? { pattern: hit.pattern, reasonKey: hit.reasonKey } : null;
 }
 
+export type SnippetCommandValidation =
+  | { valid: true }
+  | { valid: false; reason: "sensitive" | "separator" | "empty" };
+
+/** V1 runbooks are one redacted, single shell command and never carry secrets. */
+export function validateSnippetCommand(command: string): SnippetCommandValidation {
+  const trimmed = command.trim();
+  if (!trimmed) return { valid: false, reason: "empty" };
+
+  if (
+    /(?:^|\s)(?:--?(?:password|passwd|passphrase|secret|token|api[-_]?key|private[-_]?key)(?:=|\s+))/i.test(
+      trimmed,
+    ) ||
+    /(?:^|\s)(?:password|passwd|passphrase|secret|token|api[-_]?key|private[-_]?key)\s*=/i.test(
+      trimmed,
+    ) ||
+    /(?:authorization\s*:\s*(?:bearer|basic)\s+|:\/\/[^\s:@/]+:[^\s:@/]+@)/i.test(
+      trimmed,
+    )
+  ) {
+    return { valid: false, reason: "sensitive" };
+  }
+
+  if (
+    /[;&|`\n\r]/.test(trimmed) ||
+    /\$\([^)]*\)/.test(trimmed) ||
+    /(?:^|\s)(?:sudo|su|doas)(?:\s|$)/i.test(trimmed) ||
+    /(?:^|\s)(?:bash|sh|zsh|fish|pwsh|powershell)(?:\.exe)?(?:\s|$)/i.test(
+      trimmed,
+    )
+  ) {
+    return { valid: false, reason: "separator" };
+  }
+
+  return { valid: true };
+}
+
 function expandShellVariables(command: string): string {
   const assignments = new Map<string, string>();
   let result = command;
