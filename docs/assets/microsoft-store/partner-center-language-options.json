@@ -1,0 +1,515 @@
+{
+  "schemaVersion": 1,
+  "kind": "joessh-partner-center-language-option-evidence",
+  "observedAt": "2026-08-05T15:32:55.110Z",
+  "source": {
+    "productId": "9NK5LLMF8LHM",
+    "submissionId": "1152921505701586331",
+    "surface": "Partner Center live Add languages dialog",
+    "uiLocale": "en-US",
+    "availableOptionCount": 830,
+    "saveClicked": false
+  },
+  "status": "all-target-options-observed-exact-codes-pending",
+  "existingListingCodes": [
+    {
+      "canonicalLocale": "en-US",
+      "languageId": 4,
+      "languageCode": "en-us",
+      "label": "English (United States)"
+    },
+    {
+      "canonicalLocale": "zh-CN",
+      "languageId": 479,
+      "languageCode": "zh-hans-cn",
+      "label": "Chinese (Simplified) (China)"
+    }
+  ],
+  "limitations": [
+    "The Add languages dialog exposes option labels and language IDs, but it does not expose languageCode values for unconfigured listings.",
+    "The Store locale catalog therefore remains exact-code confirmation pending until a Partner Center export contains every target locale column.",
+    "This evidence does not claim native-language review, screenshot approval, saved Partner Center changes, or submission approval."
+  ],
+  "options": [
+    {
+      "canonicalLocale": "af-ZA",
+      "storeLocale": "af-ZA",
+      "languageId": 110,
+      "label": "Afrikaans (South Africa)"
+    },
+    {
+      "canonicalLocale": "sq-AL",
+      "storeLocale": "sq-AL",
+      "languageId": 151,
+      "label": "Albanian (Albania)"
+    },
+    {
+      "canonicalLocale": "am-ET",
+      "storeLocale": "am-ET",
+      "languageId": 111,
+      "label": "Amharic (Ethiopia)"
+    },
+    {
+      "canonicalLocale": "ar-SA",
+      "storeLocale": "ar-SA",
+      "languageId": 13,
+      "label": "Arabic (Saudi Arabia)"
+    },
+    {
+      "canonicalLocale": "az-Latn-AZ",
+      "storeLocale": "az-Latn-AZ",
+      "languageId": 112,
+      "label": "Azerbaijani (Latin) (Azerbaijan)"
+    },
+    {
+      "canonicalLocale": "eu-ES",
+      "storeLocale": "eu-ES",
+      "languageId": 119,
+      "label": "Basque (Basque)"
+    },
+    {
+      "canonicalLocale": "bg-BG",
+      "storeLocale": "bg-BG",
+      "languageId": 27,
+      "label": "Bulgarian (Bulgaria)"
+    },
+    {
+      "canonicalLocale": "ca-ES",
+      "storeLocale": "ca-ES",
+      "languageId": 116,
+      "label": "Catalan (Spain)"
+    },
+    {
+      "canonicalLocale": "zh-CN",
+      "storeLocale": "zh-Hans-CN",
+      "languageId": 479,
+      "label": "Chinese (Simplified) (China)"
+    },
+    {
+      "canonicalLocale": "zh-TW",
+      "storeLocale": "zh-Hant-TW",
+      "languageId": 480,
+      "label": "Chinese (Traditional) (Taiwan)"
+    },
+    {
+      "canonicalLocale": "hr-HR",
+      "storeLocale": "hr-HR",
+      "languageId": 32,
+      "label": "Croatian (Croatia)"
+    },
+    {
+      "canonicalLocale": "cs-CZ",
+      "storeLocale": "cs-CZ",
+      "languageId": 33,
+      "label": "Czech (Czech Republic)"
+    },
+    {
+      "canonicalLocale": "da-DK",
+      "storeLocale": "da-DK",
+      "languageId": 35,
+      "label": "Danish (Denmark)"
+    },
+    {
+      "canonicalLocale": "nl-NL",
+      "storeLocale": "nl-NL",
+      "languageId": 68,
+      "label": "Dutch (Netherlands)"
+    },
+    {
+      "canonicalLocale": "en-GB",
+      "storeLocale": "en-GB",
+      "languageId": 95,
+      "label": "English (United Kingdom)"
+    },
+    {
+      "canonicalLocale": "en-US",
+      "storeLocale": "en-US",
+      "languageId": 4,
+      "label": "English (United States)"
+    },
+    {
+      "canonicalLocale": "et-EE",
+      "storeLocale": "et-EE",
+      "languageId": 38,
+      "label": "Estonian (Estonia)"
+    },
+    {
+      "canonicalLocale": "fil-PH",
+      "storeLocale": "fil-PH",
+      "languageId": 121,
+      "label": "Filipino (Philippines)"
+    },
+    {
+      "canonicalLocale": "fi-FI",
+      "storeLocale": "fi-FI",
+      "languageId": 40,
+      "label": "Finnish (Finland)"
+    },
+    {
+      "canonicalLocale": "fr-FR",
+      "storeLocale": "fr-FR",
+      "languageId": 19,
+      "label": "French (France)"
+    },
+    {
+      "canonicalLocale": "fr-CA",
+      "storeLocale": "fr-CA",
+      "languageId": 29,
+      "label": "French (Canada)"
+    },
+    {
+      "canonicalLocale": "gl-ES",
+      "storeLocale": "gl-ES",
+      "languageId": 82,
+      "label": "Galician (Spain)"
+    },
+    {
+      "canonicalLocale": "de-DE",
+      "storeLocale": "de-DE",
+      "languageId": 14,
+      "label": "German (Germany)"
+    },
+    {
+      "canonicalLocale": "el-GR",
+      "storeLocale": "el-GR",
+      "languageId": 42,
+      "label": "Greek (Greece)"
+    },
+    {
+      "canonicalLocale": "he-IL",
+      "storeLocale": "he-IL",
+      "languageId": 56,
+      "label": "Hebrew (Israel)"
+    },
+    {
+      "canonicalLocale": "hi-IN",
+      "storeLocale": "hi-IN",
+      "languageId": 16,
+      "label": "Hindi (India)"
+    },
+    {
+      "canonicalLocale": "hu-HU",
+      "storeLocale": "hu-HU",
+      "languageId": 105,
+      "label": "Hungarian (Hungary)"
+    },
+    {
+      "canonicalLocale": "is-IS",
+      "storeLocale": "is-IS",
+      "languageId": 128,
+      "label": "Icelandic (Iceland)"
+    },
+    {
+      "canonicalLocale": "id-ID",
+      "storeLocale": "id-ID",
+      "languageId": 126,
+      "label": "Indonesian (Indonesia)"
+    },
+    {
+      "canonicalLocale": "it-IT",
+      "storeLocale": "it-IT",
+      "languageId": 59,
+      "label": "Italian (Italy)"
+    },
+    {
+      "canonicalLocale": "ja-JP",
+      "storeLocale": "ja-JP",
+      "languageId": 17,
+      "label": "Japanese (Japan)"
+    },
+    {
+      "canonicalLocale": "kn-IN",
+      "storeLocale": "kn-IN",
+      "languageId": 52,
+      "label": "Kannada (India)"
+    },
+    {
+      "canonicalLocale": "kk-KZ",
+      "storeLocale": "kk-KZ",
+      "languageId": 131,
+      "label": "Kazakh (Kazakhstan)"
+    },
+    {
+      "canonicalLocale": "km-KH",
+      "storeLocale": "km-KH",
+      "languageId": 132,
+      "label": "Khmer (Cambodia)"
+    },
+    {
+      "canonicalLocale": "ko-KR",
+      "storeLocale": "ko-KR",
+      "languageId": 61,
+      "label": "Korean (Korea)"
+    },
+    {
+      "canonicalLocale": "lo-LA",
+      "storeLocale": "lo-LA",
+      "languageId": 902,
+      "label": "Lao (Laos)"
+    },
+    {
+      "canonicalLocale": "lv-LV",
+      "storeLocale": "lv-LV",
+      "languageId": 63,
+      "label": "Latvian (Latvia)"
+    },
+    {
+      "canonicalLocale": "lt-LT",
+      "storeLocale": "lt-LT",
+      "languageId": 65,
+      "label": "Lithuanian (Lithuania)"
+    },
+    {
+      "canonicalLocale": "mk-MK",
+      "storeLocale": "mk",
+      "languageId": 221,
+      "label": "Macedonian"
+    },
+    {
+      "canonicalLocale": "ms-MY",
+      "storeLocale": "ms-MY",
+      "languageId": 140,
+      "label": "Malay (Malaysia)"
+    },
+    {
+      "canonicalLocale": "ml-IN",
+      "storeLocale": "ml-IN",
+      "languageId": 53,
+      "label": "Malayalam (India)"
+    },
+    {
+      "canonicalLocale": "nb-NO",
+      "storeLocale": "nb-NO",
+      "languageId": 70,
+      "label": "Norwegian (Bokmål) (Norway)"
+    },
+    {
+      "canonicalLocale": "es-ES",
+      "storeLocale": "es-ES",
+      "languageId": 15,
+      "label": "Spanish (Spain)"
+    },
+    {
+      "canonicalLocale": "es-MX",
+      "storeLocale": "es-MX",
+      "languageId": 66,
+      "label": "Spanish (Mexico)"
+    },
+    {
+      "canonicalLocale": "pl-PL",
+      "storeLocale": "pl-PL",
+      "languageId": 73,
+      "label": "Polish (Poland)"
+    },
+    {
+      "canonicalLocale": "pt-BR",
+      "storeLocale": "pt-BR",
+      "languageId": 74,
+      "label": "Portuguese (Brazil)"
+    },
+    {
+      "canonicalLocale": "pt-PT",
+      "storeLocale": "pt-PT",
+      "languageId": 75,
+      "label": "Portuguese (Portugal)"
+    },
+    {
+      "canonicalLocale": "ro-RO",
+      "storeLocale": "ro-RO",
+      "languageId": 77,
+      "label": "Romanian (Romania)"
+    },
+    {
+      "canonicalLocale": "ru-RU",
+      "storeLocale": "ru-RU",
+      "languageId": 21,
+      "label": "Russian (Russia)"
+    },
+    {
+      "canonicalLocale": "sk-SK",
+      "storeLocale": "sk-SK",
+      "languageId": 79,
+      "label": "Slovak (Slovakia)"
+    },
+    {
+      "canonicalLocale": "sl-SI",
+      "storeLocale": "sl-SI",
+      "languageId": 103,
+      "label": "Slovenian (Slovenia)"
+    },
+    {
+      "canonicalLocale": "sr-Latn-RS",
+      "storeLocale": "sr-Latn-RS",
+      "languageId": 500,
+      "label": "Serbian (Latin) (Serbia)"
+    },
+    {
+      "canonicalLocale": "sv-SE",
+      "storeLocale": "sv-SE",
+      "languageId": 85,
+      "label": "Swedish (Sweden)"
+    },
+    {
+      "canonicalLocale": "ta-IN",
+      "storeLocale": "ta-IN",
+      "languageId": 50,
+      "label": "Tamil (India)"
+    },
+    {
+      "canonicalLocale": "te-IN",
+      "storeLocale": "te-IN",
+      "languageId": 51,
+      "label": "Telugu (India)"
+    },
+    {
+      "canonicalLocale": "th-TH",
+      "storeLocale": "th-TH",
+      "languageId": 90,
+      "label": "Thai (Thailand)"
+    },
+    {
+      "canonicalLocale": "tr-TR",
+      "storeLocale": "tr-TR",
+      "languageId": 92,
+      "label": "Turkish (Türkiye)"
+    },
+    {
+      "canonicalLocale": "uk-UA",
+      "storeLocale": "uk-UA",
+      "languageId": 94,
+      "label": "Ukrainian (Ukraine)"
+    },
+    {
+      "canonicalLocale": "vi-VN",
+      "storeLocale": "vi-VN",
+      "languageId": 163,
+      "label": "Vietnamese (Vietnam)"
+    },
+    {
+      "canonicalLocale": "as-IN",
+      "storeLocale": "as-IN",
+      "languageId": 45,
+      "label": "Assamese (India)"
+    },
+    {
+      "canonicalLocale": "bn-IN",
+      "storeLocale": "bn-IN",
+      "languageId": 46,
+      "label": "Bangla (India)"
+    },
+    {
+      "canonicalLocale": "ka-GE",
+      "storeLocale": "ka-GE",
+      "languageId": 130,
+      "label": "Georgian (Georgia)"
+    },
+    {
+      "canonicalLocale": "gu-IN",
+      "storeLocale": "gu-IN",
+      "languageId": 48,
+      "label": "Gujarati (India)"
+    },
+    {
+      "canonicalLocale": "ga-IE",
+      "storeLocale": "ga-IE",
+      "languageId": 122,
+      "label": "Irish (Ireland)"
+    },
+    {
+      "canonicalLocale": "kok-IN",
+      "storeLocale": "kok-IN",
+      "languageId": 54,
+      "label": "Konkani (India)"
+    },
+    {
+      "canonicalLocale": "lb-LU",
+      "storeLocale": "lb-LU",
+      "languageId": 135,
+      "label": "Luxembourgish (Luxembourg)"
+    },
+    {
+      "canonicalLocale": "mt-MT",
+      "storeLocale": "mt-MT",
+      "languageId": 141,
+      "label": "Maltese (Malta)"
+    },
+    {
+      "canonicalLocale": "mi-NZ",
+      "storeLocale": "mi-NZ",
+      "languageId": 136,
+      "label": "Maori (New Zealand)"
+    },
+    {
+      "canonicalLocale": "mr-IN",
+      "storeLocale": "mr-IN",
+      "languageId": 139,
+      "label": "Marathi (India)"
+    },
+    {
+      "canonicalLocale": "ne-NP",
+      "storeLocale": "ne-NP",
+      "languageId": 142,
+      "label": "Nepali (Nepal)"
+    },
+    {
+      "canonicalLocale": "or-IN",
+      "storeLocale": "or-IN",
+      "languageId": 49,
+      "label": "Odia (India)"
+    },
+    {
+      "canonicalLocale": "pa-IN",
+      "storeLocale": "pa-IN",
+      "languageId": 47,
+      "label": "Punjabi (India)"
+    },
+    {
+      "canonicalLocale": "qu-PE",
+      "storeLocale": "quz-PE",
+      "languageId": 147,
+      "label": "Quechua (Peru)"
+    },
+    {
+      "canonicalLocale": "gd-GB",
+      "storeLocale": "gd-GB",
+      "languageId": 123,
+      "label": "Scottish Gaelic (United Kingdom)"
+    },
+    {
+      "canonicalLocale": "sr-Cyrl-BA",
+      "storeLocale": "sr-Cyrl-BA",
+      "languageId": 152,
+      "label": "Serbian (Cyrillic) (Bosnia and Herzegovina)"
+    },
+    {
+      "canonicalLocale": "tt-RU",
+      "storeLocale": "tt-RU",
+      "languageId": 159,
+      "label": "Tatar (Russia)"
+    },
+    {
+      "canonicalLocale": "ur-PK",
+      "storeLocale": "ur-PK",
+      "languageId": 161,
+      "label": "Urdu (Pakistan)"
+    },
+    {
+      "canonicalLocale": "ug-CN",
+      "storeLocale": "ug-CN",
+      "languageId": 160,
+      "label": "Uyghur (China)"
+    },
+    {
+      "canonicalLocale": "ca-ES-valencia",
+      "storeLocale": "ca-ES-valencia",
+      "languageId": 117,
+      "label": "Valencian"
+    },
+    {
+      "canonicalLocale": "cy-GB",
+      "storeLocale": "cy-GB",
+      "languageId": 97,
+      "label": "Welsh (United Kingdom)"
+    }
+  ]
+}

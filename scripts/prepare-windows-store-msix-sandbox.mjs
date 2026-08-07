@@ -134,6 +134,7 @@ export function prepareWindowsStoreMsixSandbox(
       ...process.env,
       ATLASTERM_WINDOWS_LEGAL_PUBLISHER: partnerIdentity.publisherDisplayName,
       ATLASTERM_WINDOWS_STORE_SIGNING_CONFIG: "",
+      ATLASTERM_WINDOWS_STORE_SANDBOX_SKIP_WEBVIEW: "1",
     },
     platform,
     spawn,
@@ -405,7 +406,7 @@ export function createSandboxConfig({ inputRoot, memoryInMb, outputRoot }) {
     </MappedFolder>
   </MappedFolders>
   <LogonCommand>
-    <Command>powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File C:\\JoeSSHInput\\bootstrap.ps1</Command>
+    <Command>powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File C:\\JoeSSHInput\\bootstrap.ps1 -SkipWebViewPrewarm</Command>
   </LogonCommand>
 </Configuration>
 `;

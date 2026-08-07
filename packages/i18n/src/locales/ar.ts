@@ -9,6 +9,10 @@ export const ar = {
     "استخدم «اتصال» لفتح جلسة SSH حقيقية قبل تنفيذ الأوامر.",
   "desktop.terminalSessionSample":
     "هذا مجرد ملف تعريف اتصال تجريبي. لا توجد جلسة SSH نشطة.",
+  "desktop.gettingStartedSampleData":
+    "تبدأ JoeSSH ببيانات تجريبية لاستكشافها بأمان؛ ولا تفتح جلسة SSH حقيقية تلقائيًا.",
+  "desktop.gettingStartedRealConnection":
+    "أنشئ اتصالًا جديدًا وأدخل بيانات المضيف لبدء جلسة SSH حقيقية.",
   "desktop.sftp": "SFTP",
   "desktop.manifestDescription":
     "طرفية SSH وSFTP وإعادة توجيه المنافذ وإدارة الجلسات المحلية.",
@@ -48,7 +52,7 @@ export const ar = {
   "desktop.ptyOpen": "Terminal connected",
   "desktop.ptyClosed": "Terminal exited",
   "desktop.ptyError": "Terminal failed to open",
-  "desktop.ptyBlocked": "Terminal input blocked by safety policy",
+  "desktop.ptyBlocked": "تم حظر إدخال الطرفية وفقًا لسياسة الأمان",
   "desktop.ptyReconnect": "Reconnect",
   "desktop.terminalInputPlaceholder": "أدخل أمرا واضغط Enter",
   "desktop.terminalAutocompleteComplete": "للإكمال",
@@ -429,4 +433,24 @@ export const ar = {
   "desktop.thirdPartyNoticesUnavailable":
     "إشعارات التراخيص غير متاحة في هذا الإصدار.",
   "team.reviewedBy": "راجعه {reviewer}",
+  "desktop.gettingStartedStepCreate": "إنشاء اتصال",
+  "desktop.gettingStartedStepCreateDetail":
+    "استخدم «اتصال جديد» لإدخال المضيف والمنفذ واسم المستخدم، ثم احفظ ملف تعريف محلياً. بيانات العينة ليست جلسة حقيقية.",
+  "desktop.gettingStartedStepSecure": "تأمين الاتصال",
+  "desktop.gettingStartedStepSecureDetail":
+    "افتح «اتصال» لملف التعريف، واختر طريقة المصادقة وقدّم بيانات الاعتماد. عند ظهور مضيف غير معروف، تحقّق من بصمة مفتاح المضيف SHA-256 عبر قناة موثوقة قبل المتابعة.",
+  "desktop.gettingStartedStepUse": "ابدأ استخدام JoeSSH",
+  "desktop.gettingStartedStepUseDetail":
+    "بعد التحقق من الاتصال، افتح الطرفية لجلسة تفاعلية، أو SFTP لنقل الملفات، أو إعادة توجيه المنافذ لأنفاق محلية تقتصر على loopback. لا يلزم تنفيذ إجراء بعيد خطِر.",
+  "desktop.gettingStartedStepCount": "الخطوة {current} من {total}",
+  "desktop.gettingStartedPrevious": "السابق",
+  "desktop.gettingStartedNext": "التالي",
+  "desktop.gettingStartedSkip": "تخطّي",
+  "desktop.gettingStartedComplete": "إنهاء",
+  "desktop.gettingStartedOpenConnect": "فتح الاتصال",
+  "desktop.gettingStartedSecurityNote":
+    "لا يثق JoeSSH تلقائياً أبداً بالمفتاح المجهول أو المتغيّر. تحقّق أولاً من بصمة SHA-256.",
+  "desktop.gettingStartedOpenTerminal": "فتح الطرفية",
+  "desktop.gettingStartedOpenSftp": "فتح SFTP",
+  "desktop.gettingStartedOpenForwarding": "فتح إعادة توجيه المنافذ",
 } as const;

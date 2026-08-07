@@ -101,7 +101,24 @@ export function buildWindowsStoreCandidate({
         mode: 0o600,
       },
     );
-    const configArguments = [storeConfigArgument, identityConfigPath];
+    const configArguments = [storeConfigArgument];
+    if (env.ATLASTERM_WINDOWS_STORE_SANDBOX_SKIP_WEBVIEW === "1") {
+      const sandboxWebviewConfigPath = join(
+        temporarySigningDirectory,
+        "tauri.windows.sandbox-webview.json",
+      );
+      writeFileSync(
+        sandboxWebviewConfigPath,
+        `${JSON.stringify(createWindowsStoreSandboxWebviewConfig(), null, 2)}\n`,
+        {
+          encoding: "utf8",
+          flag: "wx",
+          mode: 0o600,
+        },
+      );
+      configArguments.push(sandboxWebviewConfigPath);
+    }
+    configArguments.push(identityConfigPath);
     if (signingConfig) {
       assertMicrosoftStoreTauriConfig({
         ...storeConfig,
@@ -409,6 +426,16 @@ export function createWindowsStoreIdentityConfig(legalPublisher) {
   return {
     bundle: {
       publisher: assertWindowsLegalPublisher(legalPublisher),
+    },
+  };
+}
+
+export function createWindowsStoreSandboxWebviewConfig() {
+  return {
+    bundle: {
+      windows: {
+        webviewInstallMode: { type: "skip" },
+      },
     },
   };
 }

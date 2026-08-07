@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
-  [switch]$Elevated
+  [switch]$Elevated,
+  [switch]$SkipWebViewPrewarm
 )
 
 Set-StrictMode -Version Latest
@@ -12,6 +13,7 @@ $statusPath = Join-Path $outputRoot "status.json"
 $resultPath = Join-Path $outputRoot "result.json"
 $inputManifestPath = Join-Path $inputRoot "input-manifest.json"
 $templatePath = Join-Path $inputRoot "conversion-template.xml"
+$installerPath = Join-Path $inputRoot "JoeSSH-setup.exe"
 $bundlePath = Join-Path $inputRoot "MSIXPackagingTool.msixbundle"
 $licensePath = Join-Path $inputRoot "MSIXPackagingTool.License.xml"
 $driverPath = Join-Path $inputRoot "MSIXPackagingTool.Driver.cab"
@@ -114,6 +116,54 @@ function Invoke-CheckedProcess {
   return $process.ExitCode
 }
 
+function Test-WebView2RuntimePresent {
+  $runtimeRoots = @(
+    (Join-Path ${env:ProgramFiles(x86)} "Microsoft\EdgeWebView\Application"),
+    (Join-Path $env:ProgramFiles "Microsoft\EdgeWebView\Application"),
+    (Join-Path $env:LOCALAPPDATA "Microsoft\EdgeWebView\Application")
+  )
+
+  foreach ($runtimeRoot in $runtimeRoots) {
+    if (-not (Test-Path -LiteralPath $runtimeRoot -PathType Container)) {
+      continue
+    }
+    $runtime = Get-ChildItem -LiteralPath $runtimeRoot -Directory -Force |
+      Where-Object {
+        Test-Path -LiteralPath (Join-Path $_.FullName "msedgewebview2.exe") -PathType Leaf
+      } |
+      Select-Object -First 1
+    if ($null -ne $runtime) {
+      return $true
+    }
+  }
+  return $false
+}
+
+function Prewarm-WebView2Runtime {
+  if (Test-WebView2RuntimePresent) {
+    return
+  }
+
+  if (-not (Test-Path -LiteralPath $installerPath -PathType Leaf)) {
+    throw "The NSIS conversion input is missing."
+  }
+  Invoke-CheckedProcess -FilePath $installerPath -ArgumentList @("/S") | Out-Null
+
+  if (-not (Test-WebView2RuntimePresent)) {
+    throw "The NSIS prewarm did not install a detectable WebView2 Runtime."
+  }
+
+  $uninstallerPath = Join-Path $env:LOCALAPPDATA "JoeSSH\uninstall.exe"
+  if (Test-Path -LiteralPath $uninstallerPath -PathType Leaf) {
+    Invoke-CheckedProcess -FilePath $uninstallerPath -ArgumentList @("/S") | Out-Null
+  }
+
+  $applicationRoot = Join-Path $env:LOCALAPPDATA "JoeSSH"
+  if (Test-Path -LiteralPath $applicationRoot) {
+    Remove-Item -LiteralPath $applicationRoot -Force -Recurse
+  }
+}
+
 New-Item -ItemType Directory -Path $outputRoot -Force | Out-Null
 
 if (-not (Test-IsAdministrator)) {
@@ -180,6 +230,12 @@ try {
       throw "The MSIX Packaging Tool execution alias is unavailable."
     }
     Start-Sleep -Milliseconds 250
+  }
+
+  $currentStage = "webview-prewarm"
+  Write-Status -State "running" -Stage $currentStage
+  if (-not $SkipWebViewPrewarm) {
+    Prewarm-WebView2Runtime
   }
 
   $currentStage = "conversion"

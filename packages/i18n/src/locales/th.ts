@@ -10,6 +10,10 @@ export const th = {
     "ใช้ “เชื่อมต่อ” เพื่อเปิดเซสชัน SSH จริงก่อนเรียกใช้คำสั่ง",
   "desktop.terminalSessionSample":
     "นี่เป็นเพียงโปรไฟล์การเชื่อมต่อตัวอย่าง ไม่มีเซสชัน SSH ที่ใช้งานอยู่",
+  "desktop.gettingStartedSampleData":
+    "JoeSSH เริ่มต้นด้วยข้อมูลตัวอย่างเพื่อให้สำรวจได้อย่างปลอดภัย และจะไม่เปิดเซสชัน SSH จริงโดยอัตโนมัติ",
+  "desktop.gettingStartedRealConnection":
+    "สร้างการเชื่อมต่อใหม่พร้อมรายละเอียดโฮสต์เพื่อเริ่มเซสชัน SSH จริง",
   "desktop.sftp": "SFTP",
   "desktop.manifestDescription":
     "เทอร์มินัล SSH, SFTP, การส่งต่อพอร์ต และการจัดการเซสชันภายในเครื่อง",
@@ -48,7 +52,7 @@ export const th = {
   "desktop.ptyOpen": "Terminal connected",
   "desktop.ptyClosed": "Terminal exited",
   "desktop.ptyError": "Terminal failed to open",
-  "desktop.ptyBlocked": "Terminal input blocked by safety policy",
+  "desktop.ptyBlocked": "นโยบายความปลอดภัยบล็อกการป้อนข้อมูลในเทอร์มินัล",
   "desktop.ptyReconnect": "Reconnect",
   "desktop.terminalInputPlaceholder": "ป้อนคำสั่งแล้วกด Enter",
   "desktop.terminalAutocompleteComplete": "เพื่อเติมให้ครบ",
@@ -429,4 +433,24 @@ export const th = {
   "desktop.thirdPartyNoticesUnavailable":
     "ประกาศสัญญาอนุญาตไม่พร้อมใช้งานในเวอร์ชันนี้",
   "team.reviewedBy": "ตรวจสอบโดย {reviewer}",
+  "desktop.gettingStartedStepCreate": "สร้างการเชื่อมต่อ",
+  "desktop.gettingStartedStepCreateDetail":
+    "ใช้การเชื่อมต่อใหม่เพื่อป้อนโฮสต์ พอร์ต และชื่อผู้ใช้ แล้วบันทึกโปรไฟล์ในเครื่อง ข้อมูลตัวอย่างไม่ใช่เซสชันจริง",
+  "desktop.gettingStartedStepSecure": "เชื่อมต่ออย่างปลอดภัย",
+  "desktop.gettingStartedStepSecureDetail":
+    "เปิดการเชื่อมต่อสำหรับโปรไฟล์นั้น เลือกวิธีการยืนยันตัวตนและป้อนข้อมูลรับรอง สำหรับโฮสต์ที่ไม่รู้จัก ให้ตรวจสอบลายนิ้วมือคีย์โฮสต์ SHA-256 ผ่านช่องทางที่เชื่อถือได้ก่อนดำเนินการต่อ",
+  "desktop.gettingStartedStepUse": "เริ่มใช้ JoeSSH",
+  "desktop.gettingStartedStepUseDetail":
+    "เมื่อตรวจสอบการเชื่อมต่อแล้ว ให้เปิด Terminal สำหรับเชลล์แบบโต้ตอบ, SFTP สำหรับถ่ายโอนไฟล์ หรือการส่งต่อพอร์ตสำหรับทันเนลภายในที่จำกัดไว้ผ่าน loopback เท่านั้น ไม่จำเป็นต้องดำเนินการระยะไกลที่มีความเสี่ยง",
+  "desktop.gettingStartedStepCount": "ขั้นตอน {current} จาก {total}",
+  "desktop.gettingStartedPrevious": "ก่อนหน้า",
+  "desktop.gettingStartedNext": "ถัดไป",
+  "desktop.gettingStartedSkip": "ข้าม",
+  "desktop.gettingStartedComplete": "เสร็จสิ้น",
+  "desktop.gettingStartedOpenConnect": "เปิดการเชื่อมต่อ",
+  "desktop.gettingStartedSecurityNote":
+    "JoeSSH จะไม่เชื่อถือคีย์โฮสต์ที่ไม่รู้จักหรือเปลี่ยนแปลงโดยอัตโนมัติ ตรวจสอบลายนิ้วมือ SHA-256 ก่อน",
+  "desktop.gettingStartedOpenTerminal": "เปิด Terminal",
+  "desktop.gettingStartedOpenSftp": "เปิด SFTP",
+  "desktop.gettingStartedOpenForwarding": "เปิดการส่งต่อพอร์ต",
 } as const;

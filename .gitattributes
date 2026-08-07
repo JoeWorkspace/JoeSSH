@@ -25,6 +25,7 @@
 scripts/spdx-license-texts/** whitespace=-blank-at-eol
 
 # Never run line-ending conversion or textual merge drivers over artifacts.
+docs/assets/microsoft-store/*.csv binary
 *.png binary
 *.ico binary
 *.jpg binary

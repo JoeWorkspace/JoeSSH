@@ -10,6 +10,10 @@ export const ru = {
     "Нажмите «Подключиться», чтобы открыть реальный сеанс SSH перед выполнением команд.",
   "desktop.terminalSessionSample":
     "Это только пример профиля подключения. Активного сеанса SSH нет.",
+  "desktop.gettingStartedSampleData":
+    "JoeSSH запускается с демонстрационными данными для безопасного изучения и не открывает реальный SSH-сеанс автоматически.",
+  "desktop.gettingStartedRealConnection":
+    "Создайте новое подключение, указав данные хоста, чтобы начать реальный SSH-сеанс.",
   "desktop.sftp": "SFTP",
   "desktop.manifestDescription":
     "SSH-терминал, SFTP, перенаправление портов и управление локальными сеансами.",
@@ -49,7 +53,7 @@ export const ru = {
   "desktop.ptyOpen": "Terminal connected",
   "desktop.ptyClosed": "Terminal exited",
   "desktop.ptyError": "Terminal failed to open",
-  "desktop.ptyBlocked": "Terminal input blocked by safety policy",
+  "desktop.ptyBlocked": "Ввод в терминале заблокирован политикой безопасности",
   "desktop.ptyReconnect": "Reconnect",
   "desktop.terminalInputPlaceholder": "Введите команду и нажмите Enter",
   "desktop.terminalAutocompleteComplete": "для автодополнения",
@@ -443,4 +447,24 @@ export const ru = {
   "desktop.thirdPartyNoticesUnavailable":
     "Уведомления о лицензиях недоступны в этой сборке.",
   "team.reviewedBy": "Проверил {reviewer}",
+  "desktop.gettingStartedStepCreate": "Создайте подключение",
+  "desktop.gettingStartedStepCreateDetail":
+    "В окне «Новое подключение» укажите хост, порт и имя пользователя, затем сохраните локальный профиль. Примеры не являются реальным сеансом.",
+  "desktop.gettingStartedStepSecure": "Защитите подключение",
+  "desktop.gettingStartedStepSecureDetail":
+    "Откройте «Подключиться» для этого профиля, выберите способ аутентификации и укажите учётные данные. Для неизвестного узла проверьте SHA-256 отпечаток ключа по доверенному каналу, прежде чем продолжать.",
+  "desktop.gettingStartedStepUse": "Начните работу с JoeSSH",
+  "desktop.gettingStartedStepUseDetail":
+    "После проверки подключения откройте терминал для интерактивной оболочки, SFTP для передачи файлов или перенаправление портов для локальных туннелей только через loopback. Опасные удалённые действия не требуются.",
+  "desktop.gettingStartedStepCount": "Шаг {current} из {total}",
+  "desktop.gettingStartedPrevious": "Назад",
+  "desktop.gettingStartedNext": "Далее",
+  "desktop.gettingStartedSkip": "Пропустить",
+  "desktop.gettingStartedComplete": "Готово",
+  "desktop.gettingStartedOpenConnect": "Открыть подключение",
+  "desktop.gettingStartedSecurityNote":
+    "JoeSSH никогда не доверяет автоматически неизвестному или изменённому ключу узла. Сначала проверьте SHA-256 отпечаток.",
+  "desktop.gettingStartedOpenTerminal": "Открыть терминал",
+  "desktop.gettingStartedOpenSftp": "Открыть SFTP",
+  "desktop.gettingStartedOpenForwarding": "Открыть перенаправление портов",
 } as const;

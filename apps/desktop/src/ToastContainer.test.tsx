@@ -60,4 +60,15 @@ describe("ToastContainer", () => {
     render(<ToastContainer toasts={toasts} />);
     expect(screen.getByText("Test").closest("[aria-live]")?.getAttribute("aria-live")).toBe("polite");
   });
+
+  it("uses the neutral icon fallback for an unknown runtime tone", () => {
+    const toast = {
+      id: 4,
+      message: "Notice",
+      tone: "info",
+    } as unknown as Toast;
+    render(<ToastContainer toasts={[toast]} />);
+
+    expect(screen.getByText("Notice").previousElementSibling?.querySelector(".lucide-bell")).toBeTruthy();
+  });
 });

@@ -72,13 +72,17 @@ describe("JoeSSH i18n", () => {
 
   it("defaults to Simplified Chinese when no region is known", () => {
     expect(detectAtlasLocale([])).toBe(DEFAULT_LOCALE);
-    expect(translate(DEFAULT_LOCALE, "web.teamOperations")).not.toBe("web.teamOperations");
+    expect(translate(DEFAULT_LOCALE, "web.teamOperations")).not.toBe(
+      "web.teamOperations",
+    );
   });
 
   it("loadLocale returns a callable translator function", async () => {
     const t = await loadLocale("en");
     expect(typeof t).toBe("function");
-    expect(t("desktop.searchPlaceholder")).not.toBe("desktop.searchPlaceholder");
+    expect(t("desktop.searchPlaceholder")).not.toBe(
+      "desktop.searchPlaceholder",
+    );
     // Test with interpolation values
     expect(t("team.summary", { active: 2, pending: 1 })).toContain("2");
   });
@@ -91,23 +95,30 @@ describe("JoeSSH i18n", () => {
   });
 
   it("supports interpolation and text direction metadata", () => {
-    const summary = translate("zh-CN", "team.summary", { active: 2, pending: 1 });
+    const summary = translate("zh-CN", "team.summary", {
+      active: 2,
+      pending: 1,
+    });
 
     expect(summary).toContain("2");
     expect(summary).toContain("1");
     expect(getTextDirection("ar")).toBe("rtl");
   });
 
-  it("reports complete coverage for every advertised language pack", { timeout: 15000 }, async () => {
-    for (const locale of supportedLocaleCodes) {
-      const coverage = await getLocaleCoverage(locale);
-      expect(coverage).toMatchObject({
-        isComplete: true,
-        percentage: 100,
-        missingKeys: [],
-      });
-    }
-  });
+  it(
+    "reports complete coverage for every advertised language pack",
+    { timeout: 15000 },
+    async () => {
+      for (const locale of supportedLocaleCodes) {
+        const coverage = await getLocaleCoverage(locale);
+        expect(coverage).toMatchObject({
+          isComplete: true,
+          percentage: 100,
+          missingKeys: [],
+        });
+      }
+    },
+  );
 
   it("reports release translation readiness for every advertised locale", async () => {
     const report = await getTranslationReadinessReport();
@@ -118,14 +129,16 @@ describe("JoeSSH i18n", () => {
     await expect(assertCompleteTranslations()).resolves.not.toThrow();
   });
 
-
   it("keeps localized safety and readiness placeholders intact across every locale", () => {
     for (const locale of supportedLocaleCodes) {
       const blockedDetail = translate(locale, "desktop.commandBlockedDetail", {
         pattern: "sudo rm -rf /",
         reason: "policy",
       });
-      const summary = translate(locale, "team.summary", { active: 2, pending: 1 });
+      const summary = translate(locale, "team.summary", {
+        active: 2,
+        pending: 1,
+      });
 
       expect(blockedDetail).toContain("sudo rm -rf /");
       expect(blockedDetail).toContain("policy");
@@ -166,25 +179,115 @@ describe("JoeSSH i18n", () => {
     }
   });
 
-  it("keeps advertised locale names and shipped translations free of mojibake", { timeout: 15000 }, async () => {
+  it("ships localized onboarding and terminal safety copy for every locale", () => {
+    const localizedKeys = [
+      "desktop.demoScopeSummary",
+      "desktop.demoShell",
+      "desktop.noSession",
+      "desktop.noSessionActionDetail",
+      "desktop.sampleDataShort",
+      "desktop.terminalSessionConnectRequired",
+      "desktop.terminalSessionSample",
+      "desktop.gettingStartedSampleData",
+      "desktop.gettingStartedRealConnection",
+      "desktop.ptyBlocked",
+    ] as const;
+
     for (const locale of supportedLocaleCodes) {
-      const meta = getLocaleMeta(locale);
+      for (const key of localizedKeys) {
+        const value = translate(locale, key);
 
-      expectReadableText(meta.englishName);
-      expectReadableText(meta.nativeName);
+        expect(value).not.toBe(key);
+        expect(value.trim().length).toBeGreaterThan(0);
 
-      for (const key of await getTranslationKeys()) {
-        expectReadableText(translate(locale, key), translate("en", key));
+        if (locale !== "en") {
+          expect(value).not.toBe(translate("en", key));
+        }
       }
     }
   });
 
+  it("ships all three task steps in every UI locale", () => {
+    const onboardingKeys = [
+      "desktop.gettingStartedStepCreate",
+      "desktop.gettingStartedStepCreateDetail",
+      "desktop.gettingStartedStepSecure",
+      "desktop.gettingStartedStepSecureDetail",
+      "desktop.gettingStartedStepUse",
+      "desktop.gettingStartedStepUseDetail",
+      "desktop.gettingStartedStepCount",
+      "desktop.gettingStartedPrevious",
+      "desktop.gettingStartedNext",
+      "desktop.gettingStartedSkip",
+      "desktop.gettingStartedComplete",
+      "desktop.gettingStartedOpenConnect",
+      "desktop.gettingStartedSecurityNote",
+      "desktop.gettingStartedOpenTerminal",
+      "desktop.gettingStartedOpenSftp",
+      "desktop.gettingStartedOpenForwarding",
+    ] as const;
+
+    for (const locale of supportedLocaleCodes) {
+      for (const key of onboardingKeys) {
+        const value = translate(locale, key);
+        expect(value).not.toBe(key);
+        expect(value.trim().length).toBeGreaterThan(0);
+        if (locale !== "en") {
+          expect(value).not.toBe(translate("en", key));
+        }
+      }
+    }
+  });
+
+  it("keeps authentication in Connect rather than the profile form", () => {
+    const createDetail = translate(
+      "en",
+      "desktop.gettingStartedStepCreateDetail",
+    );
+    const secureDetail = translate(
+      "en",
+      "desktop.gettingStartedStepSecureDetail",
+    );
+
+    expect(createDetail).toContain("host, port, and username");
+    expect(createDetail).toContain("local profile");
+    expect(createDetail).not.toContain("authentication details");
+    expect(secureDetail).toContain("authentication method");
+    expect(secureDetail).toContain("credentials");
+    expect(secureDetail).toContain("SHA-256");
+  });
+
+  it(
+    "keeps advertised locale names and shipped translations free of mojibake",
+    { timeout: 15000 },
+    async () => {
+      for (const locale of supportedLocaleCodes) {
+        const meta = getLocaleMeta(locale);
+
+        expectReadableText(meta.englishName);
+        expectReadableText(meta.nativeName);
+
+        for (const key of await getTranslationKeys()) {
+          expectReadableText(translate(locale, key), translate("en", key));
+        }
+      }
+    },
+  );
+
   it("keeps strict Simplified Chinese product paths readable", () => {
     expect(getLocaleMeta("zh-CN").nativeName).toBe("\u7b80\u4f53\u4e2d\u6587");
-    expect(translate("zh-CN", "desktop.searchPlaceholder")).toBe("\u641c\u7d22\u4e3b\u673a\u3001\u6807\u7b7e\u3001\u6210\u5458");
-    expect(translate("zh-CN", "desktop.terminalTabs")).toBe("\u7ec8\u7aef\u6807\u7b7e");
-    expect(translate("zh-CN", "desktop.commandPalette")).toBe("\u547d\u4ee4\u9762\u677f");
-    expect(translate("zh-CN", "web.teamOperations")).toBe("\u56e2\u961f\u8fd0\u8425");
+    expect(translate("zh-CN", "desktop.searchPlaceholder")).toBe(
+      "\u641c\u7d22\u4e3b\u673a\u3001\u6807\u7b7e\u3001\u6210\u5458",
+    );
+    expect(translate("zh-CN", "desktop.terminalTabs")).toBe(
+      "\u7ec8\u7aef\u6807\u7b7e",
+    );
+    expect(translate("zh-CN", "desktop.commandPalette")).toBe(
+      "\u547d\u4ee4\u9762\u677f",
+    );
+    expect(translate("zh-CN", "web.teamOperations")).toBe(
+      "\u56e2\u961f\u8fd0\u8425",
+    );
     expect(translate("zh-CN", "team.summary", { active: 2, pending: 1 })).toBe(
       "2 \u4e2a JIT \u751f\u6548 / 1 \u4e2a\u4fdd\u9669\u5e93\u5f85\u5904\u7406",
     );
@@ -204,22 +307,50 @@ describe("JoeSSH i18n", () => {
 
   it("formats numbers, dates, file sizes, latency, and relative time by locale", () => {
     const date = "2026-05-24T02:17:00Z";
-    const marketLocales = ["zh-CN", "en", "ja", "de", "fr", "es", "pt-BR", "hi", "ar"] as const;
+    const marketLocales = [
+      "zh-CN",
+      "en",
+      "ja",
+      "de",
+      "fr",
+      "es",
+      "pt-BR",
+      "hi",
+      "ar",
+    ] as const;
 
     for (const locale of marketLocales) {
       const intlLocale = getIntlLocale(locale);
       const formatters = createLocaleFormatters(locale);
 
-      expect(formatters.number(1234567.5)).toBe(new Intl.NumberFormat(intlLocale).format(1234567.5));
-      expect(formatters.dateTime(date, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" })).toBe(
-        new Intl.DateTimeFormat(intlLocale, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(
-          new Date(date),
-        ),
+      expect(formatters.number(1234567.5)).toBe(
+        new Intl.NumberFormat(intlLocale).format(1234567.5),
       );
-      expect(formatters.time(date, { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })).toBe(
-        new Intl.DateTimeFormat(intlLocale, { hour: "2-digit", minute: "2-digit", timeZone: "UTC" }).format(
-          new Date(date),
-        ),
+      expect(
+        formatters.dateTime(date, {
+          dateStyle: "medium",
+          timeStyle: "short",
+          timeZone: "UTC",
+        }),
+      ).toBe(
+        new Intl.DateTimeFormat(intlLocale, {
+          dateStyle: "medium",
+          timeStyle: "short",
+          timeZone: "UTC",
+        }).format(new Date(date)),
+      );
+      expect(
+        formatters.time(date, {
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZone: "UTC",
+        }),
+      ).toBe(
+        new Intl.DateTimeFormat(intlLocale, {
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZone: "UTC",
+        }).format(new Date(date)),
       );
       expect(formatters.fileSize(1536)).not.toBe("1536 B");
       expect(formatters.latency(28)).not.toBe("28");
@@ -286,7 +417,9 @@ describe("JoeSSH i18n", () => {
   it("returns a translator function via createTranslator", () => {
     const t = createTranslator("en");
     expect(typeof t).toBe("function");
-    expect(t("desktop.searchPlaceholder")).not.toBe("desktop.searchPlaceholder");
+    expect(t("desktop.searchPlaceholder")).not.toBe(
+      "desktop.searchPlaceholder",
+    );
   });
 
   it("returns undefined from getLoadedTranslator when locale is not loaded", () => {
@@ -300,14 +433,18 @@ describe("JoeSSH i18n", () => {
     // Use a locale code that is not in the cache
     const translator = getLoadedTranslator("id" as any);
     // id might or might not be loaded depending on test order, but we can test the function exists
-    expect(translator === undefined || typeof translator === "function").toBe(true);
+    expect(translator === undefined || typeof translator === "function").toBe(
+      true,
+    );
   });
 
   it("returns a translator from getLoadedTranslator after loading", async () => {
     await loadLocale("ko");
     const translator = getLoadedTranslator("ko");
     expect(translator).toBeDefined();
-    expect(translator?.("desktop.searchPlaceholder")).not.toBe("desktop.searchPlaceholder");
+    expect(translator?.("desktop.searchPlaceholder")).not.toBe(
+      "desktop.searchPlaceholder",
+    );
   });
 
   it("formats numbers using formatNumber", () => {
@@ -317,14 +454,22 @@ describe("JoeSSH i18n", () => {
 
   it("formats dates using formatDateTime", () => {
     const date = "2026-05-24T02:17:00Z";
-    const result = formatDateTime("en", date, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" });
+    const result = formatDateTime("en", date, {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZone: "UTC",
+    });
     expect(result).toBeTruthy();
     expect(typeof result).toBe("string");
   });
 
   it("formats time using formatTime", () => {
     const date = "2026-05-24T02:17:00Z";
-    const result = formatTime("en", date, { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
+    const result = formatTime("en", date, {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "UTC",
+    });
     expect(result).toBeTruthy();
     expect(typeof result).toBe("string");
   });
@@ -364,9 +509,13 @@ describe("JoeSSH i18n", () => {
         }
         return new OriginalNumberFormat(locale, options);
       }
-      format(_value?: number | bigint): string { return ""; }
+      format(_value?: number | bigint): string {
+        return "";
+      }
     } as any;
-    const spy = vi.spyOn(Intl, "NumberFormat").mockImplementation(MockNumberFormat);
+    const spy = vi
+      .spyOn(Intl, "NumberFormat")
+      .mockImplementation(MockNumberFormat);
 
     try {
       // formatLatency uses formatUnit which catches the error
@@ -454,8 +603,16 @@ describe("JoeSSH i18n", () => {
 
   it("formats a Date instance directly (not string/number)", () => {
     const date = new Date("2026-05-24T02:17:00Z");
-    const result = formatDateTime("en", date, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" });
-    const expected = formatDateTime("en", "2026-05-24T02:17:00Z", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" });
+    const result = formatDateTime("en", date, {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZone: "UTC",
+    });
+    const expected = formatDateTime("en", "2026-05-24T02:17:00Z", {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZone: "UTC",
+    });
     expect(result).toBe(expected);
   });
 
@@ -478,7 +635,9 @@ describe("JoeSSH i18n", () => {
     const candidates = getBrowserLocaleCandidates();
     expect(candidates).toContain("en-US");
     // languages was null, so ?? [] kicks in - no extra entries from languages
-    expect(candidates.filter((c) => c === "en-US").length).toBeGreaterThanOrEqual(1);
+    expect(
+      candidates.filter((c) => c === "en-US").length,
+    ).toBeGreaterThanOrEqual(1);
     vi.unstubAllGlobals();
   });
 

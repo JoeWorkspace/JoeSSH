@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-> The changes below are staged for the `[0.1.0-beta.10]` release candidate.
+> The changes below are staged for the `[0.1.0-beta.12]` release candidate.
 > They remain unreleased until the annotated tag points to the reviewed commit
 > and every external release gate is closed.
 
@@ -24,6 +24,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A built-product Microsoft Store runtime gate that exercises narrow-window,
   light/dark, shortcut, command-palette, hidden-surface, and overflow behavior
   with Playwright in CI and the formal hosted verifier.
+- A resumable three-step Desktop first-use guide covering local profile
+  creation, explicit host-key verification in Connect, and entry points for
+  Terminal, SFTP, and loopback-only forwarding; Help can reopen it at any time.
+- An 80-locale Microsoft Store discoverability draft backed by the 15 shipped
+  application UI locales; Store listing locales that share a UI pack are kept
+  distinct from the app's actual translation coverage.
 - Support, privacy, refund, sale, trademark, third-party notice, pricing, and
   funding drafts that keep all unverified seller and checkout data blocked.
 - A bilingual voluntary-support page with maintainer-supplied Weixin Pay and

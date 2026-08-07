@@ -1,7 +1,7 @@
-# JoeSSH 0.1.0-beta.10 发布准备手册
+# JoeSSH 0.1.0-beta.12 发布准备手册
 
 本手册是个人维护者的 Windows-first 收口入口。当前代码版本是
-`0.1.0-beta.10` 候选，不是已经获批的公开版、商店版或付费版。任何门禁
+`0.1.0-beta.12` 候选，不是已经获批的公开版、商店版或付费版。任何门禁
 失败都表示继续准备，不表示可以通过改文案、改 JSON 或手工上传来绕过。
 
 ## 本轮目标与边界
@@ -258,7 +258,7 @@ package identity，再用微软工具外部打包；不能把 NSIS 改后缀或�
 
 - 旧的 `v0.1.0-beta.9` 标签永久保留，不移动、不覆盖。
 - 只有候选改动已 commit、push，目标门禁全部绿色，且外部 blocker 已关闭
-  后，才创建指向精确候选 commit 的 `v0.1.0-beta.10` annotated tag。
+  后，才创建指向精确候选 commit 的 `v0.1.0-beta.12` annotated tag。
 - GitHub Release 一律先建 draft；在干净环境重新下载草稿产物并复核 SHA-256
   后再考虑 publish。
 - `npm run release:publish-preflight` 是完整 Desktop/Web/Sync 多平台公开发行

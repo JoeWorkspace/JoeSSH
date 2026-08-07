@@ -9,6 +9,10 @@ export const ptBR = {
     "Use “Conectar” para abrir uma sessão SSH real antes de executar comandos.",
   "desktop.terminalSessionSample":
     "Apenas um perfil de conexão de exemplo. Não há nenhuma sessão SSH ativa.",
+  "desktop.gettingStartedSampleData":
+    "O JoeSSH começa com dados de exemplo para você explorar com segurança; nunca abre uma sessão SSH real automaticamente.",
+  "desktop.gettingStartedRealConnection":
+    "Crie uma nova conexão com os dados do host para iniciar uma sessão SSH real.",
   "desktop.sftp": "SFTP",
   "desktop.manifestDescription":
     "Terminal SSH, SFTP, encaminhamento de portas e gerenciamento de sessões locais.",
@@ -48,7 +52,8 @@ export const ptBR = {
   "desktop.ptyOpen": "Terminal connected",
   "desktop.ptyClosed": "Terminal exited",
   "desktop.ptyError": "Terminal failed to open",
-  "desktop.ptyBlocked": "Terminal input blocked by safety policy",
+  "desktop.ptyBlocked":
+    "Entrada do terminal bloqueada pela política de segurança",
   "desktop.ptyReconnect": "Reconnect",
   "desktop.terminalInputPlaceholder": "Digite um comando e pressione Enter",
   "desktop.terminalAutocompleteComplete": "para completar",
@@ -441,4 +446,24 @@ export const ptBR = {
   "desktop.thirdPartyNoticesUnavailable":
     "Os avisos de licença não estão disponíveis nesta versão.",
   "team.reviewedBy": "revisado por {reviewer}",
+  "desktop.gettingStartedStepCreate": "Criar uma conexão",
+  "desktop.gettingStartedStepCreateDetail":
+    "Use Nova conexão para informar host, porta e nome de usuário e salve um perfil local. Os dados de exemplo não são uma sessão real.",
+  "desktop.gettingStartedStepSecure": "Proteger a conexão",
+  "desktop.gettingStartedStepSecureDetail":
+    "Abra Conectar para esse perfil, escolha um método de autenticação e informe as credenciais. Para um host desconhecido, verifique a impressão digital SHA-256 da chave do host por um canal confiável antes de continuar.",
+  "desktop.gettingStartedStepUse": "Começar a usar o JoeSSH",
+  "desktop.gettingStartedStepUseDetail":
+    "Depois de verificar a conexão, abra o Terminal para um shell interativo, o SFTP para transferências ou o encaminhamento de portas para túneis locais limitados a loopback. Nenhuma ação remota perigosa é necessária.",
+  "desktop.gettingStartedStepCount": "Etapa {current} de {total}",
+  "desktop.gettingStartedPrevious": "Anterior",
+  "desktop.gettingStartedNext": "Próxima",
+  "desktop.gettingStartedSkip": "Pular",
+  "desktop.gettingStartedComplete": "Concluir",
+  "desktop.gettingStartedOpenConnect": "Abrir conexão",
+  "desktop.gettingStartedSecurityNote":
+    "O JoeSSH nunca confia automaticamente em uma chave de host desconhecida ou alterada. Verifique primeiro a impressão digital SHA-256.",
+  "desktop.gettingStartedOpenTerminal": "Abrir Terminal",
+  "desktop.gettingStartedOpenSftp": "Abrir SFTP",
+  "desktop.gettingStartedOpenForwarding": "Abrir encaminhamento de portas",
 } as const;

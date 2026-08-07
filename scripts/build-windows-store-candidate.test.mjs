@@ -13,6 +13,7 @@ import {
   assertCleanBuildHead,
   createNpmInvocation,
   createWindowsStoreIdentityConfig,
+  createWindowsStoreSandboxWebviewConfig,
   loadWindowsStoreSigningConfig,
   normalizeSigningConfig,
   parseSigningConfigPaths,
@@ -128,6 +129,16 @@ test("creates only the audited temporary legal publisher override", () => {
       /ATLASTERM_WINDOWS_LEGAL_PUBLISHER/,
     );
   }
+});
+
+test("sandbox WebView2 override is explicit and does not alter Store config", () => {
+  assert.deepEqual(createWindowsStoreSandboxWebviewConfig(), {
+    bundle: {
+      windows: {
+        webviewInstallMode: { type: "skip" },
+      },
+    },
+  });
 });
 
 test("accepts and normalizes only Tauri Windows certificate signing fields", () => {

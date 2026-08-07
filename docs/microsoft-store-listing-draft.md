@@ -1,6 +1,6 @@
 # Microsoft Store Listing Draft
 
-Status: internal draft for JoeSSH `0.1.0-beta.10`. Do not submit or publish this
+Status: internal draft for JoeSSH `0.1.0-beta.12`. Do not submit or publish this
 listing until the release gates in `release-preparation.md` and
 `windows-store-release.md` pass with real external evidence.
 
@@ -16,10 +16,21 @@ input, and the same SHA-256 package must later be submitted to Partner Center.
 Local build scripts, local `--artifact` checks, handoff files, and
 self-generated JSON cannot serve as formal listing or publication evidence.
 
+The complete Store-language draft is maintained separately in the
+[Microsoft Store localization manifest](microsoft-store-localization.md). It
+covers 80 discoverability locales while preserving the distinction between
+Store listing language and the 15 shipped application UI locales. It is draft
+content only and must not be imported while the current beta.11 certification
+is running. Native-review handoff work is tracked in the generated
+`native-review-handoff.csv`; it is not approval evidence until a human reviewer
+fills and verifies its evidence columns.
+
 ## Submission Positioning
 
 - Product name: `JoeSSH`
-- Release maturity: Public Beta, version `0.1.0-beta.10`
+- Store listing title: `JoeSSH` for every locale; use descriptions and localized
+  keywords for positioning.
+- Release maturity: Public Beta, version `0.1.0-beta.12`
 - Offer: free Community desktop app; no ads or in-app purchases
 - Primary category: Developer tools
 - Supported device family: Windows desktop
@@ -37,8 +48,10 @@ self-generated JSON cannot serve as formal listing or publication evidence.
   decision
 - Markets: explicitly review and select supported markets instead of accepting
   future markets silently
-- Interface languages: submit `en-US` and `zh-CN` first; add another Store
-  listing only after its shipped in-app locale has been visually reviewed
+- Store listing languages: the 80-locale discoverability manifest may be prepared
+  independently of shipped UI packs. Each locale still requires native review,
+  at least one reviewed screenshot, and the submission readiness gate. Never
+  present a discoverability-only listing as a fully translated installed UI.
 - Installed product license: MIT, including the build-specific JoeSSH license
   and third-party notices available from Settings
 

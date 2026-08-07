@@ -88,9 +88,10 @@ import { SFTP_TRANSFER_MAX_BYTES, useSftpTransfer } from "./useSftpTransfer";
 import {
   LOCALE_STORAGE_KEY,
   LAYOUT_STORAGE_KEY,
-  GETTING_STARTED_STORAGE_KEY,
   FORWARD_RULES_STORAGE_KEY,
+  GETTING_STARTED_STATE_VERSION,
   THEME_STORAGE_KEY,
+  readStoredGettingStartedState,
   readStorageText,
   readStoredCustomConnections,
   readStoredForwardRules,
@@ -98,6 +99,10 @@ import {
   readStoredTheme,
   writeStorageJson,
   writeStorageText,
+  writeStoredGettingStartedState,
+  type GettingStartedState,
+  type GettingStartedStep,
+  type GettingStartedStatus,
   type PersistedTheme,
   type DesktopLayoutState,
   type PersistedConnection,
@@ -441,6 +446,10 @@ function getStoredLayout() {
   });
 }
 
+function getInitialGettingStartedState(): GettingStartedState {
+  return readStoredGettingStartedState();
+}
+
 function getInitialGettingStartedOpen() {
   if (typeof window === "undefined") return false;
   const requestedState = new URLSearchParams(window.location.search).get(
@@ -448,9 +457,10 @@ function getInitialGettingStartedOpen() {
   );
   if (requestedState === "1") return true;
   if (requestedState === "0") return false;
+  const state = readStoredGettingStartedState();
   return (
     isDesktopRuntime() &&
-    readStorageText(GETTING_STARTED_STORAGE_KEY) !== "dismissed"
+    (state.status === "unseen" || state.status === "in-progress")
   );
 }
 
@@ -558,6 +568,9 @@ function App({
   );
   const [sidebarSearch, setSidebarSearch] = useState("");
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [gettingStartedState, setGettingStartedState] = useState(
+    getInitialGettingStartedState,
+  );
   const [gettingStartedOpen, setGettingStartedOpen] = useState(
     getInitialGettingStartedOpen,
   );
@@ -651,8 +664,19 @@ function App({
   );
   const [connectOpen, setConnectOpen] = useState(launchIntent.connect);
   const [newConnectionOpen, setNewConnectionOpen] = useState(false);
+  const [gettingStartedCreatePending, setGettingStartedCreatePending] =
+    useState(false);
   const [editConnection, setEditConnection] =
     useState<PersistedConnection | null>(null);
+
+  const openNewConnection = useCallback(() => {
+    setGettingStartedCreatePending(false);
+    setNewConnectionOpen(true);
+  }, []);
+  const openOnboardingNewConnection = useCallback(() => {
+    setGettingStartedCreatePending(true);
+    setNewConnectionOpen(true);
+  }, []);
   // Bumped when known hosts change, to refresh the Settings trust list.
   const [knownHostsVersion, setKnownHostsVersion] = useState(0);
   const [knownHostsStoredCount, setKnownHostsStoredCount] = useState(0);
@@ -905,10 +929,76 @@ function App({
     [addToast, t],
   );
 
+  const updateGettingStartedState = useCallback(
+    (status: GettingStartedStatus, lastStep: GettingStartedStep) => {
+      const nextState: GettingStartedState = {
+        version: GETTING_STARTED_STATE_VERSION,
+        status,
+        lastStep,
+      };
+      setGettingStartedState(nextState);
+      writeStoredGettingStartedState(nextState);
+    },
+    [],
+  );
   const closeGettingStarted = useCallback(() => {
     setGettingStartedOpen(false);
-    writeStorageText(GETTING_STARTED_STORAGE_KEY, "dismissed");
+    setGettingStartedState((current) => {
+      if (current.status !== "unseen") return current;
+      const nextState: GettingStartedState = {
+        ...current,
+        status: "in-progress",
+      };
+      writeStoredGettingStartedState(nextState);
+      return nextState;
+    });
   }, []);
+  const skipGettingStarted = useCallback(() => {
+    const lastStep = gettingStartedState.lastStep;
+    updateGettingStartedState("skipped", lastStep);
+    setGettingStartedOpen(false);
+  }, [gettingStartedState.lastStep, updateGettingStartedState]);
+  const completeGettingStarted = useCallback(() => {
+    updateGettingStartedState("completed", 2);
+    setGettingStartedOpen(false);
+  }, [updateGettingStartedState]);
+  const updateGettingStartedStep = useCallback(
+    (step: GettingStartedStep) => {
+      updateGettingStartedState("in-progress", step);
+    },
+    [updateGettingStartedState],
+  );
+  const openGettingStartedConnect = useCallback(() => {
+    closeGettingStarted();
+    if (!isDesktopRuntime()) return;
+    setConnectProfileName(activeConnection.name);
+    setConnectTargetOverride(null);
+    setConnectOpen(true);
+  }, [activeConnection.name, closeGettingStarted]);
+  const openGettingStartedNewConnection = useCallback(() => {
+    closeGettingStarted();
+    openOnboardingNewConnection();
+  }, [closeGettingStarted, openOnboardingNewConnection]);
+  const openGettingStartedPanel = useCallback(
+    (panel: "sftp" | "forwarding") => {
+      closeGettingStarted();
+      setRightPanel(panel);
+      setTerminalMaximized(false);
+    },
+    [closeGettingStarted],
+  );
+  const openGettingStartedTerminal = useCallback(() => {
+    closeGettingStarted();
+    setRightPanel("inspector");
+    setTerminalMaximized(false);
+    window.requestAnimationFrame(() => {
+      const terminalZone = document.getElementById("terminal-zone");
+      const focusTarget = terminalZone?.querySelector<HTMLElement>(
+        'textarea, input, [tabindex="0"]',
+      );
+      (focusTarget ?? terminalZone)?.focus();
+    });
+  }, [closeGettingStarted]);
   const allTags = useMemo(() => {
     const tags = new Set<string>();
     for (const c of effectiveConnections) {
@@ -1209,7 +1299,7 @@ function App({
 
       if ((event.ctrlKey || event.metaKey) && event.key === "n") {
         event.preventDefault();
-        setNewConnectionOpen(true);
+        openNewConnection();
         return;
       }
 
@@ -1254,6 +1344,7 @@ function App({
     groupState.managerOpen,
     groupDispatch,
     newConnectionOpen,
+    openNewConnection,
     openPalette,
     paletteState.open,
     shortcutsOpen,
@@ -1665,7 +1756,7 @@ function App({
         onMoveConnectionBefore={moveConnectionBefore}
         collapsed={sidebarCollapsed}
         onToggleCollapsed={() => setSidebarCollapsed((value) => !value)}
-        onNewConnection={() => setNewConnectionOpen(true)}
+        onNewConnection={openNewConnection}
         snippetsEnabled={hasActiveDesktopSession}
       />
 
@@ -2046,11 +2137,18 @@ function App({
       {gettingStartedOpen ? (
         <GettingStartedOverlay
           desktopRuntime={isDesktopRuntime()}
+          initialStep={gettingStartedState.lastStep}
           onClose={closeGettingStarted}
+          onComplete={completeGettingStarted}
           onCreateConnection={() => {
-            closeGettingStarted();
-            setNewConnectionOpen(true);
+            openGettingStartedNewConnection();
           }}
+          onOpenConnect={openGettingStartedConnect}
+          onOpenForwarding={() => openGettingStartedPanel("forwarding")}
+          onOpenSftp={() => openGettingStartedPanel("sftp")}
+          onOpenTerminal={openGettingStartedTerminal}
+          onSkip={skipGettingStarted}
+          onStepChange={updateGettingStartedStep}
           showCompanionProductSurfaces={
             desktopSurfacePolicy.showCompanionProductSurfaces
           }
@@ -2293,7 +2391,10 @@ function App({
         <NewConnectionModal
           defaultGroup={groupOrder[0] ?? "Production"}
           isNameAvailable={customConnections.isNameAvailable}
-          onClose={() => setNewConnectionOpen(false)}
+          onClose={() => {
+            setNewConnectionOpen(false);
+            setGettingStartedCreatePending(false);
+          }}
           onCreate={(connection) => {
             const created = customConnections.add(connection);
             if (created) {
@@ -2306,6 +2407,13 @@ function App({
               openConnectionTab(connection.name);
               setActiveConnectionName(connection.name);
               addToast(connectionCreatedToast(t, connection.name));
+              if (gettingStartedCreatePending) {
+                setGettingStartedCreatePending(false);
+                updateGettingStartedState("in-progress", 1);
+                setConnectProfileName(connection.name);
+                setConnectTargetOverride(null);
+                setConnectOpen(true);
+              }
             }
             return created;
           }}
@@ -2469,7 +2577,7 @@ const errorMonitor = desktopTelemetryAvailable
   ? createErrorMonitor({
       app: "desktop",
       endpoint: desktopEnv.VITE_ATLASTERM_ERROR_MONITOR_ENDPOINT,
-      version: desktopEnv.VITE_ATLASTERM_APP_VERSION ?? "0.1.0-beta.10",
+      version: desktopEnv.VITE_ATLASTERM_APP_VERSION ?? "0.1.0-beta.12",
     })
   : createNoopErrorMonitor();
 

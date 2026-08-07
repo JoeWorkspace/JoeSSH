@@ -9,6 +9,10 @@ export const es = {
     "Usa «Conectar» para abrir una sesión SSH real antes de ejecutar comandos.",
   "desktop.terminalSessionSample":
     "Solo es un perfil de conexión de ejemplo. No hay ninguna sesión SSH activa.",
+  "desktop.gettingStartedSampleData":
+    "JoeSSH comienza con datos de ejemplo para que explores de forma segura; nunca abre automáticamente una sesión SSH real.",
+  "desktop.gettingStartedRealConnection":
+    "Crea una conexión nueva con los datos de tu host para iniciar una sesión SSH real.",
   "desktop.sftp": "SFTP",
   "desktop.manifestDescription":
     "Terminal SSH, SFTP, reenvío de puertos y gestión de sesiones locales.",
@@ -48,7 +52,8 @@ export const es = {
   "desktop.ptyOpen": "Terminal connected",
   "desktop.ptyClosed": "Terminal exited",
   "desktop.ptyError": "Terminal failed to open",
-  "desktop.ptyBlocked": "Terminal input blocked by safety policy",
+  "desktop.ptyBlocked":
+    "Entrada del terminal bloqueada por la política de seguridad",
   "desktop.ptyReconnect": "Reconnect",
   "desktop.terminalInputPlaceholder": "Escribe un comando y pulsa Enter",
   "desktop.terminalAutocompleteComplete": "para completar",
@@ -445,4 +450,24 @@ export const es = {
   "desktop.thirdPartyNoticesUnavailable":
     "Los avisos de licencia no están disponibles en esta versión.",
   "team.reviewedBy": "revisado por {reviewer}",
+  "desktop.gettingStartedStepCreate": "Crear una conexión",
+  "desktop.gettingStartedStepCreateDetail":
+    "Usa Nueva conexión para introducir el host, el puerto y el nombre de usuario, y guarda un perfil local. Los datos de ejemplo no son una sesión real.",
+  "desktop.gettingStartedStepSecure": "Conectar de forma segura",
+  "desktop.gettingStartedStepSecureDetail":
+    "Abre Conectar para ese perfil, elige un método de autenticación y proporciona las credenciales. Para un host desconocido, verifica su huella SHA-256 de clave de host mediante un canal de confianza antes de continuar.",
+  "desktop.gettingStartedStepUse": "Empezar a usar JoeSSH",
+  "desktop.gettingStartedStepUseDetail":
+    "Tras verificar la conexión, abre Terminal para un shell interactivo, SFTP para transferir archivos o el reenvío de puertos para túneles locales limitados a loopback. No hace falta realizar acciones remotas peligrosas.",
+  "desktop.gettingStartedStepCount": "Paso {current} de {total}",
+  "desktop.gettingStartedPrevious": "Anterior",
+  "desktop.gettingStartedNext": "Siguiente",
+  "desktop.gettingStartedSkip": "Omitir",
+  "desktop.gettingStartedComplete": "Terminar",
+  "desktop.gettingStartedOpenConnect": "Abrir Conectar",
+  "desktop.gettingStartedSecurityNote":
+    "JoeSSH nunca confía automáticamente en una clave de host desconocida o modificada. Comprueba primero la huella SHA-256.",
+  "desktop.gettingStartedOpenTerminal": "Abrir Terminal",
+  "desktop.gettingStartedOpenSftp": "Abrir SFTP",
+  "desktop.gettingStartedOpenForwarding": "Abrir reenvío de puertos",
 } as const;

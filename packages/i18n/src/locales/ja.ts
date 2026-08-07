@@ -9,6 +9,10 @@ export const ja = {
     "「接続」をクリックして実際の SSH セッションを確立してから、コマンドを実行してください。",
   "desktop.terminalSessionSample":
     "現在はデモ用接続設定のみで、SSH セッションは確立されていません。",
+  "desktop.gettingStartedSampleData":
+    "JoeSSH は安全に試せるようサンプルデータで開始し、実際の SSH セッションを自動では開きません。",
+  "desktop.gettingStartedRealConnection":
+    "ホスト情報を入力して新しい接続を作成すると、実際の SSH セッションを開始できます。",
   "desktop.sftp": "SFTP",
   "desktop.manifestDescription":
     "SSH ターミナル、SFTP、ポート転送、ローカルセッション管理。",
@@ -48,7 +52,7 @@ export const ja = {
   "desktop.ptyOpen": "Terminal connected",
   "desktop.ptyClosed": "Terminal exited",
   "desktop.ptyError": "Terminal failed to open",
-  "desktop.ptyBlocked": "Terminal input blocked by safety policy",
+  "desktop.ptyBlocked": "安全ポリシーによりターミナル入力がブロックされました",
   "desktop.ptyReconnect": "Reconnect",
   "desktop.terminalInputPlaceholder": "コマンドを入力して Enter を押す",
   "desktop.terminalAutocompleteComplete": "で補完",
@@ -440,4 +444,24 @@ export const ja = {
   "desktop.thirdPartyNoticesUnavailable":
     "このビルドではライセンス通知を利用できません。",
   "team.reviewedBy": "{reviewer} がレビュー",
+  "desktop.gettingStartedStepCreate": "接続を作成",
+  "desktop.gettingStartedStepCreateDetail":
+    "「新しい接続」でホスト、ポート、ユーザー名を入力し、ローカルプロファイルを保存します。サンプルデータは実際のセッションではありません。",
+  "desktop.gettingStartedStepSecure": "接続を安全に確認",
+  "desktop.gettingStartedStepSecureDetail":
+    "そのプロファイルの「接続」を開き、認証方式を選んで資格情報を入力します。未知のホストでは、続行する前に信頼できる経路で SHA-256 ホストキー指紋を確認してください。",
+  "desktop.gettingStartedStepUse": "JoeSSH を使い始める",
+  "desktop.gettingStartedStepUseDetail":
+    "接続を確認したら、対話型シェルの Terminal、ファイル転送の SFTP、loopback のみに制限されたローカル トンネルのポート転送を開けます。危険なリモート操作は不要です。",
+  "desktop.gettingStartedStepCount": "{total} ステップ中 {current}",
+  "desktop.gettingStartedPrevious": "戻る",
+  "desktop.gettingStartedNext": "次へ",
+  "desktop.gettingStartedSkip": "スキップ",
+  "desktop.gettingStartedComplete": "完了",
+  "desktop.gettingStartedOpenConnect": "接続を開く",
+  "desktop.gettingStartedSecurityNote":
+    "JoeSSH は未知または変更されたホストキーを自動的に信頼しません。先に SHA-256 指紋を確認してください。",
+  "desktop.gettingStartedOpenTerminal": "Terminal を開く",
+  "desktop.gettingStartedOpenSftp": "SFTP を開く",
+  "desktop.gettingStartedOpenForwarding": "ポート転送を開く",
 } as const;

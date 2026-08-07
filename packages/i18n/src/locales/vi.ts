@@ -9,6 +9,10 @@ export const vi = {
     "Hãy dùng Kết nối để mở một phiên SSH thực trước khi chạy lệnh.",
   "desktop.terminalSessionSample":
     "Đây chỉ là hồ sơ kết nối mẫu. Không có phiên SSH nào đang hoạt động.",
+  "desktop.gettingStartedSampleData":
+    "JoeSSH bắt đầu bằng dữ liệu mẫu để bạn khám phá an toàn; ứng dụng không tự động mở phiên SSH thật.",
+  "desktop.gettingStartedRealConnection":
+    "Tạo kết nối mới với thông tin máy chủ để bắt đầu phiên SSH thật.",
   "desktop.sftp": "SFTP",
   "desktop.manifestDescription":
     "Thiết bị đầu cuối SSH, SFTP, chuyển tiếp cổng và quản lý phiên cục bộ.",
@@ -47,7 +51,7 @@ export const vi = {
   "desktop.ptyOpen": "Terminal connected",
   "desktop.ptyClosed": "Terminal exited",
   "desktop.ptyError": "Terminal failed to open",
-  "desktop.ptyBlocked": "Terminal input blocked by safety policy",
+  "desktop.ptyBlocked": "Đầu vào terminal bị chặn theo chính sách an toàn",
   "desktop.ptyReconnect": "Reconnect",
   "desktop.terminalInputPlaceholder": "Nhập lệnh rồi nhấn Enter",
   "desktop.terminalAutocompleteComplete": "để hoàn tất",
@@ -433,4 +437,24 @@ export const vi = {
   "desktop.thirdPartyNoticesUnavailable":
     "Thông báo giấy phép không có trong bản dựng này.",
   "team.reviewedBy": "Được {reviewer} xem xét",
+  "desktop.gettingStartedStepCreate": "Tạo kết nối",
+  "desktop.gettingStartedStepCreateDetail":
+    "Dùng Kết nối mới để nhập máy chủ, cổng và tên người dùng, rồi lưu hồ sơ cục bộ. Dữ liệu mẫu không phải phiên thật.",
+  "desktop.gettingStartedStepSecure": "Bảo mật kết nối",
+  "desktop.gettingStartedStepSecureDetail":
+    "Mở Kết nối cho hồ sơ đó, chọn phương thức xác thực và cung cấp thông tin xác thực. Với máy chủ chưa biết, hãy xác minh dấu vân tay khóa máy chủ SHA-256 qua kênh đáng tin cậy trước khi tiếp tục.",
+  "desktop.gettingStartedStepUse": "Bắt đầu dùng JoeSSH",
+  "desktop.gettingStartedStepUseDetail":
+    "Sau khi xác minh kết nối, mở Terminal cho shell tương tác, SFTP để truyền tệp hoặc chuyển tiếp cổng cho các đường hầm cục bộ chỉ qua loopback. Không cần thao tác từ xa nguy hiểm.",
+  "desktop.gettingStartedStepCount": "Bước {current}/{total}",
+  "desktop.gettingStartedPrevious": "Trước",
+  "desktop.gettingStartedNext": "Tiếp",
+  "desktop.gettingStartedSkip": "Bỏ qua",
+  "desktop.gettingStartedComplete": "Hoàn tất",
+  "desktop.gettingStartedOpenConnect": "Mở Kết nối",
+  "desktop.gettingStartedSecurityNote":
+    "JoeSSH không bao giờ tự động tin cậy khóa máy chủ chưa biết hoặc đã thay đổi. Hãy kiểm tra dấu vân tay SHA-256 trước.",
+  "desktop.gettingStartedOpenTerminal": "Mở Terminal",
+  "desktop.gettingStartedOpenSftp": "Mở SFTP",
+  "desktop.gettingStartedOpenForwarding": "Mở chuyển tiếp cổng",
 } as const;

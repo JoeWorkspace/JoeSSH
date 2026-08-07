@@ -6,7 +6,10 @@ import {
   CUSTOM_CONNECTIONS_STORAGE_KEY,
   FAVORITES_KEY,
   FORWARD_RULES_STORAGE_KEY,
+  GETTING_STARTED_STORAGE_KEY,
   LAYOUT_STORAGE_KEY,
+  GETTING_STARTED_STATE_VERSION,
+  readStoredGettingStartedState,
   THEME_STORAGE_KEY,
   readStorageText,
   readStoredConnectionGroups,
@@ -68,6 +71,98 @@ afterEach(() => {
 });
 
 describe("desktop persistence helpers", () => {
+  it("migrates the legacy bare dismissed marker to a one-time v2 unseen state", () => {
+    const values = installStorage({
+      [GETTING_STARTED_STORAGE_KEY]: "dismissed",
+    });
+
+    expect(readStoredGettingStartedState()).toEqual({
+      version: GETTING_STARTED_STATE_VERSION,
+      status: "unseen",
+      lastStep: 0,
+    });
+    expect(values.get(GETTING_STARTED_STORAGE_KEY)).toBe(
+      JSON.stringify({
+        version: GETTING_STARTED_STATE_VERSION,
+        status: "unseen",
+        lastStep: 0,
+      }),
+    );
+  });
+
+  it("also normalizes a JSON-encoded legacy dismissed marker", () => {
+    const values = installStorage({
+      [GETTING_STARTED_STORAGE_KEY]: JSON.stringify("dismissed"),
+    });
+
+    expect(readStoredGettingStartedState()).toEqual({
+      version: GETTING_STARTED_STATE_VERSION,
+      status: "unseen",
+      lastStep: 0,
+    });
+    expect(values.get(GETTING_STARTED_STORAGE_KEY)).toBe(
+      JSON.stringify({
+        version: GETTING_STARTED_STATE_VERSION,
+        status: "unseen",
+        lastStep: 0,
+      }),
+    );
+  });
+
+  it("falls back from malformed or unsupported getting-started state", () => {
+    installStorage({ [GETTING_STARTED_STORAGE_KEY]: "{broken" });
+    expect(readStoredGettingStartedState()).toEqual({
+      version: GETTING_STARTED_STATE_VERSION,
+      status: "unseen",
+      lastStep: 0,
+    });
+
+    installStorage({
+      [GETTING_STARTED_STORAGE_KEY]: JSON.stringify({
+        version: 99,
+        status: "completed",
+        lastStep: 2,
+      }),
+    });
+    expect(readStoredGettingStartedState()).toEqual({
+      version: GETTING_STARTED_STATE_VERSION,
+      status: "unseen",
+      lastStep: 0,
+    });
+  });
+
+  it("upgrades a v1 state while preserving resumable progress", () => {
+    installStorage({
+      [GETTING_STARTED_STORAGE_KEY]: JSON.stringify({
+        version: 1,
+        status: "in-progress",
+        lastStep: 1,
+      }),
+    });
+
+    expect(readStoredGettingStartedState()).toEqual({
+      version: GETTING_STARTED_STATE_VERSION,
+      status: "in-progress",
+      lastStep: 1,
+    });
+  });
+
+  it("does not let a v1 dismissed marker suppress the upgraded guide", () => {
+    installStorage({
+      [GETTING_STARTED_STORAGE_KEY]: JSON.stringify({
+        version: 1,
+        status: "dismissed",
+        lastStep: 2,
+      }),
+    });
+
+    expect(readStoredGettingStartedState()).toEqual({
+      version: GETTING_STARTED_STATE_VERSION,
+      status: "unseen",
+      lastStep: 0,
+    });
+  });
+
   it("falls back from corrupt layout JSON", () => {
     installStorage({ [LAYOUT_STORAGE_KEY]: "{broken" });
 

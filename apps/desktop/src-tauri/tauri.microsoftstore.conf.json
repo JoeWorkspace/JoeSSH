@@ -5,6 +5,7 @@
   },
   "bundle": {
     "targets": ["nsis"],
+    "useLocalToolsDir": true,
     "windows": {
       "webviewInstallMode": {
         "type": "offlineInstaller"

@@ -1,0 +1,3192 @@
+{
+  "schemaVersion": 1,
+  "kind": "joessh-microsoft-store-localization",
+  "generatedBy": "scripts/generate-microsoft-store-localization.mjs",
+  "generatedAt": "2026-08-04T20:20:05.996Z",
+  "localizationRevision": "beta11-store-listing-r2",
+  "productSourceCommit": null,
+  "candidateArtifactSourceCommit": "1e9d3328209f52ff146a926564adb22c05ea723c",
+  "generation": {
+    "sourceCommit": "4384c82b72372d7e9c5f28d6b38bc01a26f013e",
+    "sourceState": "dirty-working-tree",
+    "generatedBy": "working-tree-generator"
+  },
+  "submissionStatus": "draft-not-submitted",
+  "storeLocaleCatalog": {
+    "authority": "Microsoft BCP 47 and Windows locale identifiers",
+    "reference": "https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msi/add-and-edit-store-listing-info",
+    "status": "partner-center-export-confirmed",
+    "confirmedAt": "2026-08-06T02:31:09.000Z",
+    "exportSha256": "5fca727e00dd47c457ddab8ddcbda318c1464427ff3af02ca921a48981e375bf",
+    "exportEvidencePath": "docs/assets/microsoft-store/partner-center-export-1152921505701586331.csv",
+    "liveOptionsStatus": "all-target-options-observed",
+    "evidencePath": "docs/assets/microsoft-store/partner-center-language-options.json"
+  },
+  "product": {
+    "name": "JoeSSH",
+    "offer": "free",
+    "license": "MIT",
+    "releaseStage": "public-beta",
+    "architecture": "windows-x64",
+    "connectionModel": "local-first",
+    "capabilities": ["ssh", "sftp", "local-port-forwarding"],
+    "accountRequired": false,
+    "hostedServiceIncluded": false
+  },
+  "appUiPolicy": {
+    "supportedLocales": [
+      "zh-CN",
+      "zh-TW",
+      "en",
+      "ja",
+      "ko",
+      "es",
+      "fr",
+      "de",
+      "pt-BR",
+      "ru",
+      "ar",
+      "hi",
+      "id",
+      "vi",
+      "th"
+    ],
+    "storeLocaleCanAdvertiseDiscoverabilityWithoutUi": true,
+    "fallbackMustNotBePresentedAsFullTranslation": true
+  },
+  "reviewPolicy": {
+    "allowedStatuses": [
+      "translation-draft",
+      "native-reviewed",
+      "native-approved"
+    ],
+    "statusMeaning": "translation-draft is structural draft content; native-reviewed or native-approved is required before submission",
+    "nativeReviewRequiredForSubmission": true,
+    "noClaimsOfStorePublicationOrCertification": true,
+    "noPaidOfferClaims": true,
+    "noUnsupportedTelemetryClaims": true,
+    "ambiguousMappingsRequireHumanConfirmation": true
+  },
+  "locales": [
+    {
+      "locale": "af-ZA",
+      "storeLocale": "af-ZA",
+      "sourceName": "南非荷兰语",
+      "languageName": "Afrikaans",
+      "nativeName": "Afrikaans",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Gratis, oopbron Public Beta vir plaaslike SSH, SFTP en poortaanstuur op Windows x64.",
+        "fullDescription": "JoeSSH is 'n gratis, oopbron Windows x64 Public Beta vir plaaslike SSH-werk. Koppel aan 'n gemagtigde bediener, hersien gasheersleutels, gebruik 'n interaktiewe terminaal, dra lêers met SFTP oor en bestuur plaaslike poortaanstuur. Profiele en voorkeure bly by verstek op hierdie toestel. Geen JoeSSH-rekening of gehuisveste diens is nodig nie.",
+        "features": [
+          "Hersiening van SSH-gasheersleutels",
+          "Interaktiewe terminale",
+          "SFTP-oordragte tot 25 MiB",
+          "Plaaslike poortaanstuur slegs via teruglus",
+          "Plaaslike verbindingsprofiele"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Interaktiewe terminale",
+          "Plaaslike poortaanstuur",
+          "Plaaslike verbindingsprofiele",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "sq-AL",
+      "storeLocale": "sq-AL",
+      "sourceName": "阿尔巴尼亚语",
+      "languageName": "Albanian",
+      "nativeName": "Shqip",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Public Beta falas me burim të hapur për SSH lokal, SFTP dhe përcjellje portash në Windows x64.",
+        "fullDescription": "JoeSSH është një Public Beta falas dhe me burim të hapur për punë lokale SSH në Windows x64. Lidhuni me një server të autorizuar, kontrolloni çelësat e hostit, përdorni terminalin interaktiv, transferoni skedarë me SFTP dhe menaxhoni përcjelljet lokale të porteve. Profilet dhe preferencat ruhen si parazgjedhje në këtë pajisje. Nuk kërkohet llogari JoeSSH ose shërbim i hostuar.",
+        "features": [
+          "Kontroll i çelësit të hostit SSH",
+          "Terminal interaktiv",
+          "Transferime SFTP deri në 25 MiB",
+          "Përcjellje portash vetëm në loopback",
+          "Profile lidhjesh lokale"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Terminal interaktiv",
+          "Përcjellje portash",
+          "Profile lidhjesh",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "am-ET",
+      "storeLocale": "am-ET",
+      "sourceName": "阿姆哈拉语",
+      "languageName": "Amharic",
+      "nativeName": "አማርኛ",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "ነጻ እና ክፍት ምንጭ Public Beta፣ ለWindows x64 አካባቢያዊ SSH፣ SFTP እና የፖርት ማስተላለፊያ።",
+        "fullDescription": "JoeSSH በWindows x64 ላይ ለአካባቢያዊ SSH ስራ ነጻ እና ክፍት ምንጭ Public Beta ነው። ፈቃድ ያለዎትን አገልጋይ ያገናኙ፣ የአስተናጋጅ ቁልፍን ይመልከቱ፣ በመስተጋብራዊ ተርሚናል ይስሩ፣ ፋይሎችን በSFTP ያስተላልፉ እና የአካባቢ ፖርት ማስተላለፊያን ያስተዳድሩ። መገለጫዎች እና ምርጫዎች በነባሪ በዚህ መሣሪያ ላይ ይቀመጣሉ። የJoeSSH መለያ ወይም የተስተናገደ አገልግሎት አያስፈልግም።",
+        "features": [
+          "የSSH አስተናጋጅ ቁልፍ ማረጋገጫ",
+          "መስተጋብራዊ ተርሚናል",
+          "እስከ 25 MiB የSFTP ማስተላለፊያ",
+          "በloopback ብቻ የአካባቢ ፖርት ማስተላለፊያ",
+          "የአካባቢ ግንኙነት መገለጫዎች"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "መስተጋብራዊ ተርሚናል",
+          "የአካባቢ ፖርት ማስተላለፊያ",
+          "የአካባቢ ግንኙነት መገለጫዎች",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "ar-SA",
+      "storeLocale": "ar-SA",
+      "sourceName": "阿拉伯语",
+      "languageName": "Arabic",
+      "nativeName": "العربية",
+      "direction": "rtl",
+      "appUiLocale": "ar",
+      "appUiSupported": true,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "إصدار تجريبي عام مجاني ومفتوح المصدر لـ SSH وSFTP وتحويل المنافذ محلياً على Windows x64.",
+        "fullDescription": "JoeSSH إصدار تجريبي عام مجاني ومفتوح المصدر للعمل المحلي عبر SSH على Windows x64. اتصل بخادم مصرح لك باستخدامه، وراجع مفاتيح المضيف، واستخدم الطرفية التفاعلية، وانقل الملفات عبر SFTP، وأدر تحويلات المنافذ المحلية. تُحفظ ملفات الاتصال والتفضيلات على هذا الجهاز افتراضياً. لا تحتاج إلى حساب JoeSSH أو خدمة مستضافة.",
+        "features": [
+          "مراجعة مفتاح مضيف SSH",
+          "طرفية تفاعلية",
+          "نقل SFTP حتى 25 MiB",
+          "تحويل منافذ محلي عبر loopback فقط",
+          "ملفات اتصال محلية"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "طرفية تفاعلية",
+          "تحويل منافذ",
+          "ملفات اتصال محلية",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "az-Latn-AZ",
+      "storeLocale": "az-Latn-AZ",
+      "sourceName": "阿塞拜疆语（拉丁语）",
+      "languageName": "Azerbaijani (Latin)",
+      "nativeName": "Azərbaycanca",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Windows x64 üçün pulsuz, açıq mənbəli Public Beta: yerli SSH, SFTP və port yönləndirməsi.",
+        "fullDescription": "JoeSSH Windows x64-də yerli SSH işi üçün pulsuz və açıq mənbəli Public Beta-dır. İcazəniz olan serverə qoşulun, host açarlarını yoxlayın, interaktiv terminaldan istifadə edin, faylları SFTP ilə köçürün və yerli port yönləndirməsini idarə edin. Profillər və seçimlər standart olaraq bu cihazda saxlanılır. JoeSSH hesabı və ya hostinq xidməti tələb olunmur.",
+        "features": [
+          "SSH host açarının yoxlanması",
+          "İnteraktiv terminal",
+          "25 MiB-ə qədər SFTP köçürmələri",
+          "Yalnız loopback yerli port yönləndirməsi",
+          "Yerli bağlantı profilləri"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "İnteraktiv terminal",
+          "Yerli port yönləndirməsi",
+          "Yerli bağlantı profilləri",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "eu-ES",
+      "storeLocale": "eu-ES",
+      "sourceName": "巴斯克语",
+      "languageName": "Basque",
+      "nativeName": "Euskara",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Doako eta kode irekiko Public Beta, Windows x64-n SSH lokal, SFTP eta ataka-birbidalketarako.",
+        "fullDescription": "JoeSSH Windows x64-n SSH lokaleko lanerako doako eta kode irekiko Public Beta da. Konektatu baimena duzun zerbitzari batera, berrikusi ostalariaren gakoak, erabili terminal interaktiboa, transferitu fitxategiak SFTP bidez eta kudeatu ataka-birbidalketa lokalak. Profilak eta hobespenak gailu honetan gordetzen dira lehenespenez. Ez da JoeSSH konturik edo ostatatutako zerbitzurik behar.",
+        "features": [
+          "SSH ostalari-gakoaren berrikuspena",
+          "Terminal interaktiboa",
+          "SFTP transferentziak 25 MiB arte",
+          "Loopback bidezko ataka-birbidalketa lokala soilik",
+          "Konexio-profil lokalak"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Terminal interaktiboa",
+          "Ataka-birbidalketa lokala",
+          "Konexio-profil lokalak",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "bg-BG",
+      "storeLocale": "bg-BG",
+      "sourceName": "保加利亚语",
+      "languageName": "Bulgarian",
+      "nativeName": "Български",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Безплатна Public Beta с отворен код за локален SSH, SFTP и пренасочване на портове в Windows x64.",
+        "fullDescription": "JoeSSH е безплатна Public Beta с отворен код за локална SSH работа в Windows x64. Свържете се със сървър, до който имате разрешен достъп, прегледайте хост ключовете, използвайте интерактивен терминал, прехвърляйте файлове със SFTP и управлявайте локални пренасочвания на портове. Профилите и настройките се пазят по подразбиране на това устройство. Не е нужен акаунт в JoeSSH или хоствана услуга.",
+        "features": [
+          "Преглед на SSH хост ключове",
+          "Интерактивен терминал",
+          "SFTP прехвърляния до 25 MiB",
+          "Локално пренасочване само през loopback",
+          "Локални профили за връзки"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Интерактивен терминал",
+          "Локално пренасочване на портове",
+          "Локални профили",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "ca-ES",
+      "storeLocale": "ca-ES",
+      "sourceName": "加泰罗尼亚语",
+      "languageName": "Catalan",
+      "nativeName": "Català",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Public Beta gratuïta i de codi obert per a SSH local, SFTP i reenviament de ports a Windows x64.",
+        "fullDescription": "JoeSSH és una Public Beta gratuïta i de codi obert per treballar amb SSH local a Windows x64. Connecteu-vos a un servidor autoritzat, reviseu les claus de l'amfitrió, feu servir el terminal interactiu, transferiu fitxers amb SFTP i gestioneu reenviaments de ports locals. Els perfils i les preferències es desen per defecte en aquest dispositiu. No cal cap compte de JoeSSH ni cap servei allotjat.",
+        "features": [
+          "Revisió de la clau de l'amfitrió SSH",
+          "Terminal interactiu",
+          "Transferències SFTP de fins a 25 MiB",
+          "Reenviament de ports local només per loopback",
+          "Perfils de connexió locals"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Terminal interactiu",
+          "Reenviament de ports",
+          "Perfils de connexió",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "zh-CN",
+      "storeLocale": "zh-Hans-CN",
+      "sourceName": "中文简体",
+      "languageName": "Simplified Chinese",
+      "nativeName": "简体中文",
+      "direction": "ltr",
+      "appUiLocale": "zh-CN",
+      "appUiSupported": true,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "免费开源的 Public Beta，面向 Windows x64，支持本地优先 SSH、SFTP 和端口转发。",
+        "fullDescription": "JoeSSH 是面向 Windows x64 本地 SSH 工作的免费开源 Public Beta。连接到你获授权使用的服务器，核对主机密钥，使用交互式终端，通过 SFTP 传输文件，并管理本地端口转发。连接配置和偏好设置默认保存在本机。不需要 JoeSSH 账号，也不需要托管服务。",
+        "features": [
+          "SSH 主机密钥核对",
+          "交互式终端",
+          "单次不超过 25 MiB 的 SFTP 传输",
+          "仅限 loopback 的本地端口转发",
+          "本地连接配置"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "交互式终端",
+          "本地端口转发",
+          "本地连接配置",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "zh-TW",
+      "storeLocale": "zh-Hant-TW",
+      "sourceName": "中文繁体",
+      "languageName": "Traditional Chinese",
+      "nativeName": "繁體中文",
+      "direction": "ltr",
+      "appUiLocale": "zh-TW",
+      "appUiSupported": true,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "免費開源 Public Beta，適用於 Windows x64 的本機優先 SSH、SFTP 與連接埠轉送。",
+        "fullDescription": "JoeSSH 是適用於 Windows x64 本機 SSH 工作的免費開源 Public Beta。連線到你獲授權使用的伺服器，核對主機金鑰，使用互動式終端機，透過 SFTP 傳輸檔案，並管理本機連接埠轉送。連線設定與偏好設定預設保留在此裝置上。不需要 JoeSSH 帳戶，也不需要代管服務。",
+        "features": [
+          "SSH 主機金鑰核對",
+          "互動式終端機",
+          "單次不超過 25 MiB 的 SFTP 傳輸",
+          "僅限 loopback 的本機連接埠轉送",
+          "本機連線設定"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "互動式終端機",
+          "本機連接埠轉送",
+          "本機連線設定",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "hr-HR",
+      "storeLocale": "hr-HR",
+      "sourceName": "克罗地亚语",
+      "languageName": "Croatian",
+      "nativeName": "Hrvatski",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Besplatna Public Beta otvorenog koda za lokalni SSH, SFTP i prosljeđivanje priključaka na Windows x64.",
+        "fullDescription": "JoeSSH je besplatna Public Beta otvorenog koda za lokalni SSH rad na sustavu Windows x64. Povežite se s poslužiteljem za koji imate ovlaštenje, pregledajte ključeve glavnog računala, koristite interaktivni terminal, prenesite datoteke putem SFTP-a i upravljajte lokalnim prosljeđivanjem priključaka. Profili i postavke po zadanom ostaju na ovom uređaju. Nisu potrebni JoeSSH račun ni hostana usluga.",
+        "features": [
+          "Pregled SSH ključa glavnog računala",
+          "Interaktivni terminal",
+          "SFTP prijenosi do 25 MiB",
+          "Lokalno prosljeđivanje samo putem loopbacka",
+          "Lokalni profili veza"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Interaktivni terminal",
+          "Lokalno prosljeđivanje priključaka",
+          "Lokalni profili",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "cs-CZ",
+      "storeLocale": "cs-CZ",
+      "sourceName": "捷克语",
+      "languageName": "Czech",
+      "nativeName": "Čeština",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Bezplatná Public Beta s otevřeným zdrojovým kódem pro lokální SSH, SFTP a přesměrování portů ve Windows x64.",
+        "fullDescription": "JoeSSH je bezplatná Public Beta s otevřeným zdrojovým kódem pro lokální práci přes SSH ve Windows x64. Připojte se k serveru, ke kterému máte oprávnění, zkontrolujte klíče hostitele, používejte interaktivní terminál, přenášejte soubory přes SFTP a spravujte místní přesměrování portů. Profily a předvolby se ve výchozím nastavení ukládají na tomto zařízení. Účet JoeSSH ani hostovaná služba nejsou potřeba.",
+        "features": [
+          "Kontrola klíče hostitele SSH",
+          "Interaktivní terminál",
+          "Přenosy SFTP do 25 MiB",
+          "Místní přesměrování portů pouze přes loopback",
+          "Místní profily připojení"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Interaktivní terminál",
+          "Místní přesměrování portů",
+          "Místní profily",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "da-DK",
+      "storeLocale": "da-DK",
+      "sourceName": "丹麦语",
+      "languageName": "Danish",
+      "nativeName": "Dansk",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Gratis open source Public Beta til lokal SSH, SFTP og portviderestilling på Windows x64.",
+        "fullDescription": "JoeSSH er en gratis open source Public Beta til lokalt SSH-arbejde på Windows x64. Opret forbindelse til en server, du har tilladelse til at bruge, gennemgå værtsnøgler, brug en interaktiv terminal, overfør filer med SFTP, og administrer lokale portviderestillinger. Profiler og indstillinger gemmes som standard på denne enhed. Der kræves ingen JoeSSH-konto eller hostet tjeneste.",
+        "features": [
+          "Gennemgang af SSH-værtsnøgle",
+          "Interaktiv terminal",
+          "SFTP-overførsler op til 25 MiB",
+          "Lokal portviderestilling kun via loopback",
+          "Lokale forbindelsesprofiler"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Interaktiv terminal",
+          "Lokal portviderestilling",
+          "Lokale forbindelsesprofiler",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "nl-NL",
+      "storeLocale": "nl-NL",
+      "sourceName": "荷兰语",
+      "languageName": "Dutch",
+      "nativeName": "Nederlands",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Gratis open-source Public Beta voor lokale SSH, SFTP en port forwarding op Windows x64.",
+        "fullDescription": "JoeSSH is een gratis open-source Public Beta voor lokaal SSH-werk op Windows x64. Maak verbinding met een server waarvoor je toestemming hebt, controleer hostsleutels, gebruik een interactieve terminal, verplaats bestanden met SFTP en beheer lokale port forwarding. Profielen en voorkeuren worden standaard op dit apparaat bewaard. Een JoeSSH-account of gehoste dienst is niet nodig.",
+        "features": [
+          "SSH-hostsleutel controleren",
+          "Interactieve terminal",
+          "SFTP-overdrachten tot 25 MiB",
+          "Lokale port forwarding via alleen loopback",
+          "Lokale verbindingsprofielen"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Interactieve terminal",
+          "Lokale port forwarding",
+          "Lokale verbindingsprofielen",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "en-GB",
+      "storeLocale": "en-GB",
+      "sourceName": "英语英国",
+      "languageName": "English (United Kingdom)",
+      "nativeName": "English",
+      "direction": "ltr",
+      "appUiLocale": "en",
+      "appUiSupported": true,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Free, open-source Public Beta for local-first SSH, SFTP and port forwarding on Windows x64.",
+        "fullDescription": "JoeSSH is a free, open-source Public Beta for local SSH work on Windows x64. Connect to an authorised server, review host keys, use an interactive terminal, transfer files with SFTP, and manage local port forwarding. Profiles and preferences stay on this device by default. No JoeSSH account or hosted service is required.",
+        "features": [
+          "SSH host-key review",
+          "Interactive terminal",
+          "SFTP transfers up to 25 MiB",
+          "Loopback-only local port forwarding",
+          "Local connection profiles"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Interactive terminal",
+          "Local port forwarding",
+          "Local connection profiles",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "en-US",
+      "storeLocale": "en-US",
+      "sourceName": "英语美国",
+      "languageName": "English (United States)",
+      "nativeName": "English",
+      "direction": "ltr",
+      "appUiLocale": "en",
+      "appUiSupported": true,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Free, open-source Public Beta for local-first SSH, SFTP and port forwarding on Windows x64.",
+        "fullDescription": "JoeSSH is a free, open-source Public Beta for local SSH work on Windows x64. Connect to an authorized server, review host keys, use an interactive terminal, transfer files with SFTP, and manage local port forwarding. Profiles and preferences stay on this device by default. No JoeSSH account or hosted service is required.",
+        "features": [
+          "SSH host-key review",
+          "Interactive terminal",
+          "SFTP transfers up to 25 MiB",
+          "Loopback-only local port forwarding",
+          "Local connection profiles"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Interactive terminal",
+          "Local port forwarding",
+          "Local connection profiles",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "et-EE",
+      "storeLocale": "et-EE",
+      "sourceName": "爱沙尼亚语",
+      "languageName": "Estonian",
+      "nativeName": "Eesti",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Tasuta avatud lähtekoodiga Public Beta kohaliku SSH, SFTP ja pordisuunamise jaoks Windows x64-s.",
+        "fullDescription": "JoeSSH on tasuta avatud lähtekoodiga Public Beta kohalikuks SSH-tööks Windows x64-s. Ühenda serveriga, mille kasutamiseks sul on luba, vaata hostivõtmed üle, kasuta interaktiivset terminali, edasta faile SFTP-ga ja halda kohalikke pordisuunamisi. Profiilid ja eelistused salvestatakse vaikimisi sellesse seadmesse. JoeSSH kontot ega majutatud teenust pole vaja.",
+        "features": [
+          "SSH hostivõtme ülevaatus",
+          "Interaktiivne terminal",
+          "SFTP-edastused kuni 25 MiB",
+          "Ainult loopbacki kohalik pordisuunamine",
+          "Kohalikud ühendusprofiilid"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Interaktiivne terminal",
+          "Kohalik pordisuunamine",
+          "Kohalikud ühendusprofiilid",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "fil-PH",
+      "storeLocale": "fil-PH",
+      "sourceName": "菲律宾语",
+      "languageName": "Filipino",
+      "nativeName": "Filipino",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Libre at open source na Public Beta para sa lokal-first SSH, SFTP, at port forwarding sa Windows x64.",
+        "fullDescription": "Ang JoeSSH ay isang libre at open source na Public Beta para sa lokal na SSH sa Windows x64. Kumonekta sa server na may pahintulot kang gamitin, suriin ang mga host key, gumamit ng interactive terminal, maglipat ng file gamit ang SFTP, at pamahalaan ang lokal na port forwarding. Nananatili sa device na ito ang mga profile at preference bilang default. Hindi kailangan ng JoeSSH account o naka-host na serbisyo.",
+        "features": [
+          "Pagsusuri ng SSH host key",
+          "Interactive terminal",
+          "SFTP transfer hanggang 25 MiB",
+          "Loopback-only na lokal na port forwarding",
+          "Mga lokal na connection profile"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Interactive terminal",
+          "lokal na port forwarding",
+          "Mga lokal na connection profile",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "fi-FI",
+      "storeLocale": "fi-FI",
+      "sourceName": "芬兰语",
+      "languageName": "Finnish",
+      "nativeName": "Suomi",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Ilmainen avoimen lähdekoodin Public Beta paikalliseen SSH:hen, SFTP:hen ja porttien välitykseen Windows x64:ssä.",
+        "fullDescription": "JoeSSH on ilmainen avoimen lähdekoodin Public Beta paikalliseen SSH-työskentelyyn Windows x64:ssä. Yhdistä palvelimeen, jonka käyttöön sinulla on lupa, tarkista isäntäavaimet, käytä vuorovaikutteista päätettä, siirrä tiedostoja SFTP:llä ja hallitse paikallisia porttien välityksiä. Profiilit ja asetukset tallennetaan oletuksena tähän laitteeseen. JoeSSH-tiliä tai isännöityä palvelua ei tarvita.",
+        "features": [
+          "SSH-isäntäavaimen tarkistus",
+          "Vuorovaikutteinen pääte",
+          "SFTP-siirrot enintään 25 MiB",
+          "Paikallinen porttien välitys vain loopbackin kautta",
+          "Paikalliset yhteysprofiilit"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Vuorovaikutteinen pääte",
+          "Paikallinen porttien välitys",
+          "Paikalliset yhteysprofiilit",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "fr-FR",
+      "storeLocale": "fr-FR",
+      "sourceName": "法语",
+      "languageName": "French",
+      "nativeName": "Français",
+      "direction": "ltr",
+      "appUiLocale": "fr",
+      "appUiSupported": true,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Public Beta gratuite et open source pour SSH local, SFTP et redirection de ports sur Windows x64.",
+        "fullDescription": "JoeSSH est une Public Beta gratuite et open source pour le travail SSH local sous Windows x64. Connectez-vous à un serveur auquel vous êtes autorisé à accéder, vérifiez les clés d'hôte, utilisez un terminal interactif, transférez des fichiers avec SFTP et gérez les redirections de ports locales. Les profils et préférences restent par défaut sur cet appareil. Aucun compte JoeSSH ni service hébergé n'est requis.",
+        "features": [
+          "Vérification de la clé d'hôte SSH",
+          "Terminal interactif",
+          "Transferts SFTP jusqu'à 25 MiB",
+          "Redirection de ports locale par loopback uniquement",
+          "Profils de connexion locaux"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Terminal interactif",
+          "Redirection de ports",
+          "Profils de connexion",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "fr-CA",
+      "storeLocale": "fr-CA",
+      "sourceName": "法语加拿大",
+      "languageName": "French (Canada)",
+      "nativeName": "Français (Canada)",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Public Beta gratuite et open source pour SSH local, SFTP et redirection de ports sur Windows x64.",
+        "fullDescription": "JoeSSH est une Public Beta gratuite et open source pour le travail SSH local sous Windows x64. Connectez-vous à un serveur auquel vous êtes autorisé à accéder, vérifiez les clés d’hôte, utilisez un terminal interactif, transférez des fichiers avec SFTP et gérez les redirections de ports locales. Les profils et préférences restent par défaut sur cet appareil. Aucun compte JoeSSH ni service hébergé n’est requis.",
+        "features": [
+          "Vérification de la clé d’hôte SSH",
+          "Terminal interactif",
+          "Transferts SFTP jusqu’à 25 MiB",
+          "Redirection de ports locale par loopback uniquement",
+          "Profils de connexion locaux"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Terminal interactif",
+          "Redirection de ports",
+          "Profils de connexion",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "gl-ES",
+      "storeLocale": "gl-ES",
+      "sourceName": "加利西亚语",
+      "languageName": "Galician",
+      "nativeName": "Galego",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Public Beta gratuíta e de código aberto para SSH local, SFTP e reenvío de portos en Windows x64.",
+        "fullDescription": "JoeSSH é unha Public Beta gratuíta e de código aberto para traballo SSH local en Windows x64. Conéctate a un servidor que teñas autorización para usar, revisa as claves do host, usa un terminal interactivo, transfire ficheiros con SFTP e xestiona os reenvíos de portos locais. Os perfís e as preferencias gárdanse neste dispositivo por defecto. Non se precisa unha conta de JoeSSH nin un servizo aloxado.",
+        "features": [
+          "Revisión da clave do host SSH",
+          "Terminal interactivo",
+          "Transferencias SFTP de ata 25 MiB",
+          "Reenvío de portos local só por loopback",
+          "Perfís de conexión locais"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Terminal interactivo",
+          "Reenvío de portos",
+          "Perfís de conexión",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "de-DE",
+      "storeLocale": "de-DE",
+      "sourceName": "德语",
+      "languageName": "German",
+      "nativeName": "Deutsch",
+      "direction": "ltr",
+      "appUiLocale": "de",
+      "appUiSupported": true,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Kostenlose Open-Source-Public-Beta für lokales SSH, SFTP und Portweiterleitung unter Windows x64.",
+        "fullDescription": "JoeSSH ist eine kostenlose Open-Source-Public-Beta für lokale SSH-Arbeit unter Windows x64. Verbinden Sie sich mit einem Server, den Sie verwenden dürfen, prüfen Sie Hostschlüssel, nutzen Sie ein interaktives Terminal, übertragen Sie Dateien mit SFTP und verwalten Sie lokale Portweiterleitungen. Profile und Einstellungen bleiben standardmäßig auf diesem Gerät. Ein JoeSSH-Konto oder ein gehosteter Dienst ist nicht erforderlich.",
+        "features": [
+          "SSH-Hostschlüssel prüfen",
+          "Interaktives Terminal",
+          "SFTP-Übertragungen bis 25 MiB",
+          "Lokale Portweiterleitung nur über Loopback",
+          "Lokale Verbindungsprofile"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Interaktives Terminal",
+          "Lokale Portweiterleitung",
+          "Lokale Verbindungsprofile",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "el-GR",
+      "storeLocale": "el-GR",
+      "sourceName": "希腊语",
+      "languageName": "Greek",
+      "nativeName": "Ελληνικά",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Δωρεάν Public Beta ανοικτού κώδικα για τοπικό SSH, SFTP και προώθηση θυρών στα Windows x64.",
+        "fullDescription": "Το JoeSSH είναι δωρεάν Public Beta ανοικτού κώδικα για τοπική εργασία SSH στα Windows x64. Συνδεθείτε σε διακομιστή που έχετε άδεια να χρησιμοποιείτε, ελέγξτε τα κλειδιά κεντρικού υπολογιστή, χρησιμοποιήστε διαδραστικό τερματικό, μεταφέρετε αρχεία με SFTP και διαχειριστείτε τοπικές προωθήσεις θυρών. Τα προφίλ και οι προτιμήσεις αποθηκεύονται από προεπιλογή σε αυτή τη συσκευή. Δεν απαιτείται λογαριασμός JoeSSH ή φιλοξενούμενη υπηρεσία.",
+        "features": [
+          "Έλεγχος κλειδιού κεντρικού υπολογιστή SSH",
+          "Διαδραστικό τερματικό",
+          "Μεταφορές SFTP έως 25 MiB",
+          "Τοπική προώθηση θυρών μόνο μέσω loopback",
+          "Τοπικά προφίλ σύνδεσης"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Διαδραστικό τερματικό",
+          "Τοπική προώθηση θυρών",
+          "Τοπικά προφίλ",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "he-IL",
+      "storeLocale": "he-IL",
+      "sourceName": "希伯来语",
+      "languageName": "Hebrew",
+      "nativeName": "עברית",
+      "direction": "rtl",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Public Beta חינמית וקוד פתוח ל-SSH מקומי, SFTP והעברת יציאות ב-Windows x64.",
+        "fullDescription": "JoeSSH היא Public Beta חינמית בקוד פתוח לעבודה מקומית עם SSH ב-Windows x64. התחברו לשרת שיש לכם הרשאה להשתמש בו, בדקו מפתחות מארח, השתמשו במסוף אינטראקטיבי, העבירו קבצים באמצעות SFTP ונהלו העברות יציאות מקומיות. פרופילים והעדפות נשמרים כברירת מחדל במכשיר הזה. אין צורך בחשבון JoeSSH או בשירות מתארח.",
+        "features": [
+          "בדיקת מפתח מארח SSH",
+          "מסוף אינטראקטיבי",
+          "העברות SFTP עד 25 MiB",
+          "העברת יציאות מקומית דרך loopback בלבד",
+          "פרופילי חיבור מקומיים"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "מסוף אינטראקטיבי",
+          "העברת יציאות",
+          "פרופילי חיבור",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "hi-IN",
+      "storeLocale": "hi-IN",
+      "sourceName": "印地语",
+      "languageName": "Hindi",
+      "nativeName": "हिन्दी",
+      "direction": "ltr",
+      "appUiLocale": "hi",
+      "appUiSupported": true,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Windows x64 पर स्थानीय SSH, SFTP और पोर्ट फ़ॉरवर्डिंग के लिए निःशुल्क, ओपन-सोर्स Public Beta।",
+        "fullDescription": "JoeSSH Windows x64 पर स्थानीय SSH काम के लिए निःशुल्क और ओपन-सोर्स Public Beta है। जिस सर्वर को इस्तेमाल करने की अनुमति है उससे जुड़ें, होस्ट कुंजियों की समीक्षा करें, इंटरैक्टिव टर्मिनल इस्तेमाल करें, SFTP से फ़ाइलें स्थानांतरित करें और स्थानीय पोर्ट फ़ॉरवर्डिंग प्रबंधित करें। प्रोफ़ाइल और प्राथमिकताएँ डिफ़ॉल्ट रूप से इसी डिवाइस पर रहती हैं। JoeSSH खाते या होस्ट की गई सेवा की ज़रूरत नहीं है।",
+        "features": [
+          "SSH होस्ट-कुंजी समीक्षा",
+          "इंटरैक्टिव टर्मिनल",
+          "25 MiB तक SFTP स्थानांतरण",
+          "केवल loopback स्थानीय पोर्ट फ़ॉरवर्डिंग",
+          "स्थानीय कनेक्शन प्रोफ़ाइल"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "इंटरैक्टिव टर्मिनल",
+          "स्थानीय पोर्ट फ़ॉरवर्डिंग",
+          "स्थानीय कनेक्शन प्रोफ़ाइल",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "hu-HU",
+      "storeLocale": "hu-HU",
+      "sourceName": "匈牙利语",
+      "languageName": "Hungarian",
+      "nativeName": "Magyar",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Ingyenes, nyílt forráskódú Public Beta helyi SSH-hoz, SFTP-hez és porttovábbításhoz Windows x64-en.",
+        "fullDescription": "A JoeSSH ingyenes, nyílt forráskódú Public Beta helyi SSH-munkához Windows x64-en. Csatlakozzon olyan kiszolgálóhoz, amelyhez jogosultsága van, ellenőrizze a gazdagépkulcsokat, használjon interaktív terminált, vigyen át fájlokat SFTP-vel, és kezelje a helyi porttovábbításokat. A profilok és beállítások alapértelmezés szerint ezen az eszközön maradnak. JoeSSH-fiók vagy üzemeltetett szolgáltatás nem szükséges.",
+        "features": [
+          "SSH-gazdagépkulcs ellenőrzése",
+          "Interaktív terminál",
+          "Legfeljebb 25 MiB-es SFTP-átvitel",
+          "Csak loopbackes helyi porttovábbítás",
+          "Helyi kapcsolati profilok"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Interaktív terminál",
+          "Helyi porttovábbítás",
+          "Helyi kapcsolati profilok",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "is-IS",
+      "storeLocale": "is-IS",
+      "sourceName": "冰岛语",
+      "languageName": "Icelandic",
+      "nativeName": "Íslenska",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Ókeypis Public Beta með opnum kóða fyrir SSH, SFTP og framsendingu gátta á Windows x64.",
+        "fullDescription": "JoeSSH er ókeypis Public Beta með opnum kóða fyrir SSH-vinnu á staðnum í Windows x64. Tengstu netþjóni sem þú hefur heimild til að nota, skoðaðu hýsillykla, notaðu gagnvirka flugstöð, flyttu skrár með SFTP og stjórnaðu staðbundinni gáttafransendingu. Snið og kjörstillingar vistast sjálfgefið á þessu tæki. JoeSSH-reikningur eða hýst þjónusta er ekki nauðsynleg.",
+        "features": [
+          "Yfirferð SSH-hýsillykils",
+          "Gagnvirk flugstöð",
+          "SFTP-flutningar allt að 25 MiB",
+          "Staðbundin gáttafransending aðeins um loopback",
+          "Staðbundin tengisnið"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Gagnvirk flugstöð",
+          "Staðbundin gáttafransending",
+          "Staðbundin tengisnið",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "id-ID",
+      "storeLocale": "id-ID",
+      "sourceName": "印度尼西亚语",
+      "languageName": "Indonesian",
+      "nativeName": "Bahasa Indonesia",
+      "direction": "ltr",
+      "appUiLocale": "id",
+      "appUiSupported": true,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Public Beta gratis dan sumber terbuka untuk SSH lokal, SFTP, dan penerusan port di Windows x64.",
+        "fullDescription": "JoeSSH adalah Public Beta gratis dan sumber terbuka untuk pekerjaan SSH lokal di Windows x64. Sambungkan ke server yang boleh Anda gunakan, tinjau kunci host, gunakan terminal interaktif, transfer file dengan SFTP, dan kelola penerusan port lokal. Profil dan preferensi secara default tetap di perangkat ini. Akun JoeSSH atau layanan ter-host tidak diperlukan.",
+        "features": [
+          "Peninjauan kunci host SSH",
+          "Terminal interaktif",
+          "Transfer SFTP hingga 25 MiB",
+          "Penerusan port lokal hanya melalui loopback",
+          "Profil koneksi lokal"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Terminal interaktif",
+          "Penerusan port",
+          "Profil koneksi",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "it-IT",
+      "storeLocale": "it-IT",
+      "sourceName": "意大利语",
+      "languageName": "Italian",
+      "nativeName": "Italiano",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Public Beta gratuita e open source per SSH locale, SFTP e inoltro delle porte su Windows x64.",
+        "fullDescription": "JoeSSH è una Public Beta gratuita e open source per il lavoro SSH locale su Windows x64. Collegati a un server che sei autorizzato a usare, controlla le chiavi host, usa un terminale interattivo, trasferisci file con SFTP e gestisci gli inoltri delle porte locali. I profili e le preferenze restano per impostazione predefinita su questo dispositivo. Non servono un account JoeSSH o un servizio ospitato.",
+        "features": [
+          "Controllo della chiave host SSH",
+          "Terminale interattivo",
+          "Trasferimenti SFTP fino a 25 MiB",
+          "Inoltro porte locale solo tramite loopback",
+          "Profili di connessione locali"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Terminale interattivo",
+          "Inoltro porte",
+          "Profili di connessione",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "ja-JP",
+      "storeLocale": "ja-JP",
+      "sourceName": "日语",
+      "languageName": "Japanese",
+      "nativeName": "日本語",
+      "direction": "ltr",
+      "appUiLocale": "ja",
+      "appUiSupported": true,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Windows x64 でローカル優先の SSH、SFTP、ポート転送を使える無料オープンソース Public Beta。",
+        "fullDescription": "JoeSSH は Windows x64 でローカル SSH 作業を行うための無料オープンソース Public Beta です。利用を許可されたサーバーに接続し、ホストキーを確認し、対話型ターミナルを使い、SFTP でファイルを転送し、ローカルポート転送を管理できます。接続プロファイルと設定は既定でこのデバイスに保存されます。JoeSSH アカウントやホスト型サービスは必要ありません。",
+        "features": [
+          "SSH ホストキーの確認",
+          "対話型ターミナル",
+          "25 MiB までの SFTP 転送",
+          "loopback のみのローカルポート転送",
+          "ローカル接続プロファイル"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "対話型ターミナル",
+          "loopback のみのローカルポート転送",
+          "ローカル接続プロファイル",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "kn-IN",
+      "storeLocale": "kn-IN",
+      "sourceName": "埃纳德语",
+      "languageName": "Kannada",
+      "nativeName": "ಕನ್ನಡ",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": true,
+      "nativeReview": null,
+      "mappingNote": "Partner Center 实时语言目录将“埃纳德语(印度)”显示为 Kannada (India)，languageId=52；仍需母语审核。",
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Windows x64 ನಲ್ಲಿ ಸ್ಥಳೀಯ SSH, SFTP ಮತ್ತು ಪೋರ್ಟ್ ಫಾರ್ವರ್ಡಿಂಗ್‌ಗಾಗಿ ಉಚಿತ, ಮುಕ್ತ ಮೂಲದ Public Beta.",
+        "fullDescription": "JoeSSH Windows x64 ನಲ್ಲಿ ಸ್ಥಳೀಯ SSH ಕೆಲಸಕ್ಕಾಗಿ ಉಚಿತ ಮತ್ತು ಮುಕ್ತ ಮೂಲದ Public Beta ಆಗಿದೆ. ನಿಮಗೆ ಅನುಮತಿ ಇರುವ ಸರ್ವರ್‌ಗೆ ಸಂಪರ್ಕಿಸಿ, ಹೋಸ್ಟ್ ಕೀಗಳನ್ನು ಪರಿಶೀಲಿಸಿ, ಸಂವಾದಾತ್ಮಕ ಟರ್ಮಿನಲ್ ಬಳಸಿ, SFTP ಮೂಲಕ ಫೈಲ್‌ಗಳನ್ನು ವರ್ಗಾಯಿಸಿ ಮತ್ತು ಸ್ಥಳೀಯ ಪೋರ್ಟ್ ಫಾರ್ವರ್ಡಿಂಗ್ ನಿರ್ವಹಿಸಿ. ಪ್ರೊಫೈಲ್‌ಗಳು ಮತ್ತು ಆದ್ಯತೆಗಳು ಡೀಫಾಲ್ಟ್ ಆಗಿ ಈ ಸಾಧನದಲ್ಲೇ ಉಳಿಯುತ್ತವೆ. JoeSSH ಖಾತೆ ಅಥವಾ ಹೋಸ್ಟ್ ಮಾಡಿದ ಸೇವೆ ಅಗತ್ಯವಿಲ್ಲ.",
+        "features": [
+          "SSH ಹೋಸ್ಟ್ ಕೀ ಪರಿಶೀಲನೆ",
+          "ಸಂವಾದಾತ್ಮಕ ಟರ್ಮಿನಲ್",
+          "25 MiB ವರೆಗೆ SFTP ವರ್ಗಾವಣೆ",
+          "loopback ಮಾತ್ರದ ಸ್ಥಳೀಯ ಪೋರ್ಟ್ ಫಾರ್ವರ್ಡಿಂಗ್",
+          "ಸ್ಥಳೀಯ ಸಂಪರ್ಕ ಪ್ರೊಫೈಲ್‌ಗಳು"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "ಸಂವಾದಾತ್ಮಕ ಟರ್ಮಿನಲ್",
+          "ಸ್ಥಳೀಯ ಪೋರ್ಟ್ ಫಾರ್ವರ್ಡಿಂಗ್",
+          "ಸ್ಥಳೀಯ ಸಂಪರ್ಕ ಪ್ರೊಫೈಲ್‌ಗಳು",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "kk-KZ",
+      "storeLocale": "kk-KZ",
+      "sourceName": "哈萨克语",
+      "languageName": "Kazakh",
+      "nativeName": "Қазақша",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Windows x64 жүйесіндегі жергілікті SSH, SFTP және порттарды қайта бағыттауға арналған тегін, ашық бастапқы Public Beta.",
+        "fullDescription": "JoeSSH — Windows x64 жүйесінде жергілікті SSH жұмысына арналған тегін әрі ашық бастапқы Public Beta. Рұқсатыңыз бар серверге қосылыңыз, хост кілттерін тексеріңіз, интерактивті терминалды пайдаланыңыз, файлдарды SFTP арқылы тасымалдаңыз және жергілікті порттарды қайта бағыттауды басқарыңыз. Профильдер мен параметрлер әдепкіде осы құрылғыда сақталады. JoeSSH тіркелгісі немесе орналастырылған қызмет қажет емес.",
+        "features": [
+          "SSH хост кілтін тексеру",
+          "Интерактивті терминал",
+          "25 MiB дейінгі SFTP тасымалдары",
+          "Тек loopback арқылы жергілікті портты қайта бағыттау",
+          "Жергілікті қосылым профильдері"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Интерактивті терминал",
+          "Жергілікті портты қайта бағыттау",
+          "Жергілікті қосылым профильдері",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "km-KH",
+      "storeLocale": "km-KH",
+      "sourceName": "高棉语",
+      "languageName": "Khmer",
+      "nativeName": "ខ្មែរ",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Public Beta ឥតគិតថ្លៃ និងប្រភពបើកចំហ សម្រាប់ SSH, SFTP និងការបញ្ជូនច្រកក្នុង Windows x64។",
+        "fullDescription": "JoeSSH គឺជា Public Beta ឥតគិតថ្លៃ និងប្រភពបើកចំហ សម្រាប់ការងារ SSH ក្នុងម៉ាស៊ីនលើ Windows x64។ ភ្ជាប់ទៅម៉ាស៊ីនមេដែលអ្នកមានសិទ្ធិប្រើ ពិនិត្យសោម៉ាស៊ីន ប្រើស្ថានីយអន្តរកម្ម ផ្ទេរឯកសារតាម SFTP និងគ្រប់គ្រងការបញ្ជូនច្រកក្នុងម៉ាស៊ីន។ ប្រវត្តិរូប និងចំណូលចិត្តត្រូវបានរក្សាទុកលើឧបករណ៍នេះតាមលំនាំដើម។ មិនត្រូវការគណនី JoeSSH ឬសេវាបង្ហោះទេ។",
+        "features": [
+          "ពិនិត្យសោម៉ាស៊ីន SSH",
+          "ស្ថានីយអន្តរកម្ម",
+          "ផ្ទេរ SFTP រហូតដល់ 25 MiB",
+          "បញ្ជូនច្រកក្នុងម៉ាស៊ីនតាម loopback ប៉ុណ្ណោះ",
+          "ប្រវត្តិរូបការតភ្ជាប់ក្នុងម៉ាស៊ីន"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "ស្ថានីយអន្តរកម្ម",
+          "បញ្ជូនច្រកក្នុងម៉ាស៊ីនតាម loopback",
+          "ប្រវត្តិរូបការតភ្ជាប់ក្នុងម៉ាស៊ីន",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "ko-KR",
+      "storeLocale": "ko-KR",
+      "sourceName": "韩语",
+      "languageName": "Korean",
+      "nativeName": "한국어",
+      "direction": "ltr",
+      "appUiLocale": "ko",
+      "appUiSupported": true,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Windows x64에서 로컬 우선 SSH, SFTP 및 포트 전달을 사용하는 무료 오픈 소스 Public Beta입니다.",
+        "fullDescription": "JoeSSH는 Windows x64에서 로컬 SSH 작업을 위한 무료 오픈 소스 Public Beta입니다. 사용 권한이 있는 서버에 연결하고, 호스트 키를 검토하고, 대화형 터미널을 사용하고, SFTP로 파일을 전송하고, 로컬 포트 전달을 관리할 수 있습니다. 연결 프로필과 기본 설정은 기본적으로 이 장치에 저장됩니다. JoeSSH 계정이나 호스팅 서비스는 필요하지 않습니다.",
+        "features": [
+          "SSH 호스트 키 검토",
+          "대화형 터미널",
+          "최대 25 MiB SFTP 전송",
+          "loopback 전용 로컬 포트 전달",
+          "로컬 연결 프로필"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "대화형 터미널",
+          "로컬 포트 전달",
+          "로컬 연결 프로필",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "lo-LA",
+      "storeLocale": "lo-LA",
+      "sourceName": "老挝语",
+      "languageName": "Lao",
+      "nativeName": "ລາວ",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Public Beta ຟຣີ ແລະເປີດແຫຼ່ງ ສຳລັບ SSH, SFTP ແລະການສົ່ງຕໍ່ພອດໃນ Windows x64.",
+        "fullDescription": "JoeSSH ແມ່ນ Public Beta ຟຣີ ແລະເປີດແຫຼ່ງ ສຳລັບວຽກ SSH ທ້ອງຖິ່ນໃນ Windows x64. ເຊື່ອມຕໍ່ເຊີບເວີທີ່ທ່ານມີສິດໃຊ້, ກວດເບິ່ງກຸນແຈໂຮສຕ໌, ໃຊ້ສະຖານີປະຕິສຳພັນ, ໂອນໄຟລ໌ດ້ວຍ SFTP ແລະຈັດການການສົ່ງຕໍ່ພອດທ້ອງຖິ່ນ. ໂປຣໄຟລ໌ແລະຄ່າກຳນົດຈະຖືກເກັບໄວ້ໃນອຸປະກອນນີ້ໂດຍຄ່າເລີ່ມຕົ້ນ. ບໍ່ຕ້ອງການບັນຊີ JoeSSH ຫຼືບໍລິການໂຮສຕ໌.",
+        "features": [
+          "ກວດກຸນແຈໂຮສຕ໌ SSH",
+          "ສະຖານີປະຕິສຳພັນ",
+          "ການໂອນ SFTP ເຖິງ 25 MiB",
+          "ສົ່ງຕໍ່ພອດທ້ອງຖິ່ນຜ່ານ loopback ເທົ່ານັ້ນ",
+          "ໂປຣໄຟລ໌ການເຊື່ອມຕໍ່ທ້ອງຖິ່ນ"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "ສະຖານີປະຕິສຳພັນ",
+          "ສົ່ງຕໍ່ພອດທ້ອງຖິ່ນຜ່ານ loopback",
+          "ໂປຣໄຟລ໌ການເຊື່ອມຕໍ່ທ້ອງຖິ່ນ",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "lv-LV",
+      "storeLocale": "lv-LV",
+      "sourceName": "拉脱维亚语",
+      "languageName": "Latvian",
+      "nativeName": "Latviešu",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Bezmaksas atvērtā pirmkoda Public Beta lokālam SSH, SFTP un portu pāradresācijai operētājsistēmā Windows x64.",
+        "fullDescription": "JoeSSH ir bezmaksas atvērtā pirmkoda Public Beta lokālam SSH darbam operētājsistēmā Windows x64. Izveidojiet savienojumu ar serveri, kuru drīkstat izmantot, pārbaudiet resursdatora atslēgas, lietojiet interaktīvu termināli, pārsūtiet failus ar SFTP un pārvaldiet lokālu portu pāradresāciju. Profili un iestatījumi pēc noklusējuma paliek šajā ierīcē. JoeSSH konts vai mitināts pakalpojums nav vajadzīgs.",
+        "features": [
+          "SSH resursdatora atslēgas pārbaude",
+          "Interaktīvs terminālis",
+          "SFTP pārsūtīšana līdz 25 MiB",
+          "Lokāla portu pāradresācija tikai caur loopback",
+          "Lokālie savienojumu profili"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Interaktīvs terminālis",
+          "Lokāla portu pāradresācija",
+          "Lokālie savienojumu profili",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "lt-LT",
+      "storeLocale": "lt-LT",
+      "sourceName": "立陶宛语",
+      "languageName": "Lithuanian",
+      "nativeName": "Lietuvių",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Nemokama atvirojo kodo Public Beta vietiniam SSH, SFTP ir prievadų persiuntimui sistemoje Windows x64.",
+        "fullDescription": "JoeSSH yra nemokama atvirojo kodo Public Beta vietiniam SSH darbui sistemoje Windows x64. Prisijunkite prie serverio, kurį turite teisę naudoti, peržiūrėkite pagrindinio kompiuterio raktus, naudokite interaktyvų terminalą, perkelkite failus naudodami SFTP ir valdykite vietinį prievadų persiuntimą. Profiliai ir nuostatos pagal numatytuosius parametrus lieka šiame įrenginyje. JoeSSH paskyros ar priglobtos paslaugos nereikia.",
+        "features": [
+          "SSH pagrindinio kompiuterio rakto peržiūra",
+          "Interaktyvus terminalas",
+          "SFTP perkėlimai iki 25 MiB",
+          "Vietinis prievadų persiuntimas tik per loopback",
+          "Vietiniai ryšio profiliai"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Interaktyvus terminalas",
+          "Vietinis prievadų persiuntimas",
+          "Vietiniai ryšio profiliai",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "mk-MK",
+      "storeLocale": "mk",
+      "sourceName": "马其顿语",
+      "languageName": "Macedonian",
+      "nativeName": "Македонски",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Бесплатна Public Beta со отворен код за локален SSH, SFTP и препраќање порти на Windows x64.",
+        "fullDescription": "JoeSSH е бесплатна Public Beta со отворен код за локална SSH работа на Windows x64. Поврзете се со сервер за кој имате дозвола, проверете ги клучевите на домаќинот, користете интерактивен терминал, пренесувајте датотеки со SFTP и управувајте со локалното препраќање порти. Профилите и поставките стандардно остануваат на овој уред. Не се потребни JoeSSH сметка или хостирана услуга.",
+        "features": [
+          "Преглед на SSH клучот на домаќинот",
+          "Интерактивен терминал",
+          "SFTP преноси до 25 MiB",
+          "Локално препраќање порти само преку loopback",
+          "Локални профили за врска"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Интерактивен терминал",
+          "Локално препраќање порти",
+          "Локални профили",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "ms-MY",
+      "storeLocale": "ms-MY",
+      "sourceName": "马来语",
+      "languageName": "Malay",
+      "nativeName": "Bahasa Melayu",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Public Beta percuma dan sumber terbuka untuk SSH tempatan, SFTP dan pemajuan port pada Windows x64.",
+        "fullDescription": "JoeSSH ialah Public Beta percuma dan sumber terbuka untuk kerja SSH tempatan pada Windows x64. Sambung ke pelayan yang anda dibenarkan gunakan, semak kunci hos, gunakan terminal interaktif, pindahkan fail dengan SFTP dan urus pemajuan port tempatan. Profil dan pilihan disimpan pada peranti ini secara lalai. Akaun JoeSSH atau perkhidmatan dihoskan tidak diperlukan.",
+        "features": [
+          "Semakan kunci hos SSH",
+          "Terminal interaktif",
+          "Pemindahan SFTP sehingga 25 MiB",
+          "Pemajuan port tempatan melalui loopback sahaja",
+          "Profil sambungan tempatan"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Terminal interaktif",
+          "Pemajuan port",
+          "Profil sambungan",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "ml-IN",
+      "storeLocale": "ml-IN",
+      "sourceName": "马拉雅拉姆语",
+      "languageName": "Malayalam",
+      "nativeName": "മലയാളം",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Windows x64-ൽ പ്രാദേശിക SSH, SFTP, പോർട്ട് ഫോർവേഡിംഗ് എന്നിവയ്ക്കുള്ള സൗജന്യ ഓപ്പൺ സോഴ്‌സ് Public Beta.",
+        "fullDescription": "Windows x64-ൽ പ്രാദേശിക SSH പ്രവർത്തനത്തിനുള്ള സൗജന്യവും ഓപ്പൺ സോഴ്‌സുമായ Public Beta ആണ് JoeSSH. നിങ്ങൾക്ക് അനുമതിയുള്ള സെർവറിലേക്ക് കണക്റ്റ് ചെയ്യുക, ഹോസ്റ്റ് കീകൾ പരിശോധിക്കുക, ഇന്ററാക്ടീവ് ടെർമിനൽ ഉപയോഗിക്കുക, SFTP വഴി ഫയലുകൾ കൈമാറുക, പ്രാദേശിക പോർട്ട് ഫോർവേഡിംഗ് നിയന്ത്രിക്കുക. പ്രൊഫൈലുകളും മുൻഗണനകളും ഡിഫോൾട്ടായി ഈ ഉപകരണത്തിൽ തന്നെ സൂക്ഷിക്കും. JoeSSH അക്കൗണ്ടോ ഹോസ്റ്റ് ചെയ്ത സേവനമോ ആവശ്യമില്ല.",
+        "features": [
+          "SSH ഹോസ്റ്റ് കീ പരിശോധന",
+          "ഇന്ററാക്ടീവ് ടെർമിനൽ",
+          "25 MiB വരെ SFTP കൈമാറ്റം",
+          "loopback മാത്രം ഉപയോഗിക്കുന്ന പ്രാദേശിക പോർട്ട് ഫോർവേഡിംഗ്",
+          "പ്രാദേശിക കണക്ഷൻ പ്രൊഫൈലുകൾ"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "ഇന്ററാക്ടീവ് ടെർമിനൽ",
+          "പ്രാദേശിക പോർട്ട് ഫോർവേഡിംഗ്",
+          "പ്രാദേശിക കണക്ഷൻ പ്രൊഫൈലുകൾ",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "nb-NO",
+      "storeLocale": "nb-NO",
+      "sourceName": "挪威语博克马尔",
+      "languageName": "Norwegian Bokmål",
+      "nativeName": "Norsk bokmål",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Gratis Public Beta med åpen kildekode for lokal SSH, SFTP og portvideresending på Windows x64.",
+        "fullDescription": "JoeSSH er en gratis Public Beta med åpen kildekode for lokalt SSH-arbeid på Windows x64. Koble til en server du har tillatelse til å bruke, gjennomgå vertsnøkler, bruk en interaktiv terminal, overfør filer med SFTP og administrer lokal portvideresending. Profiler og innstillinger lagres som standard på denne enheten. Du trenger ikke JoeSSH-konto eller en hostet tjeneste.",
+        "features": [
+          "Gjennomgang av SSH-vertsnøkkel",
+          "Interaktiv terminal",
+          "SFTP-overføringer opptil 25 MiB",
+          "Lokal portvideresending bare via loopback",
+          "Lokale tilkoblingsprofiler"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Interaktiv terminal",
+          "Lokal portvideresending",
+          "Lokale tilkoblingsprofiler",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "es-ES",
+      "storeLocale": "es-ES",
+      "sourceName": "西班牙语",
+      "languageName": "Spanish",
+      "nativeName": "Español",
+      "direction": "ltr",
+      "appUiLocale": "es",
+      "appUiSupported": true,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Public Beta gratuita y de código abierto para SSH local, SFTP y reenvío de puertos en Windows x64.",
+        "fullDescription": "JoeSSH es una Public Beta gratuita y de código abierto para trabajar con SSH local en Windows x64. Conéctate a un servidor que tengas autorizado a usar, revisa las claves del host, utiliza un terminal interactivo, transfiere archivos con SFTP y gestiona reenvíos de puertos locales. Los perfiles y las preferencias se guardan de forma predeterminada en este dispositivo. No necesitas una cuenta de JoeSSH ni un servicio alojado.",
+        "features": [
+          "Revisión de la clave del host SSH",
+          "Terminal interactivo",
+          "Transferencias SFTP de hasta 25 MiB",
+          "Reenvío de puertos local solo mediante loopback",
+          "Perfiles de conexión locales"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Terminal interactivo",
+          "Reenvío de puertos",
+          "Perfiles de conexión",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "es-MX",
+      "storeLocale": "es-MX",
+      "sourceName": "西班牙语拉丁美洲",
+      "languageName": "Spanish (Latin America)",
+      "nativeName": "Español (Latinoamérica)",
+      "direction": "ltr",
+      "appUiLocale": "es",
+      "appUiSupported": true,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": true,
+      "nativeReview": null,
+      "mappingNote": "Partner Center 没有单独的 Latin America 选项；明确采用 Spanish (Mexico)，languageId=66，作为拉丁美洲西班牙语区域版本；仍需母语审核。",
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Public Beta gratis y de código abierto para SSH local, SFTP y reenvío de puertos en Windows x64.",
+        "fullDescription": "JoeSSH es una Public Beta gratis y de código abierto para trabajar con SSH local en Windows x64. Conéctate a un servidor que tengas autorizado a usar, revisa las claves del host, usa una terminal interactiva, transfiere archivos con SFTP y administra el reenvío de puertos local. Los perfiles y las preferencias se guardan de forma predeterminada en este dispositivo. No necesitas una cuenta de JoeSSH ni un servicio alojado.",
+        "features": [
+          "Revisión de la clave del host SSH",
+          "Terminal interactiva",
+          "Transferencias SFTP de hasta 25 MiB",
+          "Reenvío de puertos local solo mediante loopback",
+          "Perfiles de conexión locales"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Terminal interactiva",
+          "Reenvío de puertos",
+          "Perfiles de conexión",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "pl-PL",
+      "storeLocale": "pl-PL",
+      "sourceName": "波兰语",
+      "languageName": "Polish",
+      "nativeName": "Polski",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Bezpłatna, otwartoźródłowa Public Beta do lokalnego SSH, SFTP i przekierowania portów w Windows x64.",
+        "fullDescription": "JoeSSH to bezpłatna, otwartoźródłowa Public Beta do lokalnej pracy z SSH w Windows x64. Połącz się z serwerem, do którego masz uprawnienia, sprawdź klucze hosta, użyj interaktywnego terminala, przesyłaj pliki przez SFTP i zarządzaj lokalnym przekierowaniem portów. Profile i preferencje są domyślnie przechowywane na tym urządzeniu. Konto JoeSSH ani hostowana usługa nie są wymagane.",
+        "features": [
+          "Weryfikacja klucza hosta SSH",
+          "Interaktywny terminal",
+          "Transfery SFTP do 25 MiB",
+          "Lokalne przekierowanie portów tylko przez loopback",
+          "Lokalne profile połączeń"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Interaktywny terminal",
+          "Lokalne przekierowanie portów",
+          "Lokalne profile",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "pt-BR",
+      "storeLocale": "pt-BR",
+      "sourceName": "葡萄牙语巴西",
+      "languageName": "Portuguese (Brazil)",
+      "nativeName": "Português (Brasil)",
+      "direction": "ltr",
+      "appUiLocale": "pt-BR",
+      "appUiSupported": true,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Public Beta gratuita e de código aberto para SSH local, SFTP e encaminhamento de portas no Windows x64.",
+        "fullDescription": "JoeSSH é uma Public Beta gratuita e de código aberto para trabalho com SSH local no Windows x64. Conecte-se a um servidor que você está autorizado a usar, revise as chaves do host, use um terminal interativo, transfira arquivos com SFTP e gerencie encaminhamentos de portas locais. Perfis e preferências ficam neste dispositivo por padrão. Não é necessária uma conta JoeSSH nem um serviço hospedado.",
+        "features": [
+          "Revisão da chave do host SSH",
+          "Terminal interativo",
+          "Transferências SFTP de até 25 MiB",
+          "Encaminhamento de portas local somente por loopback",
+          "Perfis de conexão locais"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Terminal interativo",
+          "Encaminhamento de portas",
+          "Perfis de conexão",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "pt-PT",
+      "storeLocale": "pt-PT",
+      "sourceName": "葡萄牙语葡萄牙",
+      "languageName": "Portuguese (Portugal)",
+      "nativeName": "Português (Portugal)",
+      "direction": "ltr",
+      "appUiLocale": "pt-BR",
+      "appUiSupported": true,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Public Beta gratuita e de código aberto para SSH local, SFTP e reencaminhamento de portas no Windows x64.",
+        "fullDescription": "JoeSSH é uma Public Beta gratuita e de código aberto para trabalho com SSH local no Windows x64. Ligue-se a um servidor que está autorizado a utilizar, reveja as chaves do anfitrião, utilize um terminal interativo, transfira ficheiros com SFTP e faça a gestão do reencaminhamento de portas local. Os perfis e as preferências ficam neste dispositivo por predefinição. Não é necessária uma conta JoeSSH nem um serviço alojado.",
+        "features": [
+          "Revisão da chave do anfitrião SSH",
+          "Terminal interativo",
+          "Transferências SFTP até 25 MiB",
+          "Reencaminhamento de portas local apenas por loopback",
+          "Perfis de ligação locais"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Terminal interativo",
+          "Reencaminhamento de portas",
+          "Perfis de ligação",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "ro-RO",
+      "storeLocale": "ro-RO",
+      "sourceName": "罗马尼亚语",
+      "languageName": "Romanian",
+      "nativeName": "Română",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Public Beta gratuită și open source pentru SSH local, SFTP și redirecționarea porturilor în Windows x64.",
+        "fullDescription": "JoeSSH este o Public Beta gratuită și open source pentru lucrul local cu SSH în Windows x64. Conectează-te la un server pe care ai voie să îl folosești, verifică cheile gazdei, utilizează un terminal interactiv, transferă fișiere prin SFTP și gestionează redirecționările locale de porturi. Profilurile și preferințele rămân implicit pe acest dispozitiv. Nu este necesar un cont JoeSSH sau un serviciu găzduit.",
+        "features": [
+          "Verificarea cheii gazdei SSH",
+          "Terminal interactiv",
+          "Transferuri SFTP de până la 25 MiB",
+          "Redirecționare locală a porturilor doar prin loopback",
+          "Profiluri locale de conexiune"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Terminal interactiv",
+          "Redirecționare locală a porturilor",
+          "Profiluri locale",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "ru-RU",
+      "storeLocale": "ru-RU",
+      "sourceName": "俄语",
+      "languageName": "Russian",
+      "nativeName": "Русский",
+      "direction": "ltr",
+      "appUiLocale": "ru",
+      "appUiSupported": true,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Бесплатная Public Beta с открытым исходным кодом для локального SSH, SFTP и перенаправления портов в Windows x64.",
+        "fullDescription": "JoeSSH — бесплатная Public Beta с открытым исходным кодом для локальной работы по SSH в Windows x64. Подключайтесь к серверу, которым вам разрешено пользоваться, проверяйте ключи узла, работайте в интерактивном терминале, передавайте файлы через SFTP и управляйте локальным перенаправлением портов. Профили и настройки по умолчанию остаются на этом устройстве. Учетная запись JoeSSH и размещенная служба не требуются.",
+        "features": [
+          "Проверка ключа узла SSH",
+          "Интерактивный терминал",
+          "Передача по SFTP до 25 МиБ",
+          "Локальное перенаправление портов только через loopback",
+          "Локальные профили подключений"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Интерактивный терминал",
+          "Локальное перенаправление портов",
+          "Локальные профили",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "sk-SK",
+      "storeLocale": "sk-SK",
+      "sourceName": "斯洛伐克语",
+      "languageName": "Slovak",
+      "nativeName": "Slovenčina",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Bezplatná Public Beta s otvoreným zdrojovým kódom pre lokálne SSH, SFTP a presmerovanie portov vo Windows x64.",
+        "fullDescription": "JoeSSH je bezplatná Public Beta s otvoreným zdrojovým kódom na lokálnu prácu cez SSH vo Windows x64. Pripojte sa k serveru, ktorý smiete používať, skontrolujte kľúče hostiteľa, používajte interaktívny terminál, prenášajte súbory cez SFTP a spravujte miestne presmerovania portov. Profily a predvoľby zostávajú predvolene na tomto zariadení. Účet JoeSSH ani hostovaná služba nie sú potrebné.",
+        "features": [
+          "Kontrola kľúča hostiteľa SSH",
+          "Interaktívny terminál",
+          "Prenosy SFTP do 25 MiB",
+          "Miestne presmerovanie portov iba cez loopback",
+          "Miestne profily pripojenia"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Interaktívny terminál",
+          "Miestne presmerovanie portov",
+          "Miestne profily",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "sl-SI",
+      "storeLocale": "sl-SI",
+      "sourceName": "斯洛文尼亚语",
+      "languageName": "Slovenian",
+      "nativeName": "Slovenščina",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Brezplačna odprtokodna Public Beta za lokalni SSH, SFTP in posredovanje vrat v sistemu Windows x64.",
+        "fullDescription": "JoeSSH je brezplačna odprtokodna Public Beta za lokalno delo SSH v sistemu Windows x64. Povežite se s strežnikom, ki ga smete uporabljati, preglejte ključe gostitelja, uporabite interaktivni terminal, prenašajte datoteke prek SFTP in upravljajte lokalno posredovanje vrat. Profili in nastavitve se privzeto shranjujejo v tej napravi. Račun JoeSSH ali gostovana storitev nista potrebna.",
+        "features": [
+          "Pregled ključa gostitelja SSH",
+          "Interaktivni terminal",
+          "Prenosi SFTP do 25 MiB",
+          "Lokalno posredovanje vrat samo prek loopback",
+          "Lokalni profili povezav"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Interaktivni terminal",
+          "Lokalno posredovanje vrat",
+          "Lokalni profili",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "sr-Latn-RS",
+      "storeLocale": "sr-Latn-RS",
+      "sourceName": "塞尔维亚语拉丁",
+      "languageName": "Serbian (Latin)",
+      "nativeName": "Srpski (latinica)",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Besplatna Public Beta otvorenog koda za lokalni SSH, SFTP i prosleđivanje portova na Windows x64.",
+        "fullDescription": "JoeSSH je besplatna Public Beta otvorenog koda za lokalni SSH rad na Windows x64. Povežite se sa serverom za koji imate dozvolu, pregledajte ključeve hosta, koristite interaktivni terminal, prenesite datoteke pomoću SFTP-a i upravljajte lokalnim prosleđivanjem portova. Profili i podešavanja se podrazumevano čuvaju na ovom uređaju. JoeSSH nalog ili hostovana usluga nisu potrebni.",
+        "features": [
+          "Pregled SSH ključa hosta",
+          "Interaktivni terminal",
+          "SFTP prenosi do 25 MiB",
+          "Lokalno prosleđivanje samo preko loopback-a",
+          "Lokalni profili veza"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Interaktivni terminal",
+          "Lokalno prosleđivanje portova",
+          "Lokalni profili",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "sv-SE",
+      "storeLocale": "sv-SE",
+      "sourceName": "瑞典语",
+      "languageName": "Swedish",
+      "nativeName": "Svenska",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Gratis Public Beta med öppen källkod för lokal SSH, SFTP och portvidarebefordran i Windows x64.",
+        "fullDescription": "JoeSSH är en gratis Public Beta med öppen källkod för lokalt SSH-arbete i Windows x64. Anslut till en server som du har rätt att använda, granska värdnycklar, använd en interaktiv terminal, överför filer med SFTP och hantera lokal portvidarebefordran. Profiler och inställningar sparas som standard på den här enheten. Inget JoeSSH-konto eller någon värdtjänst behövs.",
+        "features": [
+          "Granskning av SSH-värdnyckel",
+          "Interaktiv terminal",
+          "SFTP-överföringar upp till 25 MiB",
+          "Lokal portvidarebefordran endast via loopback",
+          "Lokala anslutningsprofiler"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Interaktiv terminal",
+          "Lokal portvidarebefordran",
+          "Lokala anslutningsprofiler",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "ta-IN",
+      "storeLocale": "ta-IN",
+      "sourceName": "泰米尔语",
+      "languageName": "Tamil",
+      "nativeName": "தமிழ்",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Windows x64 இல் உள்ளக SSH, SFTP மற்றும் துறைமுக முன்னனுப்பலுக்கான இலவச, திறந்த மூல Public Beta.",
+        "fullDescription": "JoeSSH என்பது Windows x64 இல் உள்ளக SSH பணிக்கான இலவச திறந்த மூல Public Beta ஆகும். நீங்கள் அனுமதியுடன் பயன்படுத்தும் சேவையகத்துடன் இணைந்து, ஹோஸ்ட் விசைகளைச் சரிபார்த்து, ஊடாடும் முனையத்தைப் பயன்படுத்தி, SFTP மூலம் கோப்புகளை மாற்றி, உள்ளக துறைமுக முன்னனுப்பலை நிர்வகிக்கலாம். சுயவிவரங்களும் விருப்பங்களும் இயல்பாக இந்தச் சாதனத்தில் இருக்கும். JoeSSH கணக்கு அல்லது ஹோஸ்ட் செய்யப்பட்ட சேவை தேவையில்லை.",
+        "features": [
+          "SSH ஹோஸ்ட் விசை சரிபார்ப்பு",
+          "ஊடாடும் முனையம்",
+          "25 MiB வரை SFTP மாற்றங்கள்",
+          "loopback மட்டும் உள்ளக துறைமுக முன்னனுப்பல்",
+          "உள்ளக இணைப்பு சுயவிவரங்கள்"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "ஊடாடும் முனையம்",
+          "உள்ளக துறைமுக முன்னனுப்பல்",
+          "உள்ளக இணைப்பு சுயவிவரங்கள்",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "te-IN",
+      "storeLocale": "te-IN",
+      "sourceName": "泰卢固语",
+      "languageName": "Telugu",
+      "nativeName": "తెలుగు",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Windows x64లో స్థానిక SSH, SFTP మరియు పోర్ట్ ఫార్వార్డింగ్ కోసం ఉచిత ఓపెన్-సోర్స్ Public Beta.",
+        "fullDescription": "JoeSSH Windows x64లో స్థానిక SSH పని కోసం ఉచిత ఓపెన్-సోర్స్ Public Beta. మీకు అనుమతి ఉన్న సర్వర్‌కు కనెక్ట్ అవ్వండి, హోస్ట్ కీలు పరిశీలించండి, ఇంటరాక్టివ్ టెర్మినల్ ఉపయోగించండి, SFTPతో ఫైళ్లను బదిలీ చేయండి మరియు స్థానిక పోర్ట్ ఫార్వార్డింగ్ నిర్వహించండి. ప్రొఫైళ్లు, ప్రాధాన్యతలు డిఫాల్ట్‌గా ఈ పరికరంలోనే ఉంటాయి. JoeSSH ఖాతా లేదా హోస్ట్ చేసిన సేవ అవసరం లేదు.",
+        "features": [
+          "SSH హోస్ట్ కీ పరిశీలన",
+          "ఇంటరాక్టివ్ టెర్మినల్",
+          "25 MiB వరకు SFTP బదిలీలు",
+          "loopback ద్వారా మాత్రమే స్థానిక పోర్ట్ ఫార్వార్డింగ్",
+          "స్థానిక కనెక్షన్ ప్రొఫైళ్లు"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "ఇంటరాక్టివ్ టెర్మినల్",
+          "స్థానిక పోర్ట్ ఫార్వార్డింగ్",
+          "స్థానిక కనెక్షన్ ప్రొఫైళ్లు",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "th-TH",
+      "storeLocale": "th-TH",
+      "sourceName": "泰语",
+      "languageName": "Thai",
+      "nativeName": "ไทย",
+      "direction": "ltr",
+      "appUiLocale": "th",
+      "appUiSupported": true,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Public Beta แบบฟรีและโอเพนซอร์สสำหรับ SSH, SFTP และการส่งต่อพอร์ตภายในเครื่องบน Windows x64",
+        "fullDescription": "JoeSSH คือ Public Beta แบบฟรีและโอเพนซอร์สสำหรับงาน SSH ภายในเครื่องบน Windows x64 เชื่อมต่อเซิร์ฟเวอร์ที่คุณได้รับอนุญาต ตรวจสอบคีย์โฮสต์ ใช้เทอร์มินัลแบบโต้ตอบ ถ่ายโอนไฟล์ด้วย SFTP และจัดการการส่งต่อพอร์ตภายในเครื่อง โปรไฟล์และการตั้งค่าจะเก็บไว้ในอุปกรณ์นี้เป็นค่าเริ่มต้น ไม่ต้องมีบัญชี JoeSSH หรือบริการโฮสต์",
+        "features": [
+          "ตรวจสอบคีย์โฮสต์ SSH",
+          "เทอร์มินัลแบบโต้ตอบ",
+          "ถ่ายโอน SFTP ได้ถึง 25 MiB",
+          "ส่งต่อพอร์ตภายในเครื่องผ่าน loopback เท่านั้น",
+          "โปรไฟล์การเชื่อมต่อภายในเครื่อง"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "เทอร์มินัลแบบโต้ตอบ",
+          "ส่งต่อพอร์ตภายในเครื่องผ่าน loopback",
+          "โปรไฟล์การเชื่อมต่อภายในเครื่อง",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "tr-TR",
+      "storeLocale": "tr-TR",
+      "sourceName": "土耳其语",
+      "languageName": "Turkish",
+      "nativeName": "Türkçe",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Windows x64 üzerinde yerel SSH, SFTP ve bağlantı noktası yönlendirmesi için ücretsiz, açık kaynaklı Public Beta.",
+        "fullDescription": "JoeSSH, Windows x64 üzerinde yerel SSH çalışması için ücretsiz ve açık kaynaklı bir Public Beta'dır. Kullanma izniniz olan bir sunucuya bağlanın, ana bilgisayar anahtarlarını inceleyin, etkileşimli terminali kullanın, dosyaları SFTP ile aktarın ve yerel bağlantı noktası yönlendirmelerini yönetin. Profiller ve tercihler varsayılan olarak bu cihazda tutulur. JoeSSH hesabı veya barındırılan hizmet gerekmez.",
+        "features": [
+          "SSH ana bilgisayar anahtarını inceleme",
+          "Etkileşimli terminal",
+          "25 MiB'e kadar SFTP aktarımları",
+          "Yalnızca loopback üzerinden yerel bağlantı noktası yönlendirmesi",
+          "Yerel bağlantı profilleri"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Etkileşimli terminal",
+          "yerel bağlantı noktası yönlendirmesi",
+          "Yerel bağlantı profilleri",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "uk-UA",
+      "storeLocale": "uk-UA",
+      "sourceName": "乌克兰语",
+      "languageName": "Ukrainian",
+      "nativeName": "Українська",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Безкоштовна Public Beta з відкритим кодом для локального SSH, SFTP і перенаправлення портів у Windows x64.",
+        "fullDescription": "JoeSSH — безкоштовна Public Beta з відкритим кодом для локальної роботи через SSH у Windows x64. Підключайтеся до сервера, яким вам дозволено користуватися, перевіряйте ключі вузла, працюйте в інтерактивному терміналі, передавайте файли через SFTP і керуйте локальним перенаправленням портів. Профілі та налаштування за замовчуванням залишаються на цьому пристрої. Обліковий запис JoeSSH або розміщена служба не потрібні.",
+        "features": [
+          "Перевірка ключа вузла SSH",
+          "Інтерактивний термінал",
+          "Передавання через SFTP до 25 MiB",
+          "Локальне перенаправлення портів лише через loopback",
+          "Локальні профілі підключень"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Інтерактивний термінал",
+          "Локальне перенаправлення портів",
+          "Локальні профілі",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "vi-VN",
+      "storeLocale": "vi-VN",
+      "sourceName": "越南语",
+      "languageName": "Vietnamese",
+      "nativeName": "Tiếng Việt",
+      "direction": "ltr",
+      "appUiLocale": "vi",
+      "appUiSupported": true,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Public Beta miễn phí, mã nguồn mở cho SSH cục bộ, SFTP và chuyển tiếp cổng trên Windows x64.",
+        "fullDescription": "JoeSSH là Public Beta miễn phí, mã nguồn mở cho công việc SSH cục bộ trên Windows x64. Kết nối đến máy chủ mà bạn được phép sử dụng, xem xét khóa máy chủ, dùng thiết bị đầu cuối tương tác, truyền tệp bằng SFTP và quản lý chuyển tiếp cổng cục bộ. Hồ sơ và tùy chọn mặc định được lưu trên thiết bị này. Không cần tài khoản JoeSSH hoặc dịch vụ được lưu trữ.",
+        "features": [
+          "Xem xét khóa máy chủ SSH",
+          "Thiết bị đầu cuối tương tác",
+          "Truyền SFTP tối đa 25 MiB",
+          "Chuyển tiếp cổng cục bộ chỉ qua loopback",
+          "Hồ sơ kết nối cục bộ"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Thiết bị đầu cuối",
+          "Chuyển tiếp cổng cục bộ",
+          "Hồ sơ kết nối cục bộ",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "as-IN",
+      "storeLocale": "as-IN",
+      "sourceName": "阿萨姆语",
+      "languageName": "Assamese",
+      "nativeName": "অসমীয়া",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Windows x64-ত স্থানীয় SSH, SFTP আৰু প’ৰ্ট ফৰৱাৰ্ডিঙৰ বাবে বিনামূলীয়া মুক্ত-উৎস Public Beta।",
+        "fullDescription": "JoeSSH Windows x64-ত স্থানীয় SSH কামৰ বাবে বিনামূলীয়া মুক্ত-উৎস Public Beta। আপোনাৰ অনুমতি থকা ছাৰ্ভাৰত সংযোগ কৰক, হ’ষ্ট কী পৰীক্ষা কৰক, ইণ্টাৰেক্টিভ টাৰ্মিনেল ব্যৱহাৰ কৰক, SFTP-ৰে ফাইল স্থানান্তৰ কৰক আৰু স্থানীয় প’ৰ্ট ফৰৱাৰ্ডিং পৰিচালনা কৰক। প্ৰ’ফাইল আৰু পছন্দসমূহ ডিফ’ল্টভাৱে এই ডিভাইচতে থাকে। JoeSSH একাউণ্ট বা হ’ষ্টেড সেৱা নালাগে।",
+        "features": [
+          "SSH হ’ষ্ট কী পৰীক্ষা",
+          "ইণ্টাৰেক্টিভ টাৰ্মিনেল",
+          "২৫ MiB লৈকে SFTP স্থানান্তৰ",
+          "কেৱল loopback স্থানীয় প’ৰ্ট ফৰৱাৰ্ডিং",
+          "স্থানীয় সংযোগ প্ৰ’ফাইল"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "ইণ্টাৰেক্টিভ টাৰ্মিনেল",
+          "স্থানীয় প’ৰ্ট ফৰৱাৰ্ডিং",
+          "স্থানীয় সংযোগ প্ৰ’ফাইল",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "bn-IN",
+      "storeLocale": "bn-IN",
+      "sourceName": "孟加拉语印度",
+      "languageName": "Bengali (India)",
+      "nativeName": "বাংলা",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Windows x64-এ স্থানীয় SSH, SFTP এবং পোর্ট ফরওয়ার্ডিংয়ের জন্য বিনামূল্যের ওপেন-সোর্স Public Beta।",
+        "fullDescription": "JoeSSH হল Windows x64-এ স্থানীয় SSH কাজের জন্য বিনামূল্যের ওপেন-সোর্স Public Beta। আপনার অনুমোদিত সার্ভারে সংযোগ করুন, হোস্ট কী পর্যালোচনা করুন, ইন্টার‌্যাক্টিভ টার্মিনাল ব্যবহার করুন, SFTP দিয়ে ফাইল স্থানান্তর করুন এবং স্থানীয় পোর্ট ফরওয়ার্ডিং পরিচালনা করুন। প্রোফাইল ও পছন্দ ডিফল্টভাবে এই ডিভাইসেই থাকে। JoeSSH অ্যাকাউন্ট বা হোস্ট করা পরিষেবা দরকার নেই।",
+        "features": [
+          "SSH হোস্ট কী পর্যালোচনা",
+          "ইন্টার‌্যাক্টিভ টার্মিনাল",
+          "২৫ MiB পর্যন্ত SFTP স্থানান্তর",
+          "শুধু loopback স্থানীয় পোর্ট ফরওয়ার্ডিং",
+          "স্থানীয় সংযোগ প্রোফাইল"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "ইন্টার‌্যাক্টিভ টার্মিনাল",
+          "স্থানীয় পোর্ট ফরওয়ার্ডিং",
+          "স্থানীয় সংযোগ প্রোফাইল",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "ka-GE",
+      "storeLocale": "ka-GE",
+      "sourceName": "格鲁吉亚语",
+      "languageName": "Georgian",
+      "nativeName": "ქართული",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "უფასო ღია კოდის Public Beta Windows x64-ზე ლოკალური SSH-ის, SFTP-ისა და პორტების გადამისამართებისთვის.",
+        "fullDescription": "JoeSSH არის უფასო ღია კოდის Public Beta Windows x64-ზე ლოკალური SSH მუშაობისთვის. დაუკავშირდით სერვერს, რომლის გამოყენების უფლებაც გაქვთ, შეამოწმეთ ჰოსტის გასაღებები, გამოიყენეთ ინტერაქტიული ტერმინალი, გადაიტანეთ ფაილები SFTP-ით და მართეთ ლოკალური პორტების გადამისამართება. პროფილები და პარამეტრები ნაგულისხმევად ამ მოწყობილობაზე ინახება. JoeSSH-ის ანგარიში ან ჰოსტირებული სერვისი საჭირო არ არის.",
+        "features": [
+          "SSH ჰოსტის გასაღების შემოწმება",
+          "ინტერაქტიული ტერმინალი",
+          "SFTP გადატანები 25 MiB-მდე",
+          "ლოკალური პორტების გადამისამართება მხოლოდ loopback-ით",
+          "ლოკალური კავშირის პროფილები"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "ინტერაქტიული ტერმინალი",
+          "ლოკალური პორტების გადამისამართება",
+          "ლოკალური კავშირის პროფილები",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "gu-IN",
+      "storeLocale": "gu-IN",
+      "sourceName": "古吉拉特语",
+      "languageName": "Gujarati",
+      "nativeName": "ગુજરાતી",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Windows x64 પર સ્થાનિક SSH, SFTP અને પોર્ટ ફોરવર્ડિંગ માટે મફત ઓપન-સોર્સ Public Beta.",
+        "fullDescription": "JoeSSH Windows x64 પર સ્થાનિક SSH કાર્ય માટે મફત અને ઓપન-સોર્સ Public Beta છે. તમને પરવાનગી હોય તેવા સર્વર સાથે જોડાઓ, હોસ્ટ કી તપાસો, ઇન્ટરેક્ટિવ ટર્મિનલ વાપરો, SFTP દ્વારા ફાઇલો સ્થાનાંતરિત કરો અને સ્થાનિક પોર્ટ ફોરવર્ડિંગ સંચાલિત કરો. પ્રોફાઇલ અને પસંદગીઓ ડિફૉલ્ટ રૂપે આ ડિવાઇસ પર જ રહે છે. JoeSSH એકાઉન્ટ અથવા હોસ્ટેડ સેવા જરૂરી નથી.",
+        "features": [
+          "SSH હોસ્ટ કી તપાસ",
+          "ઇન્ટરેક્ટિવ ટર્મિનલ",
+          "25 MiB સુધીના SFTP સ્થાનાંતરણ",
+          "ફક્ત loopback સ્થાનિક પોર્ટ ફોરવર્ડિંગ",
+          "સ્થાનિક કનેક્શન પ્રોફાઇલ"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "ઇન્ટરેક્ટિવ ટર્મિનલ",
+          "સ્થાનિક પોર્ટ ફોરવર્ડિંગ",
+          "સ્થાનિક કનેક્શન પ્રોફાઇલ",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "ga-IE",
+      "storeLocale": "ga-IE",
+      "sourceName": "爱尔兰语",
+      "languageName": "Irish",
+      "nativeName": "Gaeilge",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Public Beta saor in aisce agus foinse oscailte do SSH logánta, SFTP agus cur ar aghaidh calafoirt ar Windows x64.",
+        "fullDescription": "Is Public Beta saor in aisce agus foinse oscailte é JoeSSH d’obair SSH logánta ar Windows x64. Ceangail le freastalaí a bhfuil cead agat é a úsáid, déan athbhreithniú ar eochracha an óstaigh, bain úsáid as teirminéal idirghníomhach, aistrigh comhaid le SFTP agus bainistigh cur ar aghaidh calafoirt logánta. Fanann próifílí agus roghanna ar an ngléas seo de réir réamhshocraithe. Ní theastaíonn cuntas JoeSSH ná seirbhís óstáilte.",
+        "features": [
+          "Athbhreithniú eochair óstaigh SSH",
+          "Teirminéal idirghníomhach",
+          "Aistrithe SFTP suas le 25 MiB",
+          "Cur ar aghaidh calafoirt logánta trí loopback amháin",
+          "Próifílí ceangail logánta"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Teirminéal idirghníomhach",
+          "Cur ar aghaidh calafoirt",
+          "Próifílí ceangail",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "kok-IN",
+      "storeLocale": "kok-IN",
+      "sourceName": "孔卡尼语",
+      "languageName": "Konkani",
+      "nativeName": "कोंकणी",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Windows x64 आंत स्थानिक SSH, SFTP आनी पोर्ट फॉरवर्डिंग खातीर फुकट, मुक्त-स्रोत Public Beta.",
+        "fullDescription": "JoeSSH हें Windows x64 आंत स्थानिक SSH कामा खातीर फुकट आनी मुक्त-स्रोत Public Beta आसा. तुमका वापरपाची परवानगी आसलेल्या सर्व्हराक जोडात, होस्ट की तपासात, परस्पर टर्मिनल वापरात, SFTP वरवीं फायलो हालोवात आनी स्थानिक पोर्ट फॉरवर्डिंग सांबाळात. प्रोफायल आनी पसंती ह्या डिव्हायसार डीफॉल्टान दवरात. JoeSSH खातें वा होस्टेड सेवा जायना.",
+        "features": [
+          "SSH होस्ट की तपासणी",
+          "परस्पर टर्मिनल",
+          "25 MiB मेरेन SFTP हस्तांतरण",
+          "फकत loopback स्थानिक पोर्ट फॉरवर्डिंग",
+          "स्थानिक जोडणी प्रोफायल"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "परस्पर टर्मिनल",
+          "स्थानिक पोर्ट फॉरवर्डिंग",
+          "स्थानिक जोडणी प्रोफायल",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "lb-LU",
+      "storeLocale": "lb-LU",
+      "sourceName": "卢森堡语",
+      "languageName": "Luxembourgish",
+      "nativeName": "Lëtzebuergesch",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Gratis Open-Source Public Beta fir lokalen SSH, SFTP a Port-Forwarding op Windows x64.",
+        "fullDescription": "JoeSSH ass eng gratis Open-Source Public Beta fir lokal SSH-Aarbecht op Windows x64. Verbannt Iech mat engem Server, deen Dir benotze dierft, iwwerpréift d’Host-Schlësselen, benotzt en interaktiven Terminal, transferéiert Fichiere mat SFTP a geréiert lokal Port-Forwarding. Profiller a Preferenze bleiwen als Standard op dësem Apparat. E JoeSSH-Kont oder en gehoste Service ass net néideg.",
+        "features": [
+          "SSH-Hostschlëssel iwwerpréiwen",
+          "Interaktiven Terminal",
+          "SFTP-Transfere bis 25 MiB",
+          "Lokalt Port-Forwarding nëmmen iwwer loopback",
+          "Lokal Verbindungsprofiller"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Interaktiven Terminal",
+          "Lokalt Port-Forwarding",
+          "Lokal Verbindungsprofiller",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "mt-MT",
+      "storeLocale": "mt-MT",
+      "sourceName": "马耳他语",
+      "languageName": "Maltese",
+      "nativeName": "Malti",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Public Beta b’xejn u open source għal SSH lokali, SFTP u forwarding tal-portijiet fuq Windows x64.",
+        "fullDescription": "JoeSSH huwa Public Beta b’xejn u open source għal xogħol SSH lokali fuq Windows x64. Ikkonnettja ma’ server li għandek permess tuża, irrevedi ċ-ċwievet tal-host, uża terminal interattiv, ittrasferixxi fajls b’SFTP u mmaniġġja l-forwarding tal-portijiet lokali. Il-profili u l-preferenzi jinżammu fuq dan it-tagħmir b’mod awtomatiku. M’hemmx bżonn kont JoeSSH jew servizz ospitat.",
+        "features": [
+          "Reviżjoni taċ-ċavetta tal-host SSH",
+          "Terminal interattiv",
+          "Trasferimenti SFTP sa 25 MiB",
+          "Forwarding lokali tal-portijiet permezz ta’ loopback biss",
+          "Profili ta’ konnessjoni lokali"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Terminal interattiv",
+          "Forwarding lokali tal-portijiet",
+          "Profili ta’ konnessjoni",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "mi-NZ",
+      "storeLocale": "mi-NZ",
+      "sourceName": "毛利语",
+      "languageName": "Māori",
+      "nativeName": "Te reo Māori",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Public Beta kore utu, puna tuwhera mō SSH ā-rohe, SFTP me te tuku tauranga ki Windows x64.",
+        "fullDescription": "He Public Beta kore utu, puna tuwhera a JoeSSH mō ngā mahi SSH ā-rohe ki Windows x64. Hono atu ki tētahi tūmau e whai whakaaetanga ana koe, arotakehia ngā kī kaihautū, whakamahia he kāpeka pāhekoheko, whakawhitihia ngā kōnae mā SFTP, ā, whakahaerehia ngā tuku tauranga ā-rohe. Ka noho ngā kōtaha me ngā manakohanga ki tēnei taputapu hei taunoa. Kāore he pūkete JoeSSH, he ratonga manaaki rānei e hiahiatia ana.",
+        "features": [
+          "Arotake kī kaihautū SSH",
+          "Kāpeka pāhekoheko",
+          "Whakawhitinga SFTP ki te 25 MiB",
+          "Tuku tauranga ā-rohe mā loopback anake",
+          "Kōtaha hononga ā-rohe"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Kāpeka pāhekoheko",
+          "Tuku tauranga ā-rohe",
+          "Kōtaha hononga ā-rohe",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "mr-IN",
+      "storeLocale": "mr-IN",
+      "sourceName": "马拉地语",
+      "languageName": "Marathi",
+      "nativeName": "मराठी",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Windows x64 वर स्थानिक SSH, SFTP आणि पोर्ट फॉरवर्डिंगसाठी मोफत ओपन-सोर्स Public Beta.",
+        "fullDescription": "JoeSSH हे Windows x64 वरील स्थानिक SSH कामासाठी मोफत आणि ओपन-सोर्स Public Beta आहे. तुम्हाला परवानगी असलेल्या सर्व्हरशी जोडा, होस्ट की तपासा, इंटरॅक्टिव्ह टर्मिनल वापरा, SFTP ने फाइल हस्तांतरित करा आणि स्थानिक पोर्ट फॉरवर्डिंग व्यवस्थापित करा. प्रोफाइल आणि प्राधान्ये डीफॉल्टनुसार या डिव्हाइसवरच राहतात. JoeSSH खाते किंवा होस्टेड सेवा आवश्यक नाही.",
+        "features": [
+          "SSH होस्ट की तपासणी",
+          "इंटरॅक्टिव्ह टर्मिनल",
+          "25 MiB पर्यंतचे SFTP हस्तांतरण",
+          "फक्त loopback स्थानिक पोर्ट फॉरवर्डिंग",
+          "स्थानिक कनेक्शन प्रोफाइल"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "इंटरॅक्टिव्ह टर्मिनल",
+          "स्थानिक पोर्ट फॉरवर्डिंग",
+          "स्थानिक कनेक्शन प्रोफाइल",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "ne-NP",
+      "storeLocale": "ne-NP",
+      "sourceName": "尼泊尔语",
+      "languageName": "Nepali",
+      "nativeName": "नेपाली",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Windows x64 मा स्थानीय SSH, SFTP र पोर्ट फर्वार्डिङका लागि निःशुल्क खुला-स्रोत Public Beta।",
+        "fullDescription": "JoeSSH Windows x64 मा स्थानीय SSH कामका लागि निःशुल्क खुला-स्रोत Public Beta हो। तपाईंलाई अनुमति भएको सर्भरमा जडान गर्नुहोस्, होस्ट कुञ्जी जाँच्नुहोस्, अन्तरक्रियात्मक टर्मिनल प्रयोग गर्नुहोस्, SFTP मार्फत फाइल सार्नुहोस् र स्थानीय पोर्ट फर्वार्डिङ व्यवस्थापन गर्नुहोस्। प्रोफाइल र प्राथमिकताहरू पूर्वनिर्धारित रूपमा यही उपकरणमा रहन्छन्। JoeSSH खाता वा होस्ट गरिएको सेवा आवश्यक छैन।",
+        "features": [
+          "SSH होस्ट कुञ्जी समीक्षा",
+          "अन्तरक्रियात्मक टर्मिनल",
+          "25 MiB सम्म SFTP स्थानान्तरण",
+          "loopback मात्र स्थानीय पोर्ट फर्वार्डिङ",
+          "स्थानीय जडान प्रोफाइल"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "अन्तरक्रियात्मक टर्मिनल",
+          "स्थानीय पोर्ट फर्वार्डिङ",
+          "स्थानीय जडान प्रोफाइल",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "or-IN",
+      "storeLocale": "or-IN",
+      "sourceName": "奥里亚语",
+      "languageName": "Odia",
+      "nativeName": "ଓଡ଼ିଆ",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Windows x64 ରେ ସ୍ଥାନୀୟ SSH, SFTP ଏବଂ ପୋର୍ଟ ଫରୱାର୍ଡିଂ ପାଇଁ ମାଗଣା ମୁକ୍ତ-ସ୍ରୋତ Public Beta।",
+        "fullDescription": "JoeSSH Windows x64 ରେ ସ୍ଥାନୀୟ SSH କାମ ପାଇଁ ମାଗଣା ମୁକ୍ତ-ସ୍ରୋତ Public Beta। ଆପଣଙ୍କର ଅନୁମତି ଥିବା ସର୍ଭରକୁ ସଂଯୋଗ କରନ୍ତୁ, ହୋଷ୍ଟ କୀ ସମୀକ୍ଷା କରନ୍ତୁ, ଇଣ୍ଟରାକ୍ଟିଭ୍ ଟର୍ମିନାଲ୍ ବ୍ୟବହାର କରନ୍ତୁ, SFTP ରେ ଫାଇଲ୍ ସ୍ଥାନାନ୍ତର କରନ୍ତୁ ଏବଂ ସ୍ଥାନୀୟ ପୋର୍ଟ ଫରୱାର୍ଡିଂ ପରିଚାଳନା କରନ୍ତୁ। ପ୍ରୋଫାଇଲ୍ ଓ ପସନ୍ଦଗୁଡ଼ିକ ଡିଫଲ୍ଟ ଭାବରେ ଏହି ଡିଭାଇସରେ ରହେ। JoeSSH ଖାତା କିମ୍ବା ହୋଷ୍ଟେଡ୍ ସେବା ଦରକାର ନାହିଁ।",
+        "features": [
+          "SSH ହୋଷ୍ଟ କୀ ସମୀକ୍ଷା",
+          "ଇଣ୍ଟରାକ୍ଟିଭ୍ ଟର୍ମିନାଲ୍",
+          "25 MiB ପର୍ଯ୍ୟନ୍ତ SFTP ସ୍ଥାନାନ୍ତର",
+          "କେବଳ loopback ସ୍ଥାନୀୟ ପୋର୍ଟ ଫରୱାର୍ଡିଂ",
+          "ସ୍ଥାନୀୟ ସଂଯୋଗ ପ୍ରୋଫାଇଲ୍"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "ଇଣ୍ଟରାକ୍ଟିଭ୍ ଟର୍ମିନାଲ୍",
+          "ସ୍ଥାନୀୟ ପୋର୍ଟ ଫରୱାର୍ଡିଂ",
+          "ସ୍ଥାନୀୟ ସଂଯୋଗ ପ୍ରୋଫାଇଲ୍",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "pa-IN",
+      "storeLocale": "pa-IN",
+      "sourceName": "旁遮普语印度",
+      "languageName": "Punjabi (India)",
+      "nativeName": "ਪੰਜਾਬੀ",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Windows x64 ਉੱਤੇ ਸਥਾਨਕ SSH, SFTP ਅਤੇ ਪੋਰਟ ਫਾਰਵਰਡਿੰਗ ਲਈ ਮੁਫ਼ਤ ਓਪਨ-ਸੋਰਸ Public Beta।",
+        "fullDescription": "JoeSSH Windows x64 ਉੱਤੇ ਸਥਾਨਕ SSH ਕੰਮ ਲਈ ਮੁਫ਼ਤ ਅਤੇ ਓਪਨ-ਸੋਰਸ Public Beta ਹੈ। ਜਿਸ ਸਰਵਰ ਨੂੰ ਵਰਤਣ ਦੀ ਤੁਹਾਨੂੰ ਇਜਾਜ਼ਤ ਹੈ ਉਸ ਨਾਲ ਜੁੜੋ, ਹੋਸਟ ਕੁੰਜੀਆਂ ਦੀ ਜਾਂਚ ਕਰੋ, ਇੰਟਰਐਕਟਿਵ ਟਰਮੀਨਲ ਵਰਤੋ, SFTP ਰਾਹੀਂ ਫ਼ਾਈਲਾਂ ਭੇਜੋ ਅਤੇ ਸਥਾਨਕ ਪੋਰਟ ਫਾਰਵਰਡਿੰਗ ਸੰਭਾਲੋ। ਪ੍ਰੋਫ਼ਾਈਲ ਅਤੇ ਪਸੰਦਾਂ ਮੂਲ ਰੂਪ ਵਿੱਚ ਇਸ ਡਿਵਾਈਸ ਉੱਤੇ ਰਹਿੰਦੀਆਂ ਹਨ। JoeSSH ਖਾਤੇ ਜਾਂ ਹੋਸਟ ਕੀਤੀ ਸੇਵਾ ਦੀ ਲੋੜ ਨਹੀਂ।",
+        "features": [
+          "SSH ਹੋਸਟ ਕੁੰਜੀ ਦੀ ਜਾਂਚ",
+          "ਇੰਟਰਐਕਟਿਵ ਟਰਮੀਨਲ",
+          "25 MiB ਤੱਕ SFTP ਟ੍ਰਾਂਸਫ਼ਰ",
+          "ਕੇਵਲ loopback ਸਥਾਨਕ ਪੋਰਟ ਫਾਰਵਰਡਿੰਗ",
+          "ਸਥਾਨਕ ਕਨੈਕਸ਼ਨ ਪ੍ਰੋਫ਼ਾਈਲ"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "ਇੰਟਰਐਕਟਿਵ ਟਰਮੀਨਲ",
+          "ਸਥਾਨਕ ਪੋਰਟ ਫਾਰਵਰਡਿੰਗ",
+          "ਸਥਾਨਕ ਕਨੈਕਸ਼ਨ ਪ੍ਰੋਫ਼ਾਈਲ",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "qu-PE",
+      "storeLocale": "quz-PE",
+      "sourceName": "克丘亚语",
+      "languageName": "Quechua (Peru)",
+      "nativeName": "Runasimi",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": true,
+      "nativeReview": null,
+      "mappingNote": "BCP 47 qu-PE, Microsoft Store quz-PE; Peru suyupa locale-ninmi. Partner Center-pi qhawarispa, runasimi rimayniyuq native review-ta ruray manaraq apachiy.",
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Public Beta mana qullqiyuq, qillqa kichasqa, Windows x64-pi SSH local, SFTP hinaspa puertokunapa ñawpaqman apayninpaq.",
+        "fullDescription": "JoeSSHqa Public Beta mana qullqiyuq, qillqa kichasqa, Windows x64-pi SSH local llamkaypaqmi. Saqisqa kamachiqman tinkuy, hostpa llavenkunata qhawariy, rimanakuy qillqanata llamkachi, SFTPwan qillqakunata apachiy, hinaspa puertokunapa ñawpaqman apayninta kamachiy. Tinkiy perfilkunapas akllasqakunapas kay dispositivollapi waqaychasqa kachkan. JoeSSH yupay utaq wasichasqa yanapakuyqa manam munasqachu.",
+        "features": [
+          "SSH hostpa llavenkunata qhawariy",
+          "Rimanakuy qillqana",
+          "SFTPwan qillqakuna 25 MiB-kama",
+          "Loopbacklla puertokunapa ñawpaqman apaynin",
+          "Tinkiy perfilkuna kay dispositivollapi"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Rimanakuy qillqana",
+          "puertokunapa ñawpaqman apaynin",
+          "Tinkiy perfilkuna",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "gd-GB",
+      "storeLocale": "gd-GB",
+      "sourceName": "苏格兰盖尔语",
+      "languageName": "Scottish Gaelic",
+      "nativeName": "Gàidhlig",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Public Beta saor an-asgaidh le còd fosgailte airson SSH ionadail, SFTP agus cur air adhart phuirt air Windows x64.",
+        "fullDescription": "’S e Public Beta saor an-asgaidh le còd fosgailte a th’ ann an JoeSSH airson obair SSH ionadail air Windows x64. Ceangail ri frithealaiche a tha cead agad a chleachdadh, dèan lèirmheas air iuchraichean an òstair, cleachd crìoch eadar-ghnìomhach, gluais faidhlichean le SFTP agus stiùir cur air adhart phuirt ionadail. Bidh pròifilean agus roghainnean air an sàbhaladh air an inneal seo mar bhun-roghainn. Chan eil cunntas JoeSSH no seirbheis aoigheachd a dhìth.",
+        "features": [
+          "Lèirmheas air iuchair òstair SSH",
+          "Crìoch eadar-ghnìomhach",
+          "Gluasadan SFTP suas ri 25 MiB",
+          "Cur air adhart phuirt ionadail tro loopback a-mhàin",
+          "Pròifilean ceangail ionadail"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Crìoch eadar-ghnìomhach",
+          "Cur air adhart phuirt",
+          "Pròifilean ceangail",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "sr-Cyrl-BA",
+      "storeLocale": "sr-Cyrl-BA",
+      "sourceName": "塞尔维亚语西里尔波黑",
+      "languageName": "Serbian (Cyrillic, Bosnia and Herzegovina)",
+      "nativeName": "Српски (ћирилица)",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Бесплатна Public Beta отвореног кода за локални SSH, SFTP и прослеђивање портова на Windows x64.",
+        "fullDescription": "JoeSSH је бесплатна Public Beta отвореног кода за локални SSH рад на Windows x64. Повежите се са сервером за који имате дозволу, проверите кључеве хоста, користите интерактивни терминал, преносите датотеке помоћу SFTP-а и управљајте локалним прослеђивањем портова. Профили и подешавања се подразумевано чувају на овом уређају. JoeSSH налог или хостована услуга нису потребни.",
+        "features": [
+          "Провера SSH кључа хоста",
+          "Интерактивни терминал",
+          "SFTP преноси до 25 MiB",
+          "Локално прослеђивање само преко loopback-а",
+          "Локални профили веза"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Интерактивни терминал",
+          "Локално прослеђивање портова",
+          "Локални профили",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "tt-RU",
+      "storeLocale": "tt-RU",
+      "sourceName": "鞑靼语",
+      "languageName": "Tatar",
+      "nativeName": "Татарча",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Windows x64 өчен җирле SSH, SFTP һәм портларны юнәлтүгә бушлай, ачык чыганаклы Public Beta.",
+        "fullDescription": "JoeSSH — Windows x64 системасында җирле SSH эше өчен бушлай һәм ачык чыганаклы Public Beta. Кулланырга рөхсәтегез булган серверга тоташыгыз, хост ачкычларын тикшерегез, интерактив терминал кулланыгыз, SFTP аша файллар күчерегез һәм җирле портларны юнәлтүне идарә итегез. Профильләр һәм көйләүләр килешү буенча бу җайланмада саклана. JoeSSH хисап язмасы яки урнаштырылган хезмәт кирәк түгел.",
+        "features": [
+          "SSH хост ачкычын тикшерү",
+          "Интерактив терминал",
+          "25 MiB кадәр SFTP күчерүләре",
+          "Тик loopback аша җирле порт юнәлтү",
+          "Җирле тоташу профильләре"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Интерактив терминал",
+          "Җирле порт юнәлтү",
+          "Җирле тоташу профильләре",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "ur-PK",
+      "storeLocale": "ur-PK",
+      "sourceName": "乌尔都语",
+      "languageName": "Urdu",
+      "nativeName": "اردو",
+      "direction": "rtl",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Windows x64 پر مقامی SSH، SFTP اور پورٹ فارورڈنگ کے لیے مفت اوپن سورس Public Beta۔",
+        "fullDescription": "JoeSSH Windows x64 پر مقامی SSH کے کام کے لیے مفت اور اوپن سورس Public Beta ہے۔ ایسے سرور سے جڑیں جسے استعمال کرنے کی آپ کو اجازت ہو، ہوسٹ کیز کا جائزہ لیں، انٹرایکٹو ٹرمینل استعمال کریں، SFTP کے ذریعے فائلیں منتقل کریں اور مقامی پورٹ فارورڈنگ سنبھالیں۔ پروفائلز اور ترجیحات بطور ڈیفالٹ اسی ڈیوائس پر رہتی ہیں۔ JoeSSH اکاؤنٹ یا ہوسٹڈ سروس کی ضرورت نہیں۔",
+        "features": [
+          "SSH ہوسٹ کی کا جائزہ",
+          "انٹرایکٹو ٹرمینل",
+          "25 MiB تک SFTP منتقلی",
+          "صرف loopback مقامی پورٹ فارورڈنگ",
+          "مقامی کنکشن پروفائلز"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "انٹرایکٹو ٹرمینل",
+          "مقامی پورٹ فارورڈنگ",
+          "مقامی کنکشن پروفائلز",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "ug-CN",
+      "storeLocale": "ug-CN",
+      "sourceName": "维吾尔语",
+      "languageName": "Uyghur",
+      "nativeName": "ئۇيغۇرچە",
+      "direction": "rtl",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Windows x64 دىكى يەرلىك SSH، SFTP ۋە پورت يۆتكەش ئۈچۈن ھەقسىز، ئوچۇق كودلۇق Public Beta.",
+        "fullDescription": "JoeSSH Windows x64 دىكى يەرلىك SSH خىزمىتى ئۈچۈن ھەقسىز، ئوچۇق كودلۇق Public Beta. ئىشلىتىش ھوقۇقىڭىز بار مۇلازىمېتىرغا ئۇلىنىڭ، host ئاچقۇچلىرىنى تەكشۈرۈڭ، ئۆزئارا تەسىر كۆرسىتىدىغان تېرمىنالنى ئىشلىتىڭ، SFTP ئارقىلىق ھۆججەت يۆتكەڭ ۋە يەرلىك پورت يۆتكەشنى باشقۇرۇڭ. ئارخىپ ۋە مايىللىقلار سۈكۈتتىكى ھالەتتە بۇ ئۈسكۈنىدە ساقلىنىدۇ. JoeSSH ھېساباتى ياكى host قىلىنغان مۇلازىمەت كېرەك ئەمەس.",
+        "features": [
+          "SSH host ئاچقۇچىنى تەكشۈرۈش",
+          "ئۆزئارا تېرمىنال",
+          "25 MiB غىچە SFTP يۆتكەش",
+          "پەقەت loopback ئارقىلىق يەرلىك پورت يۆتكەش",
+          "يەرلىك ئۇلىنىش ئارخىپلىرى"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "ئۆزئارا تېرمىنال",
+          "يەرلىك پورت يۆتكەش",
+          "يەرلىك ئۇلىنىش ئارخىپلىرى",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "ca-ES-valencia",
+      "storeLocale": "ca-ES-valencia",
+      "sourceName": "巴伦西亚语",
+      "languageName": "Valencian",
+      "nativeName": "Valencià",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": true,
+      "nativeReview": null,
+      "mappingNote": "Partner Center 实时语言目录确认 Valencian，languageId=117；Store 变体值使用 ca-ES-valencia，仍需母语审核。",
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Public Beta gratuïta i de codi obert per a SSH local, SFTP i reenviament de ports en Windows x64.",
+        "fullDescription": "JoeSSH és una Public Beta gratuïta i de codi obert per al treball SSH local en Windows x64. Connecta't a un servidor que tingues autoritzat, revisa les claus de l'amfitrió, utilitza un terminal interactiu, transfereix fitxers amb SFTP i gestiona els reenviaments de ports locals. Els perfils i les preferències es guarden per defecte en este dispositiu. No cal cap compte de JoeSSH ni cap servei allotjat.",
+        "features": [
+          "Revisió de la clau de l'amfitrió SSH",
+          "Terminal interactiu",
+          "Transferències SFTP de fins a 25 MiB",
+          "Reenviament de ports local només per loopback",
+          "Perfils de connexió locals"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Terminal interactiu",
+          "Reenviament de ports",
+          "Perfils de connexió",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    },
+    {
+      "locale": "cy-GB",
+      "storeLocale": "cy-GB",
+      "sourceName": "威尔士语",
+      "languageName": "Welsh",
+      "nativeName": "Cymraeg",
+      "direction": "ltr",
+      "appUiLocale": null,
+      "appUiSupported": false,
+      "reviewStatus": "translation-draft",
+      "reviewRequired": false,
+      "nativeReview": null,
+      "mappingNote": null,
+      "listing": {
+        "title": "JoeSSH",
+        "shortDescription": "Public Beta am ddim, ffynhonnell agored ar gyfer SSH lleol, SFTP a blaenyrru porthladdoedd ar Windows x64.",
+        "fullDescription": "Mae JoeSSH yn Public Beta am ddim, ffynhonnell agored ar gyfer gwaith SSH lleol ar Windows x64. Cysylltwch â gweinydd y mae gennych ganiatâd i'w ddefnyddio, adolygwch allweddi'r gwesteiwr, defnyddiwch derfynell ryngweithiol, trosglwyddwch ffeiliau gyda SFTP a rheolwch flaenyrru porthladdoedd lleol. Cedwir proffiliau a dewisiadau ar y ddyfais hon yn ddiofyn. Nid oes angen cyfrif JoeSSH na gwasanaeth a gynhelir.",
+        "features": [
+          "Adolygu allwedd gwesteiwr SSH",
+          "Terfynell ryngweithiol",
+          "Trosglwyddiadau SFTP hyd at 25 MiB",
+          "Blaenyrru porthladdoedd lleol trwy loopback yn unig",
+          "Proffiliau cysylltiad lleol"
+        ],
+        "keywords": [
+          "SSH",
+          "SFTP",
+          "Terfynell ryngweithiol",
+          "Blaenyrru porthladdoedd",
+          "Proffiliau cysylltiad",
+          "Windows",
+          "Public Beta"
+        ],
+        "assets": {
+          "screenshotUrls": [],
+          "screenshotBinding": { "status": "pending-candidate-binding" }
+        }
+      }
+    }
+  ]
+}

@@ -114,6 +114,13 @@ describe("useDragReorder", () => {
     expect(result.current.state.order).toEqual(["s1", "s2"]);
   });
 
+  it("ignores keyboard moves that target the same connection", () => {
+    const { result } = renderHook(() => useDragReorder(["s1", "s2"]));
+    act(() => result.current.moveBefore("s1", "s1"));
+    act(() => result.current.moveAfter("s2", "s2"));
+    expect(result.current.state.order).toEqual(["s1", "s2"]);
+  });
+
   it("does nothing on drag end without drag target", () => {
     const { result } = renderHook(() => useDragReorder(["s1", "s2"]));
     act(() => result.current.startDrag("s1"));
