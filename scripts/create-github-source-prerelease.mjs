@@ -268,6 +268,7 @@ function assertSourcePrereleaseCandidate() {
 
 function validateReleaseNotes(notes) {
   const normalized = normalizeReleaseBody(notes);
+  const searchable = normalized.replace(/\s+/gu, " ");
   const required = [
     packageJson.version,
     "source-only GitHub prerelease",
@@ -277,7 +278,7 @@ function validateReleaseNotes(notes) {
     "no WCAG",
     "conformance claim",
   ];
-  const missing = required.filter((text) => !normalized.includes(text));
+  const missing = required.filter((text) => !searchable.includes(text));
   if (missing.length > 0) {
     fail(
       `Source prerelease notes are missing required boundary text:\n- ${missing.join("\n- ")}`,

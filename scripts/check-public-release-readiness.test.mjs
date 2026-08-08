@@ -478,7 +478,7 @@ JOESSH_GITHUB_RELEASE_CONTROLS_GH_COMMAND;
 JOESSH_GITHUB_RELEASE_CONTROLS_GH_ARGS;
 `,
     "scripts/create-github-source-prerelease.test.mjs":
-      "deletes the exact release when zero-asset verification fails\ndeletes the exact release if protected main moves during publication\nrejects publication without explicit billing confirmation\n",
+      "repository release notes satisfy the source prerelease boundary contract\naccepts required release-note phrases split across line wrapping\nsettings.releaseNotes\nconst version = repositoryPackageJson.version\nconst version = state.version\ndeletes the exact release when zero-asset verification fails\ndeletes the exact release if protected main moves during publication\nrejects publication without explicit billing confirmation\n",
     "scripts/check-github-release-controls.mjs": "",
     "scripts/check-github-release-controls.test.mjs": "",
     "apps/desktop/src-tauri/capabilities/main.json": JSON.stringify({
@@ -1205,6 +1205,69 @@ test("rejects a source prerelease entry point that bypasses release controls", (
   assert.match(
     result.stdout,
     /FAIL Source prerelease mutation requires the read-only GitHub release-controls gate and explicit billing attestation/,
+  );
+});
+
+test("rejects source prerelease tests without repository release-note binding", (t) => {
+  const root = createFixture(t);
+  const path = "scripts/create-github-source-prerelease.test.mjs";
+  const source = readFileSync(resolve(root, path), "utf8");
+  writeFile(
+    root,
+    path,
+    source.replace(
+      "repository release notes satisfy the source prerelease boundary contract",
+      "fixture release notes satisfy the source prerelease boundary contract",
+    ),
+  );
+  const result = runChecker(root);
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stdout,
+    /FAIL Source prerelease tests bind real versioned notes and Markdown line-wrap behavior/,
+  );
+});
+
+test("rejects source prerelease tests without Markdown line-wrap coverage", (t) => {
+  const root = createFixture(t);
+  const path = "scripts/create-github-source-prerelease.test.mjs";
+  const source = readFileSync(resolve(root, path), "utf8");
+  writeFile(
+    root,
+    path,
+    source.replace(
+      "accepts required release-note phrases split across line wrapping",
+      "accepts required release-note phrases on a single line",
+    ),
+  );
+  const result = runChecker(root);
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stdout,
+    /FAIL Source prerelease tests bind real versioned notes and Markdown line-wrap behavior/,
+  );
+});
+
+test("rejects source prerelease tests with a hard-coded candidate version", (t) => {
+  const root = createFixture(t);
+  const path = "scripts/create-github-source-prerelease.test.mjs";
+  const source = readFileSync(resolve(root, path), "utf8");
+  writeFile(
+    root,
+    path,
+    source.replace(
+      "const version = repositoryPackageJson.version",
+      'const version = "0.1.0-beta.19"',
+    ),
+  );
+  const result = runChecker(root);
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stdout,
+    /FAIL Source prerelease tests bind real versioned notes and Markdown line-wrap behavior/,
   );
 });
 

@@ -246,7 +246,7 @@ equivalent hash-bound evidence.
 After installers and checksums are present, run:
 
 ```bash
-FULL_RELEASE_VERSION=0.1.0-beta.19 # example; replace with the reviewed unused version
+FULL_RELEASE_VERSION=0.1.0-beta.20 # example; replace with the reviewed unused version
 git tag -a "v${FULL_RELEASE_VERSION}" -m "JoeSSH ${FULL_RELEASE_VERSION}"
 npm run release:provenance
 npm run release:provenance:verify
@@ -254,7 +254,7 @@ npm run release:publish-preflight
 npm run release:desktop:draft
 ```
 
-`0.1.0-beta.18` is a permanent zero-asset source prerelease and must never use
+`0.1.0-beta.19` is a permanent zero-asset source prerelease and must never use
 this flow. Bump every version surface first and use a distinct unused version.
 The publish preflight verifies all Desktop/Web/Sync checksum manifests, Desktop
 signing/notarization evidence, SBOM coverage, release provenance, a healthy Git

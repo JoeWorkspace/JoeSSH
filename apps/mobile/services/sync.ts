@@ -591,7 +591,7 @@ export async function registerDevice(): Promise<RegisteredDevice> {
             ? { device_id: existingDeviceId }
             : {}),
           platform: request.platform,
-          app_version: Constants.expoConfig?.version ?? "0.1.0-beta.18",
+          app_version: Constants.expoConfig?.version ?? "0.1.0-beta.19",
           display_name: request.displayName,
         }),
         method: "POST",

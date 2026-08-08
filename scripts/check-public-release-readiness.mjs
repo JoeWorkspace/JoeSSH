@@ -1035,8 +1035,25 @@ function checkReleaseToolingFiles() {
       ) &&
       sourcePrereleaseTests.includes(
         "deletes the exact release if protected main moves during publication",
+      ) &&
+      sourcePrereleaseTests.includes(
+        "repository release notes satisfy the source prerelease boundary contract",
       ),
     "Source prerelease entry point enforces annotated tags, zero assets, exact-ID cleanup, and published verification",
+  );
+  passIf(
+    sourcePrereleaseTests.includes(
+      "repository release notes satisfy the source prerelease boundary contract",
+    ) &&
+      sourcePrereleaseTests.includes(
+        "accepts required release-note phrases split across line wrapping",
+      ) &&
+      sourcePrereleaseTests.includes("settings.releaseNotes") &&
+      sourcePrereleaseTests.includes(
+        "const version = repositoryPackageJson.version",
+      ) &&
+      sourcePrereleaseTests.includes("const version = state.version"),
+    "Source prerelease tests bind real versioned notes and Markdown line-wrap behavior",
   );
   passIf(
     sourcePrerelease.includes("githubReleaseControlsPath") &&

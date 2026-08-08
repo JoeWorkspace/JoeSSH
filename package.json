@@ -1,6 +1,6 @@
 {
   "name": "atlasterm",
-  "version": "0.1.0-beta.18",
+  "version": "0.1.0-beta.19",
   "private": true,
   "description": "JoeSSH monorepo for a local-first SSH, terminal, SFTP, forwarding, sync, and team workspace product.",
   "license": "MIT",
