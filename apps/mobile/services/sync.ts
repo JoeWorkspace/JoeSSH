@@ -70,6 +70,20 @@ let rememberedInstallIdPromise: Promise<string> | undefined;
 let rememberedPendingPresence: StoredPendingPresence | undefined;
 let rememberedRegistration: StoredSyncRegistration | undefined;
 
+class SyncApiInvalidJsonError extends Error {
+  constructor() {
+    super("sync API response was not valid JSON");
+    this.name = "SyncApiInvalidJsonError";
+  }
+}
+
+class SyncApiResponseAbortedError extends Error {
+  constructor() {
+    super("sync API response body read was aborted");
+    this.name = "SyncApiResponseAbortedError";
+  }
+}
+
 export function resetRegisteredDeviceMemoryForTests() {
   rememberedInstallId = undefined;
   rememberedInstallIdPromise = undefined;
@@ -84,6 +98,15 @@ function delay(ms: number) {
 export function toSyncError(error: unknown): SyncError {
   if (isSyncError(error)) {
     return error;
+  }
+
+  if (error instanceof SyncApiInvalidJsonError) {
+    return {
+      code: "unknown",
+      title: "Sync response rejected",
+      message: "The sync service returned a response that was not valid JSON.",
+      recoverable: true,
+    };
   }
 
   if (
@@ -164,7 +187,11 @@ async function requestJson(path: string, init?: RequestInit): Promise<unknown> {
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let timedOut = false;
+  const timeoutId = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, REQUEST_TIMEOUT_MS);
 
   try {
     const response = await fetch(`${apiBaseUrl}${path}`, {
@@ -177,16 +204,14 @@ async function requestJson(path: string, init?: RequestInit): Promise<unknown> {
       throw new Error(`sync API failed with ${response.status}`);
     }
 
-    // Keep the timeout active while the response body is consumed. A server can
-    // send headers and then stall the JSON body indefinitely.
-    return await response.json();
+    return await readResponseJsonWithAbort(response, controller.signal);
   } catch (error) {
     // On web, an aborted fetch rejects with a DOMException (name 'AbortError'),
     // which is not `instanceof Error`; on native it is a plain Error.
     if (
-      typeof error === "object" &&
-      error !== null &&
-      (error as { name?: string }).name === "AbortError"
+      timedOut ||
+      isAbortError(error) ||
+      error instanceof SyncApiResponseAbortedError
     ) {
       throw new Error(
         `timeout: sync API request exceeded ${REQUEST_TIMEOUT_MS}ms`,
@@ -200,6 +225,86 @@ async function requestJson(path: string, init?: RequestInit): Promise<unknown> {
   } finally {
     clearTimeout(timeoutId);
   }
+}
+
+async function readResponseJsonWithAbort(
+  response: Response,
+  signal: AbortSignal,
+): Promise<unknown> {
+  if (signal.aborted) {
+    throw new SyncApiResponseAbortedError();
+  }
+
+  const bodyRead = (async () => {
+    const responseText = await response.text();
+
+    try {
+      return JSON.parse(responseText) as unknown;
+    } catch {
+      throw new SyncApiInvalidJsonError();
+    }
+  })();
+
+  return awaitWithAbort(bodyRead, signal, () =>
+    cancelResponseBody(response, "sync API response body read was aborted"),
+  );
+}
+
+function awaitWithAbort<T>(
+  promise: Promise<T>,
+  signal: AbortSignal,
+  handleAbort: () => void,
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const cleanup = () => signal.removeEventListener("abort", onAbort);
+    const onAbort = () => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      cleanup();
+      handleAbort();
+      reject(new SyncApiResponseAbortedError());
+    };
+
+    signal.addEventListener("abort", onAbort, { once: true });
+    if (signal.aborted) {
+      onAbort();
+      return;
+    }
+
+    promise.then(
+      (value) => {
+        if (!settled) {
+          settled = true;
+          cleanup();
+          resolve(value);
+        }
+      },
+      (error: unknown) => {
+        if (!settled) {
+          settled = true;
+          cleanup();
+          reject(error);
+        }
+      },
+    );
+  });
+}
+
+function cancelResponseBody(response: Response, reason: string) {
+  if (response.body && typeof response.body.cancel === "function") {
+    void response.body.cancel(reason).catch(() => undefined);
+  }
+}
+
+function isAbortError(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { name?: string }).name === "AbortError"
+  );
 }
 
 export function getApiBaseUrl() {

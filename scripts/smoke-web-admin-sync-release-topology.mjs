@@ -512,7 +512,8 @@ async function assertTopologyPopulatedSnapshot(webOrigin, expected) {
   if (
     !auditEvents.some(
       (event) =>
-        event.id === `register-${expected.deviceId}` &&
+        typeof event.id === "string" &&
+        event.id.startsWith(`register-${expected.deviceId}-`) &&
         event.action === `Registered ${expected.displayName}` &&
         event.actor === "Sync API" &&
         event.target === `device:${expected.deviceId}`,

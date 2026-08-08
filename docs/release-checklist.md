@@ -299,6 +299,12 @@ evidence. None can make the current workflow produce
   run warnings, and writes `reports/lighthouse/web-admin.json`. The live
   same-origin proxy path remains covered by
   `npm run qa:web-admin-sync-topology-release-smoke`.
+- Accessibility readiness must pass with
+  `npm run qa:accessibility-readiness`. Review [ACCESSIBILITY.md](../ACCESSIBILITY.md)
+  for the exact release version and date, preserve the assessment-in-progress,
+  no-formal-conformance-claim, and known-limitations language until
+  representative manual assistive-technology testing is complete, and verify
+  the accessibility issue form contains no sensitive operational data.
 - Web Admin same-origin admin snapshot proxy smoke must pass with
   `npm run qa:web-admin-proxy-smoke`; browser bundles must not receive admin
   snapshot bearer tokens, and the proxy must reject oversized upstream snapshot

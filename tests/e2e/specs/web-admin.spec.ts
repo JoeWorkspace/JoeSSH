@@ -913,10 +913,21 @@ test.describe('JoeSSH web admin', () => {
 
 async function expectNoCriticalOrSeriousAccessibilityViolations(page: Page) {
   const results = await new AxeBuilder({ page })
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .options({
+      runOnly: {
+        type: 'tag',
+        values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'],
+      },
+      rules: {
+        'target-size': { enabled: true },
+      },
+    })
     .analyze();
 
-  const violations = results.violations.filter((violation) => violation.impact === 'critical' || violation.impact === 'serious');
+  const violations = results.violations.filter(
+    (violation) =>
+      violation.id === 'target-size' || violation.impact === 'critical' || violation.impact === 'serious',
+  );
 
   if (violations.length > 0) {
     for (const violation of violations) {

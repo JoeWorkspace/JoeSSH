@@ -1,0 +1,60 @@
+name: Accessibility barrier
+description: Report a barrier affecting keyboard, screen-reader, low-vision, hearing, speech, cognitive, or motor access.
+title: "[Accessibility]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for helping make JoeSSH accessible. Do not include passwords, private keys, tokens, hostnames, terminal output, or other sensitive operational data. Use the private process in SECURITY.md when a barrier also exposes a security issue.
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Affected surface
+      options:
+        - Desktop workbench
+        - Web Admin
+        - Mobile companion
+        - Documentation or static page
+        - Packaging or installer
+    validations:
+      required: true
+  - type: textarea
+    id: barrier
+    attributes:
+      label: Barrier and impact
+      description: Describe what is inaccessible and how it prevents or complicates the task.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Provide the smallest safe sequence that demonstrates the barrier.
+      placeholder: |
+        1. Open ...
+        2. Navigate with ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected accessible result
+    validations:
+      required: true
+  - type: input
+    id: assistive_technology
+    attributes:
+      label: Assistive technology or input method
+      description: For example, NVDA and Edge, VoiceOver and Safari, TalkBack, keyboard only, speech input, or 200% zoom.
+  - type: input
+    id: environment
+    attributes:
+      label: JoeSSH version and operating system
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Sensitive-data check
+      options:
+        - label: I removed credentials, host details, terminal output, and other sensitive operational data.
+          required: true

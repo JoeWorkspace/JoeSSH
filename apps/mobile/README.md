@@ -26,6 +26,23 @@ Because `EXPO_PUBLIC_*` values are embedded in mobile bundles, public mobile
 beta builds must use a pairing, OIDC, or device-scoped credential flow instead
 of this shared build-time bearer token path.
 
+## Release Boundary
+
+This app remains a non-public mobile preview. The current React Native
+`fetch`/whatwg-fetch path can buffer a response before JavaScript receives body
+read progress, so this client does not claim a hard response-memory boundary.
+An arbitrary JavaScript-only size rejection is also unsafe for sync: rejecting a
+server-valid page or single change can leave the persisted cursor permanently
+stuck before that change.
+
+Before a public mobile release, the transport must use a native bounded read
+that can stop incoming bytes before they are buffered. The Sync API contract
+must also define matching maximum sizes for both a page and an individual
+change, with server pagination that guarantees every valid change remains
+retrievable. Until both sides are implemented and verified on iOS and Android,
+the preview intentionally enforces request timeouts and safe JSON errors but no
+unproven client-only response-size cap.
+
 The first screen registers the mobile device through `POST /v1/devices/register`,
 pushes a small `mobile_presence` checkpoint through `POST /v1/sync/push`, then
 pulls preview state from `GET /v1/sync/pull`. The presence push uses the current
@@ -51,9 +68,10 @@ honestly empty until that product work is implemented.
 
 Service tests cover endpoint selection, optional bearer auth, durable install
 and registration identity, retained cursors across runtime restarts, idempotent
-presence retries, paginated pulls, response-body timeouts, device-ID validation,
-malformed successful register/push/pull responses, offline fallback,
-timeout/unauthorized classification, and non-fabricated empty preview data.
+presence retries, paginated pulls, response-body timeouts, acceptance of large
+protocol-valid pages, device-ID validation, malformed successful
+register/push/pull responses, offline fallback, timeout/unauthorized
+classification, and non-fabricated empty preview data.
 Home screen tests cover the idle, registering, ready, offline fallback, and
 structured-error UI states for the sync preview flow, including light and dark
 OS theme readability, phone and tablet portrait/landscape sizing, large text,

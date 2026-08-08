@@ -95,6 +95,7 @@ jobs:
       - run: npm ci
       - run: npm run qa:package-lock-portability
       - run: npm run lint
+      - run: npm run qa:accessibility-readiness
       - run: npm run qa:handoff-hygiene
       - run: npm run qa:artifact-checksums
       - run: npm run qa:desktop-release-package

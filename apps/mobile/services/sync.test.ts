@@ -360,19 +360,13 @@ describe('mobile sync service', () => {
 
   it('keeps the request timeout active while a response JSON body is stalled', async () => {
     process.env.EXPO_PUBLIC_ATLASTERM_SYNC_URL = 'http://127.0.0.1:4100';
-    vi.mocked(fetch).mockImplementation(
-      async (_url, init) =>
-        ({
-          json: () =>
-            new Promise((_, reject) => {
-              init?.signal?.addEventListener('abort', () => {
-                reject(Object.assign(new Error('Aborted'), { name: 'AbortError' }));
-              });
-            }),
-          ok: true,
-          status: 200,
-        }) as Response,
-    );
+    vi.mocked(fetch).mockResolvedValue({
+      body: null,
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+      ok: true,
+      status: 200,
+      text: () => new Promise(() => undefined),
+    } as unknown as Response);
 
     const pendingPreview = fetchSyncPreview('0af7b567-8c34-4318-8c6b-31cddfc36e6f');
     const expectation = expect(pendingPreview).rejects.toMatchObject({
@@ -381,6 +375,45 @@ describe('mobile sync service', () => {
     await vi.advanceTimersByTimeAsync(350);
     await vi.advanceTimersByTimeAsync(8_000);
     await expectation;
+  });
+
+  it('accepts a protocol-valid pull page larger than the former client-only cap', async () => {
+    process.env.EXPO_PUBLIC_ATLASTERM_SYNC_URL = 'http://127.0.0.1:4100';
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({
+        changes: [
+          {
+            id: 'large-change',
+            payload: 'x'.repeat(1_048_576),
+          },
+        ],
+        device_id: '0af7b567-8c34-4318-8c6b-31cddfc36e6f',
+        has_more: false,
+        next_cursor: 'server-129',
+      }),
+    );
+
+    const pendingPreview = fetchSyncPreview('0af7b567-8c34-4318-8c6b-31cddfc36e6f');
+    await vi.advanceTimersByTimeAsync(350);
+
+    await expect(pendingPreview).resolves.toMatchObject({
+      pendingChangeCount: 1,
+      syncCursor: 'server-129',
+    });
+  });
+
+  it('reports malformed JSON without echoing sensitive response content', async () => {
+    process.env.EXPO_PUBLIC_ATLASTERM_SYNC_URL = 'http://127.0.0.1:4100';
+    vi.mocked(fetch).mockResolvedValue(textResponse('{"access_token":"must-not-appear-in-errors"', 202));
+
+    const error = await pushMobilePresenceCheckpoint(mobileDevice()).catch((caught: unknown) => caught);
+
+    expect(error).toMatchObject({
+      code: 'unknown',
+      message: 'The sync service returned a response that was not valid JSON.',
+      title: 'Sync response rejected',
+    });
+    expect(JSON.stringify(error)).not.toContain('must-not-appear-in-errors');
   });
 
   it('pulls a preview from a retained sync cursor', async () => {
@@ -911,9 +944,26 @@ describe('mobile sync service', () => {
 });
 
 function jsonResponse(body: unknown, status = 200) {
+  return textResponse(JSON.stringify(body), status);
+}
+
+function textResponse(body: string, status = 200) {
   return {
-    json: () => Promise.resolve(body),
+    body: null,
+    headers: new Headers({ 'Content-Type': 'application/json' }),
     ok: status >= 200 && status < 300,
     status,
-  } as Response;
+    text: () => Promise.resolve(body),
+  } as unknown as Response;
+}
+
+function mobileDevice(): RegisteredDevice {
+  return {
+    connectionQuality: 'online',
+    id: '0af7b567-8c34-4318-8c6b-31cddfc36e6f',
+    name: 'Atlas Phone',
+    platform: 'ios',
+    registeredAt: '2026-05-25T00:00:00Z',
+    syncCursor: 'server-11',
+  };
 }

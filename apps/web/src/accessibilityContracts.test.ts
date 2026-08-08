@@ -283,7 +283,8 @@ const staticHumansTxtExpectedSource = [
   "JoeSSH Team",
   "",
   "/* SITE */",
-  "Standards: HTML5, CSS3, ES2020, WCAG 2.1 AA",
+  "Standards: HTML5, CSS3, ES2020",
+  "Accessibility target: WCAG 2.2 AA (assessment in progress)",
   "Components: React 19, TypeScript, Vite",
   "Software: VS Code, Figma",
 ].join("\n");
