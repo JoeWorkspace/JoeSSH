@@ -1324,7 +1324,7 @@ async fn register_device(
 
     let device_label = display_name.as_deref().unwrap_or("unknown device");
     store.record_audit_event(StoredAuditEvent {
-        id: format!("register-{device_id}"),
+        id: registration_audit_event_id(device_id),
         action: format!("Registered {device_label}"),
         actor: "Sync API".into(),
         target: format!("device:{device_id}"),
@@ -1410,6 +1410,17 @@ async fn push_changes(
             Json(ErrorResponse {
                 code: "unknown_device",
                 message: "device must be registered before pushing changes",
+            }),
+        )
+            .into_response();
+    }
+
+    if base_sequence > store.latest_sequence {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                code: "invalid_cursor",
+                message: "base cursor cannot be ahead of the server cursor",
             }),
         )
             .into_response();
@@ -1766,6 +1777,10 @@ impl From<&StoredChange> for SyncChangeEnvelope {
 
 fn cursor_from_sequence(sequence: u64) -> String {
     format!("server-{sequence}")
+}
+
+fn registration_audit_event_id(device_id: Uuid) -> String {
+    format!("register-{device_id}-{}", Uuid::new_v4())
 }
 
 fn parse_cursor(cursor: Option<&str>) -> Result<u64, ErrorResponse> {
@@ -2432,6 +2447,40 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn repeated_device_registration_records_unique_audit_event_ids() {
+        let app = app_with_config(admin_snapshot_config());
+        let device_id = Uuid::new_v4();
+
+        let first = post_register_with_device_id(&app, device_id, "Desktop Workstation").await;
+        let second = post_register_with_device_id(&app, device_id, "Desktop Workstation").await;
+
+        assert_eq!(first.status(), StatusCode::OK);
+        assert_eq!(second.status(), StatusCode::OK);
+
+        let snapshot = admin_snapshot_for(&app).await;
+        assert_eq!(snapshot["devices"].as_array().unwrap().len(), 1);
+
+        let audit_events = snapshot["auditEvents"].as_array().unwrap();
+        assert_eq!(audit_events.len(), 2);
+
+        let audit_ids: Vec<&str> = audit_events
+            .iter()
+            .map(|event| event["id"].as_str().unwrap())
+            .collect();
+        let unique_audit_ids: HashSet<&str> = audit_ids.iter().copied().collect();
+        assert_eq!(unique_audit_ids.len(), audit_ids.len());
+
+        let expected_prefix = format!("register-{device_id}-");
+        let expected_target = format!("device:{device_id}");
+        assert!(audit_events.iter().all(|event| {
+            event["id"]
+                .as_str()
+                .is_some_and(|id| id.starts_with(&expected_prefix))
+                && event["target"] == expected_target
+        }));
+    }
+
+    #[tokio::test]
     async fn healthz_remains_open_when_sync_auth_is_enabled() {
         let response = app_with_config(sync_auth_config())
             .oneshot(
@@ -2929,6 +2978,78 @@ mod tests {
         let body = to_json(response.into_body()).await;
         assert_eq!(body["accepted"], 1);
         assert_eq!(body["sync_cursor"], "server-1");
+    }
+
+    #[tokio::test]
+    async fn push_rejects_future_base_cursor_without_mutating_state() {
+        let app = app();
+        let device_id = register_test_device(&app, "Desktop Workstation").await;
+
+        let first = post_push(
+            &app,
+            json!({
+                "device_id": device_id,
+                "base_cursor": "0",
+                "changes": [{
+                    "id": Uuid::new_v4(),
+                    "entity_type": "profile",
+                    "entity_id": "prod-edge-01",
+                    "operation": "update",
+                    "payload": { "encrypted_blob": "ciphertext-1" },
+                    "client_time": Utc::now()
+                }]
+            }),
+        )
+        .await;
+        assert_eq!(first.status(), StatusCode::ACCEPTED);
+
+        let change_id = Uuid::new_v4();
+        let future = post_push(
+            &app,
+            json!({
+                "device_id": device_id,
+                "base_cursor": "server-2",
+                "changes": [{
+                    "id": change_id,
+                    "entity_type": "profile",
+                    "entity_id": "prod-edge-02",
+                    "operation": "update",
+                    "payload": { "encrypted_blob": "ciphertext-2" },
+                    "client_time": Utc::now()
+                }]
+            }),
+        )
+        .await;
+
+        assert_eq!(future.status(), StatusCode::BAD_REQUEST);
+        let body = to_json(future.into_body()).await;
+        assert_eq!(body["code"], "invalid_cursor");
+        assert_eq!(
+            body["message"],
+            "base cursor cannot be ahead of the server cursor"
+        );
+
+        let retry = post_push(
+            &app,
+            json!({
+                "device_id": device_id,
+                "base_cursor": "server-1",
+                "changes": [{
+                    "id": change_id,
+                    "entity_type": "profile",
+                    "entity_id": "prod-edge-02",
+                    "operation": "update",
+                    "payload": { "encrypted_blob": "ciphertext-2" },
+                    "client_time": Utc::now()
+                }]
+            }),
+        )
+        .await;
+
+        assert_eq!(retry.status(), StatusCode::ACCEPTED);
+        let body = to_json(retry.into_body()).await;
+        assert_eq!(body["accepted"], 1);
+        assert_eq!(body["sync_cursor"], "server-2");
     }
 
     #[tokio::test]
@@ -4148,6 +4269,32 @@ mod tests {
                 request
                     .body(Body::from(
                         json!({
+                            "platform": "desktop",
+                            "app_version": "0.1.0",
+                            "display_name": display_name
+                        })
+                        .to_string(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap()
+    }
+
+    async fn post_register_with_device_id(
+        app: &Router,
+        device_id: Uuid,
+        display_name: &str,
+    ) -> axum::response::Response {
+        app.clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/v1/devices/register")
+                    .header(header::CONTENT_TYPE, "application/json")
+                    .body(Body::from(
+                        json!({
+                            "device_id": device_id,
                             "platform": "desktop",
                             "app_version": "0.1.0",
                             "display_name": display_name

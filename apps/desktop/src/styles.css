@@ -3,6 +3,47 @@
   overflow: hidden;
 }
 
+:where(
+  .sidebar,
+  .context-pane,
+  .workbench,
+  .terminal-grid--split,
+  .terminal-autocomplete,
+  .group-manager-list,
+  .shortcuts-grid,
+  .palette-list,
+  .context-menu,
+  .context-menu-submenu-list,
+  .modal,
+  .getting-started-dialog,
+  .third-party-notices-content
+) {
+  scroll-padding-block: 12px;
+}
+
+:where(
+  button,
+  a[href],
+  input,
+  select,
+  textarea,
+  [tabindex]:not([tabindex="-1"])
+) {
+  scroll-margin-block: 10px;
+}
+
+:where(
+  button,
+  [role="button"],
+  [role="tab"],
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea
+) {
+  min-block-size: 24px;
+  min-inline-size: 24px;
+}
+
 .error-boundary-shell {
   align-items: center;
   background:

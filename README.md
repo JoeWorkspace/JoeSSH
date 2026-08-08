@@ -258,6 +258,7 @@ GitHub Actions runs on push, PR, and a weekly Monday schedule:
 - Rust workspace: `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`
 - Playwright E2E acceptance and visual QA suites across desktop, web, and mobile paths
 - Lighthouse audit with strict thresholds (performance >= 0.95, a11y >= 1.0, best-practices >= 1.0)
+- Axe checks tagged for WCAG 2.0, 2.1, and 2.2 A/AA, including the 24 CSS pixel target-size rule, plus focus-not-obscured and accessibility-assessment release contracts
 - Security audit (`npm run qa:prod-audit`: high-severity `npm audit` gate plus dependency risk register validation)
 - Dependabot for automated security updates
 
@@ -270,6 +271,8 @@ GitHub Actions runs on push, PR, and a weekly Monday schedule:
 - [CHANGELOG.md](CHANGELOG.md) - Release history and notable changes
 - [SUPPORT.md](SUPPORT.md) - Community support scope and safe reporting guidance
 - [PRIVACY.md](PRIVACY.md) - Local-first privacy policy and fail-closed hosted/paid disclosures
+- [ACCESSIBILITY.md](ACCESSIBILITY.md) - WCAG 2.2 and EN 301 549 assessment targets, EAA-oriented readiness status, limitations, and feedback route
+- [docs/product-viability-review-2026-08-08.md](docs/product-viability-review-2026-08-08.md) - Feature-freeze and maintenance decision after the second public Beta
 - [docs/product-excellence-plan.md](docs/product-excellence-plan.md) - World-class product completion plan and operating cadence
 - [docs/release-preparation.md](docs/release-preparation.md) - Windows-first release operator runbook and external blockers
 - [docs/windows-invite-beta.md](docs/windows-invite-beta.md) - 90-day Windows Desktop invite-only Beta playbook, safety boundaries, and success gates

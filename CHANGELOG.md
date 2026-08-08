@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- An EAA-oriented accessibility assessment status, safe barrier-reporting
+  form, and WCAG 2.2 target-size and focus-not-obscured release checks without
+  making an unverified conformance claim.
 - A production UI system across Desktop, Mobile, and Web Admin with responsive
   light/dark themes, accessibility coverage, Windows scaling checks, and
   visual-regression baselines.
@@ -44,6 +47,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Sync now rejects future base cursors without mutation, records unique device
+  registration audit IDs, keeps Mobile response-body reads under the request
+  timeout, and reports malformed JSON without echoing response content.
+- The dependency audit now limits the temporary `image-size` exception to the
+  exact non-public Mobile Expo/Metro graph, while the `nanoid` override resolves
+  its high-severity advisory.
 - Cross-platform dependency-lock portability, Desktop async interaction races,
   SFTP path and transfer safety, PTY lifecycle behavior, forwarding cleanup,
   Mobile sync behavior, Web Admin localization, and responsive UI states.
@@ -56,6 +65,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Froze speculative feature development after this closeout; maintenance,
+  security, compatibility, accessibility barriers, and bounded community
+  contributions continue until documented external-demand thresholds are met.
 - Rolled the candidate forward without moving the existing
   `v0.1.0-beta.9` tag.
 - Made Windows Desktop the first adoption and revenue-validation lane while
