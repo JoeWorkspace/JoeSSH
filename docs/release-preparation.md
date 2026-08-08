@@ -1,7 +1,11 @@
-# JoeSSH 0.1.0-beta.18 发布准备手册
+# JoeSSH 0.1.0-beta.19 发布准备手册
+
+> `v0.1.0-beta.18` 是已推送到远端、但没有 GitHub Release 的 tag-only 预检
+> 标签：dry-run 在创建 Release 前失败。该标签必须保持不删除、不移动、不补建
+> Release、不复用；本手册只操作 `v0.1.0-beta.19`。
 
 本手册是个人维护者的 Windows-first 收口入口。当前代码版本是
-`0.1.0-beta.18` 候选，不是已经获批的安装包、商店版或付费版。任何门禁
+`0.1.0-beta.19` 候选，不是已经获批的安装包、商店版或付费版。任何门禁
 失败都表示继续准备，不表示可以通过改文案、改 JSON 或手工上传来绕过。
 
 ## 本轮目标与边界
@@ -257,11 +261,11 @@ package identity，再用微软工具外部打包；不能把 NSIS 改后缀或�
 ## 6. 版本、标签与发布证据
 
 - 旧的 `v0.1.0-beta.9` 标签永久保留，不移动、不覆盖。
-- `0.1.0-beta.18` 永久限定为零上传资产的 source-only prerelease；不能在发布后
+- `0.1.0-beta.19` 永久限定为零上传资产的 source-only prerelease；不能在发布后
   补传 Desktop、Web、Sync、Mobile、Store 或其他二进制制品，也不能复用标签。
 - 只有候选改动已通过 PR 合并到受保护的 `main`、目标门禁全部绿色，且外部
   blocker 已关闭后，才创建指向精确候选 commit 的
-  `v0.1.0-beta.18` annotated tag。
+  `v0.1.0-beta.19` annotated tag。
 - 确认 `reports/release/` 没有任何文件后，依次运行：
 
   ```powershell
@@ -274,8 +278,8 @@ package identity，再用微软工具外部打包；不能把 NSIS 改后缀或�
   check 和 GitHub controls，再直接发布并独立验证；本轮不存在需要重新下载和
   复核 SHA-256 的上传制品。
 
-- `npm run release:publish-preflight` 是 beta.18 之后某个独立、未使用版本的完整
-  Desktop/Web/Sync 多平台公开发行门禁，不得用于修改 beta.18，也不是 Windows
+- `npm run release:publish-preflight` 是 beta.19 之后某个独立、未使用版本的完整
+  Desktop/Web/Sync 多平台公开发行门禁，不得用于修改 beta.19，也不是 Windows
   Store 候选的快捷通道。缺少 macOS/Linux 或正式 Desktop 证据时，它正确地
   保持失败。
 

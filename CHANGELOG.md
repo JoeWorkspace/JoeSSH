@@ -7,10 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.0-beta.18] - 2026-08-09
+## [0.1.0-beta.19] - 2026-08-09
 
 > Source-only GitHub prerelease. Public Desktop installers remain blocked on
 > external signing and notarization evidence.
+
+### Fixed
+
+- Normalized Markdown whitespace while validating source-release boundaries and
+  bound the release contract test to the repository's actual versioned notes.
+
+## [0.1.0-beta.18] - 2026-08-09
+
+> Remote tag-only preflight checkpoint. Its dry run failed before any GitHub
+> Release or release asset was created. The tag remains immutable and must not
+> receive a Release page or be reused.
 
 ### Added
 

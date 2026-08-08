@@ -15,8 +15,48 @@ const scriptPath = join(
   import.meta.dirname,
   "create-github-source-prerelease.mjs",
 );
-const version = "0.1.0-beta.18";
+const repositoryPackageJson = JSON.parse(
+  readFileSync(join(import.meta.dirname, "..", "package.json"), "utf8"),
+);
+const version = repositoryPackageJson.version;
 const tag = `v${version}`;
+
+test("repository release notes satisfy the source prerelease boundary contract", (t) => {
+  const releaseNotes = readFileSync(
+    join(import.meta.dirname, "..", "docs", "release-notes", `${version}.md`),
+    "utf8",
+  );
+  const fixture = createFixture(t, { releaseNotes });
+  const result = runRelease(fixture, ["--dry-run"]);
+
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /dry run passed/);
+  assert.equal(readState(fixture).release, null);
+});
+
+test("accepts required release-note phrases split across line wrapping", (t) => {
+  const fixture = createFixture(t, {
+    releaseNotes: [
+      `# JoeSSH ${version} Source Preview`,
+      "",
+      "This source-only GitHub",
+      "prerelease provides automatically generated",
+      "source archives.",
+      "It does not include Desktop",
+      "installers and has zero",
+      "uploaded assets.",
+      "There is no",
+      "WCAG or EAA conformance",
+      "claim.",
+      "",
+    ].join("\n"),
+  });
+  const result = runRelease(fixture, ["--dry-run"]);
+
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /dry run passed/);
+  assert.equal(readState(fixture).release, null);
+});
 
 test("source prerelease dry run proves the zero-asset candidate", (t) => {
   const fixture = createFixture(t);
@@ -33,7 +73,7 @@ test("publishes a prerelease with no uploaded assets", (t) => {
   const result = runRelease(fixture);
 
   assert.equal(result.status, 0, result.stdout + result.stderr);
-  assert.match(result.stdout, /Published v0\.1\.0-beta\.18/);
+  assert.equal(result.stdout.includes(`Published ${tag}`), true);
   const release = readState(fixture).release;
   assert.equal(release.draft, false);
   assert.equal(release.prerelease, true);
@@ -175,14 +215,15 @@ function createFixture(t, settings = {}) {
   writeFixtureFile(
     root,
     `docs/release-notes/${version}.md`,
-    [
-      `# JoeSSH ${version} Source Preview`,
-      "",
-      "This source-only GitHub prerelease provides automatically generated source archives.",
-      "It does not include Desktop installers and has zero uploaded assets.",
-      "There is no WCAG or EAA conformance claim.",
-      "",
-    ].join("\n"),
+    settings.releaseNotes ??
+      [
+        `# JoeSSH ${version} Source Preview`,
+        "",
+        "This source-only GitHub prerelease provides automatically generated source archives.",
+        "It does not include Desktop installers and has zero uploaded assets.",
+        "There is no WCAG or EAA conformance claim.",
+        "",
+      ].join("\n"),
   );
   mkdirSync(join(root, "reports", "release"), { recursive: true });
   const initialRelease = settings.published
@@ -197,7 +238,7 @@ function createFixture(t, settings = {}) {
     : null;
   writeFileSync(
     statePath,
-    `${JSON.stringify({ release: initialRelease, settings })}\n`,
+    `${JSON.stringify({ release: initialRelease, settings, version })}\n`,
   );
   writeFileSync(fakeCommandPath, fakeCommandSource(), "utf8");
   return { fakeCommandPath, logPath, root, statePath };
@@ -284,7 +325,7 @@ appendFileSync(logPath, JSON.stringify({ args, input, mode }) + "\n");
 const state = JSON.parse(readFileSync(statePath, "utf8"));
 const settings = state.settings ?? {};
 const commit = "abc123";
-const version = "0.1.0-beta.18";
+const version = state.version;
 const tag = "v" + version;
 
 function save() {

@@ -1,7 +1,7 @@
 # JoeSSH Public Beta Release Checklist
 
 This checklist defines the full public beta bar for the next distinct release
-version after `0.1.0-beta.18`. That future release includes Desktop, Web Admin,
+version after `0.1.0-beta.19`. That future release includes Desktop, Web Admin,
 and the self-hosted Sync Service. Mobile native apps stay in
 preflight/device-smoke validation until a later beta.
 
@@ -11,9 +11,9 @@ zero uploaded assets, point at the exact protected `main` commit with a successf
 `Public Release Readiness` check, and say that public Desktop signing and
 notarization remain incomplete. Any release containing a binary or staged Web,
 Sync, Mobile, or Desktop file must return to the applicable full artifact gate.
-`0.1.0-beta.18` is permanently source-only: never attach binaries to it, edit it
+`0.1.0-beta.19` is permanently source-only: never attach binaries to it, edit it
 into a full release, or reuse its tag. Before following the full-release steps
-below, set an unused `FULL_RELEASE_VERSION` after beta.18 and update all version
+below, set an unused `FULL_RELEASE_VERSION` after beta.19 and update all version
 metadata, artifact names, and its versioned release notes.
 
 ## Current Desktop automation status
