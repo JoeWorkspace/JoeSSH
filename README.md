@@ -13,10 +13,11 @@ Mobile is outside the current public distribution scope; Web Admin remains an
 evaluation/community surface rather than a hosted or mutating team service.
 
 > [!IMPORTANT]
-> **Release status:** `0.1.0-beta.12` is the current Public Beta candidate. Its
-> x64 MSIX (`1.1.12.0`) is the pending Microsoft Partner Center submission
-> candidate and is not yet certified, Store-signed, or published. No public installer
-> is available yet; unsigned CI bundles and local candidate files remain staging
+> **Release status:** `0.1.0-beta.18` is the current source-preview candidate. The
+> previously prepared x64 MSIX (`1.1.12.0`) remains an unsubmitted Microsoft
+> Partner Center candidate and is not certified, Store-signed, or published. The GitHub
+> prerelease provides reviewed source archives only; no public installer is
+> available yet, and unsigned CI bundles and local candidate files remain staging
 > evidence only. To use real SSH today, run the native Tauri Desktop app from
 > source; the browser Desktop preview uses demo data and cannot open a real
 > SSH session.
@@ -93,12 +94,12 @@ connection walkthrough, host-key safety, and the supported deployment paths.
 
 ## Deployment Paths
 
-| Surface      | Current boundary                                                                                                                         | Guide                                                |
-| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| Desktop      | Run from source for real SSH; the beta.11 x64 MSIX is under Partner Center analysis and is not a public download; unsigned CI bundles remain staging-only | [Desktop distribution](docs/desktop-distribution.md) |
-| Web Admin    | Static, read-only companion; live data requires a same-origin authenticated proxy                                                        | [Web Admin deployment](docs/web-admin-deployment.md) |
-| Sync Service | Self-hosted, single-process Public Beta service with a durable JSON ledger                                                               | [Sync self-hosting](docs/self-hosting-sync.md)       |
-| Mobile       | Preview shell only; no public SSH/SFTP execution                                                                                         | Source evaluation only                               |
+| Surface      | Current boundary                                                                                                                                 | Guide                                                |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------- |
+| Desktop      | Run from source for real SSH; the previously prepared x64 MSIX is unsubmitted and not a public download; unsigned CI bundles remain staging-only | [Desktop distribution](docs/desktop-distribution.md) |
+| Web Admin    | Static, read-only companion; live data requires a same-origin authenticated proxy                                                                | [Web Admin deployment](docs/web-admin-deployment.md) |
+| Sync Service | Self-hosted, single-process Public Beta service with a durable JSON ledger                                                                       | [Sync self-hosting](docs/self-hosting-sync.md)       |
+| Mobile       | Preview shell only; no public SSH/SFTP execution                                                                                                 | Source evaluation only                               |
 
 ## Workspaces
 

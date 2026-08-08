@@ -1,6 +1,6 @@
 # JoeSSH Public Beta Dogfood Script
 
-This script is the repeatable operator dogfood path for `0.1.0-beta.12`.
+This script is the repeatable operator dogfood path for `0.1.0-beta.18`.
 It is for internal dogfood and release-candidate evidence, not a substitute for
 signed Desktop formal release evidence.
 
@@ -9,6 +9,9 @@ runner records that the build is unsigned and keeps it out of public release
 artifacts. Public GitHub Release publishing still requires signed Windows
 artifacts, signed and notarized macOS artifacts, Linux package evidence,
 checksums, SBOM, provenance, and `release:publish-preflight`.
+Because `0.1.0-beta.18` is permanently source-only, those artifacts may be
+published only under a later distinct unused version; they must never be added
+to the beta.18 GitHub Release.
 
 For unsigned Desktop staging, record the handoff boundary before dogfood:
 

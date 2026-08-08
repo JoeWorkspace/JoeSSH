@@ -1,7 +1,7 @@
 # JoeSSH accessibility assessment status
 
 Last reviewed: 2026-08-08
-Applies to: JoeSSH `0.1.0-beta.12`
+Applies to: JoeSSH `0.1.0-beta.18`
 
 JoeSSH is designed to be usable by people with visual, hearing, motor, and
 cognitive disabilities. The project targets WCAG 2.2 Level AA for its web-based

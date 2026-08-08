@@ -186,6 +186,7 @@ function checkPackageScripts() {
     "qa:prod-audit",
     "qa:lighthouse",
     "test:lighthouse-audit",
+    "test:github-release-controls",
     "qa:lighthouse-audit",
     "test:public-beta-dogfood",
     "qa:public-beta-dogfood",
@@ -230,6 +231,7 @@ function checkPackageScripts() {
     "test:release-provenance",
     "test:release-rc-audit",
     "test:release-readiness",
+    "test:source-prerelease",
     "test:web-admin-bundle-token-scan",
     "test:mobile-public-env",
     "test:third-party-licenses",
@@ -241,6 +243,7 @@ function checkPackageScripts() {
     "qa:release-provenance",
     "qa:release-rc-audit",
     "qa:release-readiness",
+    "qa:source-prerelease",
     "qa:third-party-licenses",
     "qa:release-preparation:contracts",
     "qa:release-preparation",
@@ -260,6 +263,7 @@ function checkPackageScripts() {
     "release:desktop:draft",
     "release:desktop:unsigned-staging-report",
     "release:history-secret-scan",
+    "release:github-controls",
     "release:dogfood-template",
     "release:publish-preflight",
     "release:provenance",
@@ -269,6 +273,8 @@ function checkPackageScripts() {
     "release:verify-checksums",
     "release:sbom",
     "release:sbom:verify",
+    "release:source-prerelease",
+    "release:source-prerelease:verify",
     "release:third-party-licenses",
     "release:third-party-licenses:verify",
     "release:sync",
@@ -279,6 +285,25 @@ function checkPackageScripts() {
       `Root release script '${scriptName}' exists`,
     );
   }
+
+  passIf(
+    packageJson.scripts?.["test:source-prerelease"] ===
+      "node --test scripts/create-github-source-prerelease.test.mjs" &&
+      packageJson.scripts?.["qa:source-prerelease"] ===
+        "npm run test:source-prerelease" &&
+      packageJson.scripts?.["release:source-prerelease"] ===
+        "node scripts/create-github-source-prerelease.mjs" &&
+      packageJson.scripts?.["release:source-prerelease:verify"] ===
+        "node scripts/create-github-source-prerelease.mjs --verify-published",
+    "Root source prerelease scripts use the reviewed entry point and tests",
+  );
+  passIf(
+    packageJson.scripts?.["test:github-release-controls"] ===
+      "node --test scripts/check-github-release-controls.test.mjs" &&
+      packageJson.scripts?.["release:github-controls"] ===
+        "node scripts/check-github-release-controls.mjs",
+    "Root GitHub release-controls scripts use the reviewed read-only gate",
+  );
 
   const desktopChecksumsScript =
     packageJson.scripts?.["release:desktop:checksums"] ?? "";
@@ -460,6 +485,11 @@ function checkPackageScripts() {
 
   const rootQaScript = packageJson.scripts?.qa ?? "";
   passIf(
+    rootQaScript.includes("qa:source-prerelease"),
+    "Root QA runs source prerelease contract tests",
+    rootQaScript,
+  );
+  passIf(
     rootQaScript.includes("qa:desktop-release-diagnostics"),
     "Root QA runs Desktop formal evidence diagnostics tests",
     rootQaScript,
@@ -535,6 +565,7 @@ function checkCiPublicReleaseWiring() {
     "npm run qa:tauri",
     "npm run qa:mobile:native-preflight",
     "npm run qa:mobile-public-env",
+    "npm run qa:source-prerelease",
     "cargo install cargo-audit --version 0.22.2 --locked",
     "cargo audit --deny warnings",
     "npm run release:sbom",
@@ -673,6 +704,10 @@ function checkReleaseToolingFiles() {
     "scripts/lighthouse-audit.mjs",
     "scripts/create-github-release-draft.mjs",
     "scripts/create-github-release-draft.test.mjs",
+    "scripts/create-github-source-prerelease.mjs",
+    "scripts/create-github-source-prerelease.test.mjs",
+    "scripts/check-github-release-controls.mjs",
+    "scripts/check-github-release-controls.test.mjs",
     "scripts/smoke-web-admin-proxy.mjs",
     "scripts/smoke-web-admin-sync-release-topology.mjs",
     "scripts/smoke-sync-backup-restore.mjs",
@@ -971,6 +1006,10 @@ function checkReleaseToolingFiles() {
 
   const releaseDraft =
     readTextIfExists("scripts/create-github-release-draft.mjs") ?? "";
+  const sourcePrerelease =
+    readTextIfExists("scripts/create-github-source-prerelease.mjs") ?? "";
+  const sourcePrereleaseTests =
+    readTextIfExists("scripts/create-github-source-prerelease.test.mjs") ?? "";
   passIf(
     releaseDraft.includes(
       'collectFiles(resolve(root, "reports", "release"))',
@@ -979,6 +1018,37 @@ function checkReleaseToolingFiles() {
         'resolve(root, "apps", "desktop", "src-tauri", "target", "release", "bundle")',
       ),
     "GitHub Release draft uploads only staged reports/release artifacts",
+  );
+  passIf(
+    sourcePrerelease.includes("assertNoReleasePayloads") &&
+      sourcePrerelease.includes("collectNonDirectoryEntries") &&
+      sourcePrerelease.includes("must be an annotated Git tag") &&
+      sourcePrerelease.includes("resolveRemoteTagCommit") &&
+      sourcePrerelease.includes("uploaded assets must be an empty array") &&
+      sourcePrerelease.includes('mutateGithubRelease("POST"') &&
+      sourcePrerelease.includes('"PATCH"') &&
+      sourcePrerelease.includes("deleteGithubRelease(createdReleaseId)") &&
+      sourcePrerelease.includes("--verify-published") &&
+      sourcePrerelease.includes("prerelease: true") &&
+      sourcePrereleaseTests.includes(
+        "deletes the exact release when zero-asset verification fails",
+      ) &&
+      sourcePrereleaseTests.includes(
+        "deletes the exact release if protected main moves during publication",
+      ),
+    "Source prerelease entry point enforces annotated tags, zero assets, exact-ID cleanup, and published verification",
+  );
+  passIf(
+    sourcePrerelease.includes("githubReleaseControlsPath") &&
+      sourcePrerelease.includes("check-github-release-controls.mjs") &&
+      sourcePrerelease.includes("assertGithubReleaseControls();") &&
+      sourcePrerelease.includes("--confirm-billing-ready") &&
+      sourcePrerelease.includes("JOESSH_GITHUB_RELEASE_CONTROLS_GH_COMMAND") &&
+      sourcePrerelease.includes("JOESSH_GITHUB_RELEASE_CONTROLS_GH_ARGS") &&
+      sourcePrereleaseTests.includes(
+        "rejects publication without explicit billing confirmation",
+      ),
+    "Source prerelease mutation requires the read-only GitHub release-controls gate and explicit billing attestation",
   );
 
   const rcAudit = readTextIfExists("scripts/audit-public-beta-rc.mjs") ?? "";
@@ -1030,6 +1100,7 @@ function checkReleaseToolingFiles() {
   passIf(
     releasePublishPreflight.includes("verifyCanonicalReleaseCandidate") &&
       releaseDraft.includes("verifyCanonicalReleaseCandidate") &&
+      sourcePrerelease.includes("verifyCanonicalReleaseCandidate") &&
       releaseCandidateContract.includes("branches/${canonicalBranch}") &&
       releaseCandidateContract.includes("check-runs?") &&
       releaseCandidateContract.includes("Public Release Readiness") &&

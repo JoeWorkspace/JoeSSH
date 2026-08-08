@@ -246,19 +246,22 @@ equivalent hash-bound evidence.
 After installers and checksums are present, run:
 
 ```bash
-git tag -a v0.1.0-beta.12 -m "JoeSSH 0.1.0-beta.12"
+FULL_RELEASE_VERSION=0.1.0-beta.19 # example; replace with the reviewed unused version
+git tag -a "v${FULL_RELEASE_VERSION}" -m "JoeSSH ${FULL_RELEASE_VERSION}"
 npm run release:provenance
 npm run release:provenance:verify
 npm run release:publish-preflight
 npm run release:desktop:draft
 ```
 
+`0.1.0-beta.18` is a permanent zero-asset source prerelease and must never use
+this flow. Bump every version surface first and use a distinct unused version.
 The publish preflight verifies all Desktop/Web/Sync checksum manifests, Desktop
 signing/notarization evidence, SBOM coverage, release provenance, a healthy Git
 checkout, a clean working tree outside `reports/release/`, a release tag that
 points at `HEAD`, GitHub CLI availability/authentication, no existing GitHub
 Release for the same tag, and the GitHub Release draft dry-run. The draft
-command then requires `docs/release-notes/0.1.0-beta.12.md`, staged release artifacts under
+command then requires `docs/release-notes/<FULL_RELEASE_VERSION>.md`, staged release artifacts under
 `reports/release/`, fresh checksums, and complete desktop release evidence whose
 artifact sha256 values match the checksum manifest and actual files, with
 `release-evidence-SHA256SUMS.txt` binding the evidence JSON itself. Raw Tauri bundle outputs are inputs to
