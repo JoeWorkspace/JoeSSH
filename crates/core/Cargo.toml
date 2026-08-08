@@ -16,7 +16,7 @@ thiserror = "1"
 time = { version = "0.3", features = ["serde", "formatting"] }
 uuid = { version = "1", features = ["serde", "v4"] }
 tokio = { version = "1", features = ["net", "io-util", "rt", "sync", "macros", "time"] }
-russh = { version = "0.61", default-features = false, features = ["ring", "flate2"] }
+russh = { version = "0.62", default-features = false, features = ["ring", "flate2"] }
 russh-sftp = "2"
 
 [dev-dependencies]
