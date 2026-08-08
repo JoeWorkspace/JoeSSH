@@ -23,6 +23,7 @@ const releaseScriptNames = [
   "qa:prod-audit",
   "qa:lighthouse",
   "test:lighthouse-audit",
+  "test:github-release-controls",
   "qa:lighthouse-audit",
   "test:public-beta-dogfood",
   "qa:public-beta-dogfood",
@@ -67,6 +68,7 @@ const releaseScriptNames = [
   "test:release-provenance",
   "test:release-rc-audit",
   "test:release-readiness",
+  "test:source-prerelease",
   "test:web-admin-bundle-token-scan",
   "test:mobile-public-env",
   "test:third-party-licenses",
@@ -78,6 +80,7 @@ const releaseScriptNames = [
   "qa:release-provenance",
   "qa:release-rc-audit",
   "qa:release-readiness",
+  "qa:source-prerelease",
   "qa:third-party-licenses",
   "qa:release-preparation:contracts",
   "qa:release-preparation",
@@ -97,6 +100,7 @@ const releaseScriptNames = [
   "release:desktop:draft",
   "release:desktop:unsigned-staging-report",
   "release:history-secret-scan",
+  "release:github-controls",
   "release:dogfood-template",
   "release:publish-preflight",
   "release:provenance",
@@ -106,6 +110,8 @@ const releaseScriptNames = [
   "release:verify-checksums",
   "release:sbom",
   "release:sbom:verify",
+  "release:source-prerelease",
+  "release:source-prerelease:verify",
   "release:third-party-licenses",
   "release:third-party-licenses:verify",
   "release:sync",
@@ -138,7 +144,25 @@ function fixtureScriptValue(name, overrides = {}) {
     return "npm run test:desktop-unsigned-staging-report";
   }
   if (name === "qa") {
-    return "npm run lint && npm run qa:desktop-release-diagnostics && npm run qa:desktop-release-parity && npm run qa:lighthouse-audit && npm run qa:e2e:fresh";
+    return "npm run lint && npm run qa:desktop-release-diagnostics && npm run qa:desktop-release-parity && npm run qa:source-prerelease && npm run qa:lighthouse-audit && npm run qa:e2e:fresh";
+  }
+  if (name === "test:source-prerelease") {
+    return "node --test scripts/create-github-source-prerelease.test.mjs";
+  }
+  if (name === "test:github-release-controls") {
+    return "node --test scripts/check-github-release-controls.test.mjs";
+  }
+  if (name === "qa:source-prerelease") {
+    return "npm run test:source-prerelease";
+  }
+  if (name === "release:source-prerelease") {
+    return "node scripts/create-github-source-prerelease.mjs";
+  }
+  if (name === "release:source-prerelease:verify") {
+    return "node scripts/create-github-source-prerelease.mjs --verify-published";
+  }
+  if (name === "release:github-controls") {
+    return "node scripts/check-github-release-controls.mjs";
   }
   if (name === "qa:desktop:real-ssh-smoke:required") {
     return "node scripts/require-real-ssh-smoke-env.mjs && npm run qa:desktop:real-ssh-smoke";
@@ -432,6 +456,31 @@ function createFixture(t, overrides = {}) {
       'collectFiles(resolve(root, "reports", "release"))\nprovenanceVerificationArgs\nif (dryRun)\nprovenanceVerificationArgs.push("--skip-current-git-check")\nverifyCanonicalReleaseCandidate\nverify-third-party-licenses.mjs\n',
     "scripts/create-github-release-draft.test.mjs":
       "non-dry-run rejects release provenance from a different Git source\n",
+    "scripts/create-github-source-prerelease.mjs": `
+const githubReleaseControlsPath = resolve(import.meta.dirname, "check-github-release-controls.mjs");
+assertNoReleasePayloads();
+collectNonDirectoryEntries();
+must be an annotated Git tag;
+resolveRemoteTagCommit();
+uploaded assets must be an empty array;
+mutateGithubRelease("POST", endpoint, { prerelease: true });
+mutateGithubRelease(
+  "PATCH",
+  endpoint,
+  { prerelease: true },
+);
+deleteGithubRelease(createdReleaseId);
+--verify-published;
+verifyCanonicalReleaseCandidate();
+assertGithubReleaseControls();
+--confirm-billing-ready;
+JOESSH_GITHUB_RELEASE_CONTROLS_GH_COMMAND;
+JOESSH_GITHUB_RELEASE_CONTROLS_GH_ARGS;
+`,
+    "scripts/create-github-source-prerelease.test.mjs":
+      "deletes the exact release when zero-asset verification fails\ndeletes the exact release if protected main moves during publication\nrejects publication without explicit billing confirmation\n",
+    "scripts/check-github-release-controls.mjs": "",
+    "scripts/check-github-release-controls.test.mjs": "",
     "apps/desktop/src-tauri/capabilities/main.json": JSON.stringify({
       identifier: "main",
       local: true,
@@ -1141,6 +1190,24 @@ test("rejects release entry points without the shared protected-main candidate c
   );
 });
 
+test("rejects a source prerelease entry point that bypasses release controls", (t) => {
+  const root = createFixture(t);
+  const path = "scripts/create-github-source-prerelease.mjs";
+  const source = readFileSync(resolve(root, path), "utf8");
+  writeFile(
+    root,
+    path,
+    source.replaceAll("assertGithubReleaseControls();", "controlsBypassed();"),
+  );
+  const result = runChecker(root);
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stdout,
+    /FAIL Source prerelease mutation requires the read-only GitHub release-controls gate and explicit billing attestation/,
+  );
+});
+
 test("rejects artifact-only license verification in either publish entry point", async (t) => {
   for (const path of [
     "scripts/release-publish-preflight.mjs",
@@ -1364,6 +1431,27 @@ test("rejects root QA scripts that use non-fresh E2E", (t) => {
   assert.match(result.stdout, /FAIL Root QA avoids non-fresh E2E server reuse/);
 });
 
+test("rejects root QA without source prerelease contract tests", (t) => {
+  const scripts = Object.fromEntries(
+    releaseScriptNames.map((name) => [name, fixtureScriptValue(name)]),
+  );
+  scripts.qa = scripts.qa.replace("npm run qa:source-prerelease && ", "");
+  const result = runChecker(
+    createFixture(t, {
+      "package.json": JSON.stringify({
+        version: "0.1.0-beta.1",
+        scripts,
+      }),
+    }),
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stdout,
+    /FAIL Root QA runs source prerelease contract tests/,
+  );
+});
+
 test("rejects CI E2E jobs that use non-fresh E2E", (t) => {
   const result = runChecker(
     createFixture(t, {
@@ -1382,6 +1470,23 @@ test("rejects CI E2E jobs that use non-fresh E2E", (t) => {
   assert.match(
     result.stdout,
     /FAIL CI E2E job avoids non-fresh E2E server reuse/,
+  );
+});
+
+test("rejects CI without source prerelease tests in the required-check job", (t) => {
+  const result = runChecker(
+    createFixture(t, {
+      ".github/workflows/ci.yml": ciFixture().replace(
+        "      - run: npm run qa:source-prerelease\n",
+        "",
+      ),
+    }),
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stdout,
+    /FAIL CI public release gate runs 'npm run qa:source-prerelease'/,
   );
 });
 

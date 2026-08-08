@@ -7,9 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-> The changes below are staged for the `[0.1.0-beta.12]` release candidate.
-> They remain unreleased until the annotated tag points to the reviewed commit
-> and every external release gate is closed.
+## [0.1.0-beta.18] - 2026-08-09
+
+> Source-only GitHub prerelease. Public Desktop installers remain blocked on
+> external signing and notarization evidence.
 
 ### Added
 

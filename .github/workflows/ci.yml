@@ -549,6 +549,7 @@ jobs:
           toolchain: 1.96.0
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
       - run: npm ci
+      - run: npm run qa:source-prerelease
       - run: npm run qa:mobile:native-preflight
       - run: npm run qa:mobile-public-env
       - run: npm run release:sbom

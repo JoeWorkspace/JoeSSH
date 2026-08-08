@@ -20,11 +20,49 @@ git rev-parse --is-inside-work-tree
 git fsck --strict
 ```
 
-For `0.1.0-beta.12`, the first public release target remains Desktop, Web Admin,
-and the self-hosted Sync Service. Mobile device smoke stays a strict-release
-route, not a blocker for the first Public Beta.
+`0.1.0-beta.18` is permanently reserved for the source-only closeout described
+below. Do not attach binaries to that Release or reuse its tag for Web, Sync,
+Desktop, Mobile, or Store distribution. A future full public release must first
+bump every version surface and release-note path to a distinct, unused version
+after `0.1.0-beta.18`; its target remains Desktop, Web Admin, and the self-hosted
+Sync Service. Mobile device smoke stays a strict-release route.
+
+The maintenance closeout may be represented by a source-only GitHub prerelease
+before the full public artifact gate is available. That prerelease is limited to
+GitHub's automatically generated source archives: upload no `reports/release`
+files, unsigned installers, or locally built binaries. It must be marked as a
+prerelease, use an annotated tag on the exact protected `main` commit with passing
+required checks, and state that Desktop signing/notarization and Store approval
+remain incomplete. This narrow source record does not satisfy or weaken
+`release:publish-preflight`; any later binary release must still pass the complete
+artifact, signing, checksum, SBOM, provenance, and evidence workflow below.
+
+After the version-preparation pull request is merged and its required check is
+green, create and push only the single annotated source tag, remove every file
+under `reports/release/`, then use the dedicated fail-closed entry point:
+
+```bash
+REVIEWED_COMMIT="$(git rev-parse HEAD)"
+git tag -a v0.1.0-beta.18 -m "JoeSSH 0.1.0-beta.18 Source Preview"
+git push origin refs/tags/v0.1.0-beta.18:refs/tags/v0.1.0-beta.18
+npm run release:source-prerelease -- --confirm-billing-ready --dry-run
+npm run release:source-prerelease -- --confirm-billing-ready
+npm run release:source-prerelease:verify
+```
+
+The command creates a private draft first, verifies the exact tag, protected
+`main`, latest `Public Release Readiness` check, reviewed notes, and zero assets,
+and immediately runs the read-only GitHub release-controls gate with the
+operator's Billing attestation. It repeats that controls gate before making the
+draft public, then publishes it as a prerelease and verifies it again. A rejected
+draft is deleted by its exact numeric Release ID. This entry point never uploads
+a file and cannot publish a full binary release.
 
 ## Recovery Flow
+
+The artifact-building and full-draft steps in this section apply only to a
+future distinct `FULL_RELEASE_VERSION` after beta.18. They must not be used to
+modify the permanent beta.18 source-only Release.
 
 1. Create or locate a healthy clone of the canonical JoeSSH repository.
 2. In the damaged workspace, produce a reviewable patch bundle:
@@ -87,14 +125,17 @@ route, not a blocker for the first Public Beta.
    from an unpushed topic branch or from a local commit that has not passed the
    protected `main` controls.
 
-7. Tag only after source QA is green, release evidence is complete, and the
-   checks above are clean. Push the annotated tag explicitly, then resolve the
-   remote peeled tag and compare it with the reviewed commit:
+7. For a later full binary release, choose a distinct unused version after
+   `0.1.0-beta.18`. Tag only after source QA is green, release evidence is
+   complete, and the checks above are clean. Push that one annotated tag
+   explicitly, then resolve the remote peeled tag and compare it with the
+   reviewed commit:
 
    ```bash
-   RELEASE_TAG=v0.1.0-beta.12
+   FULL_RELEASE_VERSION=0.1.0-beta.19 # example; replace with the reviewed unused version
+   RELEASE_TAG="v${FULL_RELEASE_VERSION}"
    REVIEWED_COMMIT="$(git rev-parse HEAD)"
-   git tag -a v0.1.0-beta.12 -m "JoeSSH 0.1.0-beta.12"
+   git tag -a "${RELEASE_TAG}" -m "JoeSSH ${FULL_RELEASE_VERSION}"
    git push origin "refs/tags/${RELEASE_TAG}:refs/tags/${RELEASE_TAG}"
    REMOTE_TAG_COMMIT="$(
      git ls-remote origin "refs/tags/${RELEASE_TAG}^{}" |
@@ -137,8 +178,9 @@ Keep these outputs with the release handoff notes:
   the local OpenSSH dogfood fixture to supply `JOESSH_REAL_SSH_*` evidence.
 - `node scripts/check-public-release-readiness.mjs` result without
   `--allow-unhealthy-git`.
-- `gh --version`, `gh auth status`, and the `gh release view v0.1.0-beta.12`
-  not-found check from `npm run release:publish-preflight`.
+- `gh --version`, `gh auth status`, and the
+  `gh release view "${RELEASE_TAG}"` not-found check from
+  `npm run release:publish-preflight`.
 - The exact `origin/main` SHA, local annotated tag SHA, remote peeled tag SHA,
   and their equality check.
 - The passing read-only GitHub release-controls report, including the explicit
