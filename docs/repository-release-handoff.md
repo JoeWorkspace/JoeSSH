@@ -25,11 +25,11 @@ Its dry run failed before any GitHub Release was created. Keep that tag
 immutable: do not delete it, move it, create a GitHub Release for it, or reuse
 it.
 
-`0.1.0-beta.19` is permanently reserved for the source-only closeout described
+`0.1.0-beta.20` is permanently reserved for the source-only closeout described
 below. Do not attach binaries to that Release or reuse its tag for Web, Sync,
 Desktop, Mobile, or Store distribution. A future full public release must first
 bump every version surface and release-note path to a distinct, unused version
-after `0.1.0-beta.19`; its target remains Desktop, Web Admin, and the self-hosted
+after `0.1.0-beta.20`; its target remains Desktop, Web Admin, and the self-hosted
 Sync Service. Mobile device smoke stays a strict-release route.
 
 The maintenance closeout may be represented by a source-only GitHub prerelease
@@ -48,8 +48,8 @@ under `reports/release/`, then use the dedicated fail-closed entry point:
 
 ```bash
 REVIEWED_COMMIT="$(git rev-parse HEAD)"
-git tag -a v0.1.0-beta.19 -m "JoeSSH 0.1.0-beta.19 Source Preview"
-git push origin refs/tags/v0.1.0-beta.19:refs/tags/v0.1.0-beta.19
+git tag -a v0.1.0-beta.20 -m "JoeSSH 0.1.0-beta.20 Source Preview"
+git push origin refs/tags/v0.1.0-beta.20:refs/tags/v0.1.0-beta.20
 npm run release:source-prerelease -- --confirm-billing-ready --dry-run
 npm run release:source-prerelease -- --confirm-billing-ready
 npm run release:source-prerelease:verify
@@ -66,8 +66,8 @@ a file and cannot publish a full binary release.
 ## Recovery Flow
 
 The artifact-building and full-draft steps in this section apply only to a
-future distinct `FULL_RELEASE_VERSION` after beta.19. They must not be used to
-modify the permanent beta.19 source-only Release.
+future distinct `FULL_RELEASE_VERSION` after beta.20. They must not be used to
+modify the permanent beta.20 source-only Release.
 
 1. Create or locate a healthy clone of the canonical JoeSSH repository.
 2. In the damaged workspace, produce a reviewable patch bundle:
@@ -131,13 +131,13 @@ modify the permanent beta.19 source-only Release.
    protected `main` controls.
 
 7. For a later full binary release, choose a distinct unused version after
-   `0.1.0-beta.19`. Tag only after source QA is green, release evidence is
+   `0.1.0-beta.20`. Tag only after source QA is green, release evidence is
    complete, and the checks above are clean. Push that one annotated tag
    explicitly, then resolve the remote peeled tag and compare it with the
    reviewed commit:
 
    ```bash
-   FULL_RELEASE_VERSION=0.1.0-beta.20 # example; replace with the reviewed unused version
+   FULL_RELEASE_VERSION="<DISTINCT_UNUSED_VERSION_AFTER_BETA_20>" # replace before running
    RELEASE_TAG="v${FULL_RELEASE_VERSION}"
    REVIEWED_COMMIT="$(git rev-parse HEAD)"
    git tag -a "${RELEASE_TAG}" -m "JoeSSH ${FULL_RELEASE_VERSION}"

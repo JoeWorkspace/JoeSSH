@@ -13,7 +13,7 @@ Mobile is outside the current public distribution scope; Web Admin remains an
 evaluation/community surface rather than a hosted or mutating team service.
 
 > [!IMPORTANT]
-> **Release status:** `0.1.0-beta.19` is the current source-preview candidate. The
+> **Release status:** `0.1.0-beta.20` is the current source-preview candidate. The
 > previously prepared x64 MSIX (`1.1.12.0`) remains an unsubmitted Microsoft
 > Partner Center candidate and is not certified, Store-signed, or published. The GitHub
 > prerelease provides reviewed source archives only; no public installer is

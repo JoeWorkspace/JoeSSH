@@ -191,6 +191,7 @@ test("paid mode cannot pass on policy wording alone", (t) => {
   const result = run(createFixture(t, completed), "paid");
   assert.equal(result.status, 1);
   assert.match(result.stdout, /paid:live-flow-confirmed/);
+  assert.match(result.stdout, /paid:eu-accessibility-assessed/);
   assert.match(result.stdout, /store:public-links-confirmed/);
 });
 
@@ -225,11 +226,35 @@ test("paid mode passes only with bound public facts and live-flow attestations",
     checkoutUrl,
     "--customer-portal-url",
     customerPortalUrl,
+    "--eu-market-scope",
+    "not-offered",
+    "--confirm-eu-accessibility-assessed",
     "--confirm-public-links",
     "--confirm-live-commerce",
   ]);
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.equal(JSON.parse(result.stdout).decision, "pass");
+});
+
+test("paid mode rejects an unclassified EU accessibility boundary", (t) => {
+  const result = run(createFixture(t), "paid", [
+    "--eu-market-scope",
+    "unknown",
+    "--confirm-eu-accessibility-assessed",
+  ]);
+
+  assert.equal(result.status, 1);
+  const report = JSON.parse(result.stdout);
+  assert.ok(
+    report.checks.some(
+      (check) => check.id === "paid:eu-market-scope" && !check.ok,
+    ),
+  );
+  assert.ok(
+    report.checks.some(
+      (check) => check.id === "paid:eu-accessibility-assessed" && !check.ok,
+    ),
+  );
 });
 
 test("store mode binds the public seller to the protected Windows legal publisher", (t) => {

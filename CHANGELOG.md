@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-beta.20] - 2026-08-09
+
+> Final source-only GitHub prerelease for the current maintenance closeout.
+> Public Desktop installers remain blocked on external signing and notarization
+> evidence.
+
+### Fixed
+
+- Made the horizontally scrollable Desktop inspector keyboard-focusable at the
+  supported 900 × 480 minimum viewport.
+- Changed Desktop and Web Admin Axe gates to reject every tested WCAG A/AA
+  violation instead of filtering by severity, and locked the minimum viewport
+  into the accessibility-readiness contract.
+- Removed the Web build's extensionless config import before Vite switches its
+  native config loader to the future default.
+
+### Added
+
+- Recorded a bounded agent-assisted accessibility review with explicit
+  screen-reader, physical-device, and representative-user limitations.
+- Made future paid releases fail closed until EU consumer-market and EAA/local
+  accessibility applicability are explicitly reassessed.
+
 ## [0.1.0-beta.19] - 2026-08-09
 
 > Source-only GitHub prerelease. Public Desktop installers remain blocked on

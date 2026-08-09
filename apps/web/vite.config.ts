@@ -2,7 +2,7 @@ import react from '@vitejs/plugin-react';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 
-import { applyWebContentSecurityPolicy, applyPermissionsPolicy } from './src/csp';
+import { applyWebContentSecurityPolicy, applyPermissionsPolicy } from './src/csp.ts';
 
 export default defineConfig({
   plugins: [

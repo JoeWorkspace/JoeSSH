@@ -276,7 +276,12 @@ export const InspectorPanel = memo(function InspectorPanel({
   t: Translator;
 }) {
   return (
-    <div className="stack">
+    <div
+      aria-label={t("desktop.context")}
+      className="stack"
+      role="region"
+      tabIndex={0}
+    >
       <Panel className="context-card">
         <header>
           <span>{activeConnection.name}</span>

@@ -9,6 +9,15 @@ checkout, and production telemetry require the complete commercial checklist.
 Neither lane blocks a free Community source release with comments-only funding,
 but Community release notes must not advertise unavailable paid benefits.
 
+Before any paid launch, classify EU distribution with `--eu-market-scope` as
+`not-offered`, `business-only`, `consumer-microenterprise-exempt`, or
+`consumer-in-scope`, and run the paid gate with
+`--confirm-eu-accessibility-assessed`. This is a fail-closed reassessment trigger,
+not an EAA exemption or conformance claim. A consumer-facing checkout can itself
+be an EAA-covered e-commerce service even when the standalone SSH application is
+not a listed EAA product. Verify the applicable Member State law, the actual
+buyer population, and any microenterprise basis before choosing the value.
+
 ## Identity And Contact
 
 - [ ] The seller's truthful legal name and business form are published where
