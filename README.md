@@ -13,14 +13,14 @@ Mobile is outside the current public distribution scope; Web Admin remains an
 evaluation/community surface rather than a hosted or mutating team service.
 
 > [!IMPORTANT]
-> **Release status:** `0.1.0-beta.20` is the current source-preview candidate. The
-> previously prepared x64 MSIX (`1.1.12.0`) remains an unsubmitted Microsoft
-> Partner Center candidate and is not certified, Store-signed, or published. The GitHub
-> prerelease provides reviewed source archives only; no public installer is
-> available yet, and unsigned CI bundles and local candidate files remain staging
-> evidence only. To use real SSH today, run the native Tauri Desktop app from
-> source; the browser Desktop preview uses demo data and cannot open a real
-> SSH session.
+> **Release status:** `0.1.0-beta.20` remains the permanent source-only GitHub
+> prerelease. The protected main branch now prepares the distinct
+> `0.1.0-beta.21` Microsoft Store replacement candidate, mapped to MSIX
+> `1.1.21.0`. Partner Center submission 3 contains the older `1.1.12.0` package
+> and must not be treated as evidence for beta.21. No beta.21 package is
+> certified, Store-signed, or published until Microsoft completes certification.
+> To use real SSH before then, run the native Tauri Desktop app from source; the
+> browser Desktop preview uses demo data and cannot open a real SSH session.
 
 ## Support The Maintainer
 

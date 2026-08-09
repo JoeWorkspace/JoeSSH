@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-beta.21] - 2026-08-09
+
+> Microsoft Store replacement candidate. The GitHub `0.1.0-beta.20`
+> prerelease remains permanently source-only and unchanged.
+
+### Changed
+
+- Advanced every runtime and package version surface to a distinct Store
+  candidate that maps to MSIX version `1.1.21.0`.
+- Aligned Mobile Vitest and coverage tooling at `4.1.9` so a clean npm install
+  no longer resolves an invalid mixed test-runner pair.
+- Require the Store handoff to bind the final protected-main source revision,
+  exact Partner Center package identity, and generated MSIX hash instead of
+  reusing the older `1.1.12.0` submission as evidence for current code.
+
+### Security
+
+- Preserved the automated accessibility fixes and the explicit no-formal-
+  conformance boundary; no paid service, EAA conformance, or manual device
+  review claim is introduced by this candidate.
+
 ## [0.1.0-beta.20] - 2026-08-09
 
 > Final source-only GitHub prerelease for the current maintenance closeout.

@@ -1,7 +1,8 @@
 # JoeSSH accessibility assessment status
 
 Last reviewed: 2026-08-09
-Applies to: JoeSSH `0.1.0-beta.20`
+Applies to: JoeSSH `0.1.0-beta.20` and the code-equivalent
+`0.1.0-beta.21` Store candidate
 
 JoeSSH is designed to be usable by people with visual, hearing, motor, and
 cognitive disabilities. The project targets WCAG 2.2 Level AA for its web-based

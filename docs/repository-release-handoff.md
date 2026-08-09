@@ -27,10 +27,14 @@ it.
 
 `0.1.0-beta.20` is permanently reserved for the source-only closeout described
 below. Do not attach binaries to that Release or reuse its tag for Web, Sync,
-Desktop, Mobile, or Store distribution. A future full public release must first
-bump every version surface and release-note path to a distinct, unused version
-after `0.1.0-beta.20`; its target remains Desktop, Web Admin, and the self-hosted
-Sync Service. Mobile device smoke stays a strict-release route.
+Desktop, Mobile, or Store distribution. `0.1.0-beta.21`
+(`v0.1.0-beta.21`) is the next distinct source revision and is reserved for the
+Microsoft Store x64 candidate; its
+GitHub Release also remains zero-upload-asset and the Store package is delivered
+only through Partner Center. A future full multi-platform public release must
+first bump every version surface and release-note path to a distinct, unused
+version after `0.1.0-beta.21`; its target remains Desktop, Web Admin, and the
+self-hosted Sync Service. Mobile device smoke stays a strict-release route.
 
 The maintenance closeout may be represented by a source-only GitHub prerelease
 before the full public artifact gate is available. That prerelease is limited to
@@ -42,14 +46,16 @@ remain incomplete. This narrow source record does not satisfy or weaken
 `release:publish-preflight`; any later binary release must still pass the complete
 artifact, signing, checksum, SBOM, provenance, and evidence workflow below.
 
-After the version-preparation pull request is merged and its required check is
-green, create and push only the single annotated source tag, remove every file
-under `reports/release/`, then use the dedicated fail-closed entry point:
+After the beta.21 version-preparation pull request is merged and its required
+check is green, create and push only its single annotated source tag, remove
+every file under `reports/release/`, then use the dedicated fail-closed entry
+point. This GitHub record remains zero-asset even though the same source revision
+is used for the separately submitted Store package:
 
 ```bash
 REVIEWED_COMMIT="$(git rev-parse HEAD)"
-git tag -a v0.1.0-beta.20 -m "JoeSSH 0.1.0-beta.20 Source Preview"
-git push origin refs/tags/v0.1.0-beta.20:refs/tags/v0.1.0-beta.20
+git tag -a v0.1.0-beta.21 -m "JoeSSH 0.1.0-beta.21 Source Preview and Store Candidate"
+git push origin refs/tags/v0.1.0-beta.21:refs/tags/v0.1.0-beta.21
 npm run release:source-prerelease -- --confirm-billing-ready --dry-run
 npm run release:source-prerelease -- --confirm-billing-ready
 npm run release:source-prerelease:verify
@@ -66,8 +72,9 @@ a file and cannot publish a full binary release.
 ## Recovery Flow
 
 The artifact-building and full-draft steps in this section apply only to a
-future distinct `FULL_RELEASE_VERSION` after beta.20. They must not be used to
-modify the permanent beta.20 source-only Release.
+future distinct `FULL_RELEASE_VERSION` after beta.21. They must not be used to
+modify the permanent beta.20 source-only Release, attach assets to beta.21, or
+replace beta.21's Partner Center-only binary route.
 
 1. Create or locate a healthy clone of the canonical JoeSSH repository.
 2. In the damaged workspace, produce a reviewable patch bundle:
@@ -131,13 +138,13 @@ modify the permanent beta.20 source-only Release.
    protected `main` controls.
 
 7. For a later full binary release, choose a distinct unused version after
-   `0.1.0-beta.20`. Tag only after source QA is green, release evidence is
+   `0.1.0-beta.21`. Tag only after source QA is green, release evidence is
    complete, and the checks above are clean. Push that one annotated tag
    explicitly, then resolve the remote peeled tag and compare it with the
    reviewed commit:
 
    ```bash
-   FULL_RELEASE_VERSION="<DISTINCT_UNUSED_VERSION_AFTER_BETA_20>" # replace before running
+   FULL_RELEASE_VERSION="<DISTINCT_UNUSED_VERSION_AFTER_BETA_21>" # replace before running
    RELEASE_TAG="v${FULL_RELEASE_VERSION}"
    REVIEWED_COMMIT="$(git rev-parse HEAD)"
    git tag -a "${RELEASE_TAG}" -m "JoeSSH ${FULL_RELEASE_VERSION}"

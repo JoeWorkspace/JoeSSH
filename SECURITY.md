@@ -4,6 +4,7 @@
 
 | Version       | Supported          |
 | ------------- | ------------------ |
+| 0.1.0-beta.21 | Store candidate    |
 | 0.1.0-beta.20 | Source prerelease  |
 | 0.1.x         | :white_check_mark: |
 
