@@ -28,6 +28,7 @@ const messages: Partial<Record<TranslationKey, string>> = {
   "desktop.plannedUnavailable": "Planned; not currently available",
   "desktop.businessLayer": "Business Layer",
   "desktop.close": "Close",
+  "desktop.context": "Context",
   "desktop.contextDelete": "Delete",
   "desktop.devicePosture": "Device posture",
   "desktop.download": "Download",
@@ -264,6 +265,9 @@ describe("extracted desktop panels", () => {
   it("renders the inspector content without an artificial loading delay", () => {
     const html = renderToStaticMarkup(renderInspectorPanel());
 
+    expect(html).toContain('aria-label="Context"');
+    expect(html).toContain('role="region"');
+    expect(html).toContain('tabindex="0"');
     expect(html).toContain("prod-edge-01");
     expect(html).toContain("10.48.12.11");
     expect(html).not.toContain("skeleton--card");

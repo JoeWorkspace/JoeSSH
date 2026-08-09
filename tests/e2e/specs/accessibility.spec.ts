@@ -15,32 +15,39 @@ function accessibilityAudit(page: Page) {
   });
 }
 
+async function expectNoAccessibilityViolations(page: Page) {
+  const results = await accessibilityAudit(page).analyze();
+
+  if (results.violations.length > 0) {
+    for (const violation of results.violations) {
+      console.error(`[${violation.impact ?? 'unknown'}] ${violation.id}: ${violation.description}`);
+      console.error(`  Help: ${violation.helpUrl}`);
+      for (const node of violation.nodes.slice(0, 3)) {
+        console.error(`  Target: ${node.target.join(', ')}`);
+      }
+    }
+  }
+
+  expect(results.violations).toEqual([]);
+}
+
 test.describe('JoeSSH accessibility audit', () => {
-  test('desktop workbench has no critical or serious a11y violations', async ({ page }) => {
+  test('desktop workbench has no WCAG A or AA a11y violations', async ({ page }) => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    const results = await accessibilityAudit(page).analyze();
-
-    const violations = results.violations.filter(
-      (v) => v.id === 'target-size' || v.impact === 'critical' || v.impact === 'serious',
-    );
-
-    // Log violations for debugging
-    if (violations.length > 0) {
-      for (const v of violations) {
-        console.error(`[${v.impact}] ${v.id}: ${v.description}`);
-        console.error(`  Help: ${v.helpUrl}`);
-        for (const node of v.nodes.slice(0, 3)) {
-          console.error(`  Target: ${node.target.join(', ')}`);
-        }
-      }
-    }
-
-    expect(violations).toEqual([]);
+    await expectNoAccessibilityViolations(page);
   });
 
-  test('light theme has no critical or serious a11y violations', async ({ page }) => {
+  test('minimum release viewport has no WCAG A or AA a11y violations', async ({ page }) => {
+    await page.setViewportSize({ height: 480, width: 900 });
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    await expectNoAccessibilityViolations(page);
+  });
+
+  test('light theme has no WCAG A or AA a11y violations', async ({ page }) => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
@@ -51,26 +58,10 @@ test.describe('JoeSSH accessibility audit', () => {
       await page.waitForTimeout(300);
     }
 
-    const results = await accessibilityAudit(page).analyze();
-
-    const violations = results.violations.filter(
-      (v) => v.id === 'target-size' || v.impact === 'critical' || v.impact === 'serious',
-    );
-
-    if (violations.length > 0) {
-      for (const v of violations) {
-        console.error(`[${v.impact}] ${v.id}: ${v.description}`);
-        console.error(`  Help: ${v.helpUrl}`);
-        for (const node of v.nodes.slice(0, 3)) {
-          console.error(`  Target: ${node.target.join(', ')}`);
-        }
-      }
-    }
-
-    expect(violations).toEqual([]);
+    await expectNoAccessibilityViolations(page);
   });
 
-  test('command palette has no critical or serious a11y violations', async ({ page }) => {
+  test('command palette has no WCAG A or AA a11y violations', async ({ page }) => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
@@ -78,101 +69,37 @@ test.describe('JoeSSH accessibility audit', () => {
     await page.keyboard.press('Control+k');
     await page.waitForTimeout(300);
 
-    const results = await accessibilityAudit(page).analyze();
-
-    const violations = results.violations.filter(
-      (v) => v.id === 'target-size' || v.impact === 'critical' || v.impact === 'serious',
-    );
-
-    if (violations.length > 0) {
-      for (const v of violations) {
-        console.error(`[${v.impact}] ${v.id}: ${v.description}`);
-        console.error(`  Help: ${v.helpUrl}`);
-        for (const node of v.nodes.slice(0, 3)) {
-          console.error(`  Target: ${node.target.join(', ')}`);
-        }
-      }
-    }
-
-    expect(violations).toEqual([]);
+    await expectNoAccessibilityViolations(page);
   });
 
-  test('SFTP panel has no critical or serious a11y violations', async ({ page }) => {
+  test('SFTP panel has no WCAG A or AA a11y violations', async ({ page }) => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
     await page.getByRole('tab', { name: /SFTP|文件|文件传输/ }).click();
     await page.waitForTimeout(300);
 
-    const results = await accessibilityAudit(page).analyze();
-
-    const violations = results.violations.filter(
-      (v) => v.id === 'target-size' || v.impact === 'critical' || v.impact === 'serious',
-    );
-
-    if (violations.length > 0) {
-      for (const v of violations) {
-        console.error(`[${v.impact}] ${v.id}: ${v.description}`);
-        console.error(`  Help: ${v.helpUrl}`);
-        for (const node of v.nodes.slice(0, 3)) {
-          console.error(`  Target: ${node.target.join(', ')}`);
-        }
-      }
-    }
-
-    expect(violations).toEqual([]);
+    await expectNoAccessibilityViolations(page);
   });
 
-  test('settings panel has no critical or serious a11y violations', async ({ page }) => {
+  test('settings panel has no WCAG A or AA a11y violations', async ({ page }) => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
     await page.getByRole('tab', { name: /Settings|设置/ }).click();
     await page.waitForTimeout(300);
 
-    const results = await accessibilityAudit(page).analyze();
-
-    const violations = results.violations.filter(
-      (v) => v.id === 'target-size' || v.impact === 'critical' || v.impact === 'serious',
-    );
-
-    if (violations.length > 0) {
-      for (const v of violations) {
-        console.error(`[${v.impact}] ${v.id}: ${v.description}`);
-        console.error(`  Help: ${v.helpUrl}`);
-        for (const node of v.nodes.slice(0, 3)) {
-          console.error(`  Target: ${node.target.join(', ')}`);
-        }
-      }
-    }
-
-    expect(violations).toEqual([]);
+    await expectNoAccessibilityViolations(page);
   });
 
-  test('team access panel has no critical or serious a11y violations', async ({ page }) => {
+  test('team access panel has no WCAG A or AA a11y violations', async ({ page }) => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
     await page.getByRole('tab', { name: /Team|团队/ }).click();
     await page.waitForTimeout(300);
 
-    const results = await accessibilityAudit(page).analyze();
-
-    const violations = results.violations.filter(
-      (v) => v.id === 'target-size' || v.impact === 'critical' || v.impact === 'serious',
-    );
-
-    if (violations.length > 0) {
-      for (const v of violations) {
-        console.error(`[${v.impact}] ${v.id}: ${v.description}`);
-        console.error(`  Help: ${v.helpUrl}`);
-        for (const node of v.nodes.slice(0, 3)) {
-          console.error(`  Target: ${node.target.join(', ')}`);
-        }
-      }
-    }
-
-    expect(violations).toEqual([]);
+    await expectNoAccessibilityViolations(page);
   });
 
   test('keyboard focus remains unobscured in scroll containers', async ({ page }) => {

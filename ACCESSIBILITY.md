@@ -1,7 +1,7 @@
 # JoeSSH accessibility assessment status
 
-Last reviewed: 2026-08-08
-Applies to: JoeSSH `0.1.0-beta.19`
+Last reviewed: 2026-08-09
+Applies to: JoeSSH `0.1.0-beta.20`
 
 JoeSSH is designed to be usable by people with visual, hearing, motor, and
 cognitive disabilities. The project targets WCAG 2.2 Level AA for its web-based
@@ -18,6 +18,11 @@ product paths described below, but JoeSSH does not currently make a formal
 conformance claim for WCAG 2.2, EN 301 549, or the European Accessibility Act.
 A criteria-by-criteria assessment and broader assistive-technology and
 native-device validation remain incomplete.
+
+The latest bounded review is recorded in
+[docs/accessibility-technical-review-2026-08-09.md](docs/accessibility-technical-review-2026-08-09.md).
+It is agent-assisted technical evidence, not a substitute for screen-reader or
+representative-user testing.
 
 The current assessment scope includes:
 
@@ -105,6 +110,12 @@ If JoeSSH is supplied as part of a service that falls within Directive (EU)
 2019/882, the service provider remains responsible for its deployment-specific
 assessment, accessible support channel, documentation retention, and any notice
 to the competent national authority.
+
+The current free source preview does not activate a consumer checkout. Before a
+future paid launch, the commercial release gate requires an explicit assessment
+of EU consumer-market scope, including whether an e-commerce service is being
+offered and whether any claimed microenterprise or business-only boundary is
+actually available under the applicable national law.
 
 ## Standards references
 

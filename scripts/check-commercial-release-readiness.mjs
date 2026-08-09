@@ -416,6 +416,31 @@ function checkStoreOperatorEvidence() {
 
 function checkPaidOperatorEvidence() {
   checkStoreOperatorEvidence();
+  const acceptedEuMarketScopes = [
+    "not-offered",
+    "business-only",
+    "consumer-microenterprise-exempt",
+    "consumer-in-scope",
+  ];
+  const euMarketScopeAccepted = acceptedEuMarketScopes.includes(
+    options.euMarketScope,
+  );
+  addCheck(
+    "paid:eu-market-scope",
+    euMarketScopeAccepted,
+    "EU paid distribution scope is explicitly classified",
+    euMarketScopeAccepted
+      ? options.euMarketScope
+      : `Choose exactly one of: ${acceptedEuMarketScopes.join(", ")}.`,
+  );
+  addCheck(
+    "paid:eu-accessibility-assessed",
+    euMarketScopeAccepted && options.confirmEuAccessibilityAssessed,
+    "EAA and applicable national accessibility scope were reassessed before paid launch",
+    euMarketScopeAccepted && options.confirmEuAccessibilityAssessed
+      ? "Operator assessment supplied."
+      : "Classify the EU market scope and confirm the documented assessment; do not infer an exemption from price or company size alone.",
+  );
   checkRealValue(
     "paid:merchant-of-record",
     options.merchantOfRecord,
@@ -692,6 +717,7 @@ function parseArgs(args) {
   const valueOptions = new Map([
     ["--checkout-url", "checkoutUrl"],
     ["--customer-portal-url", "customerPortalUrl"],
+    ["--eu-market-scope", "euMarketScope"],
     ["--funding-url", "fundingUrl"],
     ["--governing-law", "governingLaw"],
     ["--merchant-of-record", "merchantOfRecord"],
@@ -703,6 +729,7 @@ function parseArgs(args) {
   const values = {
     checkoutUrl: process.env.JOESSH_CHECKOUT_URL ?? "",
     customerPortalUrl: process.env.JOESSH_CUSTOMER_PORTAL_URL ?? "",
+    euMarketScope: process.env.JOESSH_EU_MARKET_SCOPE ?? "",
     fundingUrl: process.env.JOESSH_FUNDING_URL ?? "",
     governingLaw: process.env.JOESSH_GOVERNING_LAW ?? "",
     merchantOfRecord: process.env.JOESSH_MERCHANT_OF_RECORD ?? "",
@@ -712,6 +739,7 @@ function parseArgs(args) {
     windowsLegalPublisher: process.env.ATLASTERM_WINDOWS_LEGAL_PUBLISHER ?? "",
   };
   let confirmFundingVerified = false;
+  let confirmEuAccessibilityAssessed = false;
   let confirmLiveCommerce = false;
   let confirmPublicLinks = false;
   let json = false;
@@ -725,6 +753,10 @@ function parseArgs(args) {
     }
     if (arg === "--confirm-funding-verified") {
       confirmFundingVerified = true;
+      continue;
+    }
+    if (arg === "--confirm-eu-accessibility-assessed") {
+      confirmEuAccessibilityAssessed = true;
       continue;
     }
     if (arg === "--confirm-live-commerce") {
@@ -768,6 +800,7 @@ function parseArgs(args) {
     failArgument("--mode must be community, paid, or store.");
   }
   return {
+    confirmEuAccessibilityAssessed,
     confirmFundingVerified,
     confirmLiveCommerce,
     confirmPublicLinks,

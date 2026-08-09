@@ -249,10 +249,10 @@
 - Public Beta release candidates pass `npm run qa:release:public`, which adds Rust workspace gates, required Desktop real SSH smoke fixture validation, Tauri shell build check, high-severity audit, documented accepted moderate risk validation, Web Admin Lighthouse (`npm run qa:lighthouse`) with run warnings treated as release failures, Web Admin bundle token scanning, self-hosted Sync smoke, visual QA, and release metadata checks. Missing `JOESSH_REAL_SSH_*` fixture variables are a No-Go, not a skipped dogfood pass. Windows release machines may run `npm run qa:release:public:fixture` to start the local OpenSSH dogfood fixture, write Desktop real SSH smoke evidence, and then run the full public gate under that fixture environment.
 - Public Beta release candidates include the real Web Admin + Sync browser smoke with `npm run qa:e2e:web-real-sync:fresh` before visual QA.
 - CI must keep the public release gate wired: source prerelease contract tests, artifact checksum tests, desktop release packaging tests, desktop release evidence tests, Desktop real SSH smoke with `JOESSH_REAL_SSH_SMOKE=1`, Sync release package hygiene tests, Web Admin release package tests, Web Admin bundle token scan tests, SBOM verifier tests, release provenance tests, Lighthouse audit fail-closed tests, release draft dry-run fixture tests, publish preflight fixture tests, fresh visual QA, production audit with the dependency risk register, Tauri shell build, mobile native preflight, self-hosted Sync smoke, and `check-public-release-readiness` all run from GitHub Actions.
-- `0.1.0-beta.19` is permanently a zero-upload-asset source prerelease. The
+- `0.1.0-beta.20` is permanently a zero-upload-asset source prerelease. The
   binary package checks below are internal validation only for that source tree;
   public binary publication requires a distinct unused `FULL_RELEASE_VERSION`
-  after beta.19 and a fresh pass through the complete artifact gate.
+  after beta.20 and a fresh pass through the complete artifact gate.
 - Release machines must run `npm run release:publish-preflight` after Desktop,
   Web Admin, Sync, and SBOM artifacts are generated; this command verifies the
   healthy Git checkout, clean working tree outside `reports/release/`, release

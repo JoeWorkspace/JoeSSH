@@ -10,7 +10,7 @@ const contracts = [
   {
     path: "ACCESSIBILITY.md",
     required: [
-      "Last reviewed: 2026-08-08",
+      "Last reviewed: 2026-08-09",
       "WCAG 2.2 Level AA",
       "EN 301 549 V3.2.1",
       "Directive (EU) 2019/882",
@@ -25,11 +25,25 @@ const contracts = [
       "NVDA",
       "VoiceOver",
       "TalkBack",
+      "docs/accessibility-technical-review-2026-08-09.md",
     ],
     forbidden: [
       "## Conformance status",
       "partially conformant",
       "fully conformant",
+    ],
+  },
+  {
+    path: "docs/accessibility-technical-review-2026-08-09.md",
+    required: [
+      "JoeSSH 0.1.0-beta.20 agent-assisted accessibility review",
+      "900 × 480",
+      "49 visible interactive controls",
+      "All Axe violations",
+      "NVDA",
+      "VoiceOver",
+      "TalkBack",
+      "no formal conformance claim",
     ],
   },
   {
@@ -79,13 +93,30 @@ const contracts = [
     required: [
       "wcag22aa",
       "target-size",
-      "v.id === 'target-size'",
+      "expect(results.violations).toEqual([])",
+      "minimum release viewport has no WCAG A or AA a11y violations",
+      "height: 480, width: 900",
       "focus remains unobscured",
+    ],
+    forbidden: [
+      "results.violations.filter(",
+      "impact === 'critical'",
+      "impact === 'serious'",
     ],
   },
   {
     path: "tests/e2e/specs/web-admin.spec.ts",
-    required: ["wcag22aa", "target-size", "violation.id === 'target-size'"],
+    required: [
+      "wcag22aa",
+      "target-size",
+      "const violations = results.violations",
+      "has no WCAG A or AA a11y violations in dashboard and auth states",
+    ],
+    forbidden: [
+      "results.violations.filter(",
+      "impact === 'critical'",
+      "impact === 'serious'",
+    ],
   },
   {
     path: "apps/web/src/styles.css",

@@ -30,6 +30,7 @@ const messages: Partial<Record<TranslationKey, string>> = {
   "desktop.connectionsOnline": "Online",
   "desktop.connectionStatusOnline": "Online",
   "desktop.close": "Close",
+  "desktop.context": "Context",
   "desktop.groupProduction": "Production group",
   "desktop.runbook": "Runbook",
   "desktop.attached": "Attached",

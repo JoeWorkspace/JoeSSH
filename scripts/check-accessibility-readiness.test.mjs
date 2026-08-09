@@ -27,6 +27,7 @@ const contractPaths = [
   "apps/desktop/src/styles.css",
   "docs/qa-checklist.md",
   "docs/release-checklist.md",
+  "docs/accessibility-technical-review-2026-08-09.md",
   "package.json",
   "tests/e2e/specs/accessibility.spec.ts",
   "tests/e2e/specs/web-admin.spec.ts",
@@ -93,7 +94,7 @@ test("rejects an unqualified WCAG AA claim in humans.txt", (t) => {
   );
 });
 
-test("rejects impact-only filtering that can omit target-size violations", (t) => {
+test("rejects severity filtering that can omit WCAG-tagged violations", (t) => {
   const fixtureRoot = createFixture(t);
   const desktopAuditPath = join(
     fixtureRoot,
@@ -102,17 +103,17 @@ test("rejects impact-only filtering that can omit target-size violations", (t) =
   const webAuditPath = join(fixtureRoot, "tests/e2e/specs/web-admin.spec.ts");
   writeFileSync(
     desktopAuditPath,
-    readFileSync(desktopAuditPath, "utf8").replaceAll(
-      "v.id === 'target-size'",
-      "false",
+    readFileSync(desktopAuditPath, "utf8").replace(
+      "expect(results.violations).toEqual([]);",
+      "expect(results.violations.filter((violation) => violation.impact === 'serious')).toEqual([]);",
     ),
     "utf8",
   );
   writeFileSync(
     webAuditPath,
-    readFileSync(webAuditPath, "utf8").replaceAll(
-      "violation.id === 'target-size'",
-      "false",
+    readFileSync(webAuditPath, "utf8").replace(
+      "const violations = results.violations;",
+      "const violations = results.violations.filter((violation) => violation.impact === 'critical');",
     ),
     "utf8",
   );
@@ -121,11 +122,34 @@ test("rejects impact-only filtering that can omit target-size violations", (t) =
   assert.notEqual(result.status, 0);
   assert.match(
     result.stdout,
-    /FAIL tests\/e2e\/specs\/accessibility\.spec\.ts includes 'v\.id === 'target-size''/,
+    /FAIL tests\/e2e\/specs\/accessibility\.spec\.ts avoids 'results\.violations\.filter\('/,
   );
   assert.match(
     result.stdout,
-    /FAIL tests\/e2e\/specs\/web-admin\.spec\.ts includes 'violation\.id === 'target-size''/,
+    /FAIL tests\/e2e\/specs\/web-admin\.spec\.ts avoids 'results\.violations\.filter\('/,
+  );
+});
+
+test("rejects removing the minimum release viewport audit", (t) => {
+  const fixtureRoot = createFixture(t);
+  const desktopAuditPath = join(
+    fixtureRoot,
+    "tests/e2e/specs/accessibility.spec.ts",
+  );
+  writeFileSync(
+    desktopAuditPath,
+    readFileSync(desktopAuditPath, "utf8").replace(
+      "height: 480, width: 900",
+      "height: 720, width: 1280",
+    ),
+    "utf8",
+  );
+
+  const result = runChecker(fixtureRoot);
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.stdout,
+    /FAIL tests\/e2e\/specs\/accessibility\.spec\.ts includes 'height: 480, width: 900'/,
   );
 });
 

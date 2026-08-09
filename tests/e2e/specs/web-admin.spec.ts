@@ -143,11 +143,11 @@ test.describe('JoeSSH web admin', () => {
     await expect(page.getByText('Audit events today')).toBeVisible();
   });
 
-  test('has no critical or serious a11y violations in dashboard and auth states', async ({ page }) => {
+  test('has no WCAG A or AA a11y violations in dashboard and auth states', async ({ page }) => {
     await page.goto('/?lang=en&adminSnapshot=fixture');
 
     await expect(page.getByRole('heading', { exact: true, name: 'Team operations' })).toBeVisible();
-    await expectNoCriticalOrSeriousAccessibilityViolations(page);
+    await expectNoAccessibilityViolations(page);
 
     await page.route('**/api/admin/snapshot', async (route) => {
       await route.fulfill({
@@ -161,7 +161,7 @@ test.describe('JoeSSH web admin', () => {
     const authPanel = page.getByRole('status', { name: authPanelName });
     await expect(authPanel).toBeVisible();
     await expectAdminSnapshotAuthTokenHidden(page, authPanel);
-    await expectNoCriticalOrSeriousAccessibilityViolations(page);
+    await expectNoAccessibilityViolations(page);
   });
 
   test('surfaces fatal render errors through the localized error boundary', async ({ page }) => {
@@ -367,7 +367,7 @@ test.describe('JoeSSH web admin', () => {
     await expect(forbiddenAuthPanel).toBeFocused();
     await expectAdminSnapshotAuthTokenHidden(page, forbiddenAuthPanel);
     await expect(page.getByText('Sign in before viewing sync data')).toBeVisible();
-    await expectNoCriticalOrSeriousAccessibilityViolations(page);
+    await expectNoAccessibilityViolations(page);
 
     await page.unroute('**/api/admin/snapshot');
     await page.route('**/api/admin/snapshot', async (route) => {
@@ -383,7 +383,7 @@ test.describe('JoeSSH web admin', () => {
     await expectDescribedByText(page, emptyPanel, 'No team sync data is available yet.');
     await expect(emptyPanel).toBeFocused();
     await expect(page.getByText('No admin sync data yet')).toBeVisible();
-    await expectNoCriticalOrSeriousAccessibilityViolations(page);
+    await expectNoAccessibilityViolations(page);
 
     await page.unroute('**/api/admin/snapshot');
     await page.route('**/api/admin/snapshot', async (route) => {
@@ -398,7 +398,7 @@ test.describe('JoeSSH web admin', () => {
     await expect(unavailablePanel).toHaveAttribute('aria-live', 'assertive');
     await expect(unavailablePanel).toBeFocused();
     await expect(page.getByText('Admin snapshot could not be loaded')).toBeVisible();
-    await expectNoCriticalOrSeriousAccessibilityViolations(page);
+    await expectNoAccessibilityViolations(page);
 
     await page.unroute('**/api/admin/snapshot');
     await page.route('**/api/admin/snapshot', async (route) => {
@@ -911,7 +911,7 @@ test.describe('JoeSSH web admin', () => {
   });
 });
 
-async function expectNoCriticalOrSeriousAccessibilityViolations(page: Page) {
+async function expectNoAccessibilityViolations(page: Page) {
   const results = await new AxeBuilder({ page })
     .options({
       runOnly: {
@@ -924,10 +924,7 @@ async function expectNoCriticalOrSeriousAccessibilityViolations(page: Page) {
     })
     .analyze();
 
-  const violations = results.violations.filter(
-    (violation) =>
-      violation.id === 'target-size' || violation.impact === 'critical' || violation.impact === 'serious',
-  );
+  const violations = results.violations;
 
   if (violations.length > 0) {
     for (const violation of violations) {
