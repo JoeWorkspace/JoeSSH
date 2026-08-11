@@ -268,6 +268,25 @@ MSIX、阶段状态与最终 SHA-256 写回 output。Packaging Tool 详细日志
 一次性 Sandbox 内；失败状态不会回传可能含 identity 的错误正文。此步骤只生成
 未签名 Store 输入，不代表 WACK、功能验证、Partner Center 提交或认证通过。
 
+Sandbox 原始输出不能直接上传。MSIX Packaging Tool 只会写入 `en-us`，而
+JoeSSH 的界面语言由 `packages/i18n/src/windows-store-manifest-languages.json`
+维护。Sandbox 完成后，必须在同一个 clean reviewed HEAD 上运行：
+
+```powershell
+npm run release:windows-store:msix-finalize -- `
+  --staging-root reports/handoff/windows-store/msix-sandbox/<version>-<sha12> `
+  --reviewed-sha <完整clean HEAD>
+```
+
+finalizer 使用本机 Windows SDK 的 `MakeAppx.exe` 解包原始 MSIX，只替换
+`AppxManifest.xml/Resources` 的语言列表，再重新打包并二次解包验证；
+`AppxBlockMap.xml` 由 MakeAppx 按新 manifest 重新生成。它要求
+English fallback 排在第一位，语言必须与现有 15 个完整 UI locale 一一对应，
+且除 manifest 外的每个 payload 文件逐字节不变；原始包保留在 `output/`，可上传
+候选与 `language-finalization.json` 写入 `final/`。后续 candidate preflight
+只接受这份精确语言合同，不能把 80 个本地化 Store listing 误报成 80 个完整 UI
+语言。80 个 listing 可以继续用于发现性；当前包真实声明 15 个 UI 语言。
+
 workflow dispatch 以 `partner_identity_base64` 接收这份公开 Partner Center
 identity JSON；它不是 secret，也绝不能包含令牌或签名材料。`policy` 只做
 输入语法和实时策略检查，`verify` 在 runner 临时目录解码并在结束时删除。

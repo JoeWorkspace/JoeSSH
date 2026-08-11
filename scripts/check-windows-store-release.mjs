@@ -83,6 +83,12 @@ export function checkWindowsStoreRelease(rootPath = defaultRoot) {
   const sandboxPreparation = readText(
     resolve(root, "scripts/prepare-windows-store-msix-sandbox.mjs"),
   );
+  const msixLanguageFinalizer = readText(
+    resolve(root, "scripts/finalize-windows-store-msix-languages.mjs"),
+  );
+  const msixLanguageContract = readText(
+    resolve(root, "scripts/windows-store-language-contract.mjs"),
+  );
   const sandboxBootstrap = readText(
     resolve(root, "scripts/windows-store-msix-sandbox-bootstrap.ps1"),
   );
@@ -100,6 +106,10 @@ export function checkWindowsStoreRelease(rootPath = defaultRoot) {
     "scripts/prepare-windows-store-candidate.mjs",
     "scripts/prepare-windows-store-msix-sandbox.mjs",
     "scripts/prepare-windows-store-msix-sandbox.test.mjs",
+    "scripts/finalize-windows-store-msix-languages.mjs",
+    "scripts/finalize-windows-store-msix-languages.test.mjs",
+    "scripts/windows-store-language-contract.mjs",
+    "packages/i18n/src/windows-store-manifest-languages.json",
     "scripts/windows-store-msix-sandbox-bootstrap.ps1",
     ".github/workflows/windows-store-candidate.yml",
     "docs/windows-store-release.md",
@@ -137,6 +147,8 @@ export function checkWindowsStoreRelease(rootPath = defaultRoot) {
         "node scripts/prepare-windows-store-candidate.mjs" &&
       scripts["release:windows-store:msix-sandbox"] ===
         "node scripts/prepare-windows-store-msix-sandbox.mjs" &&
+      scripts["release:windows-store:msix-finalize"] ===
+        "node scripts/finalize-windows-store-msix-languages.mjs" &&
       scripts["test:windows-store-release"]?.includes(
         "build-windows-store-candidate.test.mjs",
       ) &&
@@ -151,6 +163,9 @@ export function checkWindowsStoreRelease(rootPath = defaultRoot) {
       ) &&
       scripts["test:windows-store-release"]?.includes(
         "prepare-windows-store-msix-sandbox.test.mjs",
+      ) &&
+      scripts["test:windows-store-release"]?.includes(
+        "finalize-windows-store-msix-languages.test.mjs",
       ) &&
       scripts["qa:windows-store-release"]?.includes(
         "check-windows-store-release.mjs",
@@ -170,6 +185,7 @@ export function checkWindowsStoreRelease(rootPath = defaultRoot) {
       preflight.includes("verifySilentUninstall") &&
       preflight.includes("MSIX preflight requires --partner-identity") &&
       preflight.includes("assertMsixDesktopFullTrustContract") &&
+      preflight.includes("assertMsixManifestLanguages") &&
       preflight.includes("does not match requested architecture") &&
       preflight.includes("assertCertificateSubjectMatchesLegalPublisher") &&
       preflight.includes("assertPartnerCenterLegalPublisher") &&
@@ -178,6 +194,22 @@ export function checkWindowsStoreRelease(rootPath = defaultRoot) {
       contract.includes("deriveMsixVersion") &&
       contract.includes("decoy contract markers"),
     "Local preflight preserves EXE verification and pending Store-signing MSIX semantics",
+  );
+  add(
+    results,
+    sandboxPreparation.includes("manifestLanguageContract") &&
+      msixLanguageContract.includes('defaultUiLocale: "en"') &&
+      msixLanguageContract.includes("Intl.getCanonicalLocales") &&
+      msixLanguageFinalizer.includes("replaceManifestLanguages") &&
+      msixLanguageFinalizer.includes("assertPayloadTreesMatch") &&
+      msixLanguageFinalizer.includes("payloadFilesByteIdentical: true") &&
+      msixLanguageFinalizer.includes(
+        'semanticContentChange: "AppxManifest.Resources-only"',
+      ) &&
+      msixLanguageFinalizer.includes("AppxBlockMap.xml") &&
+      msixLanguageFinalizer.includes("assertCleanReviewedHead") &&
+      msixLanguageFinalizer.includes("MakeAppx-unpack-edit-manifest-repack"),
+    "MSIX finalization binds the exact app UI language contract without changing payload files",
   );
   add(
     results,

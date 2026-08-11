@@ -27,11 +27,13 @@ import { TextDecoder } from "node:util";
 import { deflateSync, inflateSync } from "node:zlib";
 import {
   assertCertificateSubjectMatchesLegalPublisher,
+  assertMsixManifestLanguages,
   assertReviewedCommit,
   deriveMsixVersion,
   normalizeMsixExecutablePath,
   validatePartnerCenterIdentity,
 } from "./windows-store-contract.mjs";
+import { readWindowsStoreManifestLanguageContract } from "./windows-store-language-contract.mjs";
 
 const repositoryRoot = resolve(import.meta.dirname, "..");
 const PNG_SIGNATURE = Buffer.from([
@@ -1041,6 +1043,7 @@ function assertMsixCandidateVerification(verification, evidence) {
       "format",
       "makeAppx",
       "manifest",
+      "manifestLanguages",
       "desktopApplication",
       "projectVersionMapping",
       "partnerIdentity",
@@ -1083,6 +1086,11 @@ function assertMsixCandidateVerification(verification, evidence) {
     "MSIX manifest evidence",
   );
   assertExactObjectKeys(
+    verification.manifestLanguages,
+    ["defaultUiLocale", "fileName", "manifestLanguages", "sha256", "status"],
+    "MSIX manifest language evidence",
+  );
+  assertExactObjectKeys(
     verification.desktopApplication,
     ["executable", "runtimeBehavior", "trustLevel", "peMachine", "sha256"],
     "MSIX desktop application evidence",
@@ -1110,6 +1118,11 @@ function assertMsixCandidateVerification(verification, evidence) {
     "MSIX Authenticode evidence",
   );
   const manifest = verification.manifest;
+  const expectedManifestLanguages = readWindowsStoreManifestLanguageContract();
+  assertMsixManifestLanguages(
+    verification.manifestLanguages.manifestLanguages,
+    expectedManifestLanguages.manifestLanguages,
+  );
   const desktopApplication = verification.desktopApplication;
   const versionMapping = verification.projectVersionMapping;
   const crossCheck = verification.partnerIdentityCrossCheck;
@@ -1142,6 +1155,13 @@ function assertMsixCandidateVerification(verification, evidence) {
     manifest.publisherDisplayName !== partnerIdentity.publisherDisplayName ||
     !["x86", "x64", "arm64"].includes(manifest.architecture) ||
     manifest.version !== expectedMsixVersion ||
+    verification.manifestLanguages.defaultUiLocale !==
+      expectedManifestLanguages.defaultUiLocale ||
+    verification.manifestLanguages.fileName !==
+      expectedManifestLanguages.fileName ||
+    verification.manifestLanguages.sha256 !==
+      expectedManifestLanguages.sha256 ||
+    verification.manifestLanguages.status !== "exact-match" ||
     normalizedExecutable !== desktopApplication.executable ||
     desktopApplication.runtimeBehavior !== "packagedClassicApp" ||
     desktopApplication.trustLevel !== "mediumIL" ||

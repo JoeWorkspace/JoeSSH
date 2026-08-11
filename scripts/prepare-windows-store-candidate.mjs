@@ -35,6 +35,7 @@ import {
   assertMicrosoftStoreTauriConfig,
   assertMsixDesktopFullTrustContract,
   assertMsixIdentityMatches,
+  assertMsixManifestLanguages,
   assertPartnerCenterLegalPublisher,
   assertProjectReleaseIdentity,
   assertReviewedCommit,
@@ -46,6 +47,7 @@ import {
   validatePartnerCenterIdentity,
   validateVersionedHttpsUrl,
 } from "./windows-store-contract.mjs";
+import { readWindowsStoreManifestLanguageContract } from "./windows-store-language-contract.mjs";
 import {
   licenseArtifactPaths,
   verifyPublishedThirdPartyLicenseBundle,
@@ -955,6 +957,16 @@ export function verifyMsixCandidate(
   const manifestXml = readFileSync(manifestPath, "utf8");
   const manifestContract = parseMsixManifestContract(manifestXml);
   assertMsixDesktopFullTrustContract(manifestXml);
+  const manifestLanguageContract = readWindowsStoreManifestLanguageContract(
+    resolve(
+      options.root ?? defaultRoot,
+      "packages/i18n/src/windows-store-manifest-languages.json",
+    ),
+  );
+  assertMsixManifestLanguages(
+    manifestContract.languages,
+    manifestLanguageContract.manifestLanguages,
+  );
   const manifest = manifestContract.identity;
   assertMsixIdentityMatches(manifest, partnerIdentity);
   const partnerIdentityCrossCheck =
@@ -1021,6 +1033,10 @@ export function verifyMsixCandidate(
       semanticValidation: "passed",
     },
     manifest,
+    manifestLanguages: {
+      ...manifestLanguageContract,
+      status: "exact-match",
+    },
     desktopApplication: {
       ...manifestContract.desktopApplication,
       peMachine: applicationMachine,

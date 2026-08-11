@@ -19,6 +19,7 @@ import {
   prepareStoreAssetBundle,
   verifyStoreAssetBundle,
 } from "./prepare-windows-store-assets.mjs";
+import { readWindowsStoreManifestLanguageContract } from "./windows-store-language-contract.mjs";
 
 const repositoryRoot = resolve(import.meta.dirname, "..");
 
@@ -923,6 +924,10 @@ function writeCandidateEvidence(
         publisherDisplayName: partnerIdentity.publisherDisplayName,
         version: "1.1.10.0",
         architecture: "x64",
+      },
+      manifestLanguages: {
+        ...readWindowsStoreManifestLanguageContract(),
+        status: "exact-match",
       },
       desktopApplication: {
         executable: "JoeSSH.exe",

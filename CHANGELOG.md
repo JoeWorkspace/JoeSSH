@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-beta.22] - 2026-08-11
+
+> Microsoft Store package-language correction. The GitHub prerelease remains
+> source-only with zero uploaded assets.
+
+### Fixed
+
+- Bound the MSIX manifest language list to the 15 complete application UI
+  locales instead of allowing MSIX Packaging Tool's `en-us` default to reach
+  Partner Center unchanged.
+- Added a MakeAppx finalization step that proves every non-manifest payload file
+  remains byte-identical and rejects a Store candidate with missing, duplicate,
+  invalid, or unreviewed package languages.
+- Changed unknown system-locale fallback to English while preserving all 15
+  explicit language choices.
+
+### Changed
+
+- Advanced runtime and package version surfaces to `0.1.0-beta.22`, mapped to
+  Store package version `1.1.22.0`.
+- Kept the 80 localized Store listings separate from package UI support: all 80
+  may remain discoverable, but only the 15 complete UI locales are declared by
+  the package.
+
 ## [0.1.0-beta.21] - 2026-08-09
 
 > Microsoft Store replacement candidate. The GitHub `0.1.0-beta.20`

@@ -1,3 +1,5 @@
+import windowsStoreManifestLanguages from "./windows-store-manifest-languages.json";
+
 export type AtlasLocale =
   | "zh-CN"
   | "zh-TW"
@@ -23,7 +25,11 @@ export type LocaleMeta = {
   direction: "ltr" | "rtl";
 };
 
-export const DEFAULT_LOCALE: AtlasLocale = "zh-CN";
+export const WINDOWS_STORE_MANIFEST_LANGUAGES = Object.freeze(
+  windowsStoreManifestLanguages,
+) satisfies Readonly<Record<AtlasLocale, string>>;
+
+export const DEFAULT_LOCALE: AtlasLocale = "en";
 
 export const SUPPORTED_LOCALES: LocaleMeta[] = [
   { code: "zh-CN", englishName: "Simplified Chinese", nativeName: "\u7b80\u4f53\u4e2d\u6587", regions: ["CN", "SG"], direction: "ltr" },
@@ -153,23 +159,7 @@ const regionLocaleMap = SUPPORTED_LOCALES.reduce<Record<string, AtlasLocale>>((a
   return acc;
 }, {});
 
-const intlLocaleMap: Record<AtlasLocale, string> = {
-  "zh-CN": "zh-CN",
-  "zh-TW": "zh-TW",
-  en: "en-US",
-  ja: "ja-JP",
-  ko: "ko-KR",
-  es: "es-ES",
-  fr: "fr-FR",
-  de: "de-DE",
-  "pt-BR": "pt-BR",
-  ru: "ru-RU",
-  ar: "ar-SA",
-  hi: "hi-IN",
-  id: "id-ID",
-  vi: "vi-VN",
-  th: "th-TH"
-};
+const intlLocaleMap: Readonly<Record<AtlasLocale, string>> = WINDOWS_STORE_MANIFEST_LANGUAGES;
 
 const fileSizeUnits = [
   { factor: 1024 ** 4, fallback: "TB", unit: "terabyte" },
@@ -235,7 +225,7 @@ export function getBrowserLocaleCandidates(): string[] {
       candidates.push(intlLocale);
     }
   } catch {
-    // Intl can be unavailable in minimal runtimes; default Chinese remains the fallback.
+    // Intl can be unavailable in minimal runtimes; default English remains the fallback.
   }
 
   return candidates;
@@ -251,7 +241,9 @@ export function translate(locale: AtlasLocale, key: TranslationKey, values?: Rec
 }
 
 export function getLocaleMeta(locale: AtlasLocale) {
-  return SUPPORTED_LOCALES.find((candidate) => candidate.code === locale) ?? SUPPORTED_LOCALES[0];
+  return SUPPORTED_LOCALES.find((candidate) => candidate.code === locale) ??
+    SUPPORTED_LOCALES.find((candidate) => candidate.code === DEFAULT_LOCALE) ??
+    SUPPORTED_LOCALES[0];
 }
 
 export function getTextDirection(locale: AtlasLocale) {

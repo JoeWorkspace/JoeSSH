@@ -1,11 +1,12 @@
-# JoeSSH 0.1.0-beta.21 Store 候选发布准备手册
+# JoeSSH 0.1.0-beta.22 Store 候选发布准备手册
 
-> `v0.1.0-beta.18` 是仅有远端标签的历史预检点，`v0.1.0-beta.20` 是永久
-> 零上传资产的 source-only prerelease；两者都不得删除、移动、补传二进制或
-> 复用。本手册只操作新的 `v0.1.0-beta.21` 候选。
+> `v0.1.0-beta.18` 是仅有远端标签的历史预检点，`v0.1.0-beta.20` 与
+> `v0.1.0-beta.21` 是永久零上传资产的 source-only prerelease；这些历史版本
+> 都不得删除、移动、补传二进制或复用。本手册只操作新的
+> `v0.1.0-beta.22` 候选。
 
 本手册是个人维护者的 Windows-first 收口入口。当前代码版本是
-`0.1.0-beta.21` 候选：GitHub 侧仍是零上传资产的 source prerelease，唯一
+`0.1.0-beta.22` 候选：GitHub 侧仍是零上传资产的 source prerelease，唯一
 二进制交付路径是 Partner Center 中单独提交的 MSIX。它不是已经获批的商店版
 或付费版。任何门禁失败都表示继续准备，不表示可以通过改文案、改 JSON 或
 手工上传来绕过。
@@ -216,6 +217,11 @@ Stage B 仍是明确 No-Go。可信 Authenticode、时间戳、Defender、干净
    MSIX 在认证后由 Microsoft Store 免费重签、托管和更新，不需要为 Store 提交
    单独购买公开 CA 代码签名证书；认证前必须保持
    `pending-microsoft-store-signing` 真值。
+   Sandbox 转换完成后还必须运行
+   `release:windows-store:msix-finalize`，把现有完整 UI locale 的 canonical
+   BCP-47 列表写入 MSIX manifest，并证明除 manifest 外的 payload 字节未变；
+   candidate preflight 只接受 `final/` 中的结果。80 个 Store listing 与包内
+   UI 语言是不同合同，不能用 listing 数量虚构 package supported languages。
 3. 如果 MSIX 试验发现无法在一天内解决的兼容阻塞，才回退到 NSIS。NSIS 路径
    必须在 workflow 外用公开信任 CA 证书和可信时间戳签署安装器及所有已安装 PE，
    使用不可变、带版本的公开 HTTPS 下载地址，并由发布者自己承担托管和更新。
@@ -267,11 +273,12 @@ package identity，再用微软工具外部打包；不能把 NSIS 改后缀或�
 - 旧的 `v0.1.0-beta.9` 标签永久保留，不移动、不覆盖。
 - `0.1.0-beta.20` 永久限定为零上传资产的 source-only prerelease；不能在发布后
   补传 Desktop、Web、Sync、Mobile、Store 或其他二进制制品，也不能复用标签。
-- `0.1.0-beta.21` 的 GitHub Release 同样保持零上传资产；其 x64 MSIX 只能作为
+- `0.1.0-beta.21` 的 GitHub Release 同样永久保持零上传资产，不补传或复用。
+- `0.1.0-beta.22` 的 GitHub Release 也保持零上传资产；其 x64 MSIX 只能作为
   精确受保护 `main` 候选，经 Partner Center 单独提交和认证。
 - 只有候选改动已通过 PR 合并到受保护的 `main`、目标门禁全部绿色，且外部
   blocker 已关闭后，才创建指向精确候选 commit 的
-  `v0.1.0-beta.21` annotated tag。
+  `v0.1.0-beta.22` annotated tag。
 - 确认 `reports/release/` 没有任何文件后，依次运行：
 
   ```powershell
@@ -284,8 +291,9 @@ package identity，再用微软工具外部打包；不能把 NSIS 改后缀或�
   check 和 GitHub controls，再直接发布并独立验证；本轮不存在需要重新下载和
   复核 SHA-256 的上传制品。
 
-- `npm run release:publish-preflight` 是 beta.21 之后某个独立、未使用版本的完整
-  Desktop/Web/Sync 多平台公开发行门禁，不得用于修改 beta.20 或 beta.21，也
+- `npm run release:publish-preflight` 是 beta.22 之后某个独立、未使用版本的完整
+  Desktop/Web/Sync 多平台公开发行门禁，不得用于修改 beta.20、beta.21 或
+  beta.22，也
   不是 Windows Store 候选的快捷通道。缺少 macOS/Linux 或正式 Desktop 证据
   时，它正确地保持失败。
 

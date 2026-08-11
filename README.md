@@ -13,11 +13,11 @@ Mobile is outside the current public distribution scope; Web Admin remains an
 evaluation/community surface rather than a hosted or mutating team service.
 
 > [!IMPORTANT]
-> **Release status:** `0.1.0-beta.20` remains the permanent source-only GitHub
-> prerelease. The protected main branch now prepares the distinct
-> `0.1.0-beta.21` Microsoft Store replacement candidate, mapped to MSIX
-> `1.1.21.0`. Partner Center submission 3 contains the older `1.1.12.0` package
-> and must not be treated as evidence for beta.21. No beta.21 package is
+> **Release status:** the existing beta.20 and beta.21 GitHub prereleases remain
+> source-only. The protected main branch now prepares the distinct
+> `0.1.0-beta.22` Microsoft Store replacement candidate, mapped to MSIX
+> `1.1.22.0`. The live Store package and the beta.21 draft package must not be
+> treated as evidence for beta.22. No beta.22 package is
 > certified, Store-signed, or published until Microsoft completes certification.
 > To use real SSH before then, run the native Tauri Desktop app from source; the
 > browser Desktop preview uses demo data and cannot open a real SSH session.

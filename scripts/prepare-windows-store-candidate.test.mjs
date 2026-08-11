@@ -49,6 +49,7 @@ import {
   writePublishedLicenseSourceInputFixture,
   writeSourceBoundReleaseSbomFixture,
 } from "./release-sbom-test-fixtures.mjs";
+import { readWindowsStoreManifestLanguageContract } from "./windows-store-language-contract.mjs";
 
 const SHA256 = "a".repeat(64);
 const COMMIT = "b".repeat(40);
@@ -65,6 +66,8 @@ const RELEASE_ENVIRONMENT = {
   ATLASTERM_WINDOWS_LEGAL_PUBLISHER: LEGAL_PUBLISHER,
   JOESSH_WINDOWS_RELEASE_ENVIRONMENT: "windows-release-stage-b",
 };
+const MANIFEST_LANGUAGES =
+  readWindowsStoreManifestLanguageContract().manifestLanguages;
 
 test("Store evidence binds the verified notices mapped into the installed app", () => {
   const root = mkdtempSync(join(tmpdir(), "joessh-store-legal-"));
@@ -283,6 +286,9 @@ function completeMsixManifest(overrides = {}) {
     capabilities = '<rescap:Capability Name="runFullTrust" />',
     identity = `<Identity Publisher="CN=Store Publisher" Version="1.2.3.0"
       Name="JoeSSH.Store.Assigned" ProcessorArchitecture="x64" />`,
+    resources = MANIFEST_LANGUAGES.map(
+      (language) => `<Resource Language="${language}" />`,
+    ).join("\n"),
   } = overrides;
   return `<?xml version="1.0"?>
     <Package
@@ -292,6 +298,7 @@ function completeMsixManifest(overrides = {}) {
       <Properties>
         <PublisherDisplayName>JoeSSH Publisher</PublisherDisplayName>
       </Properties>
+      <Resources>${resources}</Resources>
       <Dependencies>
         <TargetDeviceFamily Name="Windows.Desktop" />
       </Dependencies>
@@ -1444,6 +1451,10 @@ test("MSIX candidate returns notices evidence produced from its unpacked payload
     verification.bundledThirdPartyNotices,
     bundledThirdPartyNotices,
   );
+  assert.deepEqual(verification.manifestLanguages, {
+    ...readWindowsStoreManifestLanguageContract(),
+    status: "exact-match",
+  });
 });
 
 test("MSIX candidate propagates unpacked notices verification failures", (t) => {
@@ -1455,6 +1466,35 @@ test("MSIX candidate propagates unpacked notices verification failures", (t) => 
   assert.throws(
     () => verifyMsixCandidate(fixture.input, fixture.runtime),
     (error) => error === noticesError,
+  );
+});
+
+test("MSIX candidate rejects a package that omits reviewed UI languages", (t) => {
+  const fixture = createMsixCandidateVerificationFixture(t, () => ({
+    path: "legal/THIRD-PARTY-NOTICES.txt",
+    sha256: SHA256,
+    sizeBytes: 42,
+    status: "exact-match",
+  }));
+  const originalRun = fixture.runtime.runRequiredCommand;
+  fixture.runtime.runRequiredCommand = (...args) => {
+    originalRun(...args);
+    writeFixtureFile(
+      fixture.unpackRoot,
+      "AppxManifest.xml",
+      completeMsixManifest({
+        application: `<Application Id="App" Executable="VFS\\Local AppData\\JoeSSH\\JoeSSH.exe"
+      RuntimeBehavior="packagedClassicApp" TrustLevel="mediumIL" />`,
+        identity: `<Identity Publisher="CN=Store Publisher" Version="1.1.10.0"
+      Name="JoeSSH.Store.Assigned" ProcessorArchitecture="x64" />`,
+        resources: '<Resource Language="en-US" />',
+      }),
+    );
+  };
+
+  assert.throws(
+    () => verifyMsixCandidate(fixture.input, fixture.runtime),
+    /must exactly match the reviewed app UI language order/,
   );
 });
 

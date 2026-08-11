@@ -33,7 +33,7 @@ if (isTelemetryOptedIn(mobileEnv.EXPO_PUBLIC_ATLASTERM_TELEMETRY_OPT_IN)) {
     createErrorMonitor({
       app: "mobile",
       endpoint: mobileEnv.EXPO_PUBLIC_ATLASTERM_ERROR_MONITOR_ENDPOINT,
-      version: mobileEnv.EXPO_PUBLIC_ATLASTERM_APP_VERSION ?? "0.1.0-beta.21",
+      version: mobileEnv.EXPO_PUBLIC_ATLASTERM_APP_VERSION ?? "0.1.0-beta.22",
     }).install();
   } catch {
     // The browser-oriented monitor can be unavailable in native runtimes.
