@@ -38,6 +38,7 @@ import {
   windowsStoreNsisBuildProvenancePath,
 } from "./build-windows-store-candidate.mjs";
 import { inspectPortableExecutable } from "./prepare-windows-store-candidate.mjs";
+import { readWindowsStoreManifestLanguageContract } from "./windows-store-language-contract.mjs";
 
 export { windowsStoreNsisBuildProvenancePath };
 
@@ -107,6 +108,7 @@ export function prepareWindowsStoreMsixSandbox(
     ...repository,
     legalPublisher: partnerIdentity.publisherDisplayName,
   });
+  const manifestLanguageContract = readWindowsStoreManifestLanguageContract();
   assertPartnerCenterLegalPublisher(partnerIdentity, projectIdentity.publisher);
   assertMicrosoftStoreTauriConfig(repository.storeConfig);
   const msixVersion = deriveMsixVersion(projectIdentity.version);
@@ -292,6 +294,7 @@ export function prepareWindowsStoreMsixSandbox(
         outputMapping: "write-only-purpose",
       },
       toolingVersion: approvedTooling.version,
+      manifestLanguageContract,
       inputs: inputEvidence.map(({ fileName, sha256, sizeBytes }) => ({
         fileName,
         sha256,

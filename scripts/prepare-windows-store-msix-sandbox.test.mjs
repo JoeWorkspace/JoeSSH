@@ -5,6 +5,7 @@ import {
   readFileSync,
   rmSync,
   symlinkSync,
+  writeFileSync,
 } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
@@ -18,6 +19,7 @@ import {
   parseArgs,
   windowsStoreNsisBuildProvenancePath,
 } from "./prepare-windows-store-msix-sandbox.mjs";
+import { readWindowsStoreManifestLanguageContract } from "./windows-store-language-contract.mjs";
 
 const commit = "a".repeat(40);
 const sha256 = "b".repeat(64);
@@ -209,6 +211,58 @@ test("conversion template rejects XML control characters", () => {
       }),
     /not safe XML text/,
   );
+});
+
+test("Store manifest language contract is canonical, unique, and English-first", () => {
+  const contract = readWindowsStoreManifestLanguageContract();
+
+  assert.equal(contract.defaultUiLocale, "en");
+  assert.equal(contract.fileName, "windows-store-manifest-languages.json");
+  assert.equal(contract.manifestLanguages[0], "en-US");
+  assert.equal(contract.manifestLanguages.length, 15);
+  assert.equal(new Set(contract.manifestLanguages).size, 15);
+  assert.match(contract.sha256, /^[a-f0-9]{64}$/);
+  assert.deepEqual(
+    contract.manifestLanguages.slice().sort(),
+    [
+      "ar-SA",
+      "de-DE",
+      "en-US",
+      "es-ES",
+      "fr-FR",
+      "hi-IN",
+      "id-ID",
+      "ja-JP",
+      "ko-KR",
+      "pt-BR",
+      "ru-RU",
+      "th-TH",
+      "vi-VN",
+      "zh-Hans-CN",
+      "zh-Hant-TW",
+    ].sort(),
+  );
+});
+
+test("Store manifest language contract rejects missing, duplicate, or noncanonical tags", () => {
+  const fixtureRoot = mkdtempSync(join(tmpdir(), "joessh-store-languages-"));
+  const fixturePath = join(fixtureRoot, "languages.json");
+  try {
+    for (const [mapping, pattern] of [
+      [{ "zh-CN": "zh-Hans-CN" }, /include the English default/],
+      [{ en: "en-us" }, /already be canonical/],
+      [{ en: "en-US", duplicate: "en-US" }, /must not contain duplicate/],
+      [{ en: "not_a_language" }, /invalid BCP-47/],
+    ]) {
+      writeFileSync(fixturePath, JSON.stringify(mapping));
+      assert.throws(
+        () => readWindowsStoreManifestLanguageContract(fixturePath),
+        pattern,
+      );
+    }
+  } finally {
+    rmSync(fixtureRoot, { force: true, recursive: true });
+  }
 });
 
 test("WSB exposes only read-only input and isolated writable output", () => {

@@ -23,7 +23,9 @@ import {
   loadLocale,
   resolveAtlasLocale,
   translate,
+  WINDOWS_STORE_MANIFEST_LANGUAGES,
 } from "./index";
+import windowsStoreManifestLanguages from "./windows-store-manifest-languages.json";
 
 const mojibakeFingerprints = [
   "\u934f\u3224\u69e6",
@@ -70,11 +72,26 @@ describe("JoeSSH i18n", () => {
     await Promise.all(supportedLocaleCodes.map((locale) => loadLocale(locale)));
   });
 
-  it("defaults to Simplified Chinese when no region is known", () => {
+  it("defaults to English when no region or known locale is available", () => {
+    expect(DEFAULT_LOCALE).toBe("en");
     expect(detectAtlasLocale([])).toBe(DEFAULT_LOCALE);
+    expect(detectAtlasLocale(["xx-XX"])).toBe("en");
     expect(translate(DEFAULT_LOCALE, "web.teamOperations")).not.toBe(
       "web.teamOperations",
     );
+  });
+
+  it("derives a unique valid Store manifest language for every supported locale", () => {
+    const manifestLocaleCodes = Object.keys(WINDOWS_STORE_MANIFEST_LANGUAGES);
+    const manifestLanguageTags = Object.values(WINDOWS_STORE_MANIFEST_LANGUAGES);
+
+    expect(WINDOWS_STORE_MANIFEST_LANGUAGES).toEqual(windowsStoreManifestLanguages);
+    expect(manifestLocaleCodes.sort()).toEqual([...supportedLocaleCodes].sort());
+    expect(new Set(manifestLanguageTags).size).toBe(manifestLanguageTags.length);
+    for (const languageTag of manifestLanguageTags) {
+      expect(() => new Intl.Locale(languageTag)).not.toThrow();
+    }
+    expect(Object.isFrozen(WINDOWS_STORE_MANIFEST_LANGUAGES)).toBe(true);
   });
 
   it("loadLocale returns a callable translator function", async () => {
@@ -294,7 +311,8 @@ describe("JoeSSH i18n", () => {
   });
 
   it("maps Atlas locales to browser Intl locales for market formatting", () => {
-    expect(getIntlLocale("zh-CN")).toBe("zh-CN");
+    expect(getIntlLocale("zh-CN")).toBe("zh-Hans-CN");
+    expect(getIntlLocale("zh-TW")).toBe("zh-Hant-TW");
     expect(getIntlLocale("en")).toBe("en-US");
     expect(getIntlLocale("ja")).toBe("ja-JP");
     expect(getIntlLocale("de")).toBe("de-DE");
@@ -566,9 +584,9 @@ describe("JoeSSH i18n", () => {
     }
   });
 
-  it("falls back to first locale for unknown locale meta", () => {
+  it("falls back to English metadata for an unknown locale", () => {
     const meta = getLocaleMeta("unknown" as any);
-    expect(meta.code).toBe(SUPPORTED_LOCALES[0].code);
+    expect(meta.code).toBe("en");
   });
 
   it("falls back to default locale when all candidates are null/empty", () => {

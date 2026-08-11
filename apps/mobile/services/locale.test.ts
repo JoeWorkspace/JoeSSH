@@ -27,7 +27,7 @@ vi.mock('react-native', () => ({
 }));
 
 import { MOBILE_LOCALE_STORAGE_KEY, getStoredMobileLocaleMode, persistMobileLocaleMode, resolveMobileLocale } from './locale';
-import type { AtlasLocale } from '@atlasterm/i18n';
+import { DEFAULT_LOCALE, type AtlasLocale } from '@atlasterm/i18n';
 
 const VALID_LOCALES: AtlasLocale[] = [
   'zh-CN', 'zh-TW', 'en', 'ja', 'ko', 'es', 'fr', 'de',
@@ -68,7 +68,7 @@ describe('resolveMobileLocale', () => {
     const result = resolveMobileLocale('auto');
     expect(Array.isArray(result.candidates)).toBe(true);
     expect(result.candidates.length).toBeGreaterThan(0);
-    expect(result.candidates).toContain('zh-CN');
+    expect(result.candidates).toContain(DEFAULT_LOCALE);
   });
 
   it('respects explicit locale override', () => {

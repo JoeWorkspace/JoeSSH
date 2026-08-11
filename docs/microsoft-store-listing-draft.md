@@ -1,9 +1,9 @@
 # Microsoft Store Listing Draft
 
-Status: pending listing reference for the distinct JoeSSH `0.1.0-beta.21`
+Status: pending listing reference for the distinct JoeSSH `0.1.0-beta.22`
 Microsoft Store replacement candidate. The package identity, protected-main
 source revision, MSIX hash, and Partner Center validation are not evidence until
-the exact `1.1.21.0` package is generated and recorded. Do not claim
+the exact `1.1.22.0` package is generated and recorded. Do not claim
 certification or publication until Microsoft completes certification. The
 `0.1.0-beta.20` GitHub prerelease remains source-only and is not reused for Store
 distribution.
@@ -35,7 +35,7 @@ fills and verifies its evidence columns.
 - Store listing title: `JoeSSH` for every locale; use descriptions and localized
   keywords for positioning.
 - Release maturity: Windows x64 Store replacement candidate, version
-  `0.1.0-beta.21` / MSIX `1.1.21.0`
+  `0.1.0-beta.22` / MSIX `1.1.22.0`
 - Offer: free Community desktop app; no ads or in-app purchases
 - Primary category: Developer tools
 - Supported device family: Windows desktop

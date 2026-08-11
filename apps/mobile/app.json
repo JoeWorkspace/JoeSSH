@@ -2,7 +2,7 @@
   "expo": {
     "name": "JoeSSH",
     "slug": "atlasterm-mobile",
-    "version": "0.1.0-beta.21",
+    "version": "0.1.0-beta.22",
     "orientation": "default",
     "scheme": "atlasterm",
     "userInterfaceStyle": "automatic",

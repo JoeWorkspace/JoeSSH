@@ -435,6 +435,29 @@ export function assertMsixDesktopFullTrustContract(xml) {
   return parseMsixManifestContract(xml).desktopApplication;
 }
 
+export function assertMsixManifestLanguages(
+  actualLanguages,
+  expectedLanguages,
+) {
+  const actual = normalizeManifestLanguageList(
+    actualLanguages,
+    "MSIX manifest languages",
+  );
+  const expected = normalizeManifestLanguageList(
+    expectedLanguages,
+    "expected MSIX manifest languages",
+  );
+  if (
+    actual.length !== expected.length ||
+    actual.some((language, index) => language !== expected[index])
+  ) {
+    throw new Error(
+      `MSIX manifest languages must exactly match the reviewed app UI language order: ${expected.join(", ")}.`,
+    );
+  }
+  return actual;
+}
+
 export function parseMsixManifestContract(xml) {
   const packageNode = parseSafeManifestXml(xml);
   if (
@@ -500,6 +523,37 @@ export function parseMsixManifestContract(xml) {
   if (!publisherDisplayName) {
     throw new Error("MSIX PublisherDisplayName must not be empty.");
   }
+
+  const resourcesNode = requireExactlyOneChild(
+    packageNode,
+    "Resources",
+    "Package/Resources",
+  );
+  const resourceNodes = childElements(resourcesNode, "Resource");
+  if (
+    resourcesNode.children.length !== resourceNodes.length ||
+    resourcesNode.text.trim() !== "" ||
+    resourceNodes.length === 0
+  ) {
+    throw new Error(
+      "MSIX Resources must contain one or more language-only Resource elements.",
+    );
+  }
+  const manifestLanguages = normalizeManifestLanguageList(
+    resourceNodes.map((resourceNode) => {
+      if (
+        !hasExactUnnamespacedAttributes(resourceNode, ["Language"]) ||
+        resourceNode.children.length !== 0 ||
+        resourceNode.text.trim() !== ""
+      ) {
+        throw new Error(
+          "Each MSIX Resource must contain only one unnamespaced Language attribute.",
+        );
+      }
+      return requireAttribute(resourceNode, "Language", "Resource.Language");
+    }),
+    "MSIX manifest languages",
+  );
 
   const dependenciesNode = requireExactlyOneChild(
     packageNode,
@@ -599,6 +653,7 @@ export function parseMsixManifestContract(xml) {
       publisherDisplayName,
       version: identityAttributes.Version,
     },
+    languages: manifestLanguages,
   };
 }
 
@@ -854,6 +909,37 @@ function hasExactUnnamespacedAttributes(node, expectedNames) {
     actual.length === expected.length &&
     actual.every((name, index) => name === expected[index])
   );
+}
+
+function normalizeManifestLanguageList(value, label) {
+  if (!Array.isArray(value) || value.length === 0 || value.length > 200) {
+    throw new Error(`${label} must contain from 1 to 200 BCP-47 tags.`);
+  }
+  const normalized = value.map((language) => {
+    if (
+      typeof language !== "string" ||
+      language.trim() !== language ||
+      containsControlCharacters(language)
+    ) {
+      throw new Error(`${label} must contain canonicalizable BCP-47 tags.`);
+    }
+    try {
+      const canonical = Intl.getCanonicalLocales(language);
+      if (canonical.length !== 1) {
+        throw new Error("ambiguous language tag");
+      }
+      return canonical[0];
+    } catch {
+      throw new Error(`${label} contains an invalid BCP-47 tag.`);
+    }
+  });
+  if (
+    new Set(normalized.map((language) => language.toLowerCase())).size !==
+    normalized.length
+  ) {
+    throw new Error(`${label} must not contain duplicate BCP-47 tags.`);
+  }
+  return normalized;
 }
 
 function assertExactObjectFields(value, expectedFields, label) {
