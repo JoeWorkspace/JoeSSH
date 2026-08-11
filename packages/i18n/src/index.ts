@@ -49,6 +49,10 @@ export const SUPPORTED_LOCALES: LocaleMeta[] = [
   { code: "th", englishName: "Thai", nativeName: "\u0e44\u0e17\u0e22", regions: ["TH"], direction: "ltr" },
 ];
 
+const defaultLocaleMeta = SUPPORTED_LOCALES.find(
+  (candidate) => candidate.code === DEFAULT_LOCALE,
+) as LocaleMeta;
+
 // All locales are lazy-loaded to minimize main bundle size.
 import type { zhCN } from "./locales/zh-CN";
 
@@ -241,9 +245,7 @@ export function translate(locale: AtlasLocale, key: TranslationKey, values?: Rec
 }
 
 export function getLocaleMeta(locale: AtlasLocale) {
-  return SUPPORTED_LOCALES.find((candidate) => candidate.code === locale) ??
-    SUPPORTED_LOCALES.find((candidate) => candidate.code === DEFAULT_LOCALE) ??
-    SUPPORTED_LOCALES[0];
+  return SUPPORTED_LOCALES.find((candidate) => candidate.code === locale) ?? defaultLocaleMeta;
 }
 
 export function getTextDirection(locale: AtlasLocale) {
