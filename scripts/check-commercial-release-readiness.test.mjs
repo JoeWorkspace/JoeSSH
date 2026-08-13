@@ -4,6 +4,7 @@ import {
   copyFileSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -17,6 +18,14 @@ const scriptPath = fileURLToPath(
 );
 const repositoryFundingUrl =
   "https://github.com/JoeWorkspace/JoeSSH/blob/main/docs/voluntary-support.md";
+const repositorySupportPageSource = readFileSync(
+  join(import.meta.dirname, "..", "docs", "voluntary-support.md"),
+  "utf8",
+);
+const repositoryReadmeSource = readFileSync(
+  join(import.meta.dirname, "..", "README.md"),
+  "utf8",
+);
 const requiredFiles = [
   ".github/FUNDING.yml",
   ".github/funding-operator-attestation.json",
@@ -142,6 +151,45 @@ function repositoryLinkFundingAttestation() {
   };
 }
 
+function repositorySupportPage(overrides = {}) {
+  let page = repositorySupportPageSource;
+  if (overrides.wechatSrc) {
+    page = page.replace(
+      'src="assets/funding/wechat-support-qr.jpg"',
+      `src="${overrides.wechatSrc}"`,
+    );
+  }
+  if (overrides.alipaySrc) {
+    page = page.replace(
+      'src="assets/funding/alipay-support-qr.jpg"',
+      `src="${overrides.alipaySrc}"`,
+    );
+  }
+  return overrides.suffix ? `${page.trimEnd()}\n${overrides.suffix}\n` : page;
+}
+
+function repositorySupportReadme(overrides = {}) {
+  let readme = repositoryReadmeSource;
+  if (overrides.wechatSrc) {
+    readme = readme.replace(
+      'src="docs/assets/funding/wechat-support-qr.jpg"',
+      `src="${overrides.wechatSrc}"`,
+    );
+  }
+  if (overrides.alipaySrc) {
+    readme = readme.replace(
+      'src="docs/assets/funding/alipay-support-qr.jpg"',
+      `src="${overrides.alipaySrc}"`,
+    );
+  }
+  return overrides.suffix
+    ? readme.replace(
+        "\n## Screenshots",
+        `\n${overrides.suffix}\n\n## Screenshots`,
+      )
+    : readme;
+}
+
 function canonicalJson(value) {
   return `${JSON.stringify(value, null, 2)}\n`;
 }
@@ -174,17 +222,8 @@ test("community mode accepts the exact repository support page without claiming 
     ".github/funding-operator-attestation.json": canonicalJson(
       repositoryLinkFundingAttestation(),
     ),
-    "docs/voluntary-support.md": `
-# Voluntary support
-
-This is voluntary personal support, not a purchase, and does not provide paid features.
-These personal Weixin Pay and Alipay accounts use personal collection codes.
-JoeSSH cannot use these personal collection codes to cancel, reverse, refund, or automatically return a payment.
-GitHub's Sponsor button only links to this notice. GitHub does not process these payments.
-Recipient, small-payment, and payout verification is not complete.
-<a href="assets/funding/wechat-support-qr.jpg">Weixin Pay</a>
-<a href="assets/funding/alipay-support-qr.jpg">Alipay</a>
-`,
+    "README.md": repositorySupportReadme(),
+    "docs/voluntary-support.md": repositorySupportPage(),
   });
   const result = run(root, "community");
 
@@ -231,6 +270,7 @@ Recipient, small-payment, and payout verification is not complete.
         ".github/funding-operator-attestation.json": canonicalJson(
           repositoryLinkFundingAttestation(),
         ),
+        "README.md": repositorySupportReadme(),
         "docs/voluntary-support.md": candidate.supportPage,
       });
       const result = run(root, "community");
@@ -250,15 +290,8 @@ test("repository support-page funding rejects inactive or falsely verified payme
       const root = createFixture(subtest, {
         ".github/FUNDING.yml": `custom:\n  - ${repositoryFundingUrl}\n`,
         ".github/funding-operator-attestation.json": canonicalJson(attestation),
-        "docs/voluntary-support.md": `
-This is voluntary personal support, not a purchase, and does not provide paid features.
-These personal Weixin Pay and Alipay accounts use personal collection codes.
-JoeSSH cannot use these personal collection codes to cancel, reverse, refund, or automatically return a payment.
-GitHub's Sponsor button only links to this notice. GitHub does not process these payments.
-Recipient, small-payment, and payout verification is not complete.
-<a href="assets/funding/wechat-support-qr.jpg">Weixin Pay</a>
-<a href="assets/funding/alipay-support-qr.jpg">Alipay</a>
-`,
+        "README.md": repositorySupportReadme(),
+        "docs/voluntary-support.md": repositorySupportPage(),
       });
       const result = run(root, "community");
       assert.equal(result.status, 1);
@@ -273,15 +306,8 @@ test("repository support-page funding rejects payment-verification CLI flags", (
     ".github/funding-operator-attestation.json": canonicalJson(
       repositoryLinkFundingAttestation(),
     ),
-    "docs/voluntary-support.md": `
-This is voluntary personal support, not a purchase, and does not provide paid features.
-These personal Weixin Pay and Alipay accounts use personal collection codes.
-JoeSSH cannot use these personal collection codes to cancel, reverse, refund, or automatically return a payment.
-GitHub's Sponsor button only links to this notice. GitHub does not process these payments.
-Recipient, small-payment, and payout verification is not complete.
-<a href="assets/funding/wechat-support-qr.jpg">Weixin Pay</a>
-<a href="assets/funding/alipay-support-qr.jpg">Alipay</a>
-`,
+    "README.md": repositorySupportReadme(),
+    "docs/voluntary-support.md": repositorySupportPage(),
   });
   const result = run(root, "community", [
     "--funding-url",
@@ -298,15 +324,8 @@ test("repository support-page funding rejects QR asset drift", (t) => {
     ".github/funding-operator-attestation.json": canonicalJson(
       repositoryLinkFundingAttestation(),
     ),
-    "docs/voluntary-support.md": `
-This is voluntary personal support, not a purchase, and does not provide paid features.
-These personal Weixin Pay and Alipay accounts use personal collection codes.
-JoeSSH cannot use these personal collection codes to cancel, reverse, refund, or automatically return a payment.
-GitHub's Sponsor button only links to this notice. GitHub does not process these payments.
-Recipient, small-payment, and payout verification is not complete.
-<a href="assets/funding/wechat-support-qr.jpg">Weixin Pay</a>
-<a href="assets/funding/alipay-support-qr.jpg">Alipay</a>
-`,
+    "README.md": repositorySupportReadme(),
+    "docs/voluntary-support.md": repositorySupportPage(),
   });
   writeFileSync(
     join(root, "docs/assets/funding/wechat-support-qr.jpg"),
@@ -317,6 +336,93 @@ Recipient, small-payment, and payout verification is not complete.
   const result = run(root, "community");
   assert.equal(result.status, 1);
   assert.match(result.stdout, /funding:repository-support-assets/);
+});
+
+test("repository support-page funding rejects rendered support-page QR source drift", (t) => {
+  const root = createFixture(t, {
+    ".github/FUNDING.yml": `custom:\n  - ${repositoryFundingUrl}\n`,
+    ".github/funding-operator-attestation.json": canonicalJson(
+      repositoryLinkFundingAttestation(),
+    ),
+    "README.md": repositorySupportReadme(),
+    "docs/voluntary-support.md": repositorySupportPage({
+      wechatSrc: "https://example.com/replacement-qr.jpg",
+    }),
+  });
+
+  const result = run(root, "community");
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /funding:repository-support-page/);
+});
+
+test("repository support-page funding rejects rendered README QR source drift", (t) => {
+  const root = createFixture(t, {
+    ".github/FUNDING.yml": `custom:\n  - ${repositoryFundingUrl}\n`,
+    ".github/funding-operator-attestation.json": canonicalJson(
+      repositoryLinkFundingAttestation(),
+    ),
+    "README.md": repositorySupportReadme({
+      alipaySrc: "https://example.com/replacement-qr.jpg",
+    }),
+    "docs/voluntary-support.md": repositorySupportPage(),
+  });
+
+  const result = run(root, "community");
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /funding:repository-support-page/);
+});
+
+test("repository support-page funding rejects an unquoted HTML QR source", (t) => {
+  const root = createFixture(t, {
+    ".github/FUNDING.yml": `custom:\n  - ${repositoryFundingUrl}\n`,
+    ".github/funding-operator-attestation.json": canonicalJson(
+      repositoryLinkFundingAttestation(),
+    ),
+    "README.md": repositorySupportReadme(),
+    "docs/voluntary-support.md": repositorySupportPage({
+      suffix: "<img src=https://example.com/unreviewed-qr.jpg>",
+    }),
+  });
+
+  const result = run(root, "community");
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /funding:repository-support-page/);
+});
+
+test("repository support-page funding rejects a reference-style Markdown QR", (t) => {
+  const root = createFixture(t, {
+    ".github/FUNDING.yml": `custom:\n  - ${repositoryFundingUrl}\n`,
+    ".github/funding-operator-attestation.json": canonicalJson(
+      repositoryLinkFundingAttestation(),
+    ),
+    "README.md": repositorySupportReadme({
+      suffix:
+        "![Unreviewed QR][unreviewed-qr]\\n[unreviewed-qr]: https://example.com/unreviewed-qr.jpg",
+    }),
+    "docs/voluntary-support.md": repositorySupportPage(),
+  });
+
+  const result = run(root, "community");
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /funding:repository-support-page/);
+});
+
+test("repository support-page funding rejects an HTML-comment section delimiter bypass", (t) => {
+  const root = createFixture(t, {
+    ".github/FUNDING.yml": `custom:\n  - ${repositoryFundingUrl}\n`,
+    ".github/funding-operator-attestation.json": canonicalJson(
+      repositoryLinkFundingAttestation(),
+    ),
+    "README.md": repositorySupportReadme({
+      suffix:
+        "<!-- ## Screenshots -->\\n<img src=https://example.com/unreviewed-qr.jpg>",
+    }),
+    "docs/voluntary-support.md": repositorySupportPage(),
+  });
+
+  const result = run(root, "community");
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /funding:repository-support-page/);
 });
 
 test("store mode keeps tracked policies fail-closed while public pages are checked separately", (t) => {

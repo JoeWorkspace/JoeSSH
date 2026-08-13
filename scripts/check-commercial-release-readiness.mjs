@@ -49,6 +49,23 @@ const REPOSITORY_SUPPORT_ASSET_SHA256 = new Map([
     "8921b976ab8f01c1aacb666947d13002244242ba3f0df8fab6de76d3b6f60d44",
   ],
 ]);
+const REPOSITORY_SUPPORT_PAGE_SHA256 =
+  "7514cd136e165afd2f8961b79becffb2fdc0a64de1a1b84d45b67d8a723af038";
+const README_SUPPORT_SECTION_SHA256 =
+  "924245fd4aba1912046adf86d1827b63575c73d7ad736df337af698fb7f895d4";
+const SUPPORT_PAGE_QR_HREFS = [
+  "assets/funding/wechat-support-qr.jpg",
+  "assets/funding/alipay-support-qr.jpg",
+];
+const SUPPORT_PAGE_QR_SOURCES = [...SUPPORT_PAGE_QR_HREFS];
+const README_SUPPORT_QR_HREFS = [
+  "docs/voluntary-support.md",
+  "docs/voluntary-support.md",
+];
+const README_SUPPORT_QR_SOURCES = [
+  "docs/assets/funding/wechat-support-qr.jpg",
+  "docs/assets/funding/alipay-support-qr.jpg",
+];
 const FUNDING_ATTESTATION_KEYS = [
   "schemaVersion",
   "status",
@@ -288,13 +305,47 @@ function checkRepositoryVoluntarySupport(attestation) {
     /GitHub does not process\s+these payments/i,
     /recipient, small-payment, and payout verification (?:is|are) not\s+complete/i,
   ].every((pattern) => pattern.test(normalizedSupportPage));
-  const exactAssetsLinked = [
-    'href="assets/funding/wechat-support-qr.jpg"',
-    'href="assets/funding/alipay-support-qr.jpg"',
-  ].every((value) => supportPage.includes(value));
+  const supportPageLinks = strictHtmlAttributeValues(supportPage, "a", "href");
+  const supportPageImages = strictHtmlAttributeValues(
+    supportPage,
+    "img",
+    "src",
+  );
+  const supportPageAssetsRendered =
+    supportPageLinks.complete &&
+    arraysEqual(supportPageLinks.values, SUPPORT_PAGE_QR_HREFS) &&
+    supportPageImages.complete &&
+    arraysEqual(supportPageImages.values, SUPPORT_PAGE_QR_SOURCES) &&
+    hasOnlyReviewedImageSyntax(supportPage);
+  const supportPageCopyReviewed =
+    sha256Text(supportPage) === REPOSITORY_SUPPORT_PAGE_SHA256;
   const exactAssetsPinned = [...REPOSITORY_SUPPORT_ASSET_SHA256].every(
     ([relativePath, expected]) => sha256File(relativePath) === expected,
   );
+  const readmeSupportSection = markdownSection(
+    readme,
+    "## Support The Maintainer",
+    "## Screenshots",
+  );
+  const readmeSupportLinks = strictHtmlAttributeValues(
+    readmeSupportSection,
+    "a",
+    "href",
+  );
+  const readmeSupportImages = strictHtmlAttributeValues(
+    readmeSupportSection,
+    "img",
+    "src",
+  );
+  const readmeAssetsRendered =
+    readmeSupportSection !== "" &&
+    readmeSupportLinks.complete &&
+    arraysEqual(readmeSupportLinks.values, README_SUPPORT_QR_HREFS) &&
+    readmeSupportImages.complete &&
+    arraysEqual(readmeSupportImages.values, README_SUPPORT_QR_SOURCES) &&
+    hasOnlyReviewedImageSyntax(readmeSupportSection);
+  const readmeSupportCopyReviewed =
+    sha256Text(readmeSupportSection) === README_SUPPORT_SECTION_SHA256;
   const normalizedReadme = readme
     .replace(/^\s*>\s?/gm, "")
     .replace(/\s+/g, " ");
@@ -306,11 +357,21 @@ function checkRepositoryVoluntarySupport(attestation) {
 
   addCheck(
     "funding:repository-support-page",
-    pageBoundaryComplete && exactAssetsLinked && readmeBoundaryComplete,
+    pageBoundaryComplete &&
+      supportPageAssetsRendered &&
+      supportPageCopyReviewed &&
+      readmeBoundaryComplete &&
+      readmeAssetsRendered &&
+      readmeSupportCopyReviewed,
     "Repository Sponsor link targets the reviewed voluntary-support page",
-    pageBoundaryComplete && exactAssetsLinked && readmeBoundaryComplete
+    pageBoundaryComplete &&
+      supportPageAssetsRendered &&
+      supportPageCopyReviewed &&
+      readmeBoundaryComplete &&
+      readmeAssetsRendered &&
+      readmeSupportCopyReviewed
       ? REPOSITORY_VOLUNTARY_SUPPORT_URL
-      : "Keep the non-purchase/payment-limitations/unverified wording and both reviewed QR references on the support page and README.",
+      : "Keep the non-purchase/payment-limitations/unverified wording and the exact rendered href/src pairs for both reviewed QR assets on the support page and README.",
   );
   addCheck(
     "funding:repository-support-assets",
@@ -331,8 +392,12 @@ function checkRepositoryVoluntarySupport(attestation) {
   addCheck(
     "funding:community-boundary",
     pageBoundaryComplete &&
-      exactAssetsLinked &&
+      supportPageAssetsRendered &&
+      supportPageCopyReviewed &&
       exactAssetsPinned &&
+      readmeBoundaryComplete &&
+      readmeAssetsRendered &&
+      readmeSupportCopyReviewed &&
       repositoryLinkAttestation,
     "Sponsor link remains voluntary support and does not activate checkout or paid benefits",
   );
@@ -817,9 +882,83 @@ function readText(relativePath) {
   );
 }
 
+function arraysEqual(actual, expected) {
+  return (
+    actual.length === expected.length &&
+    actual.every((value, index) => value === expected[index])
+  );
+}
+
+function strictHtmlAttributeValues(markup, tagName, attributeName) {
+  const openerPattern = new RegExp(`<${tagName}\\b`, "gi");
+  const tagPattern = new RegExp(`<${tagName}\\b[^>]*>`, "gi");
+  const tags = [...markup.matchAll(tagPattern)].map((match) => match[0]);
+  const openerCount = [...markup.matchAll(openerPattern)].length;
+  const values = [];
+
+  if (tags.length !== openerCount) {
+    return { complete: false, values };
+  }
+
+  for (const tag of tags) {
+    const attributePattern = new RegExp(
+      `\\s${attributeName}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s"'=<>\\x60]+))`,
+      "gi",
+    );
+    const attributes = [...tag.matchAll(attributePattern)];
+    if (attributes.length !== 1) {
+      return { complete: false, values: [] };
+    }
+    values.push(attributes[0][1] ?? attributes[0][2] ?? attributes[0][3]);
+  }
+
+  return { complete: true, values };
+}
+
+function hasOnlyReviewedImageSyntax(markup) {
+  return (
+    !/!\[/i.test(markup) &&
+    !/<(?:picture|source|object|embed|svg|image|video)\b/i.test(markup) &&
+    !/\bsrcset\s*=/i.test(markup) &&
+    !/\bstyle\s*=\s*(?:"[^"]*url\s*\(|'[^']*url\s*\(|[^\s>]*url\s*\()/i.test(
+      markup,
+    )
+  );
+}
+
+function markdownSection(markdown, startHeading, endHeading) {
+  const startPattern = new RegExp(
+    `^${escapeRegularExpression(startHeading)}[ \\t]*\\r?$`,
+    "m",
+  );
+  const startMatch = startPattern.exec(markdown);
+  if (!startMatch) {
+    return "";
+  }
+  const afterStart = startMatch.index + startMatch[0].length;
+  const endPattern = new RegExp(
+    `^${escapeRegularExpression(endHeading)}[ \\t]*\\r?$`,
+    "m",
+  );
+  const endMatch = endPattern.exec(markdown.slice(afterStart));
+  return endMatch
+    ? markdown.slice(startMatch.index, afterStart + endMatch.index)
+    : "";
+}
+
+function escapeRegularExpression(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function sha256File(relativePath) {
   return createHash("sha256")
     .update(readFileSync(resolve(root, relativePath)))
+    .digest("hex");
+}
+
+function sha256Text(value) {
+  return createHash("sha256")
+    .update(value.replace(/\r\n?/g, "\n"), "utf8")
     .digest("hex");
 }
 
