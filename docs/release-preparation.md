@@ -172,12 +172,12 @@ npm run release:commercial:preflight -- `
 恢复、取消、退款、失败付款和提现演练。`{{...}}` 不是待发布文案，而是故意
 保留的阻断器；删除占位文字本身不会让门禁通过。
 
-`.github/FUNDING.yml` 在验证收款账号所有人、未登录展示页、付款限制/非购买说明、
-小额付款和提现之前保持纯注释，同时
-`.github/funding-operator-attestation.json` 保持精确 `inactive` 状态。启用时
-两个文件必须在同一审核 commit 中绑定完全相同的 URL、五项 `true` 和不超过
-180 天的真实验证日期；普通 `qa:commercial:community`/CI 随后无需 CLI 确认。
-自愿支持与购买软件权益必须在页面上明确分开。
+`.github/FUNDING.yml` 当前只链接仓库内的自愿支持说明页；
+`.github/funding-operator-attestation.json` 使用精确 `repository-link-unverified`
+状态，绑定该 URL，但日期为空且五项付款/运营核验均为 `false`。这不会声称已经完成收款人、
+小额付款或提现验证。若以后改为直接外部收款链接，两个文件必须在同一审核 commit
+中绑定完全相同的 URL、五项 `true` 和不超过 180 天的真实验证日期。自愿支持与
+购买软件权益必须始终明确分开。
 
 ## 4. Windows 邀请测试
 
@@ -309,11 +309,11 @@ package identity，再用微软工具外部打包；不能把 NSIS 改后缀或�
 5. 当前 Community 发布保持 checkout、付费权益和付费支持全部关闭。仓库可以
    单独展示无回报的自愿支持页，但 Store 文案、应用界面、发布包、下载和更新
    不得链接或宣传该入口，也不能为了收款把当前免费 Store 分发描述成付费产品。
-6. GitHub Funding 按钮继续关闭，直到逐个核对页面中的收款方式资格、账号
-   所有人、未登录桌面/移动展示、付款限制/非购买说明、小额付款与提现；通过后在
-   同一审核 commit 提交精确页面 URL 和当前 operator attestation，且不承诺
-   软件权益。正式提交 Individual Store 版本前，还需确认独立仓库支持页不会
-   改变 Partner Center 对本次免费、非商业 Store 分发的账户资格判断。
+6. GitHub Funding 按钮只链接仓库内的自愿支持说明页，并保持
+   `repository-link-unverified` 证据边界，不承诺软件权益，也不声称完成收款人、小额付款或提现验证。只有逐个
+   完成页面中的收款方式资格、账号所有人、未登录桌面/移动展示、付款限制/非购买
+   说明、小额付款与提现核验后，才可改为直接外部链接和 `verified` 状态。独立仓库
+   支持页不得改变 Partner Center 对免费 Store 分发的账户资格判断。
 7. 达到至少 10 名重复使用者和 5 名真实支持者后，只开始 MoR 申请、
    访谈和 Founder/Pro 非售卖原型；真正开售仍须达到 30 名外部 Windows 用户
    完成 SSH、且 10 人提出同一付费需求等更高门禁。

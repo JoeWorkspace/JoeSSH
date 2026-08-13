@@ -196,10 +196,11 @@ binary rather than claiming a fully trusted release.
 
 Paid checkout and production telemetry remain disabled until the full
 [commercial-release-readiness.md](commercial-release-readiness.md) checklist
-passes. A no-reward voluntary-support link may be enabled earlier only after
-its separate Funding Button lane passes and the exact URL is bound to a current
-`.github/funding-operator-attestation.json`; it does not authorize checkout or
-paid benefits.
+passes. The current no-reward voluntary-support link targets the repository-
+owned notice and is bound to the exact `repository-link-unverified` attestation
+with no payment verification claims. A future direct external destination still
+requires the complete Funding Button verification lane; neither state
+authorizes checkout or paid benefits.
 The public policy set is `SUPPORT.md`, `PRIVACY.md`, `REFUND_POLICY.md`,
 `TERMS_OF_SALE.md`, `TRADEMARKS.md`, and `THIRD_PARTY_NOTICES.md` at the
 repository root. Files containing `{{...}}` values are intentionally

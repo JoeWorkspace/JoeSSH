@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { isIP } from "node:net";
 import { resolve } from "node:path";
@@ -5,6 +6,7 @@ import { resolve } from "node:path";
 const REQUIRED_FILES = [
   ".github/FUNDING.yml",
   ".github/funding-operator-attestation.json",
+  "README.md",
   "PRIVACY.md",
   "REFUND_POLICY.md",
   "SUPPORT.md",
@@ -35,6 +37,18 @@ const UNVERIFIED_VALUE_PATTERN =
   /(?:change[-_ ]?me|example|placeholder|todo|tbd|unknown|not[-_ ]?set|verified_|<[^>]+>|\{\{)/i;
 const FUNDING_ATTESTATION_PATH = ".github/funding-operator-attestation.json";
 const FUNDING_ATTESTATION_MAX_AGE_DAYS = 180;
+const REPOSITORY_VOLUNTARY_SUPPORT_URL =
+  "https://github.com/JoeWorkspace/JoeSSH/blob/main/docs/voluntary-support.md";
+const REPOSITORY_SUPPORT_ASSET_SHA256 = new Map([
+  [
+    "docs/assets/funding/wechat-support-qr.jpg",
+    "2fed0d58be9eb25e14b696cd072e2aaf9ba9b1fc3fb08fe5a41e3840e686a062",
+  ],
+  [
+    "docs/assets/funding/alipay-support-qr.jpg",
+    "8921b976ab8f01c1aacb666947d13002244242ba3f0df8fab6de76d3b6f60d44",
+  ],
+]);
 const FUNDING_ATTESTATION_KEYS = [
   "schemaVersion",
   "status",
@@ -148,14 +162,7 @@ function checkFundingConfiguration() {
   );
   const attestation = readCanonicalFundingAttestation();
   if (activeLines.length === 0) {
-    const inactiveAttestation =
-      hasFundingAttestationStructure(attestation) &&
-      attestation.status === "inactive" &&
-      attestation.fundingUrl === null &&
-      attestation.verifiedAt === null &&
-      FUNDING_ATTESTATION_CHECK_KEYS.every(
-        (key) => attestation.checks[key] === false,
-      );
+    const inactiveAttestation = isInactiveFundingAttestation(attestation);
     addCheck(
       "funding:attestation-inactive",
       inactiveAttestation,
@@ -187,6 +194,18 @@ function checkFundingConfiguration() {
     "Active funding uses exactly one valid HTTPS custom destination",
     exactMinimalConfig ? configuredUrl : activeLines.join(" | "),
   );
+  if (configuredUrl === REPOSITORY_VOLUNTARY_SUPPORT_URL) {
+    checkRepositoryVoluntarySupport(attestation);
+    addCheck(
+      "funding:cli-preflight-not-verified",
+      !options.confirmFundingVerified && options.fundingUrl === "",
+      "Repository-link funding cannot be represented as payment-verified by CLI flags",
+      options.confirmFundingVerified || options.fundingUrl !== ""
+        ? "Remove funding verification flags; repository-link intentionally retains false payment/operator checks."
+        : "No payment verification is claimed.",
+    );
+    return;
+  }
   const attestationStructure = hasFundingAttestationStructure(attestation);
   const attestationUrlBound =
     attestationStructure &&
@@ -252,6 +271,73 @@ function checkFundingConfiguration() {
   checkFundingCliPreflight(configuredUrl);
 }
 
+function checkRepositoryVoluntarySupport(attestation) {
+  const repositoryLinkAttestation =
+    isRepositoryLinkFundingAttestation(attestation);
+  const supportPage = readText("docs/voluntary-support.md");
+  const readme = readText("README.md");
+  const normalizedSupportPage = supportPage
+    .replace(/^\s*>\s?/gm, "")
+    .replace(/\s+/g, " ");
+  const pageBoundaryComplete = [
+    /voluntary personal support, not a purchase/i,
+    /(?:does not provide paid features|provides no rights beyond[\s\S]{0,120}paid features)/i,
+    /personal Weixin Pay and\s+Alipay accounts/i,
+    /cannot (?:use these personal collection\s+codes to )?cancel, reverse, refund, or automatically return/i,
+    /GitHub(?:'s)? Sponsor button only links to this notice/i,
+    /GitHub does not process\s+these payments/i,
+    /recipient, small-payment, and payout verification (?:is|are) not\s+complete/i,
+  ].every((pattern) => pattern.test(normalizedSupportPage));
+  const exactAssetsLinked = [
+    'href="assets/funding/wechat-support-qr.jpg"',
+    'href="assets/funding/alipay-support-qr.jpg"',
+  ].every((value) => supportPage.includes(value));
+  const exactAssetsPinned = [...REPOSITORY_SUPPORT_ASSET_SHA256].every(
+    ([relativePath, expected]) => sha256File(relativePath) === expected,
+  );
+  const normalizedReadme = readme
+    .replace(/^\s*>\s?/gm, "")
+    .replace(/\s+/g, " ");
+  const readmeBoundaryComplete = [
+    /GitHub(?:'s)? Sponsor button only links to the voluntary-support notice/i,
+    /GitHub does not process these payments/i,
+    /recipient, small-payment, and payout verification (?:is|are) not complete/i,
+  ].every((pattern) => pattern.test(normalizedReadme));
+
+  addCheck(
+    "funding:repository-support-page",
+    pageBoundaryComplete && exactAssetsLinked && readmeBoundaryComplete,
+    "Repository Sponsor link targets the reviewed voluntary-support page",
+    pageBoundaryComplete && exactAssetsLinked && readmeBoundaryComplete
+      ? REPOSITORY_VOLUNTARY_SUPPORT_URL
+      : "Keep the non-purchase/payment-limitations/unverified wording and both reviewed QR references on the support page and README.",
+  );
+  addCheck(
+    "funding:repository-support-assets",
+    exactAssetsPinned,
+    "Repository support-page QR assets match the reviewed SHA-256 pins",
+    exactAssetsPinned
+      ? "Both public QR assets are byte-for-byte unchanged."
+      : "A QR asset changed; review the payment destination and update pins only with explicit operator approval.",
+  );
+  addCheck(
+    "funding:attestation-repository-link",
+    repositoryLinkAttestation,
+    "Repository support-page funding uses the exact unverified-link payment-operator attestation",
+    repositoryLinkAttestation
+      ? "No small-payment, recipient, or payout verification is claimed."
+      : "Bind the exact repository support URL with repository-link-unverified status, a null date, and every payment verification check false.",
+  );
+  addCheck(
+    "funding:community-boundary",
+    pageBoundaryComplete &&
+      exactAssetsLinked &&
+      exactAssetsPinned &&
+      repositoryLinkAttestation,
+    "Sponsor link remains voluntary support and does not activate checkout or paid benefits",
+  );
+}
+
 function readCanonicalFundingAttestation() {
   const raw = readText(FUNDING_ATTESTATION_PATH);
   let value = null;
@@ -279,7 +365,9 @@ function hasFundingAttestationStructure(value) {
     isRecord(value) &&
     hasExactKeys(value, FUNDING_ATTESTATION_KEYS) &&
     value.schemaVersion === 1 &&
-    ["inactive", "verified"].includes(value.status) &&
+    ["inactive", "repository-link-unverified", "verified"].includes(
+      value.status,
+    ) &&
     isRecord(value.checks) &&
     hasExactKeys(value.checks, FUNDING_ATTESTATION_CHECK_KEYS) &&
     FUNDING_ATTESTATION_CHECK_KEYS.every(
@@ -291,6 +379,26 @@ function hasFundingAttestationStructure(value) {
     "Funding operator attestation has only the reviewed schema and exact verification fields",
   );
   return valid;
+}
+
+function isInactiveFundingAttestation(value) {
+  return (
+    hasFundingAttestationStructure(value) &&
+    value.status === "inactive" &&
+    value.fundingUrl === null &&
+    value.verifiedAt === null &&
+    FUNDING_ATTESTATION_CHECK_KEYS.every((key) => value.checks[key] === false)
+  );
+}
+
+function isRepositoryLinkFundingAttestation(value) {
+  return (
+    hasFundingAttestationStructure(value) &&
+    value.status === "repository-link-unverified" &&
+    value.fundingUrl === REPOSITORY_VOLUNTARY_SUPPORT_URL &&
+    value.verifiedAt === null &&
+    FUNDING_ATTESTATION_CHECK_KEYS.every((key) => value.checks[key] === false)
+  );
 }
 
 function checkFundingCliPreflight(configuredUrl) {
@@ -707,6 +815,12 @@ function readText(relativePath) {
     /^\uFEFF/,
     "",
   );
+}
+
+function sha256File(relativePath) {
+  return createHash("sha256")
+    .update(readFileSync(resolve(root, relativePath)))
+    .digest("hex");
 }
 
 function addCheck(id, ok, label, detail = "") {

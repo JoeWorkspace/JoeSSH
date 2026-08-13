@@ -6,8 +6,9 @@ persistent public attestation in
 `.github/funding-operator-attestation.json`; it does not unlock software,
 support, or another paid benefit. Founder, Pro, hosted Sync, paid support, paid
 checkout, and production telemetry require the complete commercial checklist.
-Neither lane blocks a free Community source release with comments-only funding,
-but Community release notes must not advertise unavailable paid benefits.
+Neither lane blocks a free Community source release with a repository-owned
+voluntary-support link, but Community release notes must not advertise
+unavailable paid benefits.
 
 Before any paid launch, classify EU distribution with `--eu-market-scope` as
 `not-offered`, `business-only`, `consumer-microenterprise-exempt`, or
@@ -87,6 +88,8 @@ buyer population, and any microenterprise basis before choosing the value.
 
 - [ ] The destination is owned by the verified project operator.
 - [ ] The page clearly distinguishes voluntary support from a purchase.
+- [x] The current GitHub Sponsor destination is the exact repository-owned
+      voluntary-support notice, not a direct checkout or third-party profile.
 - [ ] Every payment method displayed on the destination has separately passed
       ownership, public-display, recipient-display, small-payment,
       platform-rules, and payout checks.
@@ -107,13 +110,15 @@ buyer population, and any microenterprise basis before choosing the value.
       remain outside the repository; the committed file contains only public,
       non-secret operator assertions.
 
-This section together with the activation procedure in
+This section together with the direct-destination procedure in
 `docs/funding-and-checkout.md` is the whole repository gate for a no-reward
 voluntary-support button. The checkout/consumer-flow sections above remain
-mandatory for a paid offer, but they are not prerequisites for collecting
-supporters before the repeat-user/supporter threshold is reached. A
-comments-only funding file must retain the exact `inactive` attestation with
-null URL/date and all checks false.
+mandatory for a paid offer, but they are not prerequisites for linking the
+repository-owned notice. That link must retain the exact
+`repository-link-unverified`
+attestation: its URL is bound, its date is null, and all five payment/operator
+checks remain false. A future direct funding destination still requires the
+complete current `verified` attestation.
 
 ## Final Search
 
