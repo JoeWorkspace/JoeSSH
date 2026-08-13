@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { isIP } from "node:net";
 import { resolve } from "node:path";
@@ -5,6 +6,7 @@ import { resolve } from "node:path";
 const REQUIRED_FILES = [
   ".github/FUNDING.yml",
   ".github/funding-operator-attestation.json",
+  "README.md",
   "PRIVACY.md",
   "REFUND_POLICY.md",
   "SUPPORT.md",
@@ -35,6 +37,35 @@ const UNVERIFIED_VALUE_PATTERN =
   /(?:change[-_ ]?me|example|placeholder|todo|tbd|unknown|not[-_ ]?set|verified_|<[^>]+>|\{\{)/i;
 const FUNDING_ATTESTATION_PATH = ".github/funding-operator-attestation.json";
 const FUNDING_ATTESTATION_MAX_AGE_DAYS = 180;
+const REPOSITORY_VOLUNTARY_SUPPORT_URL =
+  "https://github.com/JoeWorkspace/JoeSSH/blob/main/docs/voluntary-support.md";
+const REPOSITORY_SUPPORT_ASSET_SHA256 = new Map([
+  [
+    "docs/assets/funding/wechat-support-qr.jpg",
+    "2fed0d58be9eb25e14b696cd072e2aaf9ba9b1fc3fb08fe5a41e3840e686a062",
+  ],
+  [
+    "docs/assets/funding/alipay-support-qr.jpg",
+    "8921b976ab8f01c1aacb666947d13002244242ba3f0df8fab6de76d3b6f60d44",
+  ],
+]);
+const REPOSITORY_SUPPORT_PAGE_SHA256 =
+  "7514cd136e165afd2f8961b79becffb2fdc0a64de1a1b84d45b67d8a723af038";
+const README_SUPPORT_SECTION_SHA256 =
+  "924245fd4aba1912046adf86d1827b63575c73d7ad736df337af698fb7f895d4";
+const SUPPORT_PAGE_QR_HREFS = [
+  "assets/funding/wechat-support-qr.jpg",
+  "assets/funding/alipay-support-qr.jpg",
+];
+const SUPPORT_PAGE_QR_SOURCES = [...SUPPORT_PAGE_QR_HREFS];
+const README_SUPPORT_QR_HREFS = [
+  "docs/voluntary-support.md",
+  "docs/voluntary-support.md",
+];
+const README_SUPPORT_QR_SOURCES = [
+  "docs/assets/funding/wechat-support-qr.jpg",
+  "docs/assets/funding/alipay-support-qr.jpg",
+];
 const FUNDING_ATTESTATION_KEYS = [
   "schemaVersion",
   "status",
@@ -148,14 +179,7 @@ function checkFundingConfiguration() {
   );
   const attestation = readCanonicalFundingAttestation();
   if (activeLines.length === 0) {
-    const inactiveAttestation =
-      hasFundingAttestationStructure(attestation) &&
-      attestation.status === "inactive" &&
-      attestation.fundingUrl === null &&
-      attestation.verifiedAt === null &&
-      FUNDING_ATTESTATION_CHECK_KEYS.every(
-        (key) => attestation.checks[key] === false,
-      );
+    const inactiveAttestation = isInactiveFundingAttestation(attestation);
     addCheck(
       "funding:attestation-inactive",
       inactiveAttestation,
@@ -187,6 +211,18 @@ function checkFundingConfiguration() {
     "Active funding uses exactly one valid HTTPS custom destination",
     exactMinimalConfig ? configuredUrl : activeLines.join(" | "),
   );
+  if (configuredUrl === REPOSITORY_VOLUNTARY_SUPPORT_URL) {
+    checkRepositoryVoluntarySupport(attestation);
+    addCheck(
+      "funding:cli-preflight-not-verified",
+      !options.confirmFundingVerified && options.fundingUrl === "",
+      "Repository-link funding cannot be represented as payment-verified by CLI flags",
+      options.confirmFundingVerified || options.fundingUrl !== ""
+        ? "Remove funding verification flags; repository-link intentionally retains false payment/operator checks."
+        : "No payment verification is claimed.",
+    );
+    return;
+  }
   const attestationStructure = hasFundingAttestationStructure(attestation);
   const attestationUrlBound =
     attestationStructure &&
@@ -252,6 +288,121 @@ function checkFundingConfiguration() {
   checkFundingCliPreflight(configuredUrl);
 }
 
+function checkRepositoryVoluntarySupport(attestation) {
+  const repositoryLinkAttestation =
+    isRepositoryLinkFundingAttestation(attestation);
+  const supportPage = readText("docs/voluntary-support.md");
+  const readme = readText("README.md");
+  const normalizedSupportPage = supportPage
+    .replace(/^\s*>\s?/gm, "")
+    .replace(/\s+/g, " ");
+  const pageBoundaryComplete = [
+    /voluntary personal support, not a purchase/i,
+    /(?:does not provide paid features|provides no rights beyond[\s\S]{0,120}paid features)/i,
+    /personal Weixin Pay and\s+Alipay accounts/i,
+    /cannot (?:use these personal collection\s+codes to )?cancel, reverse, refund, or automatically return/i,
+    /GitHub(?:'s)? Sponsor button only links to this notice/i,
+    /GitHub does not process\s+these payments/i,
+    /recipient, small-payment, and payout verification (?:is|are) not\s+complete/i,
+  ].every((pattern) => pattern.test(normalizedSupportPage));
+  const supportPageLinks = strictHtmlAttributeValues(supportPage, "a", "href");
+  const supportPageImages = strictHtmlAttributeValues(
+    supportPage,
+    "img",
+    "src",
+  );
+  const supportPageAssetsRendered =
+    supportPageLinks.complete &&
+    arraysEqual(supportPageLinks.values, SUPPORT_PAGE_QR_HREFS) &&
+    supportPageImages.complete &&
+    arraysEqual(supportPageImages.values, SUPPORT_PAGE_QR_SOURCES) &&
+    hasOnlyReviewedImageSyntax(supportPage);
+  const supportPageCopyReviewed =
+    sha256Text(supportPage) === REPOSITORY_SUPPORT_PAGE_SHA256;
+  const exactAssetsPinned = [...REPOSITORY_SUPPORT_ASSET_SHA256].every(
+    ([relativePath, expected]) => sha256File(relativePath) === expected,
+  );
+  const readmeSupportSection = markdownSection(
+    readme,
+    "## Support The Maintainer",
+    "## Screenshots",
+  );
+  const readmeSupportLinks = strictHtmlAttributeValues(
+    readmeSupportSection,
+    "a",
+    "href",
+  );
+  const readmeSupportImages = strictHtmlAttributeValues(
+    readmeSupportSection,
+    "img",
+    "src",
+  );
+  const readmeAssetsRendered =
+    readmeSupportSection !== "" &&
+    readmeSupportLinks.complete &&
+    arraysEqual(readmeSupportLinks.values, README_SUPPORT_QR_HREFS) &&
+    readmeSupportImages.complete &&
+    arraysEqual(readmeSupportImages.values, README_SUPPORT_QR_SOURCES) &&
+    hasOnlyReviewedImageSyntax(readmeSupportSection);
+  const readmeSupportCopyReviewed =
+    sha256Text(readmeSupportSection) === README_SUPPORT_SECTION_SHA256;
+  const normalizedReadme = readme
+    .replace(/^\s*>\s?/gm, "")
+    .replace(/\s+/g, " ");
+  const readmeBoundaryComplete = [
+    /GitHub(?:'s)? Sponsor button only links to the voluntary-support notice/i,
+    /GitHub does not process these payments/i,
+    /recipient, small-payment, and payout verification (?:is|are) not complete/i,
+  ].every((pattern) => pattern.test(normalizedReadme));
+
+  addCheck(
+    "funding:repository-support-page",
+    pageBoundaryComplete &&
+      supportPageAssetsRendered &&
+      supportPageCopyReviewed &&
+      readmeBoundaryComplete &&
+      readmeAssetsRendered &&
+      readmeSupportCopyReviewed,
+    "Repository Sponsor link targets the reviewed voluntary-support page",
+    pageBoundaryComplete &&
+      supportPageAssetsRendered &&
+      supportPageCopyReviewed &&
+      readmeBoundaryComplete &&
+      readmeAssetsRendered &&
+      readmeSupportCopyReviewed
+      ? REPOSITORY_VOLUNTARY_SUPPORT_URL
+      : "Keep the non-purchase/payment-limitations/unverified wording and the exact rendered href/src pairs for both reviewed QR assets on the support page and README.",
+  );
+  addCheck(
+    "funding:repository-support-assets",
+    exactAssetsPinned,
+    "Repository support-page QR assets match the reviewed SHA-256 pins",
+    exactAssetsPinned
+      ? "Both public QR assets are byte-for-byte unchanged."
+      : "A QR asset changed; review the payment destination and update pins only with explicit operator approval.",
+  );
+  addCheck(
+    "funding:attestation-repository-link",
+    repositoryLinkAttestation,
+    "Repository support-page funding uses the exact unverified-link payment-operator attestation",
+    repositoryLinkAttestation
+      ? "No small-payment, recipient, or payout verification is claimed."
+      : "Bind the exact repository support URL with repository-link-unverified status, a null date, and every payment verification check false.",
+  );
+  addCheck(
+    "funding:community-boundary",
+    pageBoundaryComplete &&
+      supportPageAssetsRendered &&
+      supportPageCopyReviewed &&
+      exactAssetsPinned &&
+      readmeBoundaryComplete &&
+      readmeAssetsRendered &&
+      readmeSupportCopyReviewed &&
+      repositoryLinkAttestation,
+    "Sponsor link remains voluntary support and does not activate checkout or paid benefits",
+  );
+}
+
 function readCanonicalFundingAttestation() {
   const raw = readText(FUNDING_ATTESTATION_PATH);
   let value = null;
@@ -279,7 +430,9 @@ function hasFundingAttestationStructure(value) {
     isRecord(value) &&
     hasExactKeys(value, FUNDING_ATTESTATION_KEYS) &&
     value.schemaVersion === 1 &&
-    ["inactive", "verified"].includes(value.status) &&
+    ["inactive", "repository-link-unverified", "verified"].includes(
+      value.status,
+    ) &&
     isRecord(value.checks) &&
     hasExactKeys(value.checks, FUNDING_ATTESTATION_CHECK_KEYS) &&
     FUNDING_ATTESTATION_CHECK_KEYS.every(
@@ -291,6 +444,26 @@ function hasFundingAttestationStructure(value) {
     "Funding operator attestation has only the reviewed schema and exact verification fields",
   );
   return valid;
+}
+
+function isInactiveFundingAttestation(value) {
+  return (
+    hasFundingAttestationStructure(value) &&
+    value.status === "inactive" &&
+    value.fundingUrl === null &&
+    value.verifiedAt === null &&
+    FUNDING_ATTESTATION_CHECK_KEYS.every((key) => value.checks[key] === false)
+  );
+}
+
+function isRepositoryLinkFundingAttestation(value) {
+  return (
+    hasFundingAttestationStructure(value) &&
+    value.status === "repository-link-unverified" &&
+    value.fundingUrl === REPOSITORY_VOLUNTARY_SUPPORT_URL &&
+    value.verifiedAt === null &&
+    FUNDING_ATTESTATION_CHECK_KEYS.every((key) => value.checks[key] === false)
+  );
 }
 
 function checkFundingCliPreflight(configuredUrl) {
@@ -707,6 +880,86 @@ function readText(relativePath) {
     /^\uFEFF/,
     "",
   );
+}
+
+function arraysEqual(actual, expected) {
+  return (
+    actual.length === expected.length &&
+    actual.every((value, index) => value === expected[index])
+  );
+}
+
+function strictHtmlAttributeValues(markup, tagName, attributeName) {
+  const openerPattern = new RegExp(`<${tagName}\\b`, "gi");
+  const tagPattern = new RegExp(`<${tagName}\\b[^>]*>`, "gi");
+  const tags = [...markup.matchAll(tagPattern)].map((match) => match[0]);
+  const openerCount = [...markup.matchAll(openerPattern)].length;
+  const values = [];
+
+  if (tags.length !== openerCount) {
+    return { complete: false, values };
+  }
+
+  for (const tag of tags) {
+    const attributePattern = new RegExp(
+      `\\s${attributeName}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s"'=<>\\x60]+))`,
+      "gi",
+    );
+    const attributes = [...tag.matchAll(attributePattern)];
+    if (attributes.length !== 1) {
+      return { complete: false, values: [] };
+    }
+    values.push(attributes[0][1] ?? attributes[0][2] ?? attributes[0][3]);
+  }
+
+  return { complete: true, values };
+}
+
+function hasOnlyReviewedImageSyntax(markup) {
+  return (
+    !/!\[/i.test(markup) &&
+    !/<(?:picture|source|object|embed|svg|image|video)\b/i.test(markup) &&
+    !/\bsrcset\s*=/i.test(markup) &&
+    !/\bstyle\s*=\s*(?:"[^"]*url\s*\(|'[^']*url\s*\(|[^\s>]*url\s*\()/i.test(
+      markup,
+    )
+  );
+}
+
+function markdownSection(markdown, startHeading, endHeading) {
+  const startPattern = new RegExp(
+    `^${escapeRegularExpression(startHeading)}[ \\t]*\\r?$`,
+    "m",
+  );
+  const startMatch = startPattern.exec(markdown);
+  if (!startMatch) {
+    return "";
+  }
+  const afterStart = startMatch.index + startMatch[0].length;
+  const endPattern = new RegExp(
+    `^${escapeRegularExpression(endHeading)}[ \\t]*\\r?$`,
+    "m",
+  );
+  const endMatch = endPattern.exec(markdown.slice(afterStart));
+  return endMatch
+    ? markdown.slice(startMatch.index, afterStart + endMatch.index)
+    : "";
+}
+
+function escapeRegularExpression(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function sha256File(relativePath) {
+  return createHash("sha256")
+    .update(readFileSync(resolve(root, relativePath)))
+    .digest("hex");
+}
+
+function sha256Text(value) {
+  return createHash("sha256")
+    .update(value.replace(/\r\n?/g, "\n"), "utf8")
+    .digest("hex");
 }
 
 function addCheck(id, ok, label, detail = "") {

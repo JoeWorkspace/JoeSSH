@@ -1,5 +1,15 @@
 # 支持 JoeSSH / Support JoeSSH
 
+> [!WARNING]
+> GitHub 的 Sponsor 按钮只会打开本说明页；GitHub 不处理下方付款。两张个人
+> 收款码的收款人、小额付款与提现核验尚未完成。请在付款应用中自行核对收款人，
+> 如显示信息不符，请勿付款。
+
+> GitHub's Sponsor button only links to this notice. GitHub does not process
+> these payments. Recipient, small-payment, and payout verification is not
+> complete. Verify the recipient in the payment app and do not pay if it differs
+> from the disclosure below.
+
 JoeSSH 是我独立开发和维护的免费开源项目。我曾因参与 A 股投资遭受重大
 经济损失，目前正在努力恢复生活并继续维护这个项目。如果 JoeSSH 对你有所
 帮助，并且不会影响你自己的基本生活，欢迎通过下方二维码自愿支持我。支持款

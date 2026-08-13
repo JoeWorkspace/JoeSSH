@@ -24,6 +24,12 @@ evaluation/community surface rather than a hosted or mutating team service.
 
 ## Support The Maintainer
 
+> [!WARNING]
+> GitHub's Sponsor button only links to the voluntary-support notice; GitHub
+> does not process these payments. Recipient, small-payment, and payout
+> verification is not complete. Verify the recipient in the payment app before
+> paying.
+
 JoeSSH Community remains free and MIT-licensed. If JoeSSH has helped you and
 you can comfortably do so, you can read the
 [voluntary-support notice](docs/voluntary-support.md) and support its independent

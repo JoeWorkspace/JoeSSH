@@ -116,11 +116,11 @@ evidence. None can make the current workflow produce
 - Confirm the release accurately links `SUPPORT.md`, `PRIVACY.md`,
   `TRADEMARKS.md`, and `THIRD_PARTY_NOTICES.md`, and does not advertise Pro,
   Founder, hosted support, or a funding benefit that is not live.
-- Keep `.github/FUNDING.yml` comments-only with the exact inactive
-  `.github/funding-operator-attestation.json` unless the destination has passed
-  the separate Funding Button lane in `docs/commercial-release-readiness.md`;
-  an active URL must be exactly bound to a complete verification no more than
-  180 days old.
+- Keep `.github/FUNDING.yml` bound to the exact repository-owned voluntary-
+  support notice with the link-only `repository-link-unverified` attestation. A
+  direct external destination must pass the separate Funding Button lane in
+  `docs/commercial-release-readiness.md` and be bound to a complete verification
+  no more than 180 days old.
 - Before publishing the voluntary-support page, manually scan both personal
   codes and confirm Weixin Pay shows `Joe(*添)` and Alipay shows
   `慈善家(*添)`. Recheck the non-purchase, no project-operated refund, official

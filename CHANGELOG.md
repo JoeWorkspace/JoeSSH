@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Enabled GitHub's Sponsor button with the repository-owned voluntary-support
+  notice as its only custom destination. The link remains separate from product
+  checkout and does not claim payment-recipient, small-payment, or payout
+  verification; the public warning and both QR asset hashes are CI-locked.
+
 ## [0.1.0-beta.22] - 2026-08-11
 
 > Microsoft Store package-language correction. The GitHub prerelease remains

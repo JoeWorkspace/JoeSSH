@@ -1,28 +1,29 @@
 # Funding And Checkout Plan
 
-Status checked: 2026-07-30. Provider eligibility and fees can change; verify
-again before activation.
+Status checked: 2026-08-13. Provider eligibility and fees can change; verify
+again before activating a direct external funding destination.
 
 ## Current State
 
 The repository includes an operator-supplied
 [voluntary-support page](voluntary-support.md) with Weixin Pay and Alipay QR
 codes. It is separate from product checkout and promises no reward or software
-benefit. `.github/FUNDING.yml` remains intentionally comments-only, so GitHub
-does not render a Sponsor button before both payment methods pass the complete
-live verification below. `.github/funding-operator-attestation.json` remains in
-the exact `inactive` state. JoeSSH Community remains free and Pro/Founder remain
-unavailable.
+benefit. `.github/FUNDING.yml` uses the canonical repository support page as its
+single custom GitHub Funding link. The exact `repository-link-unverified`
+attestation makes no claim that either payment method has passed recipient,
+small-payment, or payout verification. JoeSSH Community remains free and
+Pro/Founder remain unavailable.
 
 ## Recommended Order
 
 1. Use the canonical repository and releases to build trust and adoption.
 2. Keep the repository support page separate from Store listing copy, binaries,
    application UI, downloads, updates, support priority, and roadmap decisions.
-3. After every displayed payment method passes the live checks below, use the
-   canonical support-page URL as the single custom GitHub Funding link. Treat
-   any digital reward or software benefit as a later sale, not as this support
-   lane.
+3. Keep the canonical repository support-page URL as the single custom GitHub
+   Funding link. Treat any digital reward or software benefit as a later sale,
+   not as this support lane. Do not replace it with a direct external funding
+   destination until every displayed payment method passes the live checks
+   below.
 4. Apply to Paddle for a later global Pro checkout, but do not integrate until
    the individual account, JoeSSH product category, domain, and real payout are
    approved.
@@ -65,9 +66,11 @@ refund policy, and support route. Do not call a paid entitlement a donation.
 A merchant of record may handle customer-side sales tax or VAT, but that does
 not remove the developer's local income-reporting and tax duties.
 
-## Activation Procedure
+## Direct External Destination Verification
 
-Before enabling the repository support page through `.github/FUNDING.yml`:
+The repository-owned notice may be linked with `repository-link-unverified`
+status and all payment verification fields false. Before replacing it with a
+direct external funding destination or changing the attestation to `verified`:
 
 1. complete the platform's identity and payout verification with truthful owner
    information;
@@ -85,9 +88,9 @@ Before enabling the repository support page through `.github/FUNDING.yml`:
    unauthorized-payment route, and complete a payout/withdrawal;
 6. record the platform account owner, public URL, fee schedule, payout route,
    and evidence date in a private operator record;
-7. verify the exact canonical support-page URL from a logged-out desktop and
-   mobile browser, then replace the comments-only funding config with only that
-   URL;
+7. verify the exact destination URL from a logged-out desktop and mobile
+   browser, then replace the repository support-page URL with only that direct
+   destination;
 8. in the same reviewed commit, change
    `.github/funding-operator-attestation.json` to `verified`, bind the exact same
    URL, record the real UTC verification date, and set all five reviewed checks
@@ -113,17 +116,17 @@ require a fresh verification and an atomic update of both files. The optional
 `--funding-url ... --confirm-funding-verified` arguments are a one-time
 diagnostic only and never replace the committed attestation.
 
-## Configuration Template
+## Direct Destination Configuration Template
 
-After verification, replace the comments-only file with this single supported
-minimal form:
+After complete live payment verification, replace the repository support-page
+URL with this single supported minimal form:
 
 ```yaml
 custom:
   - VERIFIED_HTTPS_FUNDING_URL
 ```
 
-In the same commit, replace the inactive attestation with:
+In the same commit, replace the `repository-link-unverified` attestation with:
 
 ```json
 {
