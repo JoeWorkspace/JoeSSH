@@ -2,12 +2,13 @@
 
 ## Supported Versions
 
-| Version       | Supported          |
-| ------------- | ------------------ |
-| 0.1.0-beta.22 | Store candidate    |
-| 0.1.0-beta.21 | Source prerelease  |
-| 0.1.0-beta.20 | Source prerelease  |
-| 0.1.x         | :white_check_mark: |
+| Version       | Supported              |
+| ------------- | ---------------------- |
+| 0.1.0-beta.23 | Maintenance candidate  |
+| 0.1.0-beta.22 | Existing Store package |
+| 0.1.0-beta.21 | Source prerelease      |
+| 0.1.0-beta.20 | Source prerelease      |
+| 0.1.x         | :white_check_mark:     |
 
 ## Reporting a Vulnerability
 

@@ -1099,6 +1099,8 @@ test("MSIX version mapping preserves beta, stable, and next-patch order", () => 
   const projectVersions = [
     "0.1.0-beta.1",
     "0.1.0-beta.10",
+    "0.1.0-beta.22",
+    "0.1.0-beta.23",
     "0.1.0-beta.98",
     "0.1.0",
     "0.1.1-beta.1",
@@ -1109,6 +1111,8 @@ test("MSIX version mapping preserves beta, stable, and next-patch order", () => 
   assert.deepEqual(msixVersions, [
     "1.1.1.0",
     "1.1.10.0",
+    "1.1.22.0",
+    "1.1.23.0",
     "1.1.98.0",
     "1.1.99.0",
     "1.1.101.0",

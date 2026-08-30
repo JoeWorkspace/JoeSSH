@@ -29,12 +29,15 @@ it.
 below. Do not attach binaries to that Release or reuse its tag for Web, Sync,
 Desktop, Mobile, or Store distribution. `0.1.0-beta.21` also remains an
 immutable zero-upload-asset Store source checkpoint. `0.1.0-beta.22`
-(`v0.1.0-beta.22`) is the next distinct source revision and is reserved for the
-Microsoft Store x64 candidate; its
-GitHub Release also remains zero-upload-asset and the Store package is delivered
-only through Partner Center. A future full multi-platform public release must
+(`v0.1.0-beta.22`) remains unchanged as the source record for the existing
+`1.1.22.0` Store package. `0.1.0-beta.23` is the next distinct source revision,
+reserved for the Microsoft Store x64 maintenance candidate `1.1.23.0`; its
+GitHub Release must also have zero uploaded assets, and the Store package is
+delivered only through Partner Center after verification and certification.
+Version preparation does not establish that the new binary is published.
+A future full multi-platform public release must
 first bump every version surface and release-note path to a distinct, unused
-version after `0.1.0-beta.22`; its target remains Desktop, Web Admin, and the
+version after `0.1.0-beta.23`; its target remains Desktop, Web Admin, and the
 self-hosted Sync Service. Mobile device smoke stays a strict-release route.
 
 The maintenance closeout may be represented by a source-only GitHub prerelease
@@ -42,12 +45,13 @@ before the full public artifact gate is available. That prerelease is limited to
 GitHub's automatically generated source archives: upload no `reports/release`
 files, unsigned installers, or locally built binaries. It must be marked as a
 prerelease, use an annotated tag on the exact protected `main` commit with passing
-required checks, and state that Desktop signing/notarization and Store approval
-remain incomplete. This narrow source record does not satisfy or weaken
+required checks, and state that Desktop signing/notarization and the new
+candidate's Store approval remain incomplete until separately verified. This
+narrow source record does not satisfy or weaken
 `release:publish-preflight`; any later binary release must still pass the complete
 artifact, signing, checksum, SBOM, provenance, and evidence workflow below.
 
-After the beta.22 version-preparation pull request is merged and its required
+After the beta.23 version-preparation pull request is merged and its required
 check is green, create and push only its single annotated source tag, remove
 every file under `reports/release/`, then use the dedicated fail-closed entry
 point. This GitHub record remains zero-asset even though the same source revision
@@ -55,8 +59,8 @@ is used for the separately submitted Store package:
 
 ```bash
 REVIEWED_COMMIT="$(git rev-parse HEAD)"
-git tag -a v0.1.0-beta.22 -m "JoeSSH 0.1.0-beta.22 Source Preview and Store Candidate"
-git push origin refs/tags/v0.1.0-beta.22:refs/tags/v0.1.0-beta.22
+git tag -a v0.1.0-beta.23 -m "JoeSSH 0.1.0-beta.23 Source Preview and Store Maintenance Candidate"
+git push origin refs/tags/v0.1.0-beta.23:refs/tags/v0.1.0-beta.23
 npm run release:source-prerelease -- --confirm-billing-ready --dry-run
 npm run release:source-prerelease -- --confirm-billing-ready
 npm run release:source-prerelease:verify
@@ -73,9 +77,10 @@ a file and cannot publish a full binary release.
 ## Recovery Flow
 
 The artifact-building and full-draft steps in this section apply only to a
-future distinct `FULL_RELEASE_VERSION` after beta.22. They must not be used to
-modify the permanent beta.20/beta.21 source-only Releases, attach assets to
-beta.22, or replace beta.22's Partner Center-only binary route.
+future distinct `FULL_RELEASE_VERSION` after beta.23. They must not be used to
+modify the permanent beta.20/beta.21/beta.22 source-only Releases, attach assets
+to beta.23, or replace the Partner Center-only binary route for these Store
+versions.
 
 1. Create or locate a healthy clone of the canonical JoeSSH repository.
 2. In the damaged workspace, produce a reviewable patch bundle:
@@ -139,13 +144,13 @@ beta.22, or replace beta.22's Partner Center-only binary route.
    protected `main` controls.
 
 7. For a later full binary release, choose a distinct unused version after
-   `0.1.0-beta.22`. Tag only after source QA is green, release evidence is
+   `0.1.0-beta.23`. Tag only after source QA is green, release evidence is
    complete, and the checks above are clean. Push that one annotated tag
    explicitly, then resolve the remote peeled tag and compare it with the
    reviewed commit:
 
    ```bash
-   FULL_RELEASE_VERSION="<DISTINCT_UNUSED_VERSION_AFTER_BETA_22>" # replace before running
+   FULL_RELEASE_VERSION="<DISTINCT_UNUSED_VERSION_AFTER_BETA_23>" # replace before running
    RELEASE_TAG="v${FULL_RELEASE_VERSION}"
    REVIEWED_COMMIT="$(git rev-parse HEAD)"
    git tag -a "${RELEASE_TAG}" -m "JoeSSH ${FULL_RELEASE_VERSION}"

@@ -7,8 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-beta.23] - 2026-08-30
+
+> Maintenance version prepared for a separate Microsoft Store update. This entry
+> is not evidence that the new binary has been built, certified, or published.
+> The intended GitHub prerelease remains source-only with zero uploaded assets.
+
+### Fixed
+
+- Stop active connections and pending dials when a local port forward closes.
+- Preserve SSH exit status after output EOF, and reject command termination
+  without a reported status or with an exit signal.
+- Preserve leading and trailing spaces in valid remote SFTP entry names while
+  continuing to reject blank paths and control characters.
+- Remediate dependency findings, verify the official GLib backport by content,
+  and require complete online RustSec and yanked checks for both Rust lockfiles
+  and the vendored package's original registry identity.
+- Isolate Windows Authenticode checks from inherited PowerShell modules and
+  compare Git worktree identities correctly across Windows 8.3 path aliases.
+
 ### Changed
 
+- Advance application and runtime version metadata to `0.1.0-beta.23`, mapped
+  to MSIX `1.1.23.0`; keep beta.20, beta.21, and beta.22 release records intact.
+- Put the free Microsoft Store install and first-connection guide near the
+  beginning of the README.
 - Enabled GitHub's Sponsor button with the repository-owned voluntary-support
   notice as its only custom destination. The link remains separate from product
   checkout and does not claim payment-recipient, small-payment, or payout

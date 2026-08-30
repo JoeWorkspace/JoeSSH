@@ -1,9 +1,9 @@
 # JoeSSH Public Beta Release Checklist
 
 This checklist defines the full public beta bar for the next distinct
-multi-platform release version after `0.1.0-beta.22`. Beta.22 is reserved for a
+multi-platform release version after `0.1.0-beta.23`. Beta.23 is reserved for a
 zero-upload-asset GitHub source record plus the separately delivered Microsoft
-Store x64 candidate; it is not the full Desktop/Web/Sync release described
+Store x64 maintenance candidate; it is not the full Desktop/Web/Sync release described
 below. That future release includes Desktop, Web Admin, and the self-hosted Sync
 Service. Mobile native apps stay in preflight/device-smoke validation until a
 later beta.
@@ -17,9 +17,11 @@ Sync, Mobile, or Desktop file must return to the applicable full artifact gate.
 `0.1.0-beta.20` and `0.1.0-beta.21` are permanently source-only: never attach
 binaries to them, edit them into a full release, or reuse their tags. Beta.22
 likewise has zero GitHub upload assets; its only binary delivery route is the
-exact Microsoft Store candidate submitted through Partner Center. Before
+exact Microsoft Store candidate submitted through Partner Center. Preserve that
+existing record. Beta.23 follows the same zero-GitHub-assets boundary with a
+new MSIX `1.1.23.0`; the version bump is not proof of a built or approved update. Before
 following the full-release steps below, set an unused `FULL_RELEASE_VERSION`
-after beta.22 and update all version metadata, artifact names, and its versioned
+after beta.23 and update all version metadata, artifact names, and its versioned
 release notes.
 
 ## Current Desktop automation status
