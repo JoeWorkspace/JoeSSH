@@ -18,6 +18,7 @@ import {
   relative,
   resolve,
 } from "node:path";
+import { WINDOWS_AUTHENTICODE_SETUP } from "./windows-powershell.mjs";
 
 const defaultRoot = resolve(import.meta.dirname, "..");
 const WINDOWS_EXTENSIONS = new Set([".exe"]);
@@ -261,6 +262,7 @@ console.log(
 
 function inspectAuthenticode(path) {
   const command = [
+    WINDOWS_AUTHENTICODE_SETUP,
     "$path = [Console]::In.ReadToEnd();",
     "$signature = Get-AuthenticodeSignature -LiteralPath $path;",
     "[PSCustomObject]@{",

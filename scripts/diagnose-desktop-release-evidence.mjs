@@ -9,6 +9,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { basename, dirname, isAbsolute, relative, resolve } from "node:path";
+import { WINDOWS_AUTHENTICODE_SETUP } from "./windows-powershell.mjs";
 
 const scriptRoot = resolve(import.meta.dirname, "..");
 const FORMAL_SIGNING_DISABLED = "FORMAL_SIGNING_DISABLED";
@@ -709,6 +710,7 @@ function inspectSignature(path) {
     return null;
   }
   const command = [
+    WINDOWS_AUTHENTICODE_SETUP,
     "$path = [Console]::In.ReadToEnd();",
     "$signature = Get-AuthenticodeSignature -LiteralPath $path;",
     "$signature | Select-Object Status,StatusMessage | ConvertTo-Json -Compress",

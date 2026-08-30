@@ -28,6 +28,7 @@ import {
 import { pipeline } from "node:stream/promises";
 import { Readable } from "node:stream";
 import { fileURLToPath } from "node:url";
+import { WINDOWS_AUTHENTICODE_SETUP } from "./windows-powershell.mjs";
 import {
   WINDOWS_STORE_FORMATS,
   assertCertificateSubjectMatchesLegalPublisher,
@@ -1471,6 +1472,7 @@ export function verifyAuthenticode(path, { requireTimestamp = false } = {}) {
 function inspectAuthenticode(path) {
   const powershell = resolveSystemPowerShell();
   const command = [
+    WINDOWS_AUTHENTICODE_SETUP,
     "$path = [Console]::In.ReadToEnd();",
     "$signature = Get-AuthenticodeSignature -LiteralPath $path;",
     "[PSCustomObject]@{",

@@ -9,6 +9,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { WINDOWS_AUTHENTICODE_SETUP } from "./windows-powershell.mjs";
 
 const defaultRoot = resolve(import.meta.dirname, "..");
 const {
@@ -71,6 +72,7 @@ function inspectGit() {
 
 function inspectAuthenticode(path) {
   const command = [
+    WINDOWS_AUTHENTICODE_SETUP,
     "$path = [Console]::In.ReadToEnd();",
     "$signature = Get-AuthenticodeSignature -LiteralPath $path;",
     "$signature | Select-Object @{Name='Status';Expression={$_.Status.ToString()}},StatusMessage | ConvertTo-Json -Compress",

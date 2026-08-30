@@ -21,6 +21,7 @@ import {
   relative,
   resolve,
 } from "node:path";
+import { WINDOWS_AUTHENTICODE_SETUP } from "./windows-powershell.mjs";
 
 const HANDOFF_FILES = [
   "SHA256SUMS.txt",
@@ -494,6 +495,7 @@ function verifyUnsignedAuthenticode(value, label) {
 function inspectAuthenticode(path) {
   const powershell = resolveSystemPowerShell();
   const command = [
+    WINDOWS_AUTHENTICODE_SETUP,
     "$path = [Console]::In.ReadToEnd();",
     "$signature = Get-AuthenticodeSignature -LiteralPath $path;",
     "[PSCustomObject]@{",
