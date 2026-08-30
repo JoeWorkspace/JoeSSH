@@ -1,79 +1,84 @@
 # JoeSSH
 
+**SSH terminals, SFTP, and local port forwarding in one free Windows app.**
+
+Connect to your servers, run commands, and transfer files from a desktop
+workspace. No JoeSSH account is required; saved connection profiles and
+workspace preferences stay on this device by default.
+
+**[Get JoeSSH free on Microsoft Store](https://apps.microsoft.com/detail/9nk5llmf8lhm)**
+
+Windows 10/11 x64 · Public Beta · Open source under the MIT License
+
+[First connection guide](docs/getting-started.md) · [Report a problem](https://github.com/JoeWorkspace/JoeSSH/issues/new/choose) · [Privacy](PRIVACY.md)
+
+![JoeSSH Desktop workbench in English with sample hosts and fixture terminals](docs/assets/screenshots/desktop-workbench-en.png)
+
+This is a real E2E capture of the implemented interface with sample hosts and a
+fixture terminal transcript, not a connected SSH session.
+[More screenshots](#screenshots), including Simplified Chinese.
+
+## What You Can Do
+
+- **Work in SSH terminals:** connect with a password or pasted private key and
+  organize interactive sessions in workspace tabs.
+- **Transfer files with SFTP:** browse remote folders, upload, and download.
+  Each upload or download is limited to **25 MiB** in the current Public Beta.
+- **Use local port forwarding:** start and stop explicit tunnels bound to a
+  loopback address on your own computer.
+- **Keep connection details organized:** save local profiles, groups, and tags,
+  and choose a light or dark theme.
+
+JoeSSH asks you to verify an unknown server's host key before authentication
+and blocks a changed stored key. Telemetry and error reporting are disabled
+by default. There is no hosted JoeSSH service.
+
+## Your First Connection In Three Steps
+
+You need a reachable SSH server you are authorized to access, its hostname or
+IP address, SSH port, username, and a password or private key.
+
+1. **Install and open JoeSSH** from the
+   [Microsoft Store](https://apps.microsoft.com/detail/9nk5llmf8lhm). No build
+   tools or source checkout are needed.
+2. **Add your server.** Select **New**, enter a name, host, SSH port (usually
+   `22`), and username, then select **Create connection**. Open **Connect** for
+   that profile and supply your password or pasted private key.
+3. **Verify, then connect.** Compare the SHA-256 host-key fingerprint with a
+   trusted source such as the server console or administrator. Only select
+   **Trust and connect** when it matches. After connecting, open Terminal,
+   SFTP, or Port Forwarding.
+
+If a stored host key changes, stop and investigate; do not clear it just to
+bypass the warning. See the [full walkthrough and troubleshooting](docs/getting-started.md)
+if you cannot connect. Never share credentials, private keys, or sensitive
+terminal output in an issue or screenshot.
+
+## Distribution And Scope
+
+The Windows app is available from the Microsoft Store. The project remains a
+Public Beta: evaluate it for your workflow and keep backups before changing
+important files. The existing beta.20 and beta.21 GitHub prereleases remain
+source-only, as does the beta.22 GitHub prerelease; they are not Windows
+installers. Unsigned CI bundles are for
+staging and installation testing, not public distribution.
+
+This repository also contains an optional self-hosted change ledger, a
+preview-only Mobile shell, and a read-only Web Admin companion. Mobile is
+outside the current public distribution scope. Web Admin is an
+evaluation/community surface rather than a hosted or mutating team service.
+
 [![CI](https://img.shields.io/badge/CI-GitHub%20Actions-blue)](.github/workflows/ci.yml)
 [![Coverage Gate](https://img.shields.io/badge/coverage-gated-blue)](#testing)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-22+-green.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7+-3178c6.svg)](https://www.typescriptlang.org/)
 
-JoeSSH is a local-first Desktop workbench for SSH, local terminals, SFTP, port
-forwarding, and an optional self-hosted change ledger. This repository also
-contains a preview-only Mobile shell and a read-only Web Admin companion.
-Mobile is outside the current public distribution scope; Web Admin remains an
-evaluation/community surface rather than a hosted or mutating team service.
+## Build From Source (Developers)
 
-> [!IMPORTANT]
-> **Release status:** the existing beta.20 and beta.21 GitHub prereleases remain
-> source-only. The protected main branch now prepares the distinct
-> `0.1.0-beta.22` Microsoft Store replacement candidate, mapped to MSIX
-> `1.1.22.0`. The live Store package and the beta.21 draft package must not be
-> treated as evidence for beta.22. No beta.22 package is
-> certified, Store-signed, or published until Microsoft completes certification.
-> To use real SSH before then, run the native Tauri Desktop app from source; the
-> browser Desktop preview uses demo data and cannot open a real SSH session.
-
-## Support The Maintainer
-
-> [!WARNING]
-> GitHub's Sponsor button only links to the voluntary-support notice; GitHub
-> does not process these payments. Recipient, small-payment, and payout
-> verification is not complete. Verify the recipient in the payment app before
-> paying.
-
-JoeSSH Community remains free and MIT-licensed. If JoeSSH has helped you and
-you can comfortably do so, you can read the
-[voluntary-support notice](docs/voluntary-support.md) and support its independent
-maintainer. Support is not a purchase and does not provide paid features,
-priority support, roadmap influence, or any other entitlement.
-
-<p>
-  <a href="docs/voluntary-support.md">
-    <img
-      src="docs/assets/funding/wechat-support-qr.jpg"
-      alt="Personal Weixin Pay QR code for voluntarily supporting the JoeSSH maintainer"
-      width="260"
-    />
-  </a>
-  <a href="docs/voluntary-support.md">
-    <img
-      src="docs/assets/funding/alipay-support-qr.jpg"
-      alt="Personal Alipay QR code for voluntarily supporting the JoeSSH maintainer"
-      width="260"
-    />
-  </a>
-</p>
-
-Before paying, read the complete notice and verify the recipient shown in the
-payment app. These are personal collection codes; JoeSSH cannot cancel,
-reverse, refund, or automatically return payments made through them.
-
-## Screenshots
-
-| Desktop workbench (English)                                                                                                      | Desktop workbench (Simplified Chinese)                                                                                                         |
-| -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| ![JoeSSH Desktop workbench in English with sample hosts and fixture terminals](docs/assets/screenshots/desktop-workbench-en.png) | ![JoeSSH Desktop workbench in Simplified Chinese with sample hosts and fixture terminals](docs/assets/screenshots/desktop-workbench-zh-cn.png) |
-
-The Desktop images are real E2E visual-regression captures using labeled
-sample data. They show the implemented interface, but no real SSH session is
-connected and the terminal text is a fixture transcript.
-
-![JoeSSH read-only Web Admin dashboard using fixture data](docs/assets/screenshots/web-admin-read-only-en.png)
-
-The Web Admin image is a real E2E capture in read-only fixture-fallback mode.
-It is a deployment preview, not evidence of a hosted JoeSSH service or live
-team data.
-
-## Get Started From Source
+Windows users can install from the [Microsoft Store](https://apps.microsoft.com/detail/9nk5llmf8lhm)
+without Node.js, Rust, or a source checkout. The instructions below are for
+contributors and source evaluation on other platforms.
 
 Use the pinned Node.js `22.22.2`, npm `10.9.7`, and Rust `1.96.0` toolchains.
 Install the platform-specific [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/)
@@ -100,12 +105,12 @@ connection walkthrough, host-key safety, and the supported deployment paths.
 
 ## Deployment Paths
 
-| Surface      | Current boundary                                                                                                                                 | Guide                                                |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------- |
-| Desktop      | Run from source for real SSH; the previously prepared x64 MSIX is unsubmitted and not a public download; unsigned CI bundles remain staging-only | [Desktop distribution](docs/desktop-distribution.md) |
-| Web Admin    | Static, read-only companion; live data requires a same-origin authenticated proxy                                                                | [Web Admin deployment](docs/web-admin-deployment.md) |
-| Sync Service | Self-hosted, single-process Public Beta service with a durable JSON ledger                                                                       | [Sync self-hosting](docs/self-hosting-sync.md)       |
-| Mobile       | Preview shell only; no public SSH/SFTP execution                                                                                                 | Source evaluation only                               |
+| Surface      | Current boundary                                                                                                                                                          | Guide                                                |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Desktop      | Free Windows app on the [Microsoft Store](https://apps.microsoft.com/detail/9nk5llmf8lhm); source development on other platforms; unsigned CI bundles remain staging-only | [Desktop distribution](docs/desktop-distribution.md) |
+| Web Admin    | Static, read-only companion; live data requires a same-origin authenticated proxy                                                                                         | [Web Admin deployment](docs/web-admin-deployment.md) |
+| Sync Service | Self-hosted, single-process Public Beta service with a durable JSON ledger                                                                                                | [Sync self-hosting](docs/self-hosting-sync.md)       |
+| Mobile       | Preview shell only; no public SSH/SFTP execution                                                                                                                          | Source evaluation only                               |
 
 ## Workspaces
 
@@ -271,7 +276,7 @@ GitHub Actions runs on push, PR, and a weekly Monday schedule:
 
 ## Documentation
 
-- [docs/getting-started.md](docs/getting-started.md) - Source installation, first real SSH connection, host-key safety, and deployment choices
+- [docs/getting-started.md](docs/getting-started.md) - Store installation, first real SSH connection, troubleshooting, and source development
 - [ARCHITECTURE.md](ARCHITECTURE.md) - System design, data flow, security layers, and sync protocol
 - [CONTRIBUTING.md](CONTRIBUTING.md) - Development workflow, code style, and commit conventions
 - [SECURITY.md](SECURITY.md) - Vulnerability reporting and security measures
@@ -357,3 +362,54 @@ JoeSSH includes a lightweight error monitoring package (`@atlasterm/error-monito
 - Configurable endpoint, queue size, and breadcrumb limits
 
 See [packages/error-monitor](packages/error-monitor) for implementation details.
+
+## Support The Maintainer
+
+> [!WARNING]
+> GitHub's Sponsor button only links to the voluntary-support notice; GitHub
+> does not process these payments. Recipient, small-payment, and payout
+> verification is not complete. Verify the recipient in the payment app before
+> paying.
+
+JoeSSH Community remains free and MIT-licensed. If JoeSSH has helped you and
+you can comfortably do so, you can read the
+[voluntary-support notice](docs/voluntary-support.md) and support its independent
+maintainer. Support is not a purchase and does not provide paid features,
+priority support, roadmap influence, or any other entitlement.
+
+<p>
+  <a href="docs/voluntary-support.md">
+    <img
+      src="docs/assets/funding/wechat-support-qr.jpg"
+      alt="Personal Weixin Pay QR code for voluntarily supporting the JoeSSH maintainer"
+      width="260"
+    />
+  </a>
+  <a href="docs/voluntary-support.md">
+    <img
+      src="docs/assets/funding/alipay-support-qr.jpg"
+      alt="Personal Alipay QR code for voluntarily supporting the JoeSSH maintainer"
+      width="260"
+    />
+  </a>
+</p>
+
+Before paying, read the complete notice and verify the recipient shown in the
+payment app. These are personal collection codes; JoeSSH cannot cancel,
+reverse, refund, or automatically return payments made through them.
+
+## Screenshots
+
+| Desktop workbench (English)                                                                                                      | Desktop workbench (Simplified Chinese)                                                                                                         |
+| -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| ![JoeSSH Desktop workbench in English with sample hosts and fixture terminals](docs/assets/screenshots/desktop-workbench-en.png) | ![JoeSSH Desktop workbench in Simplified Chinese with sample hosts and fixture terminals](docs/assets/screenshots/desktop-workbench-zh-cn.png) |
+
+The Desktop images are real E2E visual-regression captures using labeled
+sample data. They show the implemented interface, but no real SSH session is
+connected and the terminal text is a fixture transcript.
+
+![JoeSSH read-only Web Admin dashboard using fixture data](docs/assets/screenshots/web-admin-read-only-en.png)
+
+The Web Admin image is a real E2E capture in read-only fixture-fallback mode.
+It is a deployment preview, not evidence of a hosted JoeSSH service or live
+team data.
