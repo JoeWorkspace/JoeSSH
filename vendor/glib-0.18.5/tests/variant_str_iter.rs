@@ -1,5 +1,7 @@
 // Run in release mode: RUSTSEC-2024-0429 can be exposed by optimization of
 // the C out-parameter write in VariantStrIter::impl_get.
+#![cfg(target_os = "linux")]
+
 use glib::prelude::*;
 
 #[test]

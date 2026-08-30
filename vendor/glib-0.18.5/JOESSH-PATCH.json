@@ -146,7 +146,7 @@
     "tests/value.rs": "c796ea2b30559e9c8ab6ebbb6c59c575d365a27b461c20f9ca0b1989dbe01d79"
   },
   "additionalFiles": {
-    "tests/variant_str_iter.rs": "9ad6197fe9595e1744e9671d5b0e2d8f88c5d48243a51de72090c033d97a9343"
+    "tests/variant_str_iter.rs": "6b739d54ef503d4b118b913d41adce5aef534a93c7a519a44f47ec1a72d70b9f"
   },
   "licenseFiles": [
     "LICENSE",
