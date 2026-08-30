@@ -1,22 +1,29 @@
 # Microsoft Store Listing Draft
 
-Status: pending listing reference for the distinct JoeSSH `0.1.0-beta.23`
+Status: pending listing reference for the distinct JoeSSH `0.1.0-beta.24`
 Microsoft Store replacement candidate. The package identity, protected-main
 source revision, MSIX hash, and Partner Center validation are not evidence until
-the exact `1.1.23.0` package is generated and recorded. The existing Store
+the exact `1.1.24.0` package is generated and recorded. The existing Store
 package is `1.1.22.0`; it does not prove certification or publication of this
-new candidate. The beta.20, beta.21, and beta.22 GitHub prereleases remain
-source-only, unchanged, and unavailable for new binary uploads.
+new candidate. The local `1.1.23.0` qualification attempt is superseded and
+must not be uploaded. Historical source records remain unchanged and
+unavailable for new binary uploads.
 
 This draft deliberately describes only the free Windows Community product that
 exists today. It does not advertise Mobile SSH, hosted Sync, team mutations,
 paid support, Founder/Pro benefits, or future encryption features.
 
-The formal repository workflow is hosted-only verification, not a build or
-signing service. Both EXE and MSIX routes require the exact HTTPS transfer
-`artifact_url`, `expected_sha256`, and reviewed source SHA. The EXE URL must
-also be immutable and versioned; the MSIX URL is only a hash-bound verification
-input, and the same SHA-256 package must later be submitted to Partner Center.
+The formal repository workflow verifies hosted candidates; it is not a build or
+signing service. Both routes require `expected_sha256`. The legacy `https` route
+also requires an exact transfer `artifact_url`; that URL and hash alone are not
+authenticated build provenance. The reviewed `github-actions-artifact` MSIX
+route requires the producer and generic verifier in the same protected source
+commit. Its `producer_run_id`, attempt, and raw MSIX/evidence/attestation
+artifact IDs are selectors rather than trust anchors: live GitHub metadata and
+two offline-verified Sigstore bundles must bind the exact repository, workflow,
+source SHA, run attempt, hosted runner, and MSIX bytes. The EXE URL must also be
+immutable and versioned, and the same verified MSIX package must later be
+submitted to Partner Center.
 Local build scripts, local `--artifact` checks, handoff files, and
 self-generated JSON cannot serve as formal listing or publication evidence.
 
@@ -35,18 +42,16 @@ fills and verifies its evidence columns.
 - Store listing title: `JoeSSH` for every locale; use descriptions and localized
   keywords for positioning.
 - Release maturity: Windows x64 Store replacement candidate, version
-  `0.1.0-beta.23` / MSIX `1.1.23.0`
+  `0.1.0-beta.24` / MSIX `1.1.24.0`
 - Offer: free Community desktop app; no ads or in-app purchases
 - Primary category: Developer tools
 - Supported device family: Windows desktop
 - Supported release architecture: x64
 - Supported operating systems: Windows 10 and Windows 11
 - Pricing: Free
-- Package strategy: after reserving the real Partner Center identity, run a
-  one-day MSIX Packaging Tool/WACK feasibility spike first. Prefer the
-  Store-re-signed, Store-hosted, Store-updated MSIX when it passes; use the
-  signed Tauri NSIS route only when the spike exposes a documented
-  compatibility blocker.
+- Package strategy: use the Store-re-signed, Store-hosted, Store-updated MSIX
+  route. Qualify the exact beta.24 bytes with the repaired offline WACK
+  toolchain and clean-machine lifecycle checks before Partner Center upload.
 - Initial discoverability recommendation: direct-link-only until the signed
   candidate, support route, privacy route, and first external test cohort have
   passed; changing to Store-search discoverability is a separate go/no-go
@@ -257,8 +262,9 @@ manifest can advance to final human review.
 - Copyright/trademark: use only the truthful owner/publisher information
   accepted by Partner Center; do not claim a registered trademark.
 - Developed by: use the truthful verified publisher display name.
-- What's new: leave blank for the first Store submission; use the reviewed
-  release notes only for later updates.
+- What's new: use only the reviewed beta.24 maintenance text after it is bound
+  to the exact package; do not describe the superseded beta.23 attempt as
+  published.
 - Accessibility declaration: leave the voluntary declaration unchecked until
   the exact native candidate passes the complete Microsoft accessibility tool
   and assistive-technology matrix. Keyboard coverage alone is not sufficient.
@@ -317,8 +323,10 @@ The listing is still `NO-GO` until all of the following are true:
   listing calls JoeSSH open source;
 - real privacy and support HTTPS links pass a logged-out check;
 - the signed EXE or validated MSIX passes the candidate contract;
-- the exact candidate EXE or MSIX is downloadable from the reviewed HTTPS
-  `artifact_url`, and its bytes match `expected_sha256`;
+- the exact candidate EXE or MSIX comes from the reviewed direct HTTPS
+  `artifact_url` or a same-commit `github-actions-artifact` producer run whose
+  live metadata and offline attestations pass the generic verifier, and its bytes
+  match `expected_sha256`;
 - the EXE route has an immutable, versioned, direct HTTPS installer URL whose
   bytes and SHA-256 match the candidate evidence;
 - the EXE route includes a reviewed 40–1000 character
@@ -327,9 +335,10 @@ The listing is still `NO-GO` until all of the following are true:
   identity fields;
 - the MSIX route submits the same SHA-256 package to Partner Center and does not
   treat its verification transfer URL as long-term distribution evidence;
-- the exact candidate and hosted evidence are independently rechecked in a
-  clean VM; same-run hosted evidence is not described as authenticated
-  provenance after executing an untrusted native candidate;
+- the exact candidate, source provenance receipt, and hosted evidence are
+  independently rechecked in a clean VM; authenticated source-build provenance
+  is not described as installation, WACK, Store signing, certification, or
+  publication evidence;
 - Pricing, Markets, and Discoverability are explicitly selected and recorded;
 - four screenshots per submitted locale and required Store art are complete;
 - the isolated SSH certification fixture, temporary credentials, availability
@@ -346,9 +355,10 @@ The listing is still `NO-GO` until all of the following are true:
   the Store overlay is bound to the `microsoft-store` build profile and the
   candidate visibly omits Business/Team, recording, encrypted-snippet Sync,
   Web Admin, and Mobile preview surfaces;
-- the JoeSSH internal Windows App Certification Kit gate plus Partner Center
+- every required JoeSSH Windows App Certification Kit test plus Partner Center
   package validation, silent install/uninstall, ARP, and single-product-entry
-  evidence are attached to the exact candidate;
+  evidence is attached to the exact candidate; optional WACK findings are
+  recorded and reviewed separately rather than hidden or treated as required;
 - no future, hosted, paid, or unavailable capability appears in the listing.
 
 Current Microsoft references:

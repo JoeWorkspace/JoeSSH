@@ -170,9 +170,11 @@ hardening requirements.
 
 - **Windows Desktop:** install the free app from the
   [Microsoft Store](https://apps.microsoft.com/detail/9nk5llmf8lhm). GitHub
-  beta.20, beta.21, and beta.22 prereleases are source-only, and unsigned CI bundles
-  remain review-only staging artifacts. Source builds and distribution
-  workflows are described in [Desktop Distribution](desktop-distribution.md).
+  beta.20 through beta.22 prereleases are source-only. Beta.23 and beta.24 are
+  Store-candidate source revisions; their GitHub source records do not carry
+  Windows installers. Unsigned CI bundles remain review-only staging artifacts.
+  Source builds and distribution workflows are described in
+  [Desktop Distribution](desktop-distribution.md).
 - **Web Admin:** deploy the static read-only administration surface with its
   required security headers and a server-side snapshot proxy. Web Admin does
   not run SSH sessions. See [Web Admin Deployment](web-admin-deployment.md).

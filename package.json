@@ -1,6 +1,6 @@
 {
   "name": "atlasterm",
-  "version": "0.1.0-beta.23",
+  "version": "0.1.0-beta.24",
   "private": true,
   "description": "JoeSSH monorepo for a local-first SSH, terminal, SFTP, forwarding, sync, and team workspace product.",
   "license": "MIT",
@@ -67,7 +67,7 @@
     "test:windows-invite-beta": "node --test scripts/check-windows-invite-beta.test.mjs",
     "test:windows-invite-package": "node --test scripts/package-windows-invite-beta.test.mjs",
     "test:windows-invite-promotion": "node --test scripts/promote-windows-invite-beta.test.mjs",
-    "test:windows-store-release": "node --test scripts/build-windows-store-candidate.test.mjs scripts/check-microsoft-store-localization.test.mjs scripts/generate-microsoft-store-listing-csv.test.mjs scripts/generate-microsoft-store-native-review-handoff.test.mjs scripts/apply-microsoft-store-native-review-handoff.test.mjs scripts/generate-partner-center-listing-import.test.mjs scripts/check-store-public-pages.test.mjs scripts/check-windows-store-policy-preflight.test.mjs scripts/check-windows-store-release.test.mjs scripts/check-windows-store-surfaces.test.mjs scripts/finalize-windows-store-msix-languages.test.mjs scripts/prepare-windows-store-assets.test.mjs scripts/prepare-windows-store-candidate.test.mjs scripts/prepare-windows-store-msix-sandbox.test.mjs scripts/write-partner-center-identity.test.mjs",
+    "test:windows-store-release": "node --test scripts/build-windows-store-candidate.test.mjs scripts/check-microsoft-store-localization.test.mjs scripts/generate-microsoft-store-listing-csv.test.mjs scripts/generate-microsoft-store-native-review-handoff.test.mjs scripts/apply-microsoft-store-native-review-handoff.test.mjs scripts/generate-partner-center-listing-import.test.mjs scripts/check-store-public-pages.test.mjs scripts/check-windows-store-policy-preflight.test.mjs scripts/check-windows-store-release.test.mjs scripts/check-windows-store-surfaces.test.mjs scripts/finalize-windows-store-msix-languages.test.mjs scripts/prepare-windows-store-assets.test.mjs scripts/prepare-windows-store-candidate.test.mjs scripts/prepare-windows-store-msix-sandbox.test.mjs scripts/verify-windows-store-source-artifacts.test.mjs scripts/write-partner-center-identity.test.mjs",
     "test:windows-store-localization": "node --test scripts/check-microsoft-store-localization.test.mjs scripts/generate-microsoft-store-listing-csv.test.mjs scripts/generate-microsoft-store-native-review-handoff.test.mjs scripts/apply-microsoft-store-native-review-handoff.test.mjs scripts/generate-partner-center-listing-import.test.mjs",
     "test:windows-store-submission-readiness": "node scripts/check-microsoft-store-submission-readiness.mjs",
     "generate:windows-store-localization": "node scripts/generate-microsoft-store-localization.mjs",

@@ -54,6 +54,7 @@ import { readWindowsStoreManifestLanguageContract } from "./windows-store-langua
 const SHA256 = "a".repeat(64);
 const COMMIT = "b".repeat(40);
 const SOURCE_COMMIT = "c".repeat(40);
+const REPOSITORY_ROOT = resolve(import.meta.dirname, "..");
 const LEGAL_PUBLISHER = "JoeSSH Release";
 const EXPECTED_SIGNER = {
   legalPublisher: LEGAL_PUBLISHER,
@@ -658,6 +659,73 @@ test("hosted artifacts reject query leakage and require explicit retention proof
   assert.equal(Object.hasOwn(attestation, "artifactUrl"), false);
 });
 
+test("GitHub Actions provenance is accepted only with a downloaded MSIX artifact", () => {
+  const parsed = parseArgs(
+    withSourceCommit([
+      "--format",
+      "msix",
+      "--artifact",
+      "JoeSSH.msix",
+      "--github-actions-provenance",
+      "source-provenance.json",
+      "--reviewed-sha",
+      COMMIT,
+      "--expected-sha256",
+      SHA256,
+      "--partner-identity",
+      "partner-identity.json",
+    ]),
+    RELEASE_ENVIRONMENT,
+  );
+  assert.equal(
+    parsed.githubActionsProvenance,
+    resolve(REPOSITORY_ROOT, "source-provenance.json"),
+  );
+  assert.throws(
+    () =>
+      parseArgs(
+        withSourceCommit([
+          "--format",
+          "msix",
+          "--download-url",
+          "https://downloads.example.test/JoeSSH.msix",
+          "--github-actions-provenance",
+          "source-provenance.json",
+          "--reviewed-sha",
+          COMMIT,
+          "--expected-sha256",
+          SHA256,
+          "--partner-identity",
+          "partner-identity.json",
+        ]),
+        RELEASE_ENVIRONMENT,
+      ),
+    /valid only with a downloaded --artifact/,
+  );
+  assert.throws(
+    () =>
+      parseArgs(
+        withSourceCommit([
+          "--format",
+          "exe",
+          "--artifact",
+          "JoeSSH_0.1.0_x64-setup.exe",
+          "--github-actions-provenance",
+          "source-provenance.json",
+          "--reviewed-sha",
+          COMMIT,
+          "--expected-sha256",
+          SHA256,
+          "--architecture",
+          "x64",
+          "--allow-silent-install",
+        ]),
+        RELEASE_ENVIRONMENT,
+      ),
+    /approved only for the reviewed MSIX route/,
+  );
+});
+
 test("candidate verification uses a private byte snapshot, not the mutable source path", () => {
   const temporaryRoot = mkdtempSync(join(tmpdir(), "joessh-snapshot-test-"));
   try {
@@ -1088,6 +1156,7 @@ test("MSIX capability allowlist rejects extra base, UAP, and restricted capabili
 
 test("MSIX version is deterministically bound to the project version", () => {
   assert.equal(deriveMsixVersion("0.1.0-beta.10"), "1.1.10.0");
+  assert.equal(deriveMsixVersion("0.1.0-beta.24"), "1.1.24.0");
   assert.equal(deriveMsixVersion("0.1.0"), "1.1.99.0");
   assert.throws(
     () => deriveMsixVersion("0.1.0-rc.1"),
@@ -1101,6 +1170,7 @@ test("MSIX version mapping preserves beta, stable, and next-patch order", () => 
     "0.1.0-beta.10",
     "0.1.0-beta.22",
     "0.1.0-beta.23",
+    "0.1.0-beta.24",
     "0.1.0-beta.98",
     "0.1.0",
     "0.1.1-beta.1",
@@ -1113,6 +1183,7 @@ test("MSIX version mapping preserves beta, stable, and next-patch order", () => 
     "1.1.10.0",
     "1.1.22.0",
     "1.1.23.0",
+    "1.1.24.0",
     "1.1.98.0",
     "1.1.99.0",
     "1.1.101.0",

@@ -251,11 +251,13 @@
 - CI must keep the public release gate wired: source prerelease contract tests, artifact checksum tests, desktop release packaging tests, desktop release evidence tests, Desktop real SSH smoke with `JOESSH_REAL_SSH_SMOKE=1`, Sync release package hygiene tests, Web Admin release package tests, Web Admin bundle token scan tests, SBOM verifier tests, release provenance tests, Lighthouse audit fail-closed tests, release draft dry-run fixture tests, publish preflight fixture tests, fresh visual QA, production audit with the dependency risk register, Tauri shell build, mobile native preflight, self-hosted Sync smoke, and `check-public-release-readiness` all run from GitHub Actions.
 - `0.1.0-beta.20` and `0.1.0-beta.21` are permanently zero-upload-asset source
   prereleases. Beta.22 also has zero GitHub upload assets; its only binary route
-  is the exact x64 MSIX submitted through Partner Center. Beta.23 preserves
-  that boundary for its distinct MSIX `1.1.23.0` maintenance candidate. The other binary
-  package checks below are internal validation only for those source trees;
+  is the exact x64 MSIX submitted through Partner Center. The beta.23
+  `1.1.23.0` qualification attempt is superseded and must not be submitted.
+  Beta.24 preserves the zero-GitHub-assets boundary for its distinct MSIX
+  `1.1.24.0` replacement candidate. The other binary package checks below are
+  internal validation only for those source trees;
   full multi-platform binary publication requires a distinct unused
-  `FULL_RELEASE_VERSION` after beta.23 and a fresh pass through the complete
+  `FULL_RELEASE_VERSION` after beta.24 and a fresh pass through the complete
   artifact gate.
 - Release machines must run `npm run release:publish-preflight` after Desktop,
   Web Admin, Sync, and SBOM artifacts are generated; this command verifies the

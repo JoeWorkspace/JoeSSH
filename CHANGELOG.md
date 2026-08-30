@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-beta.24] - 2026-08-31
+
+> Replacement Microsoft Store maintenance candidate. The rejected local
+> `1.1.23.0` qualification attempt and its evidence remain immutable and must
+> not be submitted or reused. This entry is not evidence that `1.1.24.0` has
+> been built, certified, or published.
+
+### Fixed
+
+- Remove the obsolete Windows App Runtime package dependency from the MSIX
+  manifest while retaining the app's actual WebView2 bootstrap contract.
+- Preserve exact MSIX bytes across the source-build artifact transfer path and
+  keep Rust tool diagnostics out of executable-path discovery.
+- Embed a Windows application manifest that preserves Common Controls v6 and
+  declares Per-Monitor V2 DPI awareness for WACK and high-DPI operation.
+
+### Changed
+
+- Advance application and runtime version metadata to `0.1.0-beta.24`, mapped
+  to MSIX `1.1.24.0`, without changing historical beta.23 records.
+- Bind the native build script and Windows application manifest into Store
+  source provenance so either input changing during a build fails closed.
+
 ## [0.1.0-beta.23] - 2026-08-30
 
 > Maintenance version prepared for a separate Microsoft Store update. This entry

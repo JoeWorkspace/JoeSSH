@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-08-31",
+  "status": "operator-controlled-offline-release-tooling",
+  "sourceRepositoryContainsMicrosoftToolchainBinaries": false,
+  "windowsPowerShellVersion": "5.1",
+  "toolchain": {
+    "manifestSha256": "b9834cf7a50d5c310158cb315783abba8c5141eeed09a1129ea83a8df66337d9",
+    "fileCountIncludingManifest": 37,
+    "bytesIncludingManifest": 149501708,
+    "componentCount": 7,
+    "requiredContractsProductCode": "{E8BE09DF-D93B-AE40-FD63-05E5ABEFB6D9}"
+  },
+  "files": [
+    {
+      "path": "Export-WackToolchain.ps1",
+      "sha256": "3af1afbe16318094c33dbe7c50336d07b014311df6918acbd298ccea0024646c"
+    },
+    {
+      "path": "Invoke-SandboxVerification.ps1",
+      "sha256": "b45b751463bd21bbba1fcd3db06d873d8b947e14365ad551817285f906acdf9a"
+    },
+    {
+      "path": "JoeSSH-NativeVerification.wsb.template",
+      "sha256": "bee9af8d459e15d411e236c05eaad7fead80072bfecf31e97257d7b9af87a478"
+    },
+    {
+      "path": "NativeVerification.Common.ps1",
+      "sha256": "3cbfacd5d7853c5d0a3c6c9d63f2d636e30b8c27aa285e92b5219f16dcb0387f"
+    },
+    {
+      "path": "Prepare-NativeVerification.ps1",
+      "sha256": "d760a2362d3e5b3b6a208dfd1b90b78ce758cf4dff90da2d98d64494109669a5"
+    },
+    {
+      "path": "README.md",
+      "sha256": "821cf613246c84029924988d2174b721947b98330a26a8098cd9024f56e8581c"
+    },
+    {
+      "path": "Test-Harness.ps1",
+      "sha256": "2ce727e5a07dbc22d16519936418652efa38870b538b820b069159abeb7b5530"
+    },
+    {
+      "path": "Verify-NativeEvidence.ps1",
+      "sha256": "5283f0e4cd90507a01e1907311e498587e764a479b518d02900b5487b3dd4fa0"
+    }
+  ],
+  "selfTest": {
+    "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File Test-Harness.ps1",
+    "passed": 35,
+    "total": 35,
+    "resultSha256": "b15b4d3c70fee25c7ccb604dbcfa9cf80270a9081ea24ee24399f45d638a9bb4"
+  }
+}

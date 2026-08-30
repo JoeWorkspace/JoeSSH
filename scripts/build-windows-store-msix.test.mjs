@@ -14,11 +14,13 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import test from "node:test";
+import sax from "sax";
 import {
   STORE_BUILD_REPOSITORY,
   STORE_BUILD_WORKFLOW,
   STORE_CI_JOBS,
   STORE_MSIX_PROFILE,
+  STORE_SOURCE_BINDINGS,
   assertPngDimensions,
   createStoreManifest,
   decodePartnerIdentity,
@@ -37,6 +39,55 @@ import { parseMsixManifestContract } from "./windows-store-contract.mjs";
 import { readWindowsStoreManifestLanguageContract } from "./windows-store-language-contract.mjs";
 
 const root = resolve(import.meta.dirname, "..");
+
+test("Store source evidence binds and validates the native Windows manifest", () => {
+  const manifestPath = "apps/desktop/src-tauri/windows-app-manifest.xml";
+  assert.ok(STORE_SOURCE_BINDINGS.includes("apps/desktop/src-tauri/build.rs"));
+  assert.ok(STORE_SOURCE_BINDINGS.includes(manifestPath));
+
+  const values = {};
+  let activeSetting = null;
+  let commonControlsVersion = null;
+  const parser = sax.parser(true, { xmlns: true });
+  parser.onopentag = (node) => {
+    if (
+      node.local === "dpiAware" &&
+      node.uri === "http://schemas.microsoft.com/SMI/2005/WindowsSettings"
+    ) {
+      activeSetting = "dpiAware";
+      values.dpiAware = "";
+    } else if (
+      node.local === "dpiAwareness" &&
+      node.uri === "http://schemas.microsoft.com/SMI/2016/WindowsSettings"
+    ) {
+      activeSetting = "dpiAwareness";
+      values.dpiAwareness = "";
+    }
+    if (node.local === "assemblyIdentity") {
+      const attributes = Object.values(node.attributes);
+      const name = attributes.find(
+        (attribute) => attribute.local === "name",
+      )?.value;
+      if (name === "Microsoft.Windows.Common-Controls") {
+        commonControlsVersion = attributes.find(
+          (attribute) => attribute.local === "version",
+        )?.value;
+      }
+    }
+  };
+  parser.ontext = (text) => {
+    if (activeSetting) values[activeSetting] += text;
+  };
+  parser.onclosetag = () => {
+    activeSetting = null;
+  };
+  parser.write(readFileSync(resolve(root, manifestPath), "utf8")).close();
+
+  assert.equal(values.dpiAware?.trim(), "true");
+  assert.equal(values.dpiAwareness?.trim(), "PerMonitorV2");
+  assert.equal(commonControlsVersion, "6.0.0.0");
+});
+
 test("successful tool diagnostics never become part of an executable path", () => {
   const executable = run(process.execPath, [
     "-e",
