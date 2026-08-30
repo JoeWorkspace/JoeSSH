@@ -483,9 +483,9 @@ export function createStoreManifest(partner, version, languages) {
   );
   const p = STORE_MSIX_PROFILE;
   const manifest = `<?xml version="1.0" encoding="utf-8"?>
-<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities" IgnorableNamespaces="uap rescap">
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities" IgnorableNamespaces="uap uap10 rescap">
   <Identity Name="${xml(partner.packageIdentityName)}" Publisher="${xml(partner.publisher)}" Version="${deriveMsixVersion(version)}" ProcessorArchitecture="x64" />
-  <Properties><DisplayName>JoeSSH</DisplayName><PublisherDisplayName>${xml(partner.publisherDisplayName)}</PublisherDisplayName><Description>SSH terminal, SFTP and local port forwarding</Description><Logo>Assets\\StoreLogo.png</Logo></Properties>
+  <Properties><DisplayName>JoeSSH</DisplayName><PublisherDisplayName>${xml(partner.publisherDisplayName)}</PublisherDisplayName><Description>SSH terminal, SFTP and local port forwarding</Description><Logo>Assets\\StoreLogo.png</Logo><uap10:PackageIntegrity><uap10:Content Enforcement="on" /></uap10:PackageIntegrity></Properties>
   <Resources>
 ${languages.map((language) => `    <Resource Language="${xml(language)}" />`).join("\n")}
   </Resources>

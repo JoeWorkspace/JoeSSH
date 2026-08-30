@@ -434,6 +434,10 @@ test("manifest preserves upgrade identity, old OS floor/runtime dependency, lega
   assert.match(manifest, /EntryPoint="Windows.FullTrustApplication"/);
   assert.match(
     manifest,
+    /<uap10:PackageIntegrity><uap10:Content Enforcement="on" \/><\/uap10:PackageIntegrity>/,
+  );
+  assert.match(
+    manifest,
     /MinVersion="10.0.17763.0" MaxVersionTested="10.0.22000.1"/,
   );
   assert.match(
