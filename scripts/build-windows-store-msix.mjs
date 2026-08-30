@@ -115,7 +115,7 @@ function json(path) {
 function saveJson(path, value) {
   writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`, { flag: "wx" });
 }
-function run(
+export function run(
   command,
   args,
   {
@@ -140,7 +140,9 @@ function run(
     !result.error && allowStatus.includes(result.status),
     `${basename(command)} failed (${result.status ?? "spawn"}).`,
   );
-  return `${result.stdout ?? ""}${result.stderr ?? ""}`.trim();
+  // Tools such as rustup write progress to stderr even when they succeed.
+  // Callers consume stdout as paths or structured data, never diagnostics.
+  return (result.stdout ?? "").trim();
 }
 function git(root, args) {
   return run("git", args, { cwd: root });
