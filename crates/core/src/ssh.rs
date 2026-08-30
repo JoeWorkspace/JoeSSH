@@ -232,7 +232,9 @@ impl SshClient {
                 russh::ChannelMsg::ExitStatus { exit_status: code } => {
                     exit_status = code;
                 }
-                russh::ChannelMsg::Eof | russh::ChannelMsg::Close => break,
+                // EOF only ends the stdout stream. The server can still send
+                // the command's exit status before it closes the channel.
+                russh::ChannelMsg::Close => break,
                 _ => {}
             }
         }
@@ -714,6 +716,84 @@ mod tests {
         };
         let result = SshClient::connect(config).await;
         assert!(matches!(result, Err(SshError::TimedOut)));
+    }
+
+    #[tokio::test]
+    async fn exec_reads_exit_status_sent_after_stdout_eof() {
+        struct ExecServer;
+
+        impl russh::server::Handler for ExecServer {
+            type Error = russh::Error;
+
+            async fn auth_password(
+                &mut self,
+                _user: &str,
+                _password: &str,
+            ) -> Result<russh::server::Auth, Self::Error> {
+                Ok(russh::server::Auth::Accept)
+            }
+
+            async fn channel_open_session(
+                &mut self,
+                _channel: russh::Channel<russh::server::Msg>,
+                reply: russh::server::ChannelOpenHandle,
+                _session: &mut russh::server::Session,
+            ) -> Result<(), Self::Error> {
+                reply.accept().await;
+                Ok(())
+            }
+
+            async fn exec_request(
+                &mut self,
+                channel: russh::ChannelId,
+                _command: &[u8],
+                session: &mut russh::server::Session,
+            ) -> Result<(), Self::Error> {
+                session.channel_success(channel)?;
+                session.data(channel, b"command output".to_vec())?;
+                session.eof(channel)?;
+                session.exit_status_request(channel, 17)?;
+                session.close(channel)?;
+                Ok(())
+            }
+        }
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let server_config = russh::server::Config {
+            keys: vec![russh::keys::decode_secret_key(TEST_ED25519_KEY, None).unwrap()],
+            ..Default::default()
+        };
+        let server = tokio::spawn(async move {
+            let (socket, _) = listener.accept().await.unwrap();
+            russh::server::run_stream(Arc::new(server_config), socket, ExecServer)
+                .await
+                .unwrap()
+                .await
+                .unwrap();
+        });
+        let client = SshClient::connect(SshConfig {
+            host: address.ip().to_string(),
+            port: address.port(),
+            username: "test".into(),
+            auth: SshAuth::Password("test".into()),
+            host_key_policy: HostKeyPolicy::AcceptAny,
+            connect_timeout_ms: 5_000,
+        })
+        .await
+        .unwrap();
+
+        let (exit_status, stdout) = tokio::time::timeout(
+            std::time::Duration::from_secs(5),
+            client.exec("fixture command"),
+        )
+        .await
+        .expect("exec should finish after channel close")
+        .unwrap();
+        server.abort();
+
+        assert_eq!(stdout, b"command output");
+        assert_eq!(exit_status, 17, "stdout EOF does not end the SSH channel");
     }
 
     #[test]
