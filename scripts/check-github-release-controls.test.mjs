@@ -47,6 +47,7 @@ const REQUIRED_SETUP_NODE_JOBS = Object.freeze(
     "ci.yml:lighthouse",
     "ci.yml:lint",
     "ci.yml:public-release-readiness",
+    "ci.yml:rust",
     "ci.yml:security-audit",
     "ci.yml:store-runtime-windows",
     "ci.yml:tauri-shell",

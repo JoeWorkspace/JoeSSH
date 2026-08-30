@@ -358,6 +358,12 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 22.22.2
+      - name: Pin npm 10.9.7
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global --ignore-scripts --no-audit --no-fund npm@10.9.7
+          test "$(npm --version)" = "10.9.7"
       - uses: dtolnay/rust-toolchain@2c7215f132e9ebf062739d9130488b56d53c060c # master
         with:
           toolchain: 1.96.0
