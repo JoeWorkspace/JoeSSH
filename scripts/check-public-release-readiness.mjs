@@ -567,7 +567,9 @@ function checkCiPublicReleaseWiring() {
     "npm run qa:mobile-public-env",
     "npm run qa:source-prerelease",
     "cargo install cargo-audit --version 0.22.2 --locked",
-    "node --test scripts/run-rust-advisory-gate.test.mjs",
+    "node --test scripts/run-rust-advisory-gate.test.mjs scripts/rust-maintenance-policy.test.mjs scripts/rust-audit-transport.test.mjs scripts/vendored-rust-contract.test.mjs scripts/vendored-rust-audit.test.mjs",
+    "cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --release --lib --locked",
+    "cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --release --test variant_str_iter --locked",
     "node scripts/run-rust-advisory-gate.mjs",
     "npm run release:sbom",
     "npm run release:sbom:verify",
@@ -601,9 +603,11 @@ function checkCiPublicReleaseWiring() {
 
   const workflow = parseWorkflow(ci);
   const rustJob = workflow?.jobs?.rust;
-  const rustAuditStep = rustJob?.steps?.find(
-    (step) => step?.run === "node scripts/run-rust-advisory-gate.mjs",
-  );
+  const rustAuditStep = Array.isArray(rustJob?.steps)
+    ? rustJob.steps.find(
+        (step) => step?.run === "node scripts/run-rust-advisory-gate.mjs",
+      )
+    : undefined;
   passIf(
     isRecord(rustAuditStep) &&
       !Object.hasOwn(rustAuditStep, "if") &&

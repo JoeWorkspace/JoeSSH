@@ -24,6 +24,9 @@
 # Preserve byte-pinned SPDX license-list-data text, including upstream spaces.
 scripts/spdx-license-texts/** whitespace=-blank-at-eol
 
+# Preserve the verified upstream crate and security backport byte-for-byte.
+vendor/glib-0.18.5/** -text whitespace=-blank-at-eol,-blank-at-eof
+
 # Never run line-ending conversion or textual merge drivers over artifacts.
 docs/assets/microsoft-store/*.csv binary
 *.png binary

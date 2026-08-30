@@ -365,7 +365,7 @@ jobs:
       - run: cargo fmt --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace
-      - run: node --test scripts/run-rust-advisory-gate.test.mjs
+      - run: node --test scripts/run-rust-advisory-gate.test.mjs scripts/rust-maintenance-policy.test.mjs scripts/rust-audit-transport.test.mjs scripts/vendored-rust-contract.test.mjs scripts/vendored-rust-audit.test.mjs
       - run: node scripts/run-rust-advisory-gate.mjs
 
   desktop-real-ssh-smoke:
@@ -469,6 +469,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
       - run: npm run qa:tauri
+      - name: Test native desktop operations and optimized GLib backport
+        run: |
+          cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --release --lib --locked
+          cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --release --test variant_str_iter --locked
 
   public-release-readiness:
     name: Public Release Readiness
