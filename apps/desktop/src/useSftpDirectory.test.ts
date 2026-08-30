@@ -67,6 +67,21 @@ describe("useSftpDirectory", () => {
     expect(list).toHaveBeenCalledWith("/srv/logs");
   });
 
+  it("opens the exact remote entry when directory names contain edge spaces", async () => {
+    const list = vi.fn().mockResolvedValue([entry(" reports ", true)]);
+    const { result } = renderHook(() => useSftpDirectory(list));
+    await waitFor(() => expect(result.current.status.phase).toBe("ready"));
+    list.mockClear();
+
+    act(() => result.current.openChild(" reports "));
+    await waitFor(() => expect(list).toHaveBeenCalledWith(" reports "));
+    expect(list).not.toHaveBeenCalledWith("reports");
+    expect(result.current.path).toBe(" reports ");
+
+    act(() => result.current.goUp());
+    await waitFor(() => expect(result.current.path).toBe("."));
+  });
+
   it("captures listing errors", async () => {
     const list = vi.fn().mockRejectedValue(new Error("permission denied"));
     const { result } = renderHook(() => useSftpDirectory(list, "/root"));
@@ -294,6 +309,16 @@ describe("sftp path helpers", () => {
     expect(joinSftpRemoteEntryPath("/srv", "logs/archive")).toBeUndefined();
     expect(joinSftpRemoteEntryPath("/srv", "logs\\archive")).toBeUndefined();
     expect(joinSftpRemoteEntryPath("/srv", "\u202ehidden")).toBeUndefined();
+  });
+
+  it("keeps distinct remote file names distinct in transfer paths", () => {
+    expect(joinSftpRemoteEntryPath("/srv", "report.txt ")).toBe("/srv/report.txt ");
+    expect(joinSftpRemoteEntryPath("/srv", "report.txt")).toBe("/srv/report.txt");
+    expect(joinSftpRemoteEntryPath(".", " report.txt ")).toBe(" report.txt ");
+    expect(joinSftpRemoteEntryPath(" reports ", "report.txt ")).toBe(
+      " reports /report.txt ",
+    );
+    expect(joinSftpRemoteEntryPath("/srv", "   ")).toBeUndefined();
   });
 
   it("parentPath walks up and stops at root or login directory", () => {

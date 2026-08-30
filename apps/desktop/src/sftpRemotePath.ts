@@ -15,11 +15,11 @@ const UNSAFE_ENTRY_NAME_PATTERN = [
 /// behavior. Absolute paths stay rooted at `/`; relative paths stay
 /// home-relative so the initial SFTP view can open the SSH login directory.
 export function normalizeSftpRemotePath(path: string): string {
-  const trimmed = path.trim();
-  const absolute = trimmed.startsWith(ROOT);
+  // Leading and trailing spaces can belong to a real remote file name.
+  const absolute = path.startsWith(ROOT);
   const parts: string[] = [];
 
-  for (const segment of trimmed.split(ROOT)) {
+  for (const segment of path.split(ROOT)) {
     if (segment === "" || segment === ".") continue;
     if (segment === "..") {
       parts.pop();
