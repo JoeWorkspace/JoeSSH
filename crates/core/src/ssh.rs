@@ -213,7 +213,7 @@ impl SshClient {
             .map_err(|e| SshError::Session(e.to_string()))?;
 
         let mut stdout = Vec::new();
-        let mut exit_status = 0u32;
+        let mut exit_status = None;
 
         while let Some(msg) = channel.wait().await {
             match msg {
@@ -230,7 +230,12 @@ impl SshClient {
                     stdout.write_all(data).await.ok();
                 }
                 russh::ChannelMsg::ExitStatus { exit_status: code } => {
-                    exit_status = code;
+                    exit_status = Some(code);
+                }
+                russh::ChannelMsg::ExitSignal { .. } => {
+                    return Err(SshError::Session(
+                        "remote command terminated by a signal".into(),
+                    ));
                 }
                 // EOF only ends the stdout stream. The server can still send
                 // the command's exit status before it closes the channel.
@@ -239,6 +244,9 @@ impl SshClient {
             }
         }
 
+        let exit_status = exit_status.ok_or_else(|| {
+            SshError::Session("remote command closed without an exit status".into())
+        })?;
         Ok((exit_status, stdout))
     }
 
@@ -718,8 +726,7 @@ mod tests {
         assert!(matches!(result, Err(SshError::TimedOut)));
     }
 
-    #[tokio::test]
-    async fn exec_reads_exit_status_sent_after_stdout_eof() {
+    async fn exec_with_completion_fixture(command: &str) -> Result<(u32, Vec<u8>), SshError> {
         struct ExecServer;
 
         impl russh::server::Handler for ExecServer {
@@ -746,13 +753,25 @@ mod tests {
             async fn exec_request(
                 &mut self,
                 channel: russh::ChannelId,
-                _command: &[u8],
+                command: &[u8],
                 session: &mut russh::server::Session,
             ) -> Result<(), Self::Error> {
                 session.channel_success(channel)?;
                 session.data(channel, b"command output".to_vec())?;
                 session.eof(channel)?;
-                session.exit_status_request(channel, 17)?;
+                match command {
+                    b"success" => session.exit_status_request(channel, 0)?,
+                    b"status-after-eof" => session.exit_status_request(channel, 17)?,
+                    b"signal" => session.exit_signal_request(
+                        channel,
+                        russh::Sig::TERM,
+                        false,
+                        "fixture terminated",
+                        "",
+                    )?,
+                    b"no-status" => {}
+                    _ => panic!("unknown exec completion fixture"),
+                }
                 session.close(channel)?;
                 Ok(())
             }
@@ -783,17 +802,39 @@ mod tests {
         .await
         .unwrap();
 
-        let (exit_status, stdout) = tokio::time::timeout(
-            std::time::Duration::from_secs(5),
-            client.exec("fixture command"),
-        )
-        .await
-        .expect("exec should finish after channel close")
-        .unwrap();
+        let result = tokio::time::timeout(std::time::Duration::from_secs(5), client.exec(command))
+            .await
+            .expect("exec should finish after channel close");
         server.abort();
+        result
+    }
 
+    #[tokio::test]
+    async fn exec_reads_exit_status_sent_after_stdout_eof() {
+        let (exit_status, stdout) = exec_with_completion_fixture("status-after-eof")
+            .await
+            .unwrap();
         assert_eq!(stdout, b"command output");
         assert_eq!(exit_status, 17, "stdout EOF does not end the SSH channel");
+    }
+
+    #[tokio::test]
+    async fn exec_accepts_explicit_success_status() {
+        let (exit_status, stdout) = exec_with_completion_fixture("success").await.unwrap();
+        assert_eq!(exit_status, 0);
+        assert_eq!(stdout, b"command output");
+    }
+
+    #[tokio::test]
+    async fn exec_rejects_close_without_exit_status() {
+        let result = exec_with_completion_fixture("no-status").await;
+        assert!(matches!(result, Err(SshError::Session(_))), "{result:?}");
+    }
+
+    #[tokio::test]
+    async fn exec_rejects_signal_termination() {
+        let result = exec_with_completion_fixture("signal").await;
+        assert!(matches!(result, Err(SshError::Session(_))), "{result:?}");
     }
 
     #[test]
