@@ -23,3 +23,8 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "io-ut
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 uuid = { version = "1", features = ["v4"] }
+
+# GTK3 requires glib 0.18. Use the official crate with the narrowly scoped
+# upstream RUSTSEC-2024-0429 fix until Tauri can use the maintained GTK stack.
+[patch.crates-io]
+glib = { path = "../../../vendor/glib-0.18.5" }
