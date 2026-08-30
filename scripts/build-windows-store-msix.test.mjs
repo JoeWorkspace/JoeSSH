@@ -26,6 +26,7 @@ import {
   findMakeAppx,
   nativeBuildEnvironment,
   packAndVerifyMsix,
+  run,
   treeEvidence,
   validateBuildContext,
   validateCiEvidence,
@@ -36,6 +37,26 @@ import { parseMsixManifestContract } from "./windows-store-contract.mjs";
 import { readWindowsStoreManifestLanguageContract } from "./windows-store-language-contract.mjs";
 
 const root = resolve(import.meta.dirname, "..");
+test("successful tool diagnostics never become part of an executable path", () => {
+  const executable = run(process.execPath, [
+    "-e",
+    'process.stdout.write(process.execPath + "\\n"); process.stderr.write("info: downloading component clippy\\n");',
+  ]);
+  assert.equal(executable, process.execPath);
+  assert.equal(run(executable, ["--version"]), process.version);
+});
+
+test("tool stdout does not hide a failing exit status", () => {
+  assert.throws(
+    () =>
+      run(process.execPath, [
+        "-e",
+        'process.stdout.write(process.execPath); process.stderr.write("failure\\n"); process.exitCode = 7;',
+      ]),
+    /failed \(7\)/,
+  );
+});
+
 const sourceSha = "a".repeat(40);
 const legalPublisher = "JoeSSH Release Team";
 const partner = {
