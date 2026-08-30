@@ -280,6 +280,8 @@ jobs:
           test "$(npm --version)" = "10.9.7"
       - name: Install locked dependencies without lifecycle scripts
         run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Test Windows package and native signature verification
+        run: node --test scripts/package-windows-invite-beta.test.mjs scripts/prepare-windows-store-candidate.test.mjs
       - run: npx --no-install playwright install chromium
       - run: npm run qa:windows-store-surfaces:runtime:installed
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -353,6 +355,15 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22.22.2
+      - name: Pin npm 10.9.7
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global --ignore-scripts --no-audit --no-fund npm@10.9.7
+          test "$(npm --version)" = "10.9.7"
       - uses: dtolnay/rust-toolchain@2c7215f132e9ebf062739d9130488b56d53c060c # master
         with:
           toolchain: 1.96.0
@@ -362,7 +373,8 @@ jobs:
       - run: cargo fmt --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace
-      - run: cargo audit --deny warnings
+      - run: node --test scripts/run-rust-advisory-gate.test.mjs scripts/rust-maintenance-policy.test.mjs scripts/rust-audit-transport.test.mjs scripts/vendored-rust-contract.test.mjs scripts/vendored-rust-audit.test.mjs
+      - run: node scripts/run-rust-advisory-gate.mjs
 
   desktop-real-ssh-smoke:
     name: Desktop Real SSH Smoke
@@ -465,6 +477,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
       - run: npm run qa:tauri
+      - name: Test native desktop operations and optimized GLib backport
+        run: |
+          cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --release --lib --locked
+          cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --release --test variant_str_iter --locked
 
   public-release-readiness:
     name: Public Release Readiness

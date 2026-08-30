@@ -26,7 +26,9 @@ const UNSIGNED_PE_PATH = resolve(
   import.meta.dirname,
   "../node_modules/fb-dotslash/bin/windows/dotslash.exe",
 );
-const VERSION = "0.1.0-beta.10";
+const VERSION = readJson(
+  resolve(import.meta.dirname, "../package.json"),
+).version;
 const gitHead = spawnSync("git", ["rev-parse", "HEAD"], {
   cwd: resolve(import.meta.dirname, ".."),
   encoding: "utf8",
@@ -62,6 +64,23 @@ test(
     );
     assert.match(approvalChecksums, /invite-ready\.json/);
     assert.match(approvalChecksums, /native-smoke\.json/);
+  },
+);
+
+test(
+  "rejects internally consistent handoff evidence for another project version",
+  windowsOnly,
+  (t) => {
+    const version = VERSION === "0.0.0" ? "0.0.1" : "0.0.0";
+    const fixture = createFixture(t, { version });
+    const result = runPromoter(fixture);
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /does not bind the reviewed Stage A installer/);
+    assert.equal(
+      existsSync(join(fixture.candidateDir, "invite-ready.json")),
+      false,
+    );
   },
 );
 
@@ -291,6 +310,7 @@ test("rejects a hard-linked installer input", windowsOnly, (t) => {
 });
 
 function createFixture(t, overrides = {}) {
+  const version = overrides.version ?? VERSION;
   assert.equal(
     existsSync(UNSIGNED_PE_PATH),
     true,
@@ -308,8 +328,8 @@ function createFixture(t, overrides = {}) {
   const fixtureRoot = mkdtempSync(join(handoffRoot, "promotion-test-"));
   t.after(() => rmSync(fixtureRoot, { force: true, recursive: true }));
 
-  const sourceFileName = `JoeSSH_${VERSION}_x64-setup.exe`;
-  const artifactFileName = `JoeSSH_${VERSION}_x64-setup-UNSIGNED-INTERNAL-ONLY.exe`;
+  const sourceFileName = `JoeSSH_${version}_x64-setup.exe`;
+  const artifactFileName = `JoeSSH_${version}_x64-setup-UNSIGNED-INTERNAL-ONLY.exe`;
   const artifactPath = join(fixtureRoot, artifactFileName);
   if (overrides.textArtifact) {
     writeFileSync(artifactPath, "stage-a installer");
@@ -335,7 +355,7 @@ function createFixture(t, overrides = {}) {
     platform: "windows",
     architecture: "x64",
     bundleTarget: "nsis",
-    version: VERSION,
+    version,
     commit: COMMIT,
     gitExecutable: "C:/Program Files/Git/cmd/git.exe",
     gitVersion: "git version 2.50.1.windows.1",
@@ -378,7 +398,7 @@ function createFixture(t, overrides = {}) {
     inviteDistributionReady: false,
     nativeSmokeRequired: true,
     platform: "windows",
-    version: VERSION,
+    version,
     commit: COMMIT,
     artifactCommitBinding: "build-attestation",
     bundleMetadata: {
@@ -436,7 +456,7 @@ function createFixture(t, overrides = {}) {
     {
       schemaVersion: 1,
       candidate: {
-        version: VERSION,
+        version,
         commit: COMMIT,
         artifactSha256,
       },

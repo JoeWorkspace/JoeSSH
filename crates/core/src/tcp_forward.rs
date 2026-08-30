@@ -15,9 +15,10 @@ use std::sync::Arc;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::oneshot;
+use tokio::task::JoinSet;
 
 /// A running forwarder. Dropping or calling [`TcpForwardHandle::shutdown`]
-/// stops accepting new connections; in-flight copies finish on their own.
+/// stops accepting new connections and cancels in-flight copies and dials.
 #[derive(Debug)]
 pub struct TcpForwardHandle {
     bound_addr: SocketAddr,
@@ -37,7 +38,7 @@ impl TcpForwardHandle {
         self.accepted.load(Ordering::SeqCst)
     }
 
-    /// Signal the accept loop to stop. Idempotent.
+    /// Signal the accept loop and its active connections to stop. Idempotent.
     pub fn shutdown(&mut self) {
         if let Some(tx) = self.shutdown_tx.take() {
             let _ = tx.send(());
@@ -86,14 +87,17 @@ where
 
     let accept_accepted = Arc::clone(&accepted);
     tokio::spawn(async move {
+        let mut connections = JoinSet::new();
         loop {
             tokio::select! {
+                biased;
                 _ = &mut shutdown_rx => break,
+                Some(_) = connections.join_next(), if !connections.is_empty() => {},
                 accepted_conn = listener.accept() => {
                     let Ok((inbound, peer)) = accepted_conn else { break };
                     accept_accepted.fetch_add(1, Ordering::SeqCst);
                     let dial = Arc::clone(&dial);
-                    tokio::spawn(async move {
+                    connections.spawn(async move {
                         if let Ok(outbound) = dial(peer).await {
                             let _ = proxy(inbound, outbound).await;
                         }
@@ -101,6 +105,8 @@ where
                 }
             }
         }
+        // Dropping the task set aborts pending target dials and active proxies,
+        // releasing their sockets and any retained SSH session handles.
     });
 
     Ok(TcpForwardHandle {
@@ -233,5 +239,75 @@ mod tests {
                 assert_eq!(n, 0, "no bytes should be echoed after shutdown");
             }
         }
+    }
+
+    async fn assert_stopped_forward_closes_active_connection(drop_handle: bool) {
+        let echo = spawn_echo_server().await;
+        let mut handle = spawn_tcp_forward("127.0.0.1:0", echo.to_string())
+            .await
+            .unwrap();
+        let mut client = TcpStream::connect(handle.bound_addr()).await.unwrap();
+        client.write_all(b"before stop").await.unwrap();
+        let mut echoed = [0_u8; 11];
+        client.read_exact(&mut echoed).await.unwrap();
+        assert_eq!(&echoed, b"before stop");
+
+        if drop_handle {
+            drop(handle);
+        } else {
+            handle.shutdown();
+        }
+
+        let mut buffer = [0_u8; 1];
+        let read =
+            tokio::time::timeout(std::time::Duration::from_secs(2), client.read(&mut buffer))
+                .await
+                .expect("stopping a forward must close already connected clients");
+        assert!(matches!(read, Ok(0) | Err(_)));
+    }
+
+    #[tokio::test]
+    async fn shutdown_closes_active_connections() {
+        assert_stopped_forward_closes_active_connection(false).await;
+    }
+
+    #[tokio::test]
+    async fn dropping_handle_closes_active_connections() {
+        assert_stopped_forward_closes_active_connection(true).await;
+    }
+
+    #[tokio::test]
+    async fn shutdown_cancels_pending_dials() {
+        struct NotifyOnDrop(tokio::sync::mpsc::UnboundedSender<()>);
+
+        impl Drop for NotifyOnDrop {
+            fn drop(&mut self) {
+                let _ = self.0.send(());
+            }
+        }
+
+        let (events, mut received) = tokio::sync::mpsc::unbounded_channel();
+        let mut handle = spawn_forward_with_dialer("127.0.0.1:0", move |_peer| {
+            let events = events.clone();
+            async move {
+                let _notify = NotifyOnDrop(events.clone());
+                events.send(()).unwrap();
+                std::future::pending::<io::Result<TcpStream>>().await
+            }
+        })
+        .await
+        .unwrap();
+        let _client = TcpStream::connect(handle.bound_addr()).await.unwrap();
+        tokio::time::timeout(std::time::Duration::from_secs(2), received.recv())
+            .await
+            .expect("forward should start dialing")
+            .unwrap();
+
+        handle.shutdown();
+
+        tokio::time::timeout(std::time::Duration::from_secs(2), received.recv())
+            .await
+            .expect("stopping a forward must cancel a pending target connection")
+            .unwrap();
     }
 }

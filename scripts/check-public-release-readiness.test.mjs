@@ -1515,6 +1515,28 @@ test("rejects root QA without source prerelease contract tests", (t) => {
   );
 });
 
+for (const unsafeAudit of [
+  "      - run: cargo audit --deny warnings\n",
+  "      - run: node scripts/run-rust-advisory-gate.mjs\n        continue-on-error: true\n",
+  "      - run: node scripts/run-rust-advisory-gate.mjs\n        if: false\n",
+]) {
+  test(`rejects incomplete or bypassed Rust audit: ${unsafeAudit.trim()}`, (t) => {
+    const result = runChecker(
+      createFixture(t, {
+        ".github/workflows/ci.yml": ciFixture().replace(
+          "      - run: node scripts/run-rust-advisory-gate.mjs\n",
+          unsafeAudit,
+        ),
+      }),
+    );
+    assert.equal(result.status, 1);
+    assert.match(
+      result.stdout,
+      /FAIL CI Rust job requires the strict audit of both lockfiles without skipping failures/,
+    );
+  });
+}
+
 test("rejects CI E2E jobs that use non-fresh E2E", (t) => {
   const result = runChecker(
     createFixture(t, {

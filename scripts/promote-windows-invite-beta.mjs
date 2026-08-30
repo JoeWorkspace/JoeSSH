@@ -21,6 +21,7 @@ import {
   relative,
   resolve,
 } from "node:path";
+import { WINDOWS_AUTHENTICODE_SETUP } from "./windows-powershell.mjs";
 
 const HANDOFF_FILES = [
   "SHA256SUMS.txt",
@@ -136,11 +137,12 @@ function main() {
     root,
     "Unable to resolve the promotion repository root.",
   );
-  if (
-    normalizePath(realpathSync(repositoryRoot)) !==
-    normalizePath(realpathSync(root))
-  ) {
-    fail("Promotion must run from the reviewed JoeSSH repository.");
+  const nativeGitRoot = realpathSync.native(repositoryRoot);
+  const nativeRoot = realpathSync.native(root);
+  if (normalizePath(nativeGitRoot) !== normalizePath(nativeRoot)) {
+    fail(
+      `Promotion must run from the reviewed JoeSSH repository. Git root: ${repositoryRoot} -> ${nativeGitRoot}; repository root: ${root} -> ${nativeRoot}.`,
+    );
   }
   const currentCommit = requiredCommandOutput(
     gitCommand,
@@ -494,6 +496,7 @@ function verifyUnsignedAuthenticode(value, label) {
 function inspectAuthenticode(path) {
   const powershell = resolveSystemPowerShell();
   const command = [
+    WINDOWS_AUTHENTICODE_SETUP,
     "$path = [Console]::In.ReadToEnd();",
     "$signature = Get-AuthenticodeSignature -LiteralPath $path;",
     "[PSCustomObject]@{",

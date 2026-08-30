@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 1,
+  "lockfile": "apps/desktop/src-tauri/Cargo.lock",
+  "reviewedAt": "2026-08-30",
+  "reviewBy": "2026-11-28",
+  "reason": "Tauri 2 stable still requires GTK3 and urlpattern 0.3; no compatible maintained dependency chain exists. Only these exact informational maintenance notices are recorded. Vulnerabilities, unsoundness, yanked crates and unknown notices remain blocking.",
+  "notices": [
+    {
+      "id": "RUSTSEC-2024-0413",
+      "package": "atk",
+      "version": "0.18.2",
+      "checksum": "241b621213072e993be4f6f3a9e4b45f65b7e6faad43001be957184b7bb1824b",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "reference": "https://github.com/gtk-rs/gtk3-rs/commit/508a69b63a3c5bf73790e0e59101a955847f30d6"
+    },
+    {
+      "id": "RUSTSEC-2024-0416",
+      "package": "atk-sys",
+      "version": "0.18.2",
+      "checksum": "c5e48b684b0ca77d2bbadeef17424c2ea3c897d44d566a1617e7e8f30614d086",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "reference": "https://github.com/gtk-rs/gtk3-rs/commit/508a69b63a3c5bf73790e0e59101a955847f30d6"
+    },
+    {
+      "id": "RUSTSEC-2024-0412",
+      "package": "gdk",
+      "version": "0.18.2",
+      "checksum": "d9f245958c627ac99d8e529166f9823fb3b838d1d41fd2b297af3075093c2691",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "reference": "https://github.com/gtk-rs/gtk3-rs/commit/508a69b63a3c5bf73790e0e59101a955847f30d6"
+    },
+    {
+      "id": "RUSTSEC-2024-0418",
+      "package": "gdk-sys",
+      "version": "0.18.2",
+      "checksum": "5c2d13f38594ac1e66619e188c6d5a1adb98d11b2fcf7894fc416ad76aa2f3f7",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "reference": "https://github.com/gtk-rs/gtk3-rs/commit/508a69b63a3c5bf73790e0e59101a955847f30d6"
+    },
+    {
+      "id": "RUSTSEC-2024-0411",
+      "package": "gdkwayland-sys",
+      "version": "0.18.2",
+      "checksum": "140071d506d223f7572b9f09b5e155afbd77428cd5cc7af8f2694c41d98dfe69",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "reference": "https://github.com/gtk-rs/gtk3-rs/commit/508a69b63a3c5bf73790e0e59101a955847f30d6"
+    },
+    {
+      "id": "RUSTSEC-2024-0417",
+      "package": "gdkx11",
+      "version": "0.18.2",
+      "checksum": "3caa00e14351bebbc8183b3c36690327eb77c49abc2268dd4bd36b856db3fbfe",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "reference": "https://github.com/gtk-rs/gtk3-rs/commit/508a69b63a3c5bf73790e0e59101a955847f30d6"
+    },
+    {
+      "id": "RUSTSEC-2024-0414",
+      "package": "gdkx11-sys",
+      "version": "0.18.2",
+      "checksum": "6e2e7445fe01ac26f11601db260dd8608fe172514eb63b3b5e261ea6b0f4428d",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "reference": "https://github.com/gtk-rs/gtk3-rs/commit/508a69b63a3c5bf73790e0e59101a955847f30d6"
+    },
+    {
+      "id": "RUSTSEC-2024-0415",
+      "package": "gtk",
+      "version": "0.18.2",
+      "checksum": "fd56fb197bfc42bd5d2751f4f017d44ff59fbb58140c6b49f9b3b2bdab08506a",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "reference": "https://github.com/gtk-rs/gtk3-rs/commit/508a69b63a3c5bf73790e0e59101a955847f30d6"
+    },
+    {
+      "id": "RUSTSEC-2024-0420",
+      "package": "gtk-sys",
+      "version": "0.18.2",
+      "checksum": "8f29a1c21c59553eb7dd40e918be54dccd60c52b049b75119d5d96ce6b624414",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "reference": "https://github.com/gtk-rs/gtk3-rs/commit/508a69b63a3c5bf73790e0e59101a955847f30d6"
+    },
+    {
+      "id": "RUSTSEC-2024-0419",
+      "package": "gtk3-macros",
+      "version": "0.18.2",
+      "checksum": "52ff3c5b21f14f0736fed6dcfc0bfb4225ebf5725f3c0209edeec181e4d73e9d",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "reference": "https://github.com/gtk-rs/gtk3-rs/commit/508a69b63a3c5bf73790e0e59101a955847f30d6"
+    },
+    {
+      "id": "RUSTSEC-2024-0370",
+      "package": "proc-macro-error",
+      "version": "1.0.4",
+      "checksum": "da25490ff9892aab3fcf7c36f08cfb902dd3e71ca0f9f9517bea02a73a5ce38c",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "reference": "https://gitlab.com/CreepySkeleton/proc-macro-error/-/issues/20"
+    },
+    {
+      "id": "RUSTSEC-2025-0081",
+      "package": "unic-char-property",
+      "version": "0.9.0",
+      "checksum": "a8c57a407d9b6fa02b4795eb81c5b6652060a15a7903ea981f3d723e6c0be221",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "reference": "https://github.com/rustsec/advisory-db/issues/2414"
+    },
+    {
+      "id": "RUSTSEC-2025-0075",
+      "package": "unic-char-range",
+      "version": "0.9.0",
+      "checksum": "0398022d5f700414f6b899e10b8348231abf9173fa93144cbc1a43b9793c1fbc",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "reference": "https://github.com/rustsec/advisory-db/issues/2414"
+    },
+    {
+      "id": "RUSTSEC-2025-0080",
+      "package": "unic-common",
+      "version": "0.9.0",
+      "checksum": "80d7ff825a6a654ee85a63e80f92f054f904f21e7d12da4e22f9834a4aaa35bc",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "reference": "https://github.com/rustsec/advisory-db/issues/2414"
+    },
+    {
+      "id": "RUSTSEC-2025-0100",
+      "package": "unic-ucd-ident",
+      "version": "0.9.0",
+      "checksum": "e230a37c0381caa9219d67cf063aa3a375ffed5bf541a452db16e744bdab6987",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "reference": "https://github.com/rustsec/advisory-db/issues/2414"
+    },
+    {
+      "id": "RUSTSEC-2025-0098",
+      "package": "unic-ucd-version",
+      "version": "0.9.0",
+      "checksum": "96bd2f2237fe450fcd0a1d2f5f4e91711124f7857ba2e964247776ebeeb7b0c4",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "reference": "https://github.com/rustsec/advisory-db/issues/2414"
+    }
+  ]
+}

@@ -93,13 +93,15 @@ We appreciate the security research community and will credit reporters (with pe
 
 ## Public Beta Dependency Policy
 
-- High and critical production dependency findings block release.
+- High and critical npm dependency findings block release across the full
+  workspace, including development and mobile build tooling. No high-severity
+  exceptions are active.
 - Moderate production dependency findings must be documented in
   `docs/dependency-risk-register.md` with advisory URL, affected path, runtime
   impact, Public Beta decision, and follow-up.
-- Current mobile React Native/Expo moderate findings do not block the Desktop +
-  Web Admin + self-hosted Sync Public Beta unless mobile native apps enter the
-  public release scope.
+- Any future mobile React Native/Expo moderate findings need a documented
+  runtime-reachability review, and must be reviewed again before mobile native
+  apps enter the public release scope.
 - Dependabot auto-merge is disabled by default. It may be enabled only for
   direct development dependency updates after `main` protection and required
   release-readiness checks are active. Direct production and transitive

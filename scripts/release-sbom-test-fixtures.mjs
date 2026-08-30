@@ -150,6 +150,7 @@ export function writeSourceBoundReleaseSbomFixture(root) {
   const packageName = packageJson.name ?? "atlasterm";
   const version = packageJson.version;
   const rustMetadata = cargoMetadataFixture({
+    root: resolvedRoot,
     packageNames: [
       "atlasterm-core",
       "atlasterm-sync",
@@ -165,6 +166,7 @@ export function writeSourceBoundReleaseSbomFixture(root) {
     workspacePackageNames: ["atlasterm-core", "atlasterm-sync"],
   });
   const tauriMetadata = cargoMetadataFixture({
+    root: resolvedRoot,
     packageNames: [
       "atlasterm-desktop-shell",
       "atlasterm-core",
@@ -633,6 +635,7 @@ function stableJson(value) {
 }
 
 function cargoMetadataFixture({
+  root,
   packageNames,
   version,
   workspacePackageNames,
@@ -643,6 +646,20 @@ function cargoMetadataFixture({
     ...workspacePackageNames,
     "atlasterm-core",
   ]);
+  const localManifests = {
+    "atlasterm-core": "crates/core/Cargo.toml",
+    "atlasterm-sync": "services/sync/Cargo.toml",
+    "atlasterm-desktop-shell": "apps/desktop/src-tauri/Cargo.toml",
+  };
+  for (const name of localPackageNames) {
+    if (localManifests[name]) {
+      writeFixtureFile(
+        root,
+        localManifests[name],
+        `[package]\nname = "${name}"\nversion = "${version}"\nlicense = "MIT"\n`,
+      );
+    }
+  }
   const packageIds = new Map(
     packageNames.map((name) => {
       const packageVersion = localPackageNames.has(name) ? version : "1.0.0";
@@ -676,6 +693,9 @@ function cargoMetadataFixture({
       id: packageIds.get(name),
       license: "MIT",
       name,
+      ...(localManifests[name]
+        ? { manifest_path: resolve(root, localManifests[name]) }
+        : {}),
       source: localPackageNames.has(name) ? null : registrySource,
       version: localPackageNames.has(name) ? version : "1.0.0",
     })),

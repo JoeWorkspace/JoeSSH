@@ -7,13 +7,15 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
   statSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import test from "node:test";
+import { WINDOWS_AUTHENTICODE_SETUP } from "./windows-powershell.mjs";
 
 const SCRIPT_PATH = resolve(
   import.meta.dirname,
@@ -25,6 +27,92 @@ const UNSIGNED_PE_PATH = resolve(
 );
 const VERSION = "0.1.0-beta.10";
 const windowsOnly = { skip: process.platform !== "win32" };
+
+test(
+  "real Authenticode uses the host Security module despite a shadowed PSModulePath",
+  windowsOnly,
+  (t) => {
+    const temporaryRoot = resolve(tmpdir());
+    const root = mkdtempSync(
+      join(temporaryRoot, "joessh-windows-authenticode-"),
+    );
+    t.after(() => {
+      assert.equal(dirname(resolve(root)), temporaryRoot);
+      assert.ok(basename(root).startsWith("joessh-windows-authenticode-"));
+      rmSync(root, { force: true, recursive: true });
+    });
+    const modules = join(root, "Modules");
+    const shadowModule = join(modules, "Microsoft.PowerShell.Security");
+    writeFile(
+      join(shadowModule, "Microsoft.PowerShell.Security.psd1"),
+      "@{ RootModule = 'Microsoft.PowerShell.Security.psm1'; ModuleVersion = '7.0.0'; FunctionsToExport = @('Get-AuthenticodeSignature') }",
+    );
+    writeFile(
+      join(shadowModule, "Microsoft.PowerShell.Security.psm1"),
+      "throw 'Shadow security module was loaded'",
+    );
+    const powershell = resolve(
+      process.env.SystemRoot ?? "C:\\Windows",
+      "System32/WindowsPowerShell/v1.0/powershell.exe",
+    );
+    const inheritedModulePath = process.env.PSModulePath;
+    const environment = Object.fromEntries(
+      Object.entries(process.env).filter(
+        ([key]) => key.toLowerCase() !== "psmodulepath",
+      ),
+    );
+    environment.PSModulePath = `${modules};${inheritedModulePath ?? ""}`;
+    function run(command, input) {
+      return spawnSync(
+        powershell,
+        ["-NoProfile", "-NonInteractive", "-Command", command],
+        {
+          encoding: "utf8",
+          env: environment,
+          input,
+          timeout: 30_000,
+          windowsHide: true,
+        },
+      );
+    }
+    const shadowed = run(
+      "$ErrorActionPreference = 'Stop'; Import-Module Microsoft.PowerShell.Security -ErrorAction Stop;",
+    );
+    assert.notEqual(shadowed.status, 0);
+    assert.match(shadowed.stderr, /Shadow security module was loaded/);
+
+    const unsigned = join(root, "unsigned.ps1");
+    writeFileSync(unsigned, "# Unsigned signature inspection fixture.\n");
+    const command = [
+      WINDOWS_AUTHENTICODE_SETUP,
+      "$signature = Get-AuthenticodeSignature -LiteralPath ([Console]::In.ReadToEnd());",
+      "[PSCustomObject]@{ Status = $signature.Status.ToString(); ModulePath = (Get-Module Microsoft.PowerShell.Security).Path } | ConvertTo-Json -Compress",
+    ].join(" ");
+    for (const [path, expectedStatus] of [
+      [powershell, "Valid"],
+      [unsigned, "NotSigned"],
+    ]) {
+      const result = run(command, path);
+      assert.equal(result.status, 0, result.stderr);
+      const signature = JSON.parse(result.stdout);
+      assert.equal(signature.Status, expectedStatus);
+      assert.equal(
+        resolve(signature.ModulePath).toLowerCase(),
+        resolve(
+          dirname(powershell),
+          "Modules/Microsoft.PowerShell.Security/Microsoft.PowerShell.Security.psd1",
+        ).toLowerCase(),
+      );
+    }
+    const missing = run(command, join(root, "missing.exe"));
+    assert.notEqual(
+      missing.status,
+      0,
+      "Signature inspection errors must still fail closed",
+    );
+    assert.equal(process.env.PSModulePath, inheritedModulePath);
+  },
+);
 
 test(
   "packages one commit-bound unsigned PE into private Stage A handoff",
@@ -73,6 +161,64 @@ test("rejects a dirty source worktree", windowsOnly, (t) => {
   assert.equal(result.status, 1);
   assert.match(result.stderr, /require a clean Git worktree/);
 });
+
+test(
+  "packages the same Git worktree through its Windows 8.3 directory alias",
+  windowsOnly,
+  (t) => {
+    const fixture = createFixture(t);
+    const shortRoot = windowsShortPath(fixture.root);
+    const nativeRoot = realpathSync.native(fixture.root);
+    assert.notEqual(
+      shortRoot.toLowerCase(),
+      nativeRoot.toLowerCase(),
+      "This Windows filesystem did not expose an 8.3 alias; the required alias regression cannot be verified",
+    );
+    assert.equal(
+      realpathSync.native(shortRoot).toLowerCase(),
+      nativeRoot.toLowerCase(),
+    );
+    const gitRoot = git(shortRoot, [
+      "rev-parse",
+      "--show-toplevel",
+    ]).stdout.trim();
+    assert.equal(
+      realpathSync.native(gitRoot).toLowerCase(),
+      nativeRoot.toLowerCase(),
+    );
+
+    const result = runPackager(
+      {
+        ...fixture,
+        root: shortRoot,
+        bundleDir: join(
+          shortRoot,
+          "apps/desktop/src-tauri/target/release/bundle/nsis",
+        ),
+      },
+      ["--stage-a"],
+    );
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /awaiting native clean-VM smoke/);
+  },
+);
+
+test(
+  "rejects a different Git worktree selected by inherited Git environment",
+  windowsOnly,
+  (t) => {
+    const fixture = createFixture(t);
+    const foreign = createFixture(t);
+    const result = runPackager(fixture, ["--stage-a"], {
+      GIT_DIR: join(foreign.root, ".git"),
+      GIT_WORK_TREE: foreign.root,
+    });
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /The Git worktree root does not match --root/);
+    assert.ok(result.stderr.includes(realpathSync.native(fixture.root)));
+    assert.ok(result.stderr.includes(realpathSync.native(foreign.root)));
+  },
+);
 
 test("rejects stale or multiple Desktop installers", windowsOnly, (t) => {
   const fixture = createFixture(t);
@@ -149,7 +295,11 @@ function createFixture(t, overrides = {}) {
     "The Windows dotslash PE fixture must be installed by npm ci.",
   );
   const root = mkdtempSync(join(tmpdir(), "joessh-windows-invite-package-"));
-  t.after(() => rmSync(root, { force: true, recursive: true }));
+  t.after(() => {
+    assert.equal(dirname(resolve(root)), resolve(tmpdir()));
+    assert.ok(basename(root).startsWith("joessh-windows-invite-package-"));
+    rmSync(root, { force: true, recursive: true });
+  });
 
   writeJson(join(root, "package.json"), { version: VERSION });
   writeJson(join(root, "apps/desktop/package.json"), {
@@ -226,7 +376,32 @@ function createFixture(t, overrides = {}) {
   return { bundleDir, commit, root };
 }
 
-function runPackager(fixture, args) {
+function windowsShortPath(path) {
+  const powershell = resolve(
+    process.env.SystemRoot ?? "C:\\Windows",
+    "System32/WindowsPowerShell/v1.0/powershell.exe",
+  );
+  const command = [
+    "$ErrorActionPreference = 'Stop';",
+    "$path = [Console]::In.ReadToEnd();",
+    "$fso = [Activator]::CreateInstance([type]::GetTypeFromProgID('Scripting.FileSystemObject'));",
+    "$fso.GetFolder($path).ShortPath",
+  ].join(" ");
+  const result = spawnSync(
+    powershell,
+    ["-NoProfile", "-NonInteractive", "-Command", command],
+    {
+      encoding: "utf8",
+      input: path,
+      timeout: 30_000,
+      windowsHide: true,
+    },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  return result.stdout.trim();
+}
+
+function runPackager(fixture, args, environment = {}) {
   return spawnSync(
     process.execPath,
     [
@@ -245,6 +420,7 @@ function runPackager(fixture, args) {
         ATLASTERM_RELEASE_GIT_COMMAND: "ignored-fake-git",
         ATLASTERM_RELEASE_POWERSHELL_COMMAND: "ignored-fake-powershell",
         ATLASTERM_RELEASE_SIGNTOOL_COMMAND: "ignored-fake-signtool",
+        ...environment,
       },
       stdio: ["ignore", "pipe", "pipe"],
     },

@@ -1,8 +1,18 @@
 import { basename, resolve } from "node:path";
+import {
+  isFirstPartyCargoPackage,
+  verifyVendoredRustPackage,
+} from "./vendored-rust-contract.mjs";
 
 const PUBLIC_CARGO_PROPERTY_NAMES = new Set([
   "joessh:cargo:dependency-boundary",
   "joessh:cargo:source",
+  "joessh:cargo:patch-advisory",
+  "joessh:cargo:patch-commit",
+  "joessh:cargo:patch-manifest-sha256",
+  "joessh:cargo:patch-url",
+  "joessh:cargo:upstream-sha256",
+  "joessh:cargo:upstream-source",
 ]);
 
 export function canonicalizeNpmCycloneDx(
@@ -126,7 +136,10 @@ export function buildCargoCycloneDx(
         `${label} resolve graph references unknown package ${id}`,
       );
     }
-    const component = cargoComponent(packageEntry, lockEntries, label);
+    const component = cargoComponent(packageEntry, lockEntries, label, {
+      root: rootPath,
+      workspaceMembers: metadata.workspace_members,
+    });
     if (
       [...referenceById.values()].some(
         (existingReference) => existingReference === component["bom-ref"],
@@ -276,6 +289,36 @@ export function inspectCanonicalCargoCycloneDx(
       }
       references.add(component["bom-ref"]);
       if (
+        source === "workspace" &&
+        ![
+          "atlasterm-core",
+          "atlasterm-sync",
+          "atlasterm-desktop-shell",
+        ].includes(component.name)
+      ) {
+        errors.push(
+          `${label} contains an unrecognized first-party Cargo component`,
+        );
+      }
+      if (source === "vendored") {
+        try {
+          const record = verifyVendoredRustPackage(rootPath, {
+            name: component.name,
+            version: component.version,
+          });
+          const expected = buildVendoredCargoComponent(component, record);
+          if (stableJson(component) !== stableJson(expected)) {
+            errors.push(
+              `${label} vendored component does not match its verified patch provenance`,
+            );
+          }
+        } catch (error) {
+          errors.push(
+            `${label} vendored component verification failed: ${error.message}`,
+          );
+        }
+      }
+      if (
         source.startsWith("registry+") &&
         (!Array.isArray(component.hashes) ||
           !component.hashes.some(
@@ -343,7 +386,7 @@ function assertPackageName(packageName) {
   }
 }
 
-function cargoComponent(packageEntry, lockEntries, label) {
+function cargoComponent(packageEntry, lockEntries, label, context) {
   const name = requireString(packageEntry.name, `${label} Cargo package name`);
   const version = requireString(
     packageEntry.version,
@@ -353,6 +396,26 @@ function cargoComponent(packageEntry, lockEntries, label) {
     packageEntry.license,
     `${label} ${name}@${version} license`,
   );
+  if (
+    packageEntry.source === null &&
+    !isFirstPartyCargoPackage(packageEntry, context)
+  ) {
+    const record = verifyVendoredRustPackage(context.root, {
+      name,
+      version,
+      manifestPath: requireString(
+        packageEntry.manifest_path,
+        `${label} ${name}@${version} manifest_path`,
+      ),
+    });
+    const lockEntry = lockEntries.get(cargoLockKey(name, version, ""));
+    if (!lockEntry || lockEntry.source || lockEntry.checksum) {
+      throw new Error(
+        `${label} ${name}@${version} is not bound to a local Cargo.lock package`,
+      );
+    }
+    return buildVendoredCargoComponent({ name, version, license }, record);
+  }
   const source =
     packageEntry.source === null
       ? "workspace"
@@ -389,6 +452,83 @@ function cargoComponent(packageEntry, lockEntries, label) {
   return component;
 }
 
+export function buildVendoredRustProvenance(record) {
+  const { metadata } = record;
+  return {
+    manifest: `${metadata.path}/JOESSH-PATCH.json`,
+    manifestSha256: record.metadataSha256,
+    treeSha256: record.treeSha256,
+    upstream: { ...metadata.upstream },
+    patch: {
+      advisory: metadata.patch.advisory,
+      url: metadata.patch.url,
+      commit: metadata.patch.commit,
+      mergeCommit: metadata.patch.mergeCommit,
+    },
+  };
+}
+
+export function buildVendoredCargoComponent(packageEntry, record) {
+  const { name, version } = record;
+  const license =
+    packageEntry.license ?? packageEntry.licenses?.[0]?.expression;
+  if (
+    packageEntry.name !== name ||
+    packageEntry.version !== version ||
+    license !== record.declaredLicense
+  ) {
+    throw new Error(
+      `Vendored ${name}@${version} identity/license does not match its verified source`,
+    );
+  }
+  const provenance = buildVendoredRustProvenance(record);
+  const purl = `pkg:cargo/${encodeURIComponent(name)}@${encodeURIComponent(version)}`;
+  return {
+    "bom-ref": purl,
+    externalReferences: [
+      {
+        type: "distribution",
+        url: provenance.upstream.archiveUrl,
+        hashes: [{ alg: "SHA-256", content: provenance.upstream.sha256 }],
+      },
+      {
+        type: "vcs",
+        url: `${provenance.upstream.repository}/commit/${provenance.upstream.gitCommit}`,
+      },
+      {
+        type: "other",
+        url: provenance.patch.url,
+        comment: `Backport for ${provenance.patch.advisory}`,
+      },
+    ],
+    hashes: [{ alg: "SHA-256", content: provenance.treeSha256 }],
+    licenses: [{ expression: license }],
+    name,
+    properties: [
+      { name: "joessh:cargo:source", value: "vendored" },
+      {
+        name: "joessh:cargo:upstream-source",
+        value: provenance.upstream.archiveUrl,
+      },
+      {
+        name: "joessh:cargo:upstream-sha256",
+        value: provenance.upstream.sha256,
+      },
+      { name: "joessh:cargo:patch-advisory", value: provenance.patch.advisory },
+      { name: "joessh:cargo:patch-url", value: provenance.patch.url },
+      { name: "joessh:cargo:patch-commit", value: provenance.patch.commit },
+      {
+        name: "joessh:cargo:patch-manifest-sha256",
+        value: provenance.manifestSha256,
+      },
+    ],
+    purl,
+    scope: "required",
+    type: "library",
+    version,
+  };
+}
+
 function parseCargoLock(input, label) {
   const text = decodeStrictUtf8(input, label)
     .replace(/^\uFEFF/, "")
@@ -401,13 +541,11 @@ function parseCargoLock(input, label) {
     }
     const name = requireString(current.name, `${label} package name`);
     const version = requireString(current.version, `${label} ${name} version`);
-    if (current.source) {
-      const key = cargoLockKey(name, version, current.source);
-      if (entries.has(key)) {
-        throw new Error(`${label} contains duplicate ${name}@${version}`);
-      }
-      entries.set(key, current);
+    const key = cargoLockKey(name, version, current.source ?? "");
+    if (entries.has(key)) {
+      throw new Error(`${label} contains duplicate ${name}@${version}`);
     }
+    entries.set(key, current);
   };
   for (const rawLine of text.split("\n")) {
     const line = rawLine.trim();
@@ -494,6 +632,12 @@ function findLocalPathLeaks(json, { packageName, rootPath }) {
   const leaks = new Set();
   const normalizedRoot = resolve(rootPath).replaceAll("\\", "/");
   const rootName = basename(resolve(rootPath));
+  // Match a checkout-name token, not a substring of a public package name
+  // such as "istanbul-reports" when the checkout directory is "repo".
+  const checkoutNamePattern = new RegExp(
+    `(?:^|[^\\p{L}\\p{N}])${rootName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?=$|[^\\p{L}\\p{N}])`,
+    "iu",
+  );
 
   visitStrings(json, "$", (value, jsonPath) => {
     const normalized = value.replaceAll("\\", "/");
@@ -516,9 +660,7 @@ function findLocalPathLeaks(json, { packageName, rootPath }) {
       rootName &&
       rootName !== packageName &&
       !isPublicNameCollision &&
-      normalized
-        .toLocaleLowerCase("en-US")
-        .includes(rootName.toLocaleLowerCase("en-US"))
+      checkoutNamePattern.test(normalized)
     ) {
       leaks.add(`${jsonPath} contains checkout name ${rootName}`);
     }

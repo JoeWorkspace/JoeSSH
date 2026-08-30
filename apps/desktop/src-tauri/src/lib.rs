@@ -954,14 +954,15 @@ fn ensure_sftp_transfer_size(size_bytes: usize) -> Result<(), String> {
 }
 
 fn normalize_sftp_remote_path(path: &str) -> Result<String, String> {
-    let trimmed = path.trim();
-    if trimmed.is_empty() || trimmed.chars().any(is_unsafe_sftp_path_char) {
+    if path.trim().is_empty() || path.chars().any(is_unsafe_sftp_path_char) {
         return Err(SFTP_REMOTE_PATH_UNSAFE.to_string());
     }
 
-    let absolute = trimmed.starts_with('/');
+    // Preserve whitespace in real file names; trimming could select a different
+    // remote file for download or overwrite.
+    let absolute = path.starts_with('/');
     let mut parts = Vec::new();
-    for segment in trimmed.split('/') {
+    for segment in path.split('/') {
         if segment.is_empty() || segment == "." {
             continue;
         }
@@ -1206,10 +1207,23 @@ mod tests {
     }
 
     #[test]
+    fn sftp_remote_path_guard_preserves_distinct_remote_file_names() {
+        for path in ["/srv/report.txt ", " report.txt ", " reports /report.txt "] {
+            assert_eq!(normalize_sftp_remote_path(path).unwrap(), path);
+        }
+        assert_ne!(
+            normalize_sftp_remote_path("/srv/report.txt ").unwrap(),
+            normalize_sftp_remote_path("/srv/report.txt").unwrap()
+        );
+    }
+
+    #[test]
     fn sftp_remote_path_guard_rejects_unsafe_paths() {
         for path in [
             "",
             "   ",
+            "\t/srv",
+            "/srv\n",
             "../etc/passwd",
             "/srv/../etc/passwd",
             "/srv\\logs",

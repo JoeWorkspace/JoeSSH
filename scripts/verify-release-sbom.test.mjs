@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import {
   chmodSync,
+  cpSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -9,7 +10,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { delimiter, join } from "node:path";
+import { delimiter, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
@@ -18,6 +19,7 @@ import {
   canonicalizeNpmCycloneDx,
   inspectCanonicalCargoCycloneDx,
 } from "./release-sbom-contract.mjs";
+import { verifyVendoredRustPackage } from "./vendored-rust-contract.mjs";
 
 const CHECKER_PATH = fileURLToPath(
   new URL("./verify-release-sbom.mjs", import.meta.url),
@@ -55,12 +57,16 @@ function createFixture(t) {
 }
 
 function writeSbomFiles(root, overrides = {}) {
-  const rustMetadata =
+  const rustMetadata = bindLocalFixtureManifests(
+    root,
     overrides["reports/internal/release-inputs/cargo-metadata.json"] ??
-    rustWorkspaceCargoMetadataFixture();
-  const tauriMetadata =
+      rustWorkspaceCargoMetadataFixture(),
+  );
+  const tauriMetadata = bindLocalFixtureManifests(
+    root,
     overrides["reports/internal/release-inputs/tauri-cargo-metadata.json"] ??
-    tauriCargoMetadataFixture();
+      tauriCargoMetadataFixture(),
+  );
   const files = {
     "reports/release/npm-desktop-sbom.cdx.json": cyclonedxFixture("desktop"),
     "reports/release/npm-web-sbom.cdx.json": cyclonedxFixture("web"),
@@ -80,10 +86,33 @@ function writeSbomFiles(root, overrides = {}) {
     "reports/internal/release-inputs/tauri-cargo-metadata.json": tauriMetadata,
     ...overrides,
   };
+  files["reports/internal/release-inputs/cargo-metadata.json"] = rustMetadata;
+  files["reports/internal/release-inputs/tauri-cargo-metadata.json"] =
+    tauriMetadata;
 
   for (const [path, content] of Object.entries(files)) {
     writeFile(root, path, content);
   }
+}
+
+function bindLocalFixtureManifests(root, input) {
+  const metadata = JSON.parse(input);
+  const manifests = {
+    "atlasterm-core": "crates/core/Cargo.toml",
+    "atlasterm-sync": "services/sync/Cargo.toml",
+    "atlasterm-desktop-shell": "apps/desktop/src-tauri/Cargo.toml",
+  };
+  for (const entry of metadata.packages ?? []) {
+    if (entry.source === null && manifests[entry.name]) {
+      entry.manifest_path = resolve(root, manifests[entry.name]);
+      writeFile(
+        root,
+        manifests[entry.name],
+        `[package]\nname = "${entry.name}"\nversion = "${entry.version}"\nlicense = "MIT"\n`,
+      );
+    }
+  }
+  return JSON.stringify(metadata);
 }
 
 function writeSbomManifest(root) {
@@ -461,6 +490,77 @@ test("canonical npm SBOM accepts a product name matching the hosted checkout", (
   );
 });
 
+test("canonical npm SBOM accepts public package names containing a short checkout name", () => {
+  const names = ["istanbul-lib-report", "istanbul-reports"];
+  const rawSbom = JSON.stringify({
+    bomFormat: "CycloneDX",
+    components: names.map((name) => ({
+      "bom-ref": `${name}@1.0.0`,
+      externalReferences: [
+        {
+          type: "distribution",
+          url: `https://registry.npmjs.org/${name}/-/${name}-1.0.0.tgz`,
+        },
+      ],
+      name,
+      properties: [
+        { name: "cdx:npm:package:path", value: `node_modules/${name}` },
+      ],
+      purl: `pkg:npm/${name}@1.0.0`,
+      version: "1.0.0",
+    })),
+    dependencies: [
+      {
+        ref: "istanbul-reports@1.0.0",
+        dependsOn: ["istanbul-lib-report@1.0.0"],
+      },
+    ],
+    metadata: { component: { name: "repo", version: "1.2.3" } },
+    specVersion: "1.5",
+  });
+  const canonical = canonicalizeNpmCycloneDx(rawSbom, {
+    packageName: "atlasterm",
+    rootPath: "/home/runner/work/repo",
+  });
+  assert.deepEqual(
+    JSON.parse(canonical).components.map(({ name }) => name),
+    names,
+  );
+});
+
+for (const value of [
+  "repo",
+  "checkout=REPO",
+  "build-repo-output",
+  "../repo/file",
+  "/home/runner/work/repo/src/main.rs",
+  "C:\\private\\report.txt",
+  "file:///opt/report.txt",
+]) {
+  test(`canonical npm SBOM with a short checkout still rejects local evidence ${value}`, () => {
+    const rawSbom = JSON.stringify({
+      bomFormat: "CycloneDX",
+      components: [
+        {
+          name: "istanbul-reports",
+          version: "1.0.0",
+          properties: [{ name: "build-worktree", value }],
+        },
+      ],
+      metadata: { component: { name: "repo", version: "1.2.3" } },
+      specVersion: "1.5",
+    });
+    assert.throws(
+      () =>
+        canonicalizeNpmCycloneDx(rawSbom, {
+          packageName: "atlasterm",
+          rootPath: "/home/runner/work/repo",
+        }),
+      /contains (checkout name repo|an absolute local path)/,
+    );
+  });
+}
+
 test("canonical npm SBOM still rejects a hosted checkout name outside the root description", () => {
   const rawSbom = JSON.stringify({
     bomFormat: "CycloneDX",
@@ -485,8 +585,15 @@ test("canonical npm SBOM still rejects a hosted checkout name outside the root d
   );
 });
 
-test("canonical Cargo SBOM is independent of checkout paths and excludes dev-only packages", () => {
+test("canonical Cargo SBOM is independent of checkout paths and excludes dev-only packages", (t) => {
+  const fixtureRoot = mkdtempSync(join(tmpdir(), "cargo-sbom-paths-"));
+  t.after(() => rmSync(fixtureRoot, { recursive: true, force: true }));
   const makeMetadata = (rootPath) => {
+    writeFile(
+      rootPath,
+      "crates/core/Cargo.toml",
+      '[package]\nname = "atlasterm-core"\nversion = "0.1.0-beta.10"\nlicense = "MIT"\n',
+    );
     const workspaceId = `path+file:///${rootPath.replaceAll("\\", "/")}/crates/core#atlasterm-core@0.1.0-beta.10`;
     const runtimeId =
       "registry+https://github.com/rust-lang/crates.io-index#runtime-crate@1.0.0";
@@ -498,6 +605,7 @@ test("canonical Cargo SBOM is independent of checkout paths and excludes dev-onl
           id: workspaceId,
           license: "MIT",
           name: "atlasterm-core",
+          manifest_path: resolve(rootPath, "crates/core/Cargo.toml"),
           source: null,
           version: "0.1.0-beta.10",
         },
@@ -553,14 +661,14 @@ checksum = "${"c".repeat(64)}"
     packageVersion: "0.1.0-beta.10",
   };
   const first = buildCargoCycloneDx(
-    makeMetadata("C:/work/JoeSSH-ui-finalize"),
+    makeMetadata(join(fixtureRoot, "JoeSSH-ui-finalize")),
     lock.replace(/\n/g, "\r\n"),
-    { ...options, rootPath: "C:\\work\\JoeSSH-ui-finalize" },
+    { ...options, rootPath: join(fixtureRoot, "JoeSSH-ui-finalize") },
   );
   const second = buildCargoCycloneDx(
-    makeMetadata("/home/runner/work/JoeSSH/JoeSSH"),
+    makeMetadata(join(fixtureRoot, "JoeSSH")),
     lock,
-    { ...options, rootPath: "/home/runner/work/JoeSSH/JoeSSH" },
+    { ...options, rootPath: join(fixtureRoot, "JoeSSH") },
   );
 
   assert.equal(first, second);
@@ -568,8 +676,15 @@ checksum = "${"c".repeat(64)}"
   assert.doesNotMatch(first, /dev-crate|JoeSSH-ui-finalize|\/home\/runner/);
 });
 
-test("canonical Cargo SBOM still rejects noncanonical property names containing the hosted checkout", () => {
-  const rootPath = "/home/runner/work/JoeSSH/JoeSSH";
+test("canonical Cargo SBOM still rejects noncanonical property names containing the hosted checkout", (t) => {
+  const fixtureRoot = mkdtempSync(join(tmpdir(), "cargo-sbom-property-"));
+  t.after(() => rmSync(fixtureRoot, { recursive: true, force: true }));
+  const rootPath = join(fixtureRoot, "JoeSSH");
+  writeFile(
+    rootPath,
+    "crates/core/Cargo.toml",
+    '[package]\nname = "atlasterm-core"\nversion = "0.1.0-beta.10"\nlicense = "MIT"\n',
+  );
   const boundary = "runtime dependencies";
   const packageName = "atlasterm-rust-workspace";
   const packageVersion = "0.1.0-beta.10";
@@ -583,6 +698,7 @@ test("canonical Cargo SBOM still rejects noncanonical property names containing 
             id: workspaceId,
             license: "MIT",
             name: "atlasterm-core",
+            manifest_path: resolve(rootPath, "crates/core/Cargo.toml"),
             source: null,
             version: packageVersion,
           },
@@ -984,3 +1100,186 @@ test("rejects Tauri shell Cargo metadata missing required shell packages", (t) =
     /Tauri shell cargo metadata is missing expected package\(s\): tauri/,
   );
 });
+
+test("Cargo SBOM records a verified local third-party patch without misclassifying cross-workspace core", (t) => {
+  const fixture = vendoredCargoFixture(t);
+  const json = JSON.parse(fixture.build());
+  const glib = json.components.find((entry) => entry.name === "glib");
+  const core = json.components.find((entry) => entry.name === "atlasterm-core");
+  const record = verifyVendoredRustPackage(fixture.root, {
+    name: "glib",
+    version: "0.18.5",
+  });
+
+  assert.equal(
+    core.properties.find((entry) => entry.name === "joessh:cargo:source").value,
+    "workspace",
+  );
+  assert.equal(
+    glib.properties.find((entry) => entry.name === "joessh:cargo:source").value,
+    "vendored",
+  );
+  assert.equal(glib.hashes[0].content, record.treeSha256);
+  assert.notEqual(glib.hashes[0].content, record.metadata.upstream.sha256);
+  assert.ok(
+    glib.externalReferences.some(
+      (entry) => entry.url === record.metadata.upstream.archiveUrl,
+    ),
+  );
+  assert.ok(
+    glib.properties.some((entry) => entry.value === "RUSTSEC-2024-0429"),
+  );
+  assert.deepEqual(
+    inspectCanonicalCargoCycloneDx(fixture.build(), fixture.options),
+    [],
+  );
+  assert.ok(!fixture.build().includes(fixture.root));
+});
+
+test("Cargo SBOM does not accept an unregistered local dependency even when listed as a workspace member", (t) => {
+  const fixture = vendoredCargoFixture(t);
+  const glib = fixture.metadata.packages.find((entry) => entry.name === "glib");
+  glib.name = "unregistered-local-crate";
+  fixture.metadata.workspace_members.push(glib.id);
+
+  assert.throws(
+    () => fixture.build(),
+    /registered|unsupported|unknown|unrecognized/i,
+  );
+});
+
+test("Cargo SBOM binds a vendored dependency to its local lockfile entry", (t) => {
+  const fixture = vendoredCargoFixture(t);
+  fixture.lock = fixture.lock.replace(
+    'name = "glib"',
+    'name = "different-crate"',
+  );
+
+  assert.throws(
+    () => fixture.build(),
+    /not bound to a local Cargo.lock package/,
+  );
+});
+
+test("Cargo SBOM rejects a vendored dependency with an untrusted manifest path", (t) => {
+  const fixture = vendoredCargoFixture(t);
+  fixture.metadata.packages.find(
+    (entry) => entry.name === "glib",
+  ).manifest_path = join(fixture.root, "elsewhere", "Cargo.toml");
+
+  assert.throws(() => fixture.build(), /manifest|path|registered/i);
+});
+
+test("Cargo SBOM generation checks the actual patched source bytes", (t) => {
+  const fixture = vendoredCargoFixture(t);
+  const sourcePath = join(
+    fixture.root,
+    "vendor",
+    "glib-0.18.5",
+    "src",
+    "variant_iter.rs",
+  );
+  writeFileSync(
+    sourcePath,
+    `${readFileSync(sourcePath, "utf8")}\n// unexpected edit\n`,
+  );
+
+  assert.throws(() => fixture.build(), /hash|checksum|mismatch|digest/i);
+});
+
+test("Cargo SBOM inspection rejects forged patch provenance and license claims", (t) => {
+  const fixture = vendoredCargoFixture(t);
+  const json = JSON.parse(fixture.build());
+  const glib = json.components.find((entry) => entry.name === "glib");
+  glib.properties.find(
+    (entry) => entry.name === "joessh:cargo:patch-commit",
+  ).value = "f".repeat(40);
+  glib.licenses[0].expression = "Apache-2.0";
+
+  const failures = inspectCanonicalCargoCycloneDx(
+    stableJson(json),
+    fixture.options,
+  );
+  assert.ok(failures.some((entry) => /vendored component/i.test(entry)));
+});
+
+test("Cargo SBOM inspection rejects third-party components relabeled as workspace packages", (t) => {
+  const fixture = vendoredCargoFixture(t);
+  const json = JSON.parse(fixture.build());
+  const glib = json.components.find((entry) => entry.name === "glib");
+  glib.properties.find((entry) => entry.name === "joessh:cargo:source").value =
+    "workspace";
+  const failures = inspectCanonicalCargoCycloneDx(
+    stableJson(json),
+    fixture.options,
+  );
+  assert.ok(failures.some((entry) => /unrecognized first-party/i.test(entry)));
+});
+
+function vendoredCargoFixture(t) {
+  const root = mkdtempSync(join(tmpdir(), "vendored-cargo-sbom-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  cpSync(
+    resolve(import.meta.dirname, "../vendor/glib-0.18.5"),
+    join(root, "vendor", "glib-0.18.5"),
+    { recursive: true },
+  );
+  const packageFor = (name, version, manifest) => ({
+    id: `path+file:///${root.replaceAll("\\", "/")}/${manifest}#${name}@${version}`,
+    name,
+    version,
+    source: null,
+    license: "MIT",
+    manifest_path: join(root, ...manifest.split("/")),
+  });
+  const core = packageFor("atlasterm-core", VERSION, "crates/core/Cargo.toml");
+  const shell = packageFor(
+    "atlasterm-desktop-shell",
+    VERSION,
+    "apps/desktop/src-tauri/Cargo.toml",
+  );
+  const glib = packageFor("glib", "0.18.5", "vendor/glib-0.18.5/Cargo.toml");
+  for (const own of [core, shell]) {
+    mkdirSync(resolve(own.manifest_path, ".."), { recursive: true });
+    writeFileSync(
+      own.manifest_path,
+      `[package]\nname = "${own.name}"\nversion = "${own.version}"\nlicense = "MIT"\n`,
+    );
+  }
+  const fixture = {
+    root,
+    metadata: {
+      version: 1,
+      packages: [shell, core, glib],
+      workspace_members: [shell.id],
+      resolve: {
+        nodes: [
+          {
+            id: shell.id,
+            deps: [{ pkg: core.id, dep_kinds: [{ kind: null }] }],
+          },
+          {
+            id: core.id,
+            deps: [{ pkg: glib.id, dep_kinds: [{ kind: null }] }],
+          },
+          { id: glib.id, deps: [] },
+        ],
+      },
+    },
+    lock: `version = 4\n\n[[package]]\nname = "glib"\nversion = "0.18.5"\n`,
+    options: {
+      boundary: TAURI_BOUNDARY,
+      packageName: "atlasterm-tauri-shell",
+      packageVersion: VERSION,
+      rootPath: root,
+    },
+    build() {
+      return buildCargoCycloneDx(
+        JSON.stringify(this.metadata),
+        this.lock,
+        this.options,
+      );
+    },
+  };
+  return fixture;
+}
