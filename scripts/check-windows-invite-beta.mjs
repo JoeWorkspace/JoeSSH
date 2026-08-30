@@ -32,6 +32,8 @@ export function checkWindowsInviteBeta(rootPath = defaultRoot) {
     "scripts/block-windows-invite-stage-b.mjs",
   );
   const rustAdvisoryGate = readText(root, "scripts/run-rust-advisory-gate.mjs");
+  const rustAuditTransport = readText(root, "scripts/rust-audit-transport.mjs");
+  const rustAuditConfig = readText(root, ".cargo/audit.toml");
   const workflow = readText(root, ".github/workflows/windows-invite-beta.yml");
   const workflowRunBlocks = extractWorkflowRunBlocks(workflow);
   const reviewedInputExpressions =
@@ -96,6 +98,10 @@ export function checkWindowsInviteBeta(rootPath = defaultRoot) {
   ]);
   addScriptCheck(results, rootScripts, "test:rust-advisory-strict", [
     "node --test scripts/run-rust-advisory-gate.test.mjs",
+    "scripts/rust-maintenance-policy.test.mjs",
+    "scripts/rust-audit-transport.test.mjs",
+    "scripts/vendored-rust-contract.test.mjs",
+    "scripts/vendored-rust-audit.test.mjs",
   ]);
   addScriptCheck(results, rootScripts, "qa:beta:windows:contract", [
     "npm run test:windows-invite-beta",
@@ -273,10 +279,69 @@ export function checkWindowsInviteBeta(rootPath = defaultRoot) {
   );
   addCheck(
     results,
-    rustAdvisoryGate.includes("hasRustAuditErrorDiagnostics") &&
-      rustAdvisoryGate.includes('"--no-fetch"') &&
-      rustAdvisoryGate.includes("result.status === 0"),
-    "RustSec gate rejects error diagnostics and retries only against the fresh cache",
+    [
+      "runOnline = runRustAuditOnline",
+      '"Cargo.lock", "apps/desktop/src-tauri/Cargo.lock"',
+      '"Cargo.toml", "apps/desktop/src-tauri/Cargo.toml"',
+      "verifyVendoredRustPackages(root)",
+      "verifyResolvedRustSources",
+      "registryAuditLockfile(verified)",
+      "assessVendoredRustAudit(report, verified)",
+      "assessRustAuditReport(report, lockfile, policy, now)",
+      "const transport = runOnline(path, { root, scope })",
+      "transport.passed && assessment.errors.length === 0",
+    ].every((fragment) => rustAdvisoryGate.includes(fragment)),
+    "RustSec gate requires online policy checks for both lockfiles and verified vendor sources",
+  );
+  addCheck(
+    results,
+    [
+      "result?.status === 0 && !result.error && !result.signal",
+      "diagnosticErrors(output, true)",
+      "Fetching advisory database from",
+      "Updating crates.io index",
+      "Scanning ${lockfile} for vulnerabilities",
+      "assertConfig(root)",
+      "CARGO_NET_OFFLINE",
+      "inspectProbe(outcome.probe, path)",
+      "if (outcome.errors.length) return outcome",
+      '...args, "--format", "terminal"',
+      '...args, "--json"',
+      "processSucceeded(outcome.result)",
+      "lockfileHash(path) !== before",
+      "outcome.passed = outcome.errors.length === 0",
+      '["Cargo.lock", ["--deny", "warnings"]]',
+      '["--deny", "unsound", "--deny", "yanked"]',
+      '["vendored:glib@0.18.5", ["--deny", "yanked"]]',
+    ].every((fragment) => rustAuditTransport.includes(fragment)) &&
+      !/--(?:no-fetch|no-yanked|stale|quiet)\b/.test(
+        `${rustAdvisoryGate}\n${rustAuditTransport}`,
+      ),
+    "RustSec transport requires terminal online evidence and successful JSON without offline fallback",
+  );
+  addCheck(
+    results,
+    rustAuditConfig.replace(/\r\n/g, "\n").trim() ===
+      [
+        "[advisories]",
+        "ignore = []",
+        'informational_warnings = ["unmaintained", "unsound", "notice"]',
+        "",
+        "[database]",
+        'url = "https://github.com/RustSec/advisory-db.git"',
+        "fetch = true",
+        "stale = false",
+        "",
+        "[output]",
+        'format = "terminal"',
+        "quiet = false",
+        "show_tree = false",
+        "",
+        "[yanked]",
+        "enabled = true",
+        "update_index = true",
+      ].join("\n"),
+    "RustSec project config requires the official online database and updated yanked checks",
   );
   addCheck(
     results,

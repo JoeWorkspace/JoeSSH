@@ -30,6 +30,16 @@ feature, which triggered RUSTSEC-2023-0071. Public Beta disables that feature in
 scope, while RSA private-key auth stays out of scope until the upstream timing
 side-channel advisory has a safe path.
 
+`npm run qa:rust-advisory:strict` requires complete online RustSec and crates.io
+yanked checks for both the root and Tauri lockfiles. Network errors, offline
+mode, incomplete reports, or altered audit settings block the gate; cached-only
+fallback is not accepted. Cargo metadata checks both workspaces' resolved
+sources, and the verified GLib backport also receives a separate audit under its
+original registry identity so future advisories remain visible. The narrowly
+scoped Tauri maintenance notices and review deadline are recorded in the
+[Rust maintenance risk register](rust-maintenance-risk-register.md); they do not
+permit vulnerabilities or unverified vendor changes.
+
 ### Remediated Production Runtime Finding
 
 | Package                                  | Severity | Advisory                                          | Runtime Impact                                                                                                                                                                                                                                                      | Public Beta Decision                                          | Follow-up                                                                                         |

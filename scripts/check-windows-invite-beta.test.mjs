@@ -1,13 +1,35 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import test from "node:test";
 
 import {
   checkWindowsInviteBeta,
   formatWindowsInviteBetaResults,
 } from "./check-windows-invite-beta.mjs";
+
+const rustAuditTransportFixture = readFileSync(
+  new URL("./rust-audit-transport.mjs", import.meta.url),
+  "utf8",
+);
+const rustAuditConfigFixture = readFileSync(
+  new URL("../.cargo/audit.toml", import.meta.url),
+  "utf8",
+);
+const rustAuditTestCommand = [
+  "node --test scripts/run-rust-advisory-gate.test.mjs",
+  "scripts/rust-maintenance-policy.test.mjs",
+  "scripts/rust-audit-transport.test.mjs",
+  "scripts/vendored-rust-contract.test.mjs",
+  "scripts/vendored-rust-audit.test.mjs",
+].join(" ");
 
 test("accepts a scoped and fail-closed Windows invite Beta contract", (t) => {
   const root = createFixture(t);
@@ -147,9 +169,108 @@ test("rejects a promotion gate without external anchors and stable snapshots", (
   );
 });
 
+test("rejects the former cache-retry RustSec gate", (t) => {
+  const root = createFixture(t, {
+    rustAdvisoryGate:
+      'hasRustAuditErrorDiagnostics\n"--no-fetch"\nresult.status === 0',
+  });
+  assert.match(
+    formatWindowsInviteBetaResults(checkWindowsInviteBeta(root)),
+    /FAIL RustSec gate requires online policy checks/,
+  );
+});
+
+for (const flag of ["--no-fetch", "--no-yanked", "--stale", "--quiet"]) {
+  test(`rejects reintroduced Rust audit bypass ${flag}`, (t) => {
+    for (const field of ["rustAdvisoryGate", "rustAuditTransport"]) {
+      const original =
+        field === "rustAdvisoryGate"
+          ? createRustAuditGateFixture()
+          : rustAuditTransportFixture;
+      const root = createFixture(t, { [field]: `${original}\n"${flag}"` });
+      assert.match(
+        formatWindowsInviteBetaResults(checkWindowsInviteBeta(root)),
+        /FAIL RustSec transport requires terminal online evidence/,
+      );
+    }
+  });
+}
+
+for (const [name, fragment] of [
+  ["terminal online probe", '...args, "--format", "terminal"'],
+  ["registry update evidence", "Updating crates.io index"],
+  ["network failure rejection", "if (outcome.errors.length) return outcome"],
+  ["successful JSON check", "processSucceeded(outcome.result)"],
+]) {
+  test(`rejects Rust audit transport without ${name}`, (t) => {
+    const root = createFixture(t, {
+      rustAuditTransport: rustAuditTransportFixture.replaceAll(fragment, ""),
+    });
+    assert.match(
+      formatWindowsInviteBetaResults(checkWindowsInviteBeta(root)),
+      /FAIL RustSec transport requires terminal online evidence/,
+    );
+  });
+}
+
+for (const [name, fragment] of [
+  [
+    "both resolved Cargo graphs",
+    '"Cargo.toml", "apps/desktop/src-tauri/Cargo.toml"',
+  ],
+  ["vendored registry projection", "registryAuditLockfile(verified)"],
+  [
+    "transport and policy success",
+    "transport.passed && assessment.errors.length === 0",
+  ],
+]) {
+  test(`rejects RustSec gate without ${name}`, (t) => {
+    const root = createFixture(t, {
+      rustAdvisoryGate: createRustAuditGateFixture().replace(fragment, ""),
+    });
+    assert.match(
+      formatWindowsInviteBetaResults(checkWindowsInviteBeta(root)),
+      /FAIL RustSec gate requires online policy checks/,
+    );
+  });
+}
+
+for (const [before, after] of [
+  ["fetch = true", "fetch = false"],
+  ["stale = false", "stale = true"],
+  ["quiet = false", "quiet = true"],
+  ["enabled = true", "enabled = false"],
+  ["update_index = true", "update_index = false"],
+  ["https://github.com/RustSec/advisory-db.git", "https://example.invalid/db"],
+]) {
+  test(`rejects altered Rust audit config: ${after}`, (t) => {
+    const root = createFixture(t, {
+      rustAuditConfig: rustAuditConfigFixture.replace(before, after),
+    });
+    assert.match(
+      formatWindowsInviteBetaResults(checkWindowsInviteBeta(root)),
+      /FAIL RustSec project config requires the official online database/,
+    );
+  });
+}
+
+test("rejects an absent project audit config and omitted Rust safety regressions", (t) => {
+  const root = createFixture(t, {
+    rustAuditConfig: "",
+    rustAuditTestCommand: "node --test scripts/run-rust-advisory-gate.test.mjs",
+  });
+  const output = formatWindowsInviteBetaResults(checkWindowsInviteBeta(root));
+  assert.match(output, /FAIL RustSec project config requires/);
+  assert.match(output, /FAIL Package script test:rust-advisory-strict/);
+});
+
 function createFixture(t, overrides = {}) {
   const root = mkdtempSync(join(tmpdir(), "joessh-windows-beta-"));
-  t.after(() => rmSync(root, { force: true, recursive: true }));
+  t.after(() => {
+    assert.equal(dirname(resolve(root)), resolve(tmpdir()));
+    assert.ok(basename(root).startsWith("joessh-windows-beta-"));
+    rmSync(root, { force: true, recursive: true });
+  });
 
   const packageWindowsCommand =
     overrides.packageWindowsCommand ??
@@ -164,7 +285,7 @@ function createFixture(t, overrides = {}) {
       "test:windows-invite-promotion":
         "node --test scripts/promote-windows-invite-beta.test.mjs",
       "test:rust-advisory-strict":
-        "node --test scripts/run-rust-advisory-gate.test.mjs",
+        overrides.rustAuditTestCommand ?? rustAuditTestCommand,
       "qa:beta:windows:contract":
         "npm run test:windows-invite-beta && npm run test:windows-invite-package && npm run test:windows-invite-promotion && node scripts/check-windows-invite-beta.mjs",
       "qa:beta:windows:source":
@@ -259,7 +380,17 @@ function createFixture(t, overrides = {}) {
   writeFile(
     root,
     "scripts/run-rust-advisory-gate.mjs",
-    'hasRustAuditErrorDiagnostics\n"--no-fetch"\nresult.status === 0',
+    overrides.rustAdvisoryGate ?? createRustAuditGateFixture(),
+  );
+  writeFile(
+    root,
+    "scripts/rust-audit-transport.mjs",
+    overrides.rustAuditTransport ?? rustAuditTransportFixture,
+  );
+  writeFile(
+    root,
+    ".cargo/audit.toml",
+    overrides.rustAuditConfig ?? rustAuditConfigFixture,
   );
   writeFile(root, "docs/windows-invite-native-smoke.template.json", "{}");
   writeFile(
@@ -284,6 +415,23 @@ function createFixture(t, overrides = {}) {
   );
 
   return root;
+}
+
+function createRustAuditGateFixture() {
+  // Current gate wiring; transport behavior and vendor integrity have their own
+  // regression suites, which this contract also requires the QA chain to run.
+  return [
+    "runOnline = runRustAuditOnline",
+    'const audits = ["Cargo.lock", "apps/desktop/src-tauri/Cargo.lock"]',
+    'for (const manifest of ["Cargo.toml", "apps/desktop/src-tauri/Cargo.toml"])',
+    "verifyVendoredRustPackages(root)",
+    "verifyResolvedRustSources",
+    "registryAuditLockfile(verified)",
+    "assessVendoredRustAudit(report, verified)",
+    "assessRustAuditReport(report, lockfile, policy, now)",
+    "const transport = runOnline(path, { root, scope })",
+    "passed: transport.passed && assessment.errors.length === 0",
+  ].join("\n");
 }
 
 function createWorkflowFixture() {
