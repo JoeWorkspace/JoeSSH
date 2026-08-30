@@ -166,16 +166,16 @@ binary rather than claiming a fully trusted release.
 1. Work only from a healthy Git checkout. If a planning workspace has incomplete
    Git metadata, move reviewed changes into a healthy checkout before tags,
    provenance, signing, or release automation.
-2. After reserving the real Partner Center identity, time-box a one-day MSIX
-   Packaging Tool feasibility spike against the existing Tauri full-trust app:
-   package the exact release build, verify package identity and installed PE
-   architecture, run WACK, and confirm SSH, PTY, SFTP, local forwarding,
-   WebView2, install, update, uninstall, and rollback behavior. If it passes,
-   make Store-signed MSIX the primary Community distribution path; Microsoft
-   currently re-signs, hosts, and updates Store MSIX submissions without a
-   separate code-signing purchase.
-3. Keep Tauri-native NSIS as the fallback when the MSIX spike exposes a real
-   compatibility blocker. That route requires every installer and installed PE
+2. The one-day Packaging Tool feasibility stage is complete. Use the protected
+   source-build MSIX workflow as the primary Community path: bind the exact
+   reviewed `main` SHA and Partner identity, compile and MakeAppx-roundtrip the
+   package, preserve both Sigstore attestations, then run independent lifecycle,
+   WACK, UI, upgrade, uninstall, and rollback qualification on the exact bytes.
+   Microsoft can re-sign, host, and update an accepted Store MSIX without a
+   separate public code-signing purchase.
+3. Keep Tauri-native NSIS only as a fallback when the current source-built MSIX
+   path exposes a new, reproducible compatibility blocker. That route requires
+   every installer and installed PE
    to be signed by a public-trust CA identity, plus the project's own immutable
    versioned hosting and update plan. SignPath Foundation may be evaluated for
    the fully open-source Community build only; confirm eligibility and do not

@@ -30,37 +30,45 @@ below. Do not attach binaries to that Release or reuse its tag for Web, Sync,
 Desktop, Mobile, or Store distribution. `0.1.0-beta.21` also remains an
 immutable zero-upload-asset Store source checkpoint. `0.1.0-beta.22`
 (`v0.1.0-beta.22`) remains unchanged as the source record for the existing
-`1.1.22.0` Store package. `0.1.0-beta.23` is the next distinct source revision,
-reserved for the Microsoft Store x64 maintenance candidate `1.1.23.0`; its
-GitHub Release must also have zero uploaded assets, and the Store package is
-delivered only through Partner Center after verification and certification.
-Version preparation does not establish that the new binary is published.
+`1.1.22.0` Store package. The `0.1.0-beta.23` source revision and local
+`1.1.23.0` package qualification evidence remain immutable, but that package is
+superseded and must not be submitted. `0.1.0-beta.24` is the replacement source
+revision for Microsoft Store x64 candidate `1.1.24.0`; its GitHub Release must
+also have zero uploaded assets, and the Store package is delivered only through
+Partner Center after verification and certification. Version preparation does
+not establish that the new binary is published.
 A future full multi-platform public release must
 first bump every version surface and release-note path to a distinct, unused
-version after `0.1.0-beta.23`; its target remains Desktop, Web Admin, and the
+version after `0.1.0-beta.24`; its target remains Desktop, Web Admin, and the
 self-hosted Sync Service. Mobile device smoke stays a strict-release route.
 
-The maintenance closeout may be represented by a source-only GitHub prerelease
-before the full public artifact gate is available. That prerelease is limited to
-GitHub's automatically generated source archives: upload no `reports/release`
-files, unsigned installers, or locally built binaries. It must be marked as a
-prerelease, use an annotated tag on the exact protected `main` commit with passing
-required checks, and state that Desktop signing/notarization and the new
-candidate's Store approval remain incomplete until separately verified. This
-narrow source record does not satisfy or weaken
+The beta.24 maintenance closeout may be represented by a source-only GitHub
+prerelease only after the Store candidate is fully qualified. Before tagging,
+the exact protected `main` commit must have passing required checks and a hosted
+source-producer run. A generic fail-closed verifier must already be reviewed in
+that same source commit; the candidate workflow must use recorded runtime inputs
+to validate both Sigstore bundles, live artifact metadata, and the exact
+run/artifact tuple against the pinned trusted root without a later tuple-hardcoding
+source commit. The hosted candidate, native WACK, upgrade/clean-install lifecycle,
+and UI evidence must all pass, and every external release blocker must be closed.
+The prerelease is limited
+to GitHub's automatically generated source archives: upload no `reports/release`
+files, unsigned installers, or locally built binaries. Store submission and
+Microsoft certification remain separate steps and must not be claimed by this
+source record. This narrow record does not satisfy or weaken
 `release:publish-preflight`; any later binary release must still pass the complete
 artifact, signing, checksum, SBOM, provenance, and evidence workflow below.
 
-After the beta.23 version-preparation pull request is merged and its required
-check is green, create and push only its single annotated source tag, remove
-every file under `reports/release/`, then use the dedicated fail-closed entry
-point. This GitHub record remains zero-asset even though the same source revision
-is used for the separately submitted Store package:
+After all beta.24 prerequisites above are evidenced, create and push only its
+single annotated source tag, confirm that `reports/release/` contains no files,
+then use the dedicated fail-closed entry point. This GitHub record remains
+zero-asset even though the same source revision is used for the separately
+submitted Store package:
 
 ```bash
 REVIEWED_COMMIT="$(git rev-parse HEAD)"
-git tag -a v0.1.0-beta.23 -m "JoeSSH 0.1.0-beta.23 Source Preview and Store Maintenance Candidate"
-git push origin refs/tags/v0.1.0-beta.23:refs/tags/v0.1.0-beta.23
+git tag -a v0.1.0-beta.24 -m "JoeSSH 0.1.0-beta.24 Source Preview and Store Maintenance Candidate"
+git push origin refs/tags/v0.1.0-beta.24:refs/tags/v0.1.0-beta.24
 npm run release:source-prerelease -- --confirm-billing-ready --dry-run
 npm run release:source-prerelease -- --confirm-billing-ready
 npm run release:source-prerelease:verify
@@ -77,10 +85,10 @@ a file and cannot publish a full binary release.
 ## Recovery Flow
 
 The artifact-building and full-draft steps in this section apply only to a
-future distinct `FULL_RELEASE_VERSION` after beta.23. They must not be used to
+future distinct `FULL_RELEASE_VERSION` after beta.24. They must not be used to
 modify the permanent beta.20/beta.21/beta.22 source-only Releases, attach assets
-to beta.23, or replace the Partner Center-only binary route for these Store
-versions.
+to beta.23 or beta.24, or replace the Partner Center-only binary route for these
+Store versions.
 
 1. Create or locate a healthy clone of the canonical JoeSSH repository.
 2. In the damaged workspace, produce a reviewable patch bundle:
@@ -144,13 +152,13 @@ versions.
    protected `main` controls.
 
 7. For a later full binary release, choose a distinct unused version after
-   `0.1.0-beta.23`. Tag only after source QA is green, release evidence is
+   `0.1.0-beta.24`. Tag only after source QA is green, release evidence is
    complete, and the checks above are clean. Push that one annotated tag
    explicitly, then resolve the remote peeled tag and compare it with the
    reviewed commit:
 
    ```bash
-   FULL_RELEASE_VERSION="<DISTINCT_UNUSED_VERSION_AFTER_BETA_23>" # replace before running
+   FULL_RELEASE_VERSION="<DISTINCT_UNUSED_VERSION_AFTER_BETA_24>" # replace before running
    RELEASE_TAG="v${FULL_RELEASE_VERSION}"
    REVIEWED_COMMIT="$(git rev-parse HEAD)"
    git tag -a "${RELEASE_TAG}" -m "JoeSSH ${FULL_RELEASE_VERSION}"

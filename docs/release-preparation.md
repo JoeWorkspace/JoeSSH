@@ -1,12 +1,13 @@
-# JoeSSH 0.1.0-beta.23 Store 修复候选发布准备手册
+# JoeSSH 0.1.0-beta.24 Store 修复候选发布准备手册
 
 > `v0.1.0-beta.18` 是仅有远端标签的历史预检点，`v0.1.0-beta.20`、
 > `v0.1.0-beta.21` 与 `v0.1.0-beta.22` 的 GitHub 记录永久保持零上传资产；这些历史版本
-> 都不得删除、移动、补传二进制或复用。本手册只操作新的
-> `v0.1.0-beta.23` 候选。
+> 都不得删除、移动、补传二进制或复用。`0.1.0-beta.23` / MSIX `1.1.23.0`
+> 本地资格验证尝试也必须保留且不得提交。本手册只操作新的
+> `v0.1.0-beta.24` 候选。
 
 本手册是个人维护者的 Windows-first 收口入口。当前代码版本是
-`0.1.0-beta.23` 候选，映射 MSIX `1.1.23.0`：GitHub 侧仍是零上传资产的 source
+`0.1.0-beta.24` 候选，映射 MSIX `1.1.24.0`：GitHub 侧仍是零上传资产的 source
 prerelease，唯一二进制交付路径是 Partner Center 中单独提交的 MSIX。现有
 `1.1.22.0` 商店包不代表这个新版本已构建、获批或发布，也不代表付费版。
 任何门禁失败都表示继续准备，不表示可以通过改文案、改 JSON 或
@@ -202,8 +203,10 @@ Stage B 仍是明确 No-Go。可信 Authenticode、时间戳、Defender、干净
 
 ## 5. Microsoft Store 候选
 
-优先做一次限时一天的 MSIX Packaging Tool 可行性验证；只有出现已记录的真实兼容
-阻塞时，才回退到 Tauri 原生 NSIS EXE：
+MSIX 可行性阶段已经结束。beta.24 的正式主路径是由受保护 `main` 的精确源码
+生成 Store-unsigned MSIX，再分别完成签名 provenance、hosted candidate 验证、
+独立 native qualification 和 Partner Center 认证。旧 MSIX Packaging Tool/Sandbox
+转换脚本只保留作隔离诊断，不得作为正式 beta.24 producer 或复用 beta.23 包：
 
 1. 本次发布已经确认由无公司的个人维护者以免费、开源、非商业 Community
    项目发布，因此使用 Individual onboarding。完成个人身份验证后，法定发布者
@@ -212,36 +215,63 @@ Stage B 仍是明确 No-Go。可信 Authenticode、时间戳、Defender、干净
    package identity。Individual 不能原地转换为 Company；如果以后改为以
    自由职业、个体经营或其他商业身份发布，应在商业活动开始前重新核对资格并
    单独办理适用的 Company 路径。
-2. 取得真实 Partner Center package identity 后，用 Microsoft MSIX Packaging
-   Tool 对精确 release build 做一天的外部打包试验，运行 WACK，并验证 SSH、
-   PTY、SFTP、本地端口转发、WebView2、安装、升级、卸载和回滚。Store-only
-   MSIX 在认证后由 Microsoft Store 免费重签、托管和更新，不需要为 Store 提交
-   单独购买公开 CA 代码签名证书；认证前必须保持
-   `pending-microsoft-store-signing` 真值。
-   Sandbox 转换完成后还必须运行
-   `release:windows-store:msix-finalize`，把现有完整 UI locale 的 canonical
-   BCP-47 列表写入 MSIX manifest，并证明除 manifest 外的 payload 字节未变；
-   candidate preflight 只接受 `final/` 中的结果。80 个 Store listing 与包内
-   UI 语言是不同合同，不能用 listing 数量虚构 package supported languages。
-3. 如果 MSIX 试验发现无法在一天内解决的兼容阻塞，才回退到 NSIS。NSIS 路径
-   必须在 workflow 外用公开信任 CA 证书和可信时间戳签署安装器及所有已安装 PE，
-   使用不可变、带版本的公开 HTTPS 下载地址，并由发布者自己承担托管和更新。
-4. 为待验证的 EXE/MSIX 同一字节提供可直接下载的 HTTPS transfer URL，记录
-   完整 SHA-256；两种格式都不得省略 URL 或 hash。EXE 直发 URL 还必须不可变
-   且带版本；MSIX URL 只承担 hash-bound 验证传输，后续向 Partner Center
-   提交同一 SHA-256 的包，不把该 URL 误称为长期托管或不可变性证明。
-5. 用只读门禁复核现有受保护的 `windows-release-stage-b` environment；该环境
+2. 候选 PR 合并后，等待 protected `main` 的精确 commit 完成全部 14 项必需 CI。
+   在该 commit 上手动运行 `.github/workflows/windows-store-build.yml`，传入完整
+   `reviewed_sha`、canonical public `partner_identity_base64` 和 1–30 天 retention。
+   `build` job 必须经过 `windows-release-stage-b` 人工批准，使用锁定的 Node、npm、
+   Rust；Windows SDK 与 MakeAppx 取自同一 runner-discovered SDK，其版本和工具
+   hash 写入 predicate。从源码编译 Store surface，做 pack/unpack payload roundtrip，
+   并分别上传 raw MSIX、download-safe transport 和 build/legal evidence。
+3. 同一 workflow 的 `attest` job 必须重新下载相同 run 的 raw bytes 和 predicate，
+   在申请 OIDC 前复核文件名、大小、SHA-256、source SHA、workflow/run/attempt 和
+   validation flags，再生成默认 SLSA 与 JoeSSH build-bindings 两份 Sigstore bundle。
+   这些 attestation 证明 producer/source/bytes 绑定，不证明安装、WACK、Store
+   签名、认证或发布；bundle 刚生成时仍是 pending evidence，不能由 producer 自己
+   的成功状态代替独立验证。
+4. 在 artifact 到期前下载并保留同一 run 的 transport/raw MSIX、evidence 与两份
+   attestation bundle。raw artifact 供同-run `attest` 以 `skip-decompress` 读取；
+   download-safe transport 是零压缩 ZIP，维护者可以解包，但解出的 MSIX 文件名、
+   大小和 SHA-256 必须与 raw/predicate 完全一致。逐项复核 artifact ID、digest、
+   expiry、predicate SHA-256 和完整 source binding；任何候选字节变化都阻断。记录
+   本次精确 run/attempt 和三项 artifact ID，稍后作为同一 source commit 上 candidate
+   workflow 的受控输入。通用 verifier 必须已经随该 source commit 审核合并，不能在
+   source build 后再提交写死 tuple 的代码；否则源码 SHA 变化会造成无法闭合的重构建
+   循环。candidate workflow 现场复核 live artifact metadata、subject digest、repository、
+   workflow、ref、SHA、run/attempt、证书身份、transparency log、trusted root 与自定义
+   predicate，并把实际 artifact digests、predicate/bundle hashes 写入 receipt。该
+   receipt 通过前两份 bundle 都不能计入发布证据。直接 HTTPS URL 加 SHA-256 只能
+   作为传输诊断，不能替代这份 authenticated provenance receipt。
+5. 用修复后的离线 native-verification harness 在全新 Windows Sandbox/VM 对精确
+   MSIX 运行 baseline upgrade、marker 保留、uninstall、clean install、launch、
+   SSH/PTY/SFTP/forwarding/WebView2 生命周期检查和 WACK。所有 required WACK
+   tests 必须通过；optional findings 和 warning 必须原样记录并单独评审，不能隐藏。
+   harness、七组件 toolchain manifest、精确入口与 evidence schema 由
+   [native verification bundle contract](windows-store-native-verification.md) 固定。
+6. 如果正式 MSIX 主路径出现新的、可复现且无法修复的真实兼容阻塞，才可以另开
+   PR 评估 NSIS fallback。NSIS 必须在 workflow 外用公开信任 CA 证书和可信时间戳
+   签署安装器及所有已安装 PE，使用不可变带版本的公开 HTTPS URL，并记录完整
+   fallback justification；不能把旧的一天试验当作现成豁免。
+7. 用只读门禁复核现有受保护的 `windows-release-stage-b` environment；该环境
    已经配置，不要重复创建。配置仍缺少且始终必需的
    `ATLASTERM_WINDOWS_LEGAL_PUBLISHER` 和只读 policy token。只有已经证明
    MSIX 兼容阻塞、明确回退 EXE 时，才额外配置公开的证书 subject/thumbprint
-   变量；MSIX 不要求也不允许伪造证书身份。不得在该 workflow 中配置签名
-   secret、OIDC、self-hosted signer 或本地 handoff。
-6. 在 protected `main` 手动运行 hosted-only
-   `.github/workflows/windows-store-candidate.yml`，传入 `artifact_url`、
-   `expected_sha256` 和精确 `reviewed_sha`。`candidate_format` 默认
-   `msix`；选择 `exe` 时必须提交 40–1000 字符、无占位/控制字符的
-   `msix_fallback_justification`，选择 MSIX 时该输入必须为空。
-7. 无签名权限的 hosted `verify` 必须先运行
+   变量；MSIX 不要求也不允许伪造证书身份。hosted candidate 的 `policy/verify`
+   jobs 不得配置签名 secret、OIDC、self-hosted signer 或本地 handoff。source
+   producer 的 `build` job 同样没有 OIDC；只有已隔离且先复核同一 run 字节的
+   `attest` job 必须保留 `id-token: write`，用于生成两份 Sigstore attestation。
+8. 确认通用 fail-closed verifier 已包含在 producer 的同一个 protected `main` 精确
+   commit 后，手动运行 hosted-only
+   `.github/workflows/windows-store-candidate.yml`，选择
+   `candidate_source=github-actions-artifact`，传入与 producer source SHA、当前
+   `github.sha` 完全相同的 `artifact_source_sha` 和 `reviewed_sha`，以及
+   `expected_sha256`、canonical `partner_identity_base64` 和步骤 4 记录的精确
+   run/attempt/三项 artifact ID；`artifact_url` 必须严格为空。HTTPS/EXE legacy
+   回退则相反：只传不可变 `artifact_url`，五项 Actions selector 必须全部为空，
+   且不能声明 authenticated provenance。`candidate_format` 默认 `msix`；选择 `exe` 时必须
+   提交 40–1000 字符、无占位/控制字符的 `msix_fallback_justification`，选择 MSIX
+   时该输入必须为空。verify job 必须先生成并复核 provenance receipt，再进入候选
+   preflight；不得通过后续源码 revision 批准同一包。
+9. 无签名权限的 hosted `verify` 必须先运行
    `npm run qa:windows-store-surfaces:runtime`，对真实 Store 构建执行静态合同与
    Playwright 窄窗口、明暗主题、快捷键、命令面板和隐藏功能入口检查，再验证
    EXE 的安装器/已安装 PE 签名、
@@ -250,11 +280,11 @@ Stage B 仍是明确 No-Go。可信 Authenticode、时间戳、Defender、干净
    托管字节 SHA-256，并在执行候选前后比较 clean HEAD、workflow、完整 Store
    `dist` 与法律/SBOM hash。该同 runner 基线只阻断普通污染，不替代隔离
    clean VM 或 authenticated provenance。
-8. 在与构建 runner 分离的 clean VM 中复核 exact SHA-256 候选和托管证据；
-   不能把会执行未经信任 native binary 的同一 hosted runner 当作独立
-   provenance 信任根。
-9. 完成 Windows App Certification Kit、Partner Center 提交、认证、更新和
-   回滚演练后，才可以展示 Store 徽章。
+10. 在与构建 runner 分离的 clean VM 中复核 exact SHA-256 候选和托管证据；
+    不能把会执行未经信任 native binary 的同一 hosted runner 当作独立
+    provenance 信任根。
+11. 完成 Windows App Certification Kit、Partner Center 提交、认证、更新和
+    回滚演练后，才可以展示 Store 徽章。
 
 本地 `release:windows-store:build` 与 `--artifact` 预检只用于隔离开发机诊断，
 不在 privileged workflow 中，其本地 JSON、checksum 或安装包不能作为正式发布证据。
@@ -264,9 +294,10 @@ Discoverability 与许可证字段由
 [Microsoft Store listing draft](microsoft-store-listing-draft.md) 管理。该文件仍是
 fail-closed 草案，不能替代真实的发布者身份、公开链接、候选截图或商店认证证据。
 
-Tauri 2 不原生生成 MSIX。选择 MSIX 时，必须先取得真实 Partner Center
-package identity，再用微软工具外部打包；不能把 NSIS 改后缀或把未认证包
-写成 “Store 已签名”。细节见
+Tauri 2 不原生生成 MSIX。正式 source producer 会编译 Tauri executable 后使用
+runner-discovered 同一 Windows SDK 的 MakeAppx 生成并 roundtrip 验证 MSIX，并把
+SDK 版本与工具 hash 写入 predicate；不能把 NSIS 改后缀、
+把旧 Packaging Tool 输出冒充 source build，或把未认证包写成 “Store 已签名”。细节见
 [Windows Store release guide](windows-store-release.md)。
 
 ## 6. 版本、标签与发布证据
@@ -277,11 +308,13 @@ package identity，再用微软工具外部打包；不能把 NSIS 改后缀或�
 - `0.1.0-beta.21` 的 GitHub Release 同样永久保持零上传资产，不补传或复用。
 - `0.1.0-beta.22` 的 GitHub Release 也保持零上传资产；其 x64 MSIX 只能作为
   精确受保护 `main` 候选，经 Partner Center 单独提交和认证。
-- `0.1.0-beta.23` 是独立修复候选，不能复用 beta.22 的标签、包文件或发布证据；
-  新 GitHub Release 仍须零上传资产，MSIX `1.1.23.0` 单独完成认证。
+- `0.1.0-beta.23` / MSIX `1.1.23.0` 是已被替代的本地资格验证尝试；保留其
+  失败证据，不提交、不修改，也不复用它的包文件或验证结论。
+- `0.1.0-beta.24` 是新的独立修复候选；GitHub Release 仍须零上传资产，
+  MSIX `1.1.24.0` 单独完成资格验证和认证。
 - 只有候选改动已通过 PR 合并到受保护的 `main`、目标门禁全部绿色，且外部
   blocker 已关闭后，才创建指向精确候选 commit 的
-  `v0.1.0-beta.23` annotated tag。
+  `v0.1.0-beta.24` annotated tag。
 - 确认 `reports/release/` 没有任何文件后，依次运行：
 
   ```powershell
@@ -294,9 +327,9 @@ package identity，再用微软工具外部打包；不能把 NSIS 改后缀或�
   check 和 GitHub controls，再直接发布并独立验证；本轮不存在需要重新下载和
   复核 SHA-256 的上传制品。
 
-- `npm run release:publish-preflight` 是 beta.23 之后某个独立、未使用版本的完整
+- `npm run release:publish-preflight` 是 beta.24 之后某个独立、未使用版本的完整
   Desktop/Web/Sync 多平台公开发行门禁，不得用于修改 beta.20、beta.21、beta.22
-  或复用 beta.23，也
+  或复用 beta.23/beta.24，也
   不是 Windows Store 候选的快捷通道。缺少 macOS/Linux 或正式 Desktop 证据
   时，它正确地保持失败。
 
@@ -307,8 +340,9 @@ package identity，再用微软工具外部打包；不能把 NSIS 改后缀或�
 2. 重新运行只读 GitHub controls，确认现有 `main` 保护、PVR 和两个受保护环境
    仍通过；这些控制已经配置，不要重复创建。
 3. 用 3–5 名可信测试者完成 Stage A，修完 P0/P1。
-4. 以已确认的 Individual 类型办理 Partner Center、保留产品名，先完成一天的
-   MSIX 可行性验证；只有失败时再办理 NSIS 所需的可信代码签名。
+4. 以已确认的 Individual 类型办理 Partner Center、保留产品名，并按 protected
+   source build、Sigstore attestations、hosted candidate、独立 WACK/lifecycle、
+   Partner Center 的顺序完成 MSIX；只有新的可复现兼容阻塞才评估 NSIS 代码签名。
 5. 当前 Community 发布保持 checkout、付费权益和付费支持全部关闭。仓库可以
    单独展示无回报的自愿支持页，但 Store 文案、应用界面、发布包、下载和更新
    不得链接或宣传该入口，也不能为了收款把当前免费 Store 分发描述成付费产品。

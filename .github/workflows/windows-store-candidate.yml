@@ -3,6 +3,14 @@ name: Windows Store Hosted Candidate
 on:
   workflow_dispatch:
     inputs:
+      candidate_source:
+        description: "Candidate transport: approved private GitHub Actions artifact or legacy direct HTTPS."
+        required: true
+        default: github-actions-artifact
+        type: choice
+        options:
+          - github-actions-artifact
+          - https
       candidate_format:
         description: "Hosted candidate format; MSIX is the required first choice."
         required: true
@@ -17,12 +25,42 @@ on:
         default: ""
         type: string
       reviewed_sha:
-        description: "Full reviewed main commit SHA that produced the hosted bytes."
+        description: "Full reviewed verifier commit SHA; it must be the protected main dispatch SHA."
         required: true
         type: string
-      artifact_url:
-        description: "SHA-bound HTTPS transfer URL; EXE must also be immutable and versioned."
+      artifact_source_sha:
+        description: "Full source commit SHA; artifact mode requires this to equal reviewed_sha."
         required: true
+        type: string
+      producer_run_id:
+        description: "GitHub Actions artifact mode only: producer workflow run ID used only as a selector."
+        required: false
+        default: ""
+        type: string
+      producer_run_attempt:
+        description: "GitHub Actions artifact mode only: exact producer run attempt."
+        required: false
+        default: ""
+        type: string
+      candidate_artifact_id:
+        description: "GitHub Actions artifact mode only: raw MSIX artifact ID used only as a selector."
+        required: false
+        default: ""
+        type: string
+      evidence_artifact_id:
+        description: "GitHub Actions artifact mode only: source evidence artifact ID used only as a selector."
+        required: false
+        default: ""
+        type: string
+      attestations_artifact_id:
+        description: "GitHub Actions artifact mode only: two-bundle Sigstore artifact ID used only as a selector."
+        required: false
+        default: ""
+        type: string
+      artifact_url:
+        description: "HTTPS mode only: SHA-bound direct transfer URL; leave empty for GitHub Actions artifacts."
+        required: false
+        default: ""
         type: string
       expected_sha256:
         description: "Exact SHA-256 of the hosted EXE or MSIX."
@@ -48,7 +86,7 @@ on:
         type: string
 
 concurrency:
-  group: ${{ github.workflow }}-${{ inputs.reviewed_sha }}-${{ inputs.candidate_format }}
+  group: ${{ github.workflow }}-${{ inputs.reviewed_sha }}-${{ inputs.candidate_source }}-${{ inputs.candidate_format }}
   cancel-in-progress: false
 
 permissions:
@@ -64,11 +102,18 @@ jobs:
     permissions:
       contents: read
     outputs:
+      artifact_source_sha: ${{ steps.inputs.outputs.artifact_source_sha }}
+      attestations_artifact_id: ${{ steps.inputs.outputs.attestations_artifact_id }}
+      candidate_artifact_id: ${{ steps.inputs.outputs.candidate_artifact_id }}
+      candidate_source: ${{ steps.inputs.outputs.candidate_source }}
       candidate_format: ${{ steps.inputs.outputs.candidate_format }}
       certificate_subject: ${{ steps.live_policy.outputs.certificate_subject }}
       certificate_thumbprint: ${{ steps.live_policy.outputs.certificate_thumbprint }}
       legal_publisher: ${{ steps.live_policy.outputs.legal_publisher }}
       msix_fallback_justification: ${{ steps.inputs.outputs.msix_fallback_justification }}
+      evidence_artifact_id: ${{ steps.inputs.outputs.evidence_artifact_id }}
+      producer_run_attempt: ${{ steps.inputs.outputs.producer_run_attempt }}
+      producer_run_id: ${{ steps.inputs.outputs.producer_run_id }}
       reviewed_sha: ${{ steps.inputs.outputs.reviewed_sha }}
 
     steps:
@@ -77,15 +122,22 @@ jobs:
         shell: pwsh
         env:
           ARCHITECTURE_INPUT: ${{ inputs.architecture }}
+          ARTIFACT_SOURCE_SHA_INPUT: ${{ inputs.artifact_source_sha }}
           ARTIFACT_URL_INPUT: ${{ inputs.artifact_url }}
+          ATTESTATIONS_ARTIFACT_ID_INPUT: ${{ inputs.attestations_artifact_id }}
+          CANDIDATE_ARTIFACT_ID_INPUT: ${{ inputs.candidate_artifact_id }}
+          CANDIDATE_SOURCE_INPUT: ${{ inputs.candidate_source }}
           CANDIDATE_FORMAT_INPUT: ${{ inputs.candidate_format }}
           DISPATCH_REF: ${{ github.ref }}
           DISPATCH_SHA: ${{ github.sha }}
           EXPECTED_SHA256_INPUT: ${{ inputs.expected_sha256 }}
+          EVIDENCE_ARTIFACT_ID_INPUT: ${{ inputs.evidence_artifact_id }}
           MSIX_FALLBACK_JUSTIFICATION_INPUT: ${{ inputs.msix_fallback_justification }}
           PARTNER_IDENTITY_BASE64_INPUT: ${{ inputs.partner_identity_base64 }}
           REF_PROTECTED: ${{ github.ref_protected }}
           RETENTION_DAYS_INPUT: ${{ inputs.retention_days }}
+          PRODUCER_RUN_ATTEMPT_INPUT: ${{ inputs.producer_run_attempt }}
+          PRODUCER_RUN_ID_INPUT: ${{ inputs.producer_run_id }}
           REVIEWED_SHA_INPUT: ${{ inputs.reviewed_sha }}
         run: |
           $ErrorActionPreference = "Stop"
@@ -102,6 +154,12 @@ jobs:
           }
           if ($env:REVIEWED_SHA_INPUT -cnotmatch "\A[0-9a-fA-F]{40}\z") {
             throw "reviewed_sha must be exactly one full 40-character commit SHA."
+          }
+          if ($env:ARTIFACT_SOURCE_SHA_INPUT -cnotmatch "\A[0-9a-fA-F]{40}\z") {
+            throw "artifact_source_sha must be exactly one full 40-character commit SHA."
+          }
+          if ($env:CANDIDATE_SOURCE_INPUT -notin @("github-actions-artifact", "https")) {
+            throw "candidate_source must be exactly github-actions-artifact or https."
           }
           if (
             -not [StringComparer]::OrdinalIgnoreCase.Equals(
@@ -121,34 +179,74 @@ jobs:
             throw "retention_days must be an integer from 1 through 30."
           }
 
-          try {
-            $artifactUri = [Uri]::new(
-              $env:ARTIFACT_URL_INPUT,
-              [UriKind]::Absolute
+          if ($env:CANDIDATE_SOURCE_INPUT -ceq "https") {
+            if (
+              $env:PRODUCER_RUN_ID_INPUT -cne "" -or
+              $env:PRODUCER_RUN_ATTEMPT_INPUT -cne "" -or
+              $env:CANDIDATE_ARTIFACT_ID_INPUT -cne "" -or
+              $env:EVIDENCE_ARTIFACT_ID_INPUT -cne "" -or
+              $env:ATTESTATIONS_ARTIFACT_ID_INPUT -cne ""
+            ) {
+              throw "HTTPS mode must leave every GitHub Actions runtime selector empty."
+            }
+            try {
+              $artifactUri = [Uri]::new(
+                $env:ARTIFACT_URL_INPUT,
+                [UriKind]::Absolute
+              )
+            } catch {
+              throw "HTTPS mode requires artifact_url to be an absolute HTTPS URL."
+            }
+            if (
+              $artifactUri.Scheme -cne "https" -or
+              -not [string]::IsNullOrEmpty($artifactUri.UserInfo) -or
+              -not [string]::IsNullOrEmpty($artifactUri.Query) -or
+              -not [string]::IsNullOrEmpty($artifactUri.Fragment)
+            ) {
+              throw "artifact_url must use HTTPS without credentials, query, or fragment."
+            }
+            $expectedExtension = ".$($env:CANDIDATE_FORMAT_INPUT)"
+            $artifactLeaf = [IO.Path]::GetFileName(
+              [Uri]::UnescapeDataString($artifactUri.AbsolutePath)
             )
-          } catch {
-            throw "artifact_url must be an absolute HTTPS URL."
-          }
-          if (
-            $artifactUri.Scheme -cne "https" -or
-            -not [string]::IsNullOrEmpty($artifactUri.UserInfo) -or
-            -not [string]::IsNullOrEmpty($artifactUri.Query) -or
-            -not [string]::IsNullOrEmpty($artifactUri.Fragment)
-          ) {
-            throw "artifact_url must use HTTPS without credentials, query, or fragment."
-          }
-          $expectedExtension = ".$($env:CANDIDATE_FORMAT_INPUT)"
-          $artifactLeaf = [IO.Path]::GetFileName(
-            [Uri]::UnescapeDataString($artifactUri.AbsolutePath)
-          )
-          if (
-            [string]::IsNullOrWhiteSpace($artifactLeaf) -or
-            -not $artifactLeaf.EndsWith(
-              $expectedExtension,
-              [StringComparison]::OrdinalIgnoreCase
+            if (
+              [string]::IsNullOrWhiteSpace($artifactLeaf) -or
+              -not $artifactLeaf.EndsWith(
+                $expectedExtension,
+                [StringComparison]::OrdinalIgnoreCase
+              )
+            ) {
+              throw "artifact_url must end with the selected candidate extension."
+            }
+          } else {
+            if (
+              $env:ARTIFACT_URL_INPUT -cne "" -or
+              $env:CANDIDATE_FORMAT_INPUT -cne "msix" -or
+              -not [StringComparer]::OrdinalIgnoreCase.Equals(
+                $env:ARTIFACT_SOURCE_SHA_INPUT,
+                $env:REVIEWED_SHA_INPUT
+              )
+            ) {
+              throw "GitHub Actions artifact mode requires an MSIX produced from the exact reviewed commit."
+            }
+            $selectors = @(
+              $env:PRODUCER_RUN_ID_INPUT,
+              $env:PRODUCER_RUN_ATTEMPT_INPUT,
+              $env:CANDIDATE_ARTIFACT_ID_INPUT,
+              $env:EVIDENCE_ARTIFACT_ID_INPUT,
+              $env:ATTESTATIONS_ARTIFACT_ID_INPUT
             )
-          ) {
-            throw "artifact_url must end with the selected candidate extension."
+            if ($selectors.Where({ $_ -cnotmatch "\A[1-9][0-9]{0,18}\z" }).Count -ne 0) {
+              throw "Producer run, attempt, and artifact selectors must be positive decimal integers."
+            }
+            $artifactIds = @(
+              $env:CANDIDATE_ARTIFACT_ID_INPUT,
+              $env:EVIDENCE_ARTIFACT_ID_INPUT,
+              $env:ATTESTATIONS_ARTIFACT_ID_INPUT
+            )
+            if (@($artifactIds | Sort-Object -Unique).Count -ne 3) {
+              throw "Candidate, evidence, and attestation artifact IDs must be distinct."
+            }
           }
 
           if ($env:CANDIDATE_FORMAT_INPUT -ceq "exe") {
@@ -207,8 +305,15 @@ jobs:
             }
           }
 
+          "artifact_source_sha=$($env:ARTIFACT_SOURCE_SHA_INPUT.ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+          "attestations_artifact_id=$($env:ATTESTATIONS_ARTIFACT_ID_INPUT)" >> $env:GITHUB_OUTPUT
+          "candidate_artifact_id=$($env:CANDIDATE_ARTIFACT_ID_INPUT)" >> $env:GITHUB_OUTPUT
+          "candidate_source=$($env:CANDIDATE_SOURCE_INPUT)" >> $env:GITHUB_OUTPUT
           "candidate_format=$($env:CANDIDATE_FORMAT_INPUT)" >> $env:GITHUB_OUTPUT
+          "evidence_artifact_id=$($env:EVIDENCE_ARTIFACT_ID_INPUT)" >> $env:GITHUB_OUTPUT
           "msix_fallback_justification=$fallbackJustification" >> $env:GITHUB_OUTPUT
+          "producer_run_attempt=$($env:PRODUCER_RUN_ATTEMPT_INPUT)" >> $env:GITHUB_OUTPUT
+          "producer_run_id=$($env:PRODUCER_RUN_ID_INPUT)" >> $env:GITHUB_OUTPUT
           "reviewed_sha=$($env:REVIEWED_SHA_INPUT.ToLowerInvariant())" >> $env:GITHUB_OUTPUT
 
       - name: Read live direct main, environment, and format identity policy
@@ -398,6 +503,7 @@ jobs:
     runs-on: windows-2025
     timeout-minutes: 90
     permissions:
+      actions: read
       contents: read
     env:
       ATLASTERM_WINDOWS_CANDIDATE_FORMAT: ${{ needs.policy.outputs.candidate_format }}
@@ -467,6 +573,330 @@ jobs:
           )
           if ($present.Count -gt 0) {
             throw "Verification job inherited privileged state: $($present -join ', ')."
+          }
+
+      - name: Provision exact GitHub CLI for offline Sigstore verification
+        id: gh_verifier
+        if: needs.policy.outputs.candidate_source == 'github-actions-artifact'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          Set-StrictMode -Version Latest
+
+          $releaseUrl = "https://github.com/cli/cli/releases/download/v2.95.0/gh_2.95.0_windows_amd64.zip"
+          $expectedArchiveSha256 = "19a7154161ada9cfaa9e57edb752ecc679b75c391a62e4f7b586eea1df30b5bb"
+          $expectedArchiveSize = 14814893
+          $expectedExecutableSha256 = "cfefbc730f2ef7dc0352d6a5435b72fe6afce7fc56d61c90eb7703cd5d97b149"
+          $expectedExecutableSize = 41483064
+          $expectedSignerSubject = 'CN="GitHub, Inc.", O="GitHub, Inc.", L=San Francisco, S=California, C=US'
+          $expectedSignerThumbprint = "EF53B4F7C8724BF491A7FD92743D38EEFB7C3947"
+          $archivePath = Join-Path $env:RUNNER_TEMP "gh_2.95.0_windows_amd64.zip"
+          $toolRoot = Join-Path $env:RUNNER_TEMP "joessh-gh-cli-2.95.0"
+          if (
+            (Test-Path -LiteralPath $archivePath) -or
+            (Test-Path -LiteralPath $toolRoot)
+          ) {
+            throw "Pinned GitHub CLI staging paths must start absent."
+          }
+
+          $handler = [Net.Http.HttpClientHandler]::new()
+          $handler.AllowAutoRedirect = $false
+          $handler.UseCookies = $false
+          $handler.UseDefaultCredentials = $false
+          $handler.CheckCertificateRevocationList = $true
+          $client = [Net.Http.HttpClient]::new($handler)
+          $client.Timeout = [TimeSpan]::FromMinutes(5)
+          $client.DefaultRequestHeaders.UserAgent.ParseAdd(
+            "JoeSSH-Windows-Store-verifier/1"
+          )
+          $response = $null
+          $downloaded = $false
+          try {
+            $current = [Uri]::new($releaseUrl, [UriKind]::Absolute)
+            for ($redirect = 0; $redirect -le 3; $redirect += 1) {
+              if (
+                $current.Scheme -cne "https" -or
+                -not [string]::IsNullOrEmpty($current.UserInfo) -or
+                -not [string]::IsNullOrEmpty($current.Fragment) -or
+                (
+                  $redirect -eq 0 -and
+                  $current.AbsoluteUri -cne $releaseUrl
+                ) -or
+                (
+                  $redirect -gt 0 -and
+                  -not [StringComparer]::OrdinalIgnoreCase.Equals(
+                    $current.Host,
+                    "release-assets.githubusercontent.com"
+                  )
+                )
+              ) {
+                throw "GitHub CLI download escaped its exact HTTPS redirect boundary."
+              }
+              $request = [Net.Http.HttpRequestMessage]::new(
+                [Net.Http.HttpMethod]::Get,
+                $current
+              )
+              try {
+                $response = $client.SendAsync(
+                  $request,
+                  [Net.Http.HttpCompletionOption]::ResponseHeadersRead
+                ).GetAwaiter().GetResult()
+              } finally {
+                $request.Dispose()
+              }
+              $status = [int]$response.StatusCode
+              if ($status -in @(301, 302, 303, 307, 308)) {
+                if ($redirect -ge 3 -or $null -eq $response.Headers.Location) {
+                  throw "GitHub CLI download exceeded its redirect boundary."
+                }
+                $next = [Uri]::new($current, $response.Headers.Location)
+                $response.Dispose()
+                $response = $null
+                if (
+                  $next.Scheme -cne "https" -or
+                  -not [StringComparer]::OrdinalIgnoreCase.Equals(
+                    $next.Host,
+                    "release-assets.githubusercontent.com"
+                  ) -or
+                  -not [string]::IsNullOrEmpty($next.UserInfo) -or
+                  -not [string]::IsNullOrEmpty($next.Fragment)
+                ) {
+                  throw "GitHub CLI redirect target is not the approved release asset host."
+                }
+                $current = $next
+                continue
+              }
+              if (
+                $status -ne 200 -or
+                -not [StringComparer]::OrdinalIgnoreCase.Equals(
+                  $current.Host,
+                  "release-assets.githubusercontent.com"
+                )
+              ) {
+                throw "GitHub CLI release asset returned HTTP $status."
+              }
+              $stream = $response.Content.ReadAsStreamAsync().GetAwaiter().GetResult()
+              $file = [IO.FileStream]::new(
+                $archivePath,
+                [IO.FileMode]::CreateNew,
+                [IO.FileAccess]::Write,
+                [IO.FileShare]::None
+              )
+              try {
+                $stream.CopyTo($file)
+              } finally {
+                $file.Dispose()
+                $stream.Dispose()
+              }
+              $downloaded = $true
+              break
+            }
+          } finally {
+            if ($null -ne $response) { $response.Dispose() }
+            $client.Dispose()
+            $handler.Dispose()
+          }
+          if (-not $downloaded) {
+            throw "GitHub CLI release asset was not downloaded."
+          }
+          if (
+            (Get-Item -LiteralPath $archivePath).Length -ne $expectedArchiveSize -or
+            (Get-FileHash -Algorithm SHA256 -LiteralPath $archivePath).Hash.ToLowerInvariant() -cne $expectedArchiveSha256
+          ) {
+            throw "GitHub CLI release archive hash or size mismatch."
+          }
+
+          Expand-Archive -LiteralPath $archivePath -DestinationPath $toolRoot
+          $entries = @(Get-ChildItem -LiteralPath $toolRoot -Force -Recurse)
+          if (
+            $entries.Count -ne 3 -or
+            @(
+              $entries |
+                Where-Object {
+                  $_.Attributes -band [IO.FileAttributes]::ReparsePoint
+                }
+            ).Count -ne 0
+          ) {
+            throw "GitHub CLI archive tree is not direct and exact."
+          }
+          $actualFiles = @(
+            $entries |
+              Where-Object { -not $_.PSIsContainer } |
+              ForEach-Object {
+                [IO.Path]::GetRelativePath(
+                  $toolRoot,
+                  $_.FullName
+                ).Replace("\", "/")
+              } |
+              Sort-Object -CaseSensitive
+          )
+          $actualDirectories = @(
+            $entries |
+              Where-Object { $_.PSIsContainer } |
+              ForEach-Object {
+                [IO.Path]::GetRelativePath(
+                  $toolRoot,
+                  $_.FullName
+                ).Replace("\", "/")
+              } |
+              Sort-Object -CaseSensitive
+          )
+          if (
+            @(Compare-Object @("LICENSE", "bin/gh.exe") $actualFiles -CaseSensitive).Count -ne 0 -or
+            @(Compare-Object @("bin") $actualDirectories -CaseSensitive).Count -ne 0
+          ) {
+            throw "GitHub CLI release archive contains an unexpected path."
+          }
+
+          $ghPath = Join-Path $toolRoot "bin/gh.exe"
+          if (
+            (Get-Item -LiteralPath $ghPath).Length -ne $expectedExecutableSize -or
+            (Get-FileHash -Algorithm SHA256 -LiteralPath $ghPath).Hash.ToLowerInvariant() -cne $expectedExecutableSha256
+          ) {
+            throw "GitHub CLI executable hash or size mismatch."
+          }
+          $signature = Get-AuthenticodeSignature -LiteralPath $ghPath
+          if (
+            [string]$signature.Status -cne "Valid" -or
+            [string]$signature.SignerCertificate.Subject -cne $expectedSignerSubject -or
+            [string]$signature.SignerCertificate.Thumbprint -cne $expectedSignerThumbprint
+          ) {
+            throw "GitHub CLI Authenticode identity mismatch."
+          }
+          $versionLines = @(& $ghPath --version 2>&1 | ForEach-Object { [string]$_ })
+          if (
+            $LASTEXITCODE -ne 0 -or
+            $versionLines.Count -ne 2 -or
+            $versionLines[0] -cne "gh version 2.95.0 (2026-06-17)" -or
+            $versionLines[1] -cne "https://github.com/cli/cli/releases/tag/v2.95.0"
+          ) {
+            throw "GitHub CLI version output mismatch."
+          }
+          "gh_executable=$ghPath" >> $env:GITHUB_OUTPUT
+
+      - name: Download selected raw source MSIX
+        if: needs.policy.outputs.candidate_source == 'github-actions-artifact'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ needs.policy.outputs.candidate_artifact_id }}
+          digest-mismatch: error
+          github-token: ${{ github.token }}
+          merge-multiple: true
+          path: ${{ runner.temp }}/store-source/candidate
+          repository: JoeWorkspace/JoeSSH
+          run-id: ${{ needs.policy.outputs.producer_run_id }}
+          skip-decompress: true
+
+      - name: Download selected source evidence
+        if: needs.policy.outputs.candidate_source == 'github-actions-artifact'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ needs.policy.outputs.evidence_artifact_id }}
+          digest-mismatch: error
+          github-token: ${{ github.token }}
+          merge-multiple: true
+          path: ${{ runner.temp }}/store-source/evidence
+          repository: JoeWorkspace/JoeSSH
+          run-id: ${{ needs.policy.outputs.producer_run_id }}
+
+      - name: Download selected source attestations
+        if: needs.policy.outputs.candidate_source == 'github-actions-artifact'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ needs.policy.outputs.attestations_artifact_id }}
+          digest-mismatch: error
+          github-token: ${{ github.token }}
+          merge-multiple: true
+          path: ${{ runner.temp }}/store-source/attestations
+          repository: JoeWorkspace/JoeSSH
+          run-id: ${{ needs.policy.outputs.producer_run_id }}
+
+      - name: Resolve exact downloaded source candidate
+        id: source_candidate
+        if: needs.policy.outputs.candidate_source == 'github-actions-artifact'
+        shell: pwsh
+        env:
+          ARTIFACT_SOURCE_SHA: ${{ needs.policy.outputs.artifact_source_sha }}
+          PRODUCER_RUN_ATTEMPT: ${{ needs.policy.outputs.producer_run_attempt }}
+          PRODUCER_RUN_ID: ${{ needs.policy.outputs.producer_run_id }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          Set-StrictMode -Version Latest
+          $root = Join-Path $env:RUNNER_TEMP "store-source/candidate"
+          $files = @(Get-ChildItem -LiteralPath $root -Force -File)
+          $directories = @(Get-ChildItem -LiteralPath $root -Force -Directory)
+          if (
+            $files.Count -ne 1 -or
+            $directories.Count -ne 0 -or
+            ($files[0].Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0
+          ) {
+            throw "The selected candidate artifact must contain one direct non-reparse MSIX file."
+          }
+          $nameMatch = [Text.RegularExpressions.Regex]::Match(
+            $files[0].Name,
+            "\AJoeSSH_([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)_x64_([a-f0-9]{12})_([1-9][0-9]{0,18})_([1-9][0-9]{0,18})\.msix\z",
+            [Text.RegularExpressions.RegexOptions]::CultureInvariant
+          )
+          if (-not $nameMatch.Success) {
+            throw "The selected candidate file name is not canonical ASCII."
+          }
+          $versionSegments = @(1..4 | ForEach-Object {
+            $segment = $nameMatch.Groups[$_].Value
+            $number = [uint32]::Parse(
+              $segment,
+              [Globalization.CultureInfo]::InvariantCulture
+            )
+            if (
+              $number -gt 65535 -or
+              $number.ToString([Globalization.CultureInfo]::InvariantCulture) -cne $segment
+            ) {
+              throw "The selected candidate Store version is not canonical."
+            }
+            $number
+          })
+          if (
+            $versionSegments.Count -ne 4 -or
+            $nameMatch.Groups[5].Value -cne $env:ARTIFACT_SOURCE_SHA.Substring(0, 12) -or
+            $nameMatch.Groups[6].Value -cne $env:PRODUCER_RUN_ID -or
+            $nameMatch.Groups[7].Value -cne $env:PRODUCER_RUN_ATTEMPT
+          ) {
+            throw "The selected candidate file name is not bound to the source SHA, run, and attempt."
+          }
+          "candidate_path=$($files[0].FullName)" >> $env:GITHUB_OUTPUT
+
+      - name: Verify selected producer metadata and offline Sigstore bundles
+        if: needs.policy.outputs.candidate_source == 'github-actions-artifact'
+        shell: pwsh
+        env:
+          ARTIFACT_SOURCE_SHA: ${{ needs.policy.outputs.artifact_source_sha }}
+          ATTESTATIONS_ARTIFACT_ID: ${{ needs.policy.outputs.attestations_artifact_id }}
+          CANDIDATE_ARTIFACT_ID: ${{ needs.policy.outputs.candidate_artifact_id }}
+          CANDIDATE_PATH: ${{ steps.source_candidate.outputs.candidate_path }}
+          EVIDENCE_ARTIFACT_ID: ${{ needs.policy.outputs.evidence_artifact_id }}
+          EXPECTED_SHA256: ${{ inputs.expected_sha256 }}
+          GH_EXECUTABLE: ${{ steps.gh_verifier.outputs.gh_executable }}
+          GITHUB_TOKEN: ${{ github.token }}
+          PRODUCER_RUN_ATTEMPT: ${{ needs.policy.outputs.producer_run_attempt }}
+          PRODUCER_RUN_ID: ${{ needs.policy.outputs.producer_run_id }}
+          REVIEWED_SHA: ${{ needs.policy.outputs.reviewed_sha }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          node scripts/verify-windows-store-source-artifacts.mjs `
+            --candidate "$env:CANDIDATE_PATH" `
+            --evidence-directory "$env:RUNNER_TEMP/store-source/evidence" `
+            --attestations-directory "$env:RUNNER_TEMP/store-source/attestations" `
+            --reviewed-sha $env:REVIEWED_SHA `
+            --artifact-source-sha $env:ARTIFACT_SOURCE_SHA `
+            --producer-run-id $env:PRODUCER_RUN_ID `
+            --producer-run-attempt $env:PRODUCER_RUN_ATTEMPT `
+            --candidate-artifact-id $env:CANDIDATE_ARTIFACT_ID `
+            --evidence-artifact-id $env:EVIDENCE_ARTIFACT_ID `
+            --attestations-artifact-id $env:ATTESTATIONS_ARTIFACT_ID `
+            --expected-sha256 $env:EXPECTED_SHA256 `
+            --gh-executable "$env:GH_EXECUTABLE" `
+            --output "$env:RUNNER_TEMP/store-source/github-actions-source-provenance.json"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Approved GitHub Actions source verification failed."
           }
 
       - name: Generate and verify legal resources and public SBOMs
@@ -571,10 +1001,11 @@ jobs:
           "MSIX_IDENTITY_PATH=$path" >> $env:GITHUB_ENV
 
       - name: Preflight hosted EXE
-        if: needs.policy.outputs.candidate_format == 'exe'
+        if: needs.policy.outputs.candidate_source == 'https' && needs.policy.outputs.candidate_format == 'exe'
         shell: pwsh
         env:
           ARTIFACT_URL: ${{ inputs.artifact_url }}
+          ARTIFACT_SOURCE_SHA: ${{ needs.policy.outputs.artifact_source_sha }}
           EXPECTED_SHA256: ${{ inputs.expected_sha256 }}
           REVIEWED_SHA: ${{ needs.policy.outputs.reviewed_sha }}
           STORE_ARCHITECTURE: ${{ inputs.architecture }}
@@ -584,15 +1015,16 @@ jobs:
             --download-url $env:ARTIFACT_URL `
             --expected-sha256 $env:EXPECTED_SHA256 `
             --reviewed-sha $env:REVIEWED_SHA `
-            --artifact-source-sha $env:REVIEWED_SHA `
+            --artifact-source-sha $env:ARTIFACT_SOURCE_SHA `
             --architecture $env:STORE_ARCHITECTURE `
             --allow-silent-install
 
       - name: Preflight hosted MSIX
-        if: needs.policy.outputs.candidate_format == 'msix'
+        if: needs.policy.outputs.candidate_source == 'https' && needs.policy.outputs.candidate_format == 'msix'
         shell: pwsh
         env:
           ARTIFACT_URL: ${{ inputs.artifact_url }}
+          ARTIFACT_SOURCE_SHA: ${{ needs.policy.outputs.artifact_source_sha }}
           EXPECTED_SHA256: ${{ inputs.expected_sha256 }}
           REVIEWED_SHA: ${{ needs.policy.outputs.reviewed_sha }}
         run: |
@@ -601,16 +1033,41 @@ jobs:
             --download-url $env:ARTIFACT_URL `
             --expected-sha256 $env:EXPECTED_SHA256 `
             --reviewed-sha $env:REVIEWED_SHA `
-            --artifact-source-sha $env:REVIEWED_SHA `
+            --artifact-source-sha $env:ARTIFACT_SOURCE_SHA `
+            --partner-identity $env:MSIX_IDENTITY_PATH
+
+      - name: Preflight selected GitHub Actions MSIX
+        if: needs.policy.outputs.candidate_source == 'github-actions-artifact' && needs.policy.outputs.candidate_format == 'msix'
+        shell: pwsh
+        env:
+          ARTIFACT_SOURCE_SHA: ${{ needs.policy.outputs.artifact_source_sha }}
+          CANDIDATE_PATH: ${{ steps.source_candidate.outputs.candidate_path }}
+          EXPECTED_SHA256: ${{ inputs.expected_sha256 }}
+          REVIEWED_SHA: ${{ needs.policy.outputs.reviewed_sha }}
+        run: |
+          npm run release:windows-store:candidate -- `
+            --format msix `
+            --artifact "$env:CANDIDATE_PATH" `
+            --github-actions-provenance "$env:RUNNER_TEMP/store-source/github-actions-source-provenance.json" `
+            --expected-sha256 $env:EXPECTED_SHA256 `
+            --reviewed-sha $env:REVIEWED_SHA `
+            --artifact-source-sha $env:ARTIFACT_SOURCE_SHA `
             --partner-identity $env:MSIX_IDENTITY_PATH
 
       - name: Recheck identity, legal resources, SBOMs, and hosted bytes
         shell: pwsh
         env:
+          ARTIFACT_SOURCE_SHA: ${{ needs.policy.outputs.artifact_source_sha }}
           ARTIFACT_URL: ${{ inputs.artifact_url }}
+          ATTESTATIONS_ARTIFACT_ID: ${{ needs.policy.outputs.attestations_artifact_id }}
+          CANDIDATE_ARTIFACT_ID: ${{ needs.policy.outputs.candidate_artifact_id }}
           CANDIDATE_FORMAT: ${{ needs.policy.outputs.candidate_format }}
+          CANDIDATE_SOURCE: ${{ needs.policy.outputs.candidate_source }}
+          EVIDENCE_ARTIFACT_ID: ${{ needs.policy.outputs.evidence_artifact_id }}
           EXPECTED_SHA256: ${{ inputs.expected_sha256 }}
           MSIX_FALLBACK_JUSTIFICATION: ${{ needs.policy.outputs.msix_fallback_justification }}
+          PRODUCER_RUN_ATTEMPT: ${{ needs.policy.outputs.producer_run_attempt }}
+          PRODUCER_RUN_ID: ${{ needs.policy.outputs.producer_run_id }}
           REVIEWED_SHA: ${{ needs.policy.outputs.reviewed_sha }}
         run: |
           $ErrorActionPreference = "Stop"
@@ -623,7 +1080,27 @@ jobs:
           $candidatePath = $candidateFiles[0].FullName
           $candidate = Get-Content -Raw -LiteralPath $candidatePath | ConvertFrom-Json
           $expectedSha256 = $env:EXPECTED_SHA256.ToLowerInvariant()
-          $expectedUrl = ([Uri]$env:ARTIFACT_URL).AbsoluteUri
+          $artifactMode = $env:CANDIDATE_SOURCE -ceq "github-actions-artifact"
+          $expectedUrl = if ($artifactMode) {
+            $null
+          } else {
+            ([Uri]$env:ARTIFACT_URL).AbsoluteUri
+          }
+          $expectedSource = if ($artifactMode) {
+            "github-actions-artifact"
+          } else {
+            "hosted-download"
+          }
+          $expectedRelationship = if (
+            [StringComparer]::OrdinalIgnoreCase.Equals(
+              $env:ARTIFACT_SOURCE_SHA,
+              $env:REVIEWED_SHA
+            )
+          ) {
+            "same-commit"
+          } else {
+            "distinct-commits"
+          }
           if (
             $env:CANDIDATE_FORMAT -cne $env:ATLASTERM_WINDOWS_CANDIDATE_FORMAT -or
             $env:MSIX_FALLBACK_JUSTIFICATION -cne $env:ATLASTERM_WINDOWS_MSIX_FALLBACK_JUSTIFICATION -or
@@ -631,9 +1108,9 @@ jobs:
             $candidate.kind -cne "windows-store-candidate" -or
             $candidate.format -cne $env:CANDIDATE_FORMAT -or
             $candidate.commits.preflightCommit -cne $env:REVIEWED_SHA -or
-            $candidate.commits.artifactSourceCommit -cne $env:REVIEWED_SHA -or
-            $candidate.commits.relationship -cne "same-commit" -or
-            $candidate.artifact.source -cne "hosted-download" -or
+            $candidate.commits.artifactSourceCommit -cne $env:ARTIFACT_SOURCE_SHA -or
+            $candidate.commits.relationship -cne $expectedRelationship -or
+            $candidate.artifact.source -cne $expectedSource -or
             $candidate.artifact.versionedHttpsUrl -cne $expectedUrl -or
             $candidate.artifact.sha256 -cne $expectedSha256 -or
             $candidate.artifact.stagedCopySha256 -cne $expectedSha256 -or
@@ -644,11 +1121,62 @@ jobs:
             $candidate.gates.artifactHashBound -ne $true -or
             $candidate.gates.candidatePreflightPassed -ne $true -or
             $candidate.gates.publicSbomsBound -ne $true -or
-            $candidate.gates.authenticatedProvenance -ne $false -or
+            $candidate.gates.authenticatedProvenance -ne $artifactMode -or
             $candidate.gates.storePublicationReady -ne $false -or
             $candidate.storeSubmission.status -cne "not-submitted"
           ) {
-            throw "Candidate evidence is not bound to the hosted input and reviewed source."
+            throw "Candidate evidence is not bound to the selected input and reviewed verifier."
+          }
+
+          if ($artifactMode) {
+            $provenancePath = Join-Path `
+              $candidateFiles[0].Directory.FullName `
+              "github-actions-source-provenance.json"
+            if (-not (Test-Path -LiteralPath $provenancePath -PathType Leaf)) {
+              throw "Authenticated source provenance receipt is missing."
+            }
+            $provenanceSha256 = (
+              Get-FileHash -Algorithm SHA256 -LiteralPath $provenancePath
+            ).Hash.ToLowerInvariant()
+            $provenance = Get-Content -Raw -LiteralPath $provenancePath |
+              ConvertFrom-Json
+            if (
+              $candidate.attestations.authenticatedProvenance.status -cne "verified-offline" -or
+              $candidate.attestations.authenticatedProvenance.receiptFileName -cne "github-actions-source-provenance.json" -or
+              $candidate.attestations.authenticatedProvenance.receiptSha256 -cne $provenanceSha256 -or
+              $candidate.attestations.authenticatedProvenance.sourceCommit -cne $env:ARTIFACT_SOURCE_SHA -or
+              $candidate.attestations.authenticatedProvenance.producerRunId -cne $env:PRODUCER_RUN_ID -or
+              $candidate.attestations.authenticatedProvenance.producerRunAttempt -cne $env:PRODUCER_RUN_ATTEMPT -or
+              $provenance.kind -cne "windows-store-github-actions-artifact-provenance" -or
+              $provenance.source.sha -cne $env:REVIEWED_SHA -or
+              $provenance.producer.runId -cne $env:PRODUCER_RUN_ID -or
+              $provenance.producer.runAttempt -cne $env:PRODUCER_RUN_ATTEMPT -or
+              $provenance.candidate.artifactId -cne $env:CANDIDATE_ARTIFACT_ID -or
+              $provenance.evidence.artifactId -cne $env:EVIDENCE_ARTIFACT_ID -or
+              $provenance.attestations.artifactId -cne $env:ATTESTATIONS_ARTIFACT_ID -or
+              $provenance.candidate.sha256 -cne $expectedSha256 -or
+              $provenance.artifacts.candidate.metadataDigest -cne "sha256:$expectedSha256" -or
+              $provenance.attestations.offlineVerification.mode -cne "local-bundle-and-pinned-trusted-root" -or
+              $provenance.attestations.offlineVerification.osNetworkIsolation -cne "not-enforced" -or
+              $provenance.attestations.offlineVerification.outboundProxyConfiguration -cne "loopback-refusal" -or
+              $provenance.attestations.offlineVerification.tokensRemovedFromCryptographicVerifier -ne $true -or
+              $provenance.verifier.githubCli.version -cne "2.95.0" -or
+              $provenance.verifier.githubCli.releaseUrl -cne "https://github.com/cli/cli/releases/download/v2.95.0/gh_2.95.0_windows_amd64.zip" -or
+              $provenance.verifier.githubCli.archiveSha256 -cne "19a7154161ada9cfaa9e57edb752ecc679b75c391a62e4f7b586eea1df30b5bb" -or
+              $provenance.verifier.githubCli.executableSha256 -cne "cfefbc730f2ef7dc0352d6a5435b72fe6afce7fc56d61c90eb7703cd5d97b149" -or
+              $provenance.verifier.githubCli.signatureStatus -cne "Valid" -or
+              $provenance.verifier.githubCli.signerThumbprint -cne "EF53B4F7C8724BF491A7FD92743D38EEFB7C3947" -or
+              $candidate.attestations.authenticatedProvenance.offlineVerification.mode -cne "local-bundle-and-pinned-trusted-root" -or
+              $candidate.attestations.authenticatedProvenance.offlineVerification.osNetworkIsolation -cne "not-enforced" -or
+              $provenance.gates.authenticatedProvenance -ne $true -or
+              $provenance.gates.storePublicationReady -ne $false
+            ) {
+              throw "Authenticated source provenance receipt binding is invalid."
+            }
+          } elseif (
+            $candidate.attestations.authenticatedProvenance.status -cne "not-provided"
+          ) {
+            throw "HTTPS mode must not claim authenticated source provenance."
           }
 
           $noticePath = "reports/release/third-party-licenses/THIRD-PARTY-NOTICES.txt"
@@ -793,9 +1321,12 @@ jobs:
               Get-FileHash -Algorithm SHA256 -LiteralPath $candidatePath
             ).Hash.ToLowerInvariant()
             artifact = [ordered]@{
+              source = $env:CANDIDATE_SOURCE
+              sourceCommit = $env:ARTIFACT_SOURCE_SHA
               url = $expectedUrl
               sha256 = $expectedSha256
               fileName = $candidate.artifact.fileName
+              authenticatedProvenance = $artifactMode
             }
             identity = $identityEvidence
             surfaceIndexSha256 = (
@@ -831,11 +1362,13 @@ jobs:
       - name: Finalize exact evidence allowlist and hashes
         shell: pwsh
         env:
+          ARTIFACT_SOURCE_SHA: ${{ needs.policy.outputs.artifact_source_sha }}
           BASELINE_LEGAL_INPUTS_SHA256: ${{ steps.baseline.outputs.legal_inputs_sha256 }}
           BASELINE_SOURCE_SHA: ${{ steps.baseline.outputs.source_sha }}
           BASELINE_SURFACE_TREE_SHA256: ${{ steps.baseline.outputs.surface_tree_sha256 }}
           BASELINE_WORKFLOW_SHA256: ${{ steps.baseline.outputs.workflow_sha256 }}
           CANDIDATE_FORMAT: ${{ needs.policy.outputs.candidate_format }}
+          CANDIDATE_SOURCE: ${{ needs.policy.outputs.candidate_source }}
           EXPECTED_SHA256: ${{ inputs.expected_sha256 }}
           MSIX_FALLBACK_JUSTIFICATION: ${{ needs.policy.outputs.msix_fallback_justification }}
           REVIEWED_SHA: ${{ needs.policy.outputs.reviewed_sha }}
@@ -923,9 +1456,15 @@ jobs:
             -LiteralPath $workflowEvidencePath |
             ConvertFrom-Json
 
+          $authenticatedSource = $env:CANDIDATE_SOURCE -ceq "github-actions-artifact"
           $expectedFileNames = @(
             [string]$candidate.artifact.fileName
             [string]$candidate.legalNotices.evidenceFileName
+            @(
+              if ($authenticatedSource) {
+                "github-actions-source-provenance.json"
+              }
+            )
             "candidate.json"
             "hosted-workflow-evidence.json"
             "SHA256SUMS.txt"
@@ -1012,6 +1551,9 @@ jobs:
             $workflowEvidence.schemaVersion -ne 2 -or
             $workflowEvidence.kind -cne "windows-store-hosted-verification" -or
             $workflowEvidence.reviewedCommit -cne $env:REVIEWED_SHA -or
+            $workflowEvidence.artifact.source -cne $env:CANDIDATE_SOURCE -or
+            $workflowEvidence.artifact.sourceCommit -cne $env:ARTIFACT_SOURCE_SHA -or
+            $workflowEvidence.artifact.authenticatedProvenance -ne $authenticatedSource -or
             $candidate.format -cne $env:CANDIDATE_FORMAT -or
             $workflowEvidence.releaseDecision.preferredFormat -cne "msix" -or
             $workflowEvidence.releaseDecision.selectedFormat -cne $env:CANDIDATE_FORMAT -or
@@ -1035,16 +1577,36 @@ jobs:
             throw "Final EXE certificate identity changed before upload."
           }
 
+          $provenanceChecksumLine = @(
+            if ($authenticatedSource) {
+              $provenanceEvidencePath = Join-Path `
+                $candidateDir `
+                "github-actions-source-provenance.json"
+              $provenanceEvidenceSha256 = (
+                Get-FileHash `
+                  -Algorithm SHA256 `
+                  -LiteralPath $provenanceEvidencePath
+              ).Hash.ToLowerInvariant()
+              if (
+                $candidate.attestations.authenticatedProvenance.receiptSha256 -cne
+                $provenanceEvidenceSha256
+              ) {
+                throw "Final provenance receipt binding changed before upload."
+              }
+              "$provenanceEvidenceSha256  github-actions-source-provenance.json"
+            }
+          )
           $expectedChecksumLines = @(
             "$artifactSha256  $($candidate.artifact.fileName)"
             "$noticeSha256  $($candidate.legalNotices.evidenceFileName)"
+            $provenanceChecksumLine
             "$candidateSha256  candidate.json"
           )
           $actualChecksumLines = @(
             Get-Content -LiteralPath (Join-Path $candidateDir "SHA256SUMS.txt")
           )
           if ($actualChecksumLines.Count -ne $expectedChecksumLines.Count) {
-            throw "Final checksum manifest must contain exactly three entries."
+            throw "Final checksum manifest entry count is not exact."
           }
           for (
             $index = 0;

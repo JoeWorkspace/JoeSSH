@@ -4,9 +4,10 @@ Last reviewed: 2026-08-09
 Applies to: JoeSSH `0.1.0-beta.20` through the code-equivalent
 `0.1.0-beta.22` Store candidate
 
-`0.1.0-beta.23` is a maintenance candidate. Its source and automated checks do
-not extend this historical manual assessment or establish accessibility
-conformance for a newly built Store package.
+`0.1.0-beta.23` and its replacement `0.1.0-beta.24` are maintenance-candidate
+source revisions. Their source and automated checks do not extend this
+historical manual assessment or establish accessibility conformance for a newly
+built Store package.
 
 JoeSSH is designed to be usable by people with visual, hearing, motor, and
 cognitive disabilities. The project targets WCAG 2.2 Level AA for its web-based

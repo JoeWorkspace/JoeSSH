@@ -76,21 +76,23 @@ const SCHEMAS = [
   "desktop-schema.json",
   "windows-schema.json",
 ].map((name) => `apps/desktop/src-tauri/gen/schemas/${name}`);
-const SOURCE_BINDINGS = [
+export const STORE_SOURCE_BINDINGS = Object.freeze([
   "package.json",
   "package-lock.json",
   "Cargo.lock",
   "rust-toolchain.toml",
   "apps/desktop/package.json",
+  "apps/desktop/src-tauri/build.rs",
   "apps/desktop/src-tauri/Cargo.toml",
   "apps/desktop/src-tauri/Cargo.lock",
   "apps/desktop/src-tauri/tauri.conf.json",
   "apps/desktop/src-tauri/tauri.microsoftstore.conf.json",
+  "apps/desktop/src-tauri/windows-app-manifest.xml",
   "apps/desktop/src-tauri/icons/joessh-icon-master-1024.png",
   "packages/i18n/src/windows-store-manifest-languages.json",
   STORE_BUILD_WORKFLOW,
   "scripts/build-windows-store-msix.mjs",
-];
+]);
 const ASSETS = Object.freeze({
   "Square44x44Logo.png": 44,
   "Square150x150Logo.png": 150,
@@ -707,7 +709,7 @@ export function buildWindowsStoreMsix(env = process.env, root = ROOT) {
     languageContract.manifestLanguages.length === 15,
     "Expected the complete 15-locale contract.",
   );
-  const sourceBindings = SOURCE_BINDINGS.map((path) =>
+  const sourceBindings = STORE_SOURCE_BINDINGS.map((path) =>
     fileEvidence(root, path),
   );
   const schemaSnapshots = SCHEMAS.map((path) => ({
@@ -936,7 +938,7 @@ export function buildWindowsStoreMsix(env = process.env, root = ROOT) {
     requireThat(
       isDeepStrictEqual(
         sourceBindings,
-        SOURCE_BINDINGS.map((path) => fileEvidence(root, path)),
+        STORE_SOURCE_BINDINGS.map((path) => fileEvidence(root, path)),
       ),
       "Reviewed source inputs changed during build.",
     );
