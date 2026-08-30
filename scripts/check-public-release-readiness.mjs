@@ -570,6 +570,7 @@ function checkCiPublicReleaseWiring() {
     "node --test scripts/run-rust-advisory-gate.test.mjs scripts/rust-maintenance-policy.test.mjs scripts/rust-audit-transport.test.mjs scripts/vendored-rust-contract.test.mjs scripts/vendored-rust-audit.test.mjs",
     "cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --release --lib --locked",
     "cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --release --test variant_str_iter --locked",
+    "node --test scripts/package-windows-invite-beta.test.mjs scripts/prepare-windows-store-candidate.test.mjs",
     "node scripts/run-rust-advisory-gate.mjs",
     "npm run release:sbom",
     "npm run release:sbom:verify",
