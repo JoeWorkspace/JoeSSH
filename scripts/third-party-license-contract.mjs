@@ -17,6 +17,16 @@ import {
   resolve,
 } from "node:path";
 import { gunzipSync } from "node:zlib";
+import { isDeepStrictEqual } from "node:util";
+import {
+  isFirstPartyCargoPackage,
+  verifyVendoredRustPackage,
+  verifyVendoredRustPackages,
+} from "./vendored-rust-contract.mjs";
+import {
+  buildVendoredCargoComponent,
+  buildVendoredRustProvenance,
+} from "./release-sbom-contract.mjs";
 
 export const licenseArtifactPaths = Object.freeze({
   checksum: "reports/release/THIRD-PARTY-LICENSES-SHA256SUMS.txt",
@@ -137,7 +147,7 @@ export function buildThirdPartyLicenseBundle(inputRoot) {
       npmTrustBoundary:
         "Each npm cache archive must match its package-lock sha512 integrity, and installed package.json plus every embedded npm license/notice file must byte-match that archive. An npm reviewed-fallback checksum is the same 64-byte SHA-512 digest decoded from that canonical integrity and rendered as 128 lowercase hexadecimal characters.",
       cargoTrustBoundary:
-        "Each Cargo source archive must match its Cargo.lock SHA-256 checksum, and every embedded Cargo license or notice file must byte-match that archive.",
+        "Each registry Cargo source archive must match its Cargo.lock SHA-256 checksum, and every embedded license or notice file must byte-match that archive. Registered vendored crates instead require the complete hash-verified source tree and patch manifest; their original archive checksum, patch provenance, tree checksum, and unchanged upstream license/notice files remain recorded.",
     },
     inputs,
     productLicense: {
@@ -311,6 +321,11 @@ export function verifyPublishedThirdPartyLicenseBundle(inputRoot) {
 
 export function buildThirdPartyLicenseInputEvidence(inputRoot) {
   const root = resolve(inputRoot);
+  const vendoredInputs = existsSync(resolve(root, "vendor"))
+    ? verifyVendoredRustPackages(root).map(
+        (record) => `${record.metadata.path}/JOESSH-PATCH.json`,
+      )
+    : [];
   return [
     "LICENSE",
     "package.json",
@@ -320,6 +335,7 @@ export function buildThirdPartyLicenseInputEvidence(inputRoot) {
     ...npmSboms.map(({ path }) => path),
     ...cargoSboms,
     ...cargoGraphs.map(({ lockPath }) => lockPath),
+    ...vendoredInputs,
   ]
     .map((path) => ({
       path,
@@ -538,6 +554,37 @@ function collectPublishedCargoPackageIdentities(root) {
         });
         continue;
       }
+      if (source === "vendored") {
+        const record = verifyVendoredRustPackage(root, { name, version });
+        const expectedComponent = buildVendoredCargoComponent(
+          component,
+          record,
+        );
+        if (!isDeepStrictEqual(component, expectedComponent)) {
+          fail(
+            `${name}@${version} Cargo SBOM does not match its verified vendored patch provenance.`,
+          );
+        }
+        const lockEntry = lockEntries.get(
+          cargoPackageKey({ name, version, source: "" }),
+        );
+        if (!lockEntry || lockEntry.source || lockEntry.checksum) {
+          fail(
+            `${name}@${version} vendored identity is not bound to ${lockPath}.`,
+          );
+        }
+        packages.push({
+          checksum: record.metadata.upstream.sha256,
+          declaredLicense: record.declaredLicense,
+          ecosystem: "cargo",
+          name,
+          scopes: [scope],
+          source: `https://crates.io/api/v1/crates/${encodeURIComponent(name)}/${encodeURIComponent(version)}/download`,
+          vendored: buildVendoredRustProvenance(record),
+          version,
+        });
+        continue;
+      }
       if (
         component.type !== "library" ||
         component.scope !== "required" ||
@@ -641,7 +688,9 @@ function assertPublishedCargoWorkspaceComponent({
 }) {
   const packageUrl = `pkg:cargo/${encodeURIComponent(name)}@${encodeURIComponent(version)}`;
   if (
-    !name.startsWith("atlasterm-") ||
+    !["atlasterm-core", "atlasterm-sync", "atlasterm-desktop-shell"].includes(
+      name,
+    ) ||
     component.type !== "library" ||
     component.scope !== "required" ||
     component["bom-ref"] !== packageUrl ||
@@ -675,6 +724,9 @@ function mergePackageIdentities(packages) {
       if (existing[field] !== packageEntry[field]) {
         fail(`${key} has conflicting published ${field} metadata.`);
       }
+    }
+    if (!isDeepStrictEqual(existing.vendored, packageEntry.vendored)) {
+      fail(`${key} has conflicting published vendored patch provenance.`);
     }
     existing.scopes = [
       ...new Set([...existing.scopes, ...packageEntry.scopes]),
@@ -726,7 +778,15 @@ function assertPublishedPackageInventory({
             "source",
             "version",
           ];
+    if (expected.vendored) {
+      expectedKeys.push("vendored");
+    }
     assertExactObjectKeys(actual, expectedKeys, label);
+    if (!isDeepStrictEqual(actual.vendored, expected.vendored)) {
+      fail(
+        `${label} vendored patch provenance does not match its verified source.`,
+      );
+    }
     for (const field of [
       "ecosystem",
       "name",
@@ -751,6 +811,36 @@ function assertPublishedPackageInventory({
     }
     if (expected.ecosystem === "cargo") {
       assertPublishedCargoAttribution(actual.attribution, label);
+    }
+    if (expected.vendored) {
+      const record = verifyVendoredRustPackage(root, expected);
+      const evidence = collectPackageTextEvidence({
+        declaredLicense: record.declaredLicense,
+        directory: record.directory,
+        ecosystem: "cargo",
+        name: record.name,
+        texts: new Map(),
+        version: record.version,
+      });
+      const attribution = {
+        authors: [...new Set(record.authors)].sort(compareText),
+        repository: record.repository,
+      };
+      if (
+        !isDeepStrictEqual(actual.attribution, attribution) ||
+        !isDeepStrictEqual(
+          actual.licenseTexts,
+          evidence.licenseTexts.sort(compareEvidence),
+        ) ||
+        !isDeepStrictEqual(
+          actual.notices,
+          evidence.notices.sort(compareEvidence),
+        )
+      ) {
+        fail(
+          `${label} vendored license/notice evidence or attribution does not match its verified source.`,
+        );
+      }
     }
     const fallbackKey = reviewedFallbackKey(expected);
     const fallback = fallbackPolicy.entries.get(fallbackKey);
@@ -1050,7 +1140,13 @@ function collectCargoPackages(root, texts) {
       if (!isRecord(packageEntry)) {
         fail(`${metadataPath} resolve graph references unknown package ${id}.`);
       }
-      if (packageEntry.source === null) {
+      if (
+        packageEntry.source === null &&
+        isFirstPartyCargoPackage(packageEntry, {
+          root,
+          workspaceMembers: metadata.workspace_members,
+        })
+      ) {
         continue;
       }
       const name = requireNonEmptyString(
@@ -1066,11 +1162,27 @@ function collectCargoPackages(root, texts) {
         `${name}@${version} declared license`,
       );
       validateLicenseExpression(declaredLicense, `${name}@${version}`);
-      const source = requireNonEmptyString(
-        packageEntry.source,
-        `${name}@${version} Cargo source`,
-      );
-      if (source !== "registry+https://github.com/rust-lang/crates.io-index") {
+      const vendored =
+        packageEntry.source === null
+          ? verifyVendoredRustPackage(root, {
+              name,
+              version,
+              manifestPath: requireNonEmptyString(
+                packageEntry.manifest_path,
+                `${name}@${version} manifest_path`,
+              ),
+            })
+          : null;
+      const source = vendored
+        ? ""
+        : requireNonEmptyString(
+            packageEntry.source,
+            `${name}@${version} Cargo source`,
+          );
+      if (
+        !vendored &&
+        source !== "registry+https://github.com/rust-lang/crates.io-index"
+      ) {
         fail(`${name}@${version} uses unsupported Cargo source ${source}.`);
       }
       const lockEntry = lockEntries.get(
@@ -1081,8 +1193,18 @@ function collectCargoPackages(root, texts) {
           `${name}@${version} from ${metadataPath} is not bound to ${lockPath}.`,
         );
       }
+      if (
+        vendored &&
+        (lockEntry.source ||
+          lockEntry.checksum ||
+          declaredLicense !== vendored.declaredLicense)
+      ) {
+        fail(
+          `${name}@${version} vendored Cargo identity/license does not match its verified source.`,
+        );
+      }
       const checksum = requireNonEmptyString(
-        lockEntry.checksum,
+        vendored ? vendored.metadata.upstream.sha256 : lockEntry.checksum,
         `${name}@${version} Cargo checksum`,
       );
       if (!/^[a-f0-9]{64}$/.test(checksum)) {
@@ -1093,32 +1215,39 @@ function collectCargoPackages(root, texts) {
         packageEntry.manifest_path,
         `${name}@${version} manifest_path`,
       );
-      const packageDirectory = dirname(resolve(manifestPath));
-      assertCargoSourceDirectory(
-        packageDirectory,
-        root,
-        `${name}@${version} Cargo source directory`,
-      );
-      const cargoArchive = loadCargoArchive({
-        checksum,
-        directory: packageDirectory,
-        name,
-        version,
-      });
-      assertMatchesSourceArchive({
-        archive: cargoArchive,
-        bytes: readFileSync(resolve(packageDirectory, "Cargo.toml")),
-        owner: `cargo:${name}@${version}`,
-        relativePath: "Cargo.toml",
-      });
-      const authors = Array.isArray(packageEntry.authors)
-        ? packageEntry.authors.map((author) =>
-            requireNonEmptyString(author, `${name}@${version} Cargo author`),
-          )
-        : [];
-      const repository =
-        packageEntry.repository === null ||
-        packageEntry.repository === undefined
+      const packageDirectory =
+        vendored?.directory ?? dirname(resolve(manifestPath));
+      let cargoArchive = null;
+      if (!vendored) {
+        assertCargoSourceDirectory(
+          packageDirectory,
+          root,
+          `${name}@${version} Cargo source directory`,
+        );
+        cargoArchive = loadCargoArchive({
+          checksum,
+          directory: packageDirectory,
+          name,
+          version,
+        });
+        assertMatchesSourceArchive({
+          archive: cargoArchive,
+          bytes: readFileSync(resolve(packageDirectory, "Cargo.toml")),
+          owner: `cargo:${name}@${version}`,
+          relativePath: "Cargo.toml",
+        });
+      }
+      const authors = vendored
+        ? vendored.authors
+        : Array.isArray(packageEntry.authors)
+          ? packageEntry.authors.map((author) =>
+              requireNonEmptyString(author, `${name}@${version} Cargo author`),
+            )
+          : [];
+      const repository = vendored
+        ? vendored.repository
+        : packageEntry.repository === null ||
+            packageEntry.repository === undefined
           ? null
           : validateHttpsSourceUrl(
               packageEntry.repository,
@@ -1148,6 +1277,9 @@ function collectCargoPackages(root, texts) {
         notices: evidence.notices,
         scopes: [scope],
         source: `https://crates.io/api/v1/crates/${encodeURIComponent(name)}/${encodeURIComponent(version)}/download`,
+        ...(vendored
+          ? { vendored: buildVendoredRustProvenance(vendored) }
+          : {}),
         version,
       });
     }
@@ -1327,6 +1459,9 @@ function mergePackages(packages) {
       if (existing[field] !== packageEntry[field]) {
         fail(`${key} has conflicting locked ${field} metadata.`);
       }
+    }
+    if (!isDeepStrictEqual(existing.vendored, packageEntry.vendored)) {
+      fail(`${key} has conflicting vendored patch provenance.`);
     }
     if (
       packageEntry.ecosystem === "cargo" &&
@@ -1604,6 +1739,9 @@ function toManifestPackage(packageEntry) {
   };
   if (packageEntry.ecosystem === "cargo") {
     result.attribution = packageEntry.attribution;
+    if (packageEntry.vendored) {
+      result.vendored = packageEntry.vendored;
+    }
   }
   if (packageEntry.ecosystem === "npm") {
     result.integrity = packageEntry.integrity;
@@ -1630,8 +1768,9 @@ export function renderThirdPartyNotices(manifest) {
     "A canonical fallback is used only for an exact",
     "reviewed npm or Cargo package/license/checksum when its lock-bound source",
     "archive ships no license file; npm checksums are the decoded package-lock",
-    "SHA-512 digest rendered as lowercase hex, while Cargo uses its lockfile",
-    "SHA-256 checksum;",
+    "SHA-512 digest rendered as lowercase hex, while registry Cargo uses its",
+    "lockfile SHA-256 checksum. Vendored Cargo entries separately retain the",
+    "original archive checksum and verified patch/tree provenance;",
     `fallback bodies are hash-pinned official SPDX v${spdxLicenseListVersion} texts.`,
     "",
     "JoeSSH Product License",
@@ -1675,7 +1814,17 @@ export function renderThirdPartyNotices(manifest) {
         : []),
       packageEntry.ecosystem === "npm"
         ? `Integrity: ${packageEntry.integrity}`
-        : `Checksum: ${packageEntry.checksum}`,
+        : `${packageEntry.vendored ? "Original archive checksum" : "Checksum"}: ${packageEntry.checksum}`,
+      ...(packageEntry.vendored
+        ? [
+            `Vendored third-party source: ${packageEntry.vendored.upstream.archiveUrl}`,
+            `Upstream revision: ${packageEntry.vendored.upstream.gitCommit}`,
+            `Security backport: ${packageEntry.vendored.patch.advisory} (${packageEntry.vendored.patch.url})`,
+            `Patch revision: ${packageEntry.vendored.patch.commit}`,
+            `Patch manifest SHA-256: ${packageEntry.vendored.manifestSha256}`,
+            `Patched source tree SHA-256: ${packageEntry.vendored.treeSha256}`,
+          ]
+        : []),
       `License text SHA-256: ${packageEntry.licenseTexts
         .map(({ sha256: hash }) => hash)
         .join(", ")}`,
@@ -1811,17 +1960,15 @@ function parseCargoLock(root, path) {
       current.version,
       `${path} ${name} version`,
     );
-    if (current.source) {
-      const key = cargoPackageKey({
-        name,
-        source: current.source,
-        version,
-      });
-      if (entries.has(key)) {
-        fail(`${path} contains duplicate package ${name}@${version}.`);
-      }
-      entries.set(key, current);
+    const key = cargoPackageKey({
+      name,
+      source: current.source ?? "",
+      version,
+    });
+    if (entries.has(key)) {
+      fail(`${path} contains duplicate package ${name}@${version}.`);
     }
+    entries.set(key, current);
   };
 
   for (const rawLine of text.split("\n")) {

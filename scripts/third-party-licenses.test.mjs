@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import {
   appendFileSync,
+  cpSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -14,6 +15,8 @@ import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { gzipSync } from "node:zlib";
 import { renderThirdPartyNotices } from "./third-party-license-contract.mjs";
+import { buildVendoredCargoComponent } from "./release-sbom-contract.mjs";
+import { verifyVendoredRustPackage } from "./vendored-rust-contract.mjs";
 import { publishedLicenseBundleFixture } from "./release-sbom-test-fixtures.mjs";
 
 const repositoryRoot = resolve(import.meta.dirname, "..");
@@ -827,7 +830,7 @@ function createFixture(
   const lock = `version = 4
 
 [[package]]
-name = "fixture-workspace"
+name = "atlasterm-core"
 version = "1.2.3"
 
 [[package]]
@@ -859,7 +862,11 @@ checksum = "${missing.checksum}"
     });
   }
 
-  const workspaceId = "path+file:///fixture#fixture-workspace@1.2.3";
+  const workspaceId = "path+file:///fixture#atlasterm-core@1.2.3";
+  writeText(
+    join(root, "crates", "core", "Cargo.toml"),
+    '[package]\nname = "atlasterm-core"\nversion = "1.2.3"\nlicense = "MIT"\n',
+  );
   const providerId =
     "registry+https://github.com/rust-lang/crates.io-index#mit-template-crate@1.0.0";
   const missingId =
@@ -867,13 +874,13 @@ checksum = "${missing.checksum}"
   const metadata = {
     packages: [
       {
-        name: "fixture-workspace",
+        name: "atlasterm-core",
         version: "1.2.3",
         id: workspaceId,
         license: "MIT",
         license_file: null,
         source: null,
-        manifest_path: join(root, "Cargo.toml"),
+        manifest_path: join(root, "crates", "core", "Cargo.toml"),
       },
       {
         name: "mit-template-crate",
@@ -1241,4 +1248,189 @@ function escapeRegExp(value) {
     value.replaceAll("\\", "[\\\\/]").replace(/[.*+?^${}()|[\]]/g, "\\$&"),
     "i",
   );
+}
+
+test("license bundles retain verified vendored Cargo source, patch provenance, and upstream notices", (t) => {
+  const root = createFixture(t);
+  const record = addVendoredLicenseFixture(root);
+  const generated = run(generator, root);
+  assert.equal(generated.status, 0, generated.stderr);
+  const manifest = JSON.parse(
+    readFileSync(
+      join(root, "reports/release/third-party-licenses/manifest.json"),
+      "utf8",
+    ),
+  );
+  const glib = manifest.packages.find((entry) => entry.name === "glib");
+  assert.equal(glib.checksum, record.metadata.upstream.sha256);
+  assert.equal(glib.vendored.treeSha256, record.treeSha256);
+  assert.equal(glib.vendored.manifestSha256, record.metadataSha256);
+  assert.equal(glib.vendored.patch.advisory, "RUSTSEC-2024-0429");
+  assert.equal(glib.attribution.repository, record.repository);
+  assert.deepEqual(glib.attribution.authors, record.authors);
+  assert.ok(glib.licenseTexts.some((entry) => entry.sourceFile === "LICENSE"));
+  assert.ok(glib.notices.some((entry) => entry.sourceFile === "COPYRIGHT"));
+  assert.ok(
+    manifest.inputs.some(
+      (entry) => entry.path === "vendor/glib-0.18.5/JOESSH-PATCH.json",
+    ),
+  );
+  const notices = readFileSync(
+    join(root, "reports/release/third-party-licenses/THIRD-PARTY-NOTICES.txt"),
+    "utf8",
+  );
+  assert.match(
+    notices,
+    /Vendored third-party source: https:\/\/static.crates.io\/crates\/glib\/glib-0.18.5.crate/,
+  );
+  assert.match(notices, /Security backport: RUSTSEC-2024-0429/);
+  assert.ok(!notices.includes(root));
+  for (const args of [[], ["--artifact-only"]]) {
+    const verified = run(verifier, root, args);
+    assert.equal(verified.status, 0, verified.stderr);
+  }
+});
+
+test("published license verification rejects self-consistent forged vendored patch provenance", (t) => {
+  const root = createFixture(t);
+  addVendoredLicenseFixture(root);
+  const generated = run(generator, root);
+  assert.equal(generated.status, 0, generated.stderr);
+  const manifest = JSON.parse(
+    readFileSync(
+      join(root, "reports/release/third-party-licenses/manifest.json"),
+      "utf8",
+    ),
+  );
+  manifest.packages.find(
+    (entry) => entry.name === "glib",
+  ).vendored.patch.commit = "f".repeat(40);
+  writePublishedBundle(root, {
+    manifestText: `${JSON.stringify(manifest, null, 2)}\n`,
+    noticesText: renderThirdPartyNotices(manifest),
+  });
+
+  const verified = run(verifier, root, ["--artifact-only"]);
+  assert.notEqual(verified.status, 0);
+  assert.match(verified.stderr, /vendored patch provenance does not match/);
+});
+
+test("license generation rejects unregistered source-null dependencies instead of dropping them", (t) => {
+  const root = createFixture(t);
+  addVendoredLicenseFixture(root);
+  const path = join(
+    root,
+    "reports/internal/release-inputs/cargo-metadata.json",
+  );
+  const metadata = JSON.parse(readFileSync(path, "utf8"));
+  const glib = metadata.packages.find((entry) => entry.name === "glib");
+  glib.name = "unregistered-local-crate";
+  metadata.workspace_members.push(glib.id);
+  writeJson(path, metadata);
+
+  const generated = run(generator, root);
+  assert.notEqual(generated.status, 0);
+  assert.match(
+    generated.stderr,
+    /registered|unsupported|unknown|unrecognized/i,
+  );
+});
+
+for (const field of ["attribution", "licenseTexts", "notices"]) {
+  test(`published license verification rejects self-consistent forged vendored ${field}`, (t) => {
+    const root = createFixture(t);
+    addVendoredLicenseFixture(root);
+    const generated = run(generator, root);
+    assert.equal(generated.status, 0, generated.stderr);
+    const manifest = JSON.parse(
+      readFileSync(
+        join(root, "reports/release/third-party-licenses/manifest.json"),
+        "utf8",
+      ),
+    );
+    const glib = manifest.packages.find((entry) => entry.name === "glib");
+    if (field === "attribution") {
+      glib.attribution.authors = ["Forged owner"];
+    } else {
+      glib[field][0].sha256 = manifest.productLicense.licenseText.sha256;
+    }
+    writePublishedBundle(root, {
+      manifestText: `${JSON.stringify(manifest, null, 2)}\n`,
+      noticesText: renderThirdPartyNotices(manifest),
+    });
+    const verified = run(verifier, root, ["--artifact-only"]);
+    assert.notEqual(verified.status, 0);
+    assert.match(
+      verified.stderr,
+      /vendored license\/notice evidence or attribution does not match/,
+    );
+  });
+}
+
+test("license generation verifies vendor files before collecting their text", (t) => {
+  const root = createFixture(t);
+  addVendoredLicenseFixture(root);
+  appendFileSync(
+    join(root, "vendor/glib-0.18.5/LICENSE"),
+    "\nChanged license\n",
+  );
+
+  const generated = run(generator, root);
+  assert.notEqual(generated.status, 0);
+  assert.match(generated.stderr, /hash|checksum|mismatch|digest/i);
+});
+
+function addVendoredLicenseFixture(root) {
+  cpSync(
+    join(repositoryRoot, "vendor/glib-0.18.5"),
+    join(root, "vendor/glib-0.18.5"),
+    { recursive: true },
+  );
+  const record = verifyVendoredRustPackage(root, {
+    name: "glib",
+    version: "0.18.5",
+  });
+  const id = `path+file:///${root.replaceAll("\\", "/")}/vendor/glib-0.18.5#glib@0.18.5`;
+  for (const path of ["Cargo.lock", "apps/desktop/src-tauri/Cargo.lock"]) {
+    appendFileSync(
+      join(root, path),
+      '\n[[package]]\nname = "glib"\nversion = "0.18.5"\n',
+    );
+  }
+  for (const path of [
+    "reports/internal/release-inputs/cargo-metadata.json",
+    "reports/internal/release-inputs/tauri-cargo-metadata.json",
+  ]) {
+    const metadata = JSON.parse(readFileSync(join(root, path), "utf8"));
+    metadata.packages.push({
+      id,
+      name: "glib",
+      version: "0.18.5",
+      source: null,
+      license: "MIT",
+      license_file: null,
+      authors: record.authors,
+      repository: record.repository,
+      manifest_path: join(record.directory, "Cargo.toml"),
+    });
+    metadata.resolve.nodes
+      .find((node) => node.id === metadata.workspace_members[0])
+      .deps.push({ pkg: id, dep_kinds: [{ kind: null }] });
+    metadata.resolve.nodes.push({ id, deps: [] });
+    writeJson(join(root, path), metadata);
+  }
+  for (const path of [
+    "reports/release/cargo-workspace-sbom.cdx.json",
+    "reports/release/tauri-cargo-sbom.cdx.json",
+  ]) {
+    const sbom = JSON.parse(readFileSync(join(root, path), "utf8"));
+    sbom.components.push(
+      buildVendoredCargoComponent(
+        { name: "glib", version: "0.18.5", license: "MIT" },
+        record,
+      ),
+    );
+    writeJson(join(root, path), sbom);
+  }
+  return record;
 }
