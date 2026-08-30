@@ -91,10 +91,13 @@ const gitTopLevel = requiredGitOutput(
   ["rev-parse", "--show-toplevel"],
   "Unable to resolve the Git worktree root.",
 );
-if (
-  normalizePath(realpathSync(gitTopLevel)) !== normalizePath(realpathSync(root))
-) {
-  fail("The Git worktree root does not match --root.");
+// Git expands Windows 8.3 names; compare OS-canonical identities, not aliases.
+const nativeGitRoot = realpathSync.native(gitTopLevel);
+const nativeRoot = realpathSync.native(root);
+if (normalizePath(nativeGitRoot) !== normalizePath(nativeRoot)) {
+  fail(
+    `The Git worktree root does not match --root. Git root: ${gitTopLevel} -> ${nativeGitRoot}; --root: ${root} -> ${nativeRoot}.`,
+  );
 }
 assertCleanGit();
 

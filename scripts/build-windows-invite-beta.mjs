@@ -44,10 +44,12 @@ assertProjectIdentity();
 
 const gitCommand = resolveTrustedGitCommand();
 const gitTopLevel = gitOutput(["rev-parse", "--show-toplevel"]);
-if (
-  normalizePath(realpathSync(gitTopLevel)) !== normalizePath(realpathSync(root))
-) {
-  fail("The Git worktree root does not match the JoeSSH repository root.");
+const nativeGitRoot = realpathSync.native(gitTopLevel);
+const nativeRoot = realpathSync.native(root);
+if (normalizePath(nativeGitRoot) !== normalizePath(nativeRoot)) {
+  fail(
+    `The Git worktree root does not match the JoeSSH repository root. Git root: ${gitTopLevel} -> ${nativeGitRoot}; repository root: ${root} -> ${nativeRoot}.`,
+  );
 }
 const commit = gitOutput(["rev-parse", "HEAD"]);
 const gitVersion = gitOutput(["--version"]);

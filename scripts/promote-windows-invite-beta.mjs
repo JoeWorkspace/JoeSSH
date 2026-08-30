@@ -137,11 +137,12 @@ function main() {
     root,
     "Unable to resolve the promotion repository root.",
   );
-  if (
-    normalizePath(realpathSync(repositoryRoot)) !==
-    normalizePath(realpathSync(root))
-  ) {
-    fail("Promotion must run from the reviewed JoeSSH repository.");
+  const nativeGitRoot = realpathSync.native(repositoryRoot);
+  const nativeRoot = realpathSync.native(root);
+  if (normalizePath(nativeGitRoot) !== normalizePath(nativeRoot)) {
+    fail(
+      `Promotion must run from the reviewed JoeSSH repository. Git root: ${repositoryRoot} -> ${nativeGitRoot}; repository root: ${root} -> ${nativeRoot}.`,
+    );
   }
   const currentCommit = requiredCommandOutput(
     gitCommand,

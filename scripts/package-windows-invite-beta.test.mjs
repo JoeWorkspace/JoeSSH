@@ -7,6 +7,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
   statSync,
   writeFileSync,
@@ -160,6 +161,64 @@ test("rejects a dirty source worktree", windowsOnly, (t) => {
   assert.equal(result.status, 1);
   assert.match(result.stderr, /require a clean Git worktree/);
 });
+
+test(
+  "packages the same Git worktree through its Windows 8.3 directory alias",
+  windowsOnly,
+  (t) => {
+    const fixture = createFixture(t);
+    const shortRoot = windowsShortPath(fixture.root);
+    const nativeRoot = realpathSync.native(fixture.root);
+    assert.notEqual(
+      shortRoot.toLowerCase(),
+      nativeRoot.toLowerCase(),
+      "This Windows filesystem did not expose an 8.3 alias; the required alias regression cannot be verified",
+    );
+    assert.equal(
+      realpathSync.native(shortRoot).toLowerCase(),
+      nativeRoot.toLowerCase(),
+    );
+    const gitRoot = git(shortRoot, [
+      "rev-parse",
+      "--show-toplevel",
+    ]).stdout.trim();
+    assert.equal(
+      realpathSync.native(gitRoot).toLowerCase(),
+      nativeRoot.toLowerCase(),
+    );
+
+    const result = runPackager(
+      {
+        ...fixture,
+        root: shortRoot,
+        bundleDir: join(
+          shortRoot,
+          "apps/desktop/src-tauri/target/release/bundle/nsis",
+        ),
+      },
+      ["--stage-a"],
+    );
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /awaiting native clean-VM smoke/);
+  },
+);
+
+test(
+  "rejects a different Git worktree selected by inherited Git environment",
+  windowsOnly,
+  (t) => {
+    const fixture = createFixture(t);
+    const foreign = createFixture(t);
+    const result = runPackager(fixture, ["--stage-a"], {
+      GIT_DIR: join(foreign.root, ".git"),
+      GIT_WORK_TREE: foreign.root,
+    });
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /The Git worktree root does not match --root/);
+    assert.ok(result.stderr.includes(realpathSync.native(fixture.root)));
+    assert.ok(result.stderr.includes(realpathSync.native(foreign.root)));
+  },
+);
 
 test("rejects stale or multiple Desktop installers", windowsOnly, (t) => {
   const fixture = createFixture(t);
@@ -317,7 +376,32 @@ function createFixture(t, overrides = {}) {
   return { bundleDir, commit, root };
 }
 
-function runPackager(fixture, args) {
+function windowsShortPath(path) {
+  const powershell = resolve(
+    process.env.SystemRoot ?? "C:\\Windows",
+    "System32/WindowsPowerShell/v1.0/powershell.exe",
+  );
+  const command = [
+    "$ErrorActionPreference = 'Stop';",
+    "$path = [Console]::In.ReadToEnd();",
+    "$fso = [Activator]::CreateInstance([type]::GetTypeFromProgID('Scripting.FileSystemObject'));",
+    "$fso.GetFolder($path).ShortPath",
+  ].join(" ");
+  const result = spawnSync(
+    powershell,
+    ["-NoProfile", "-NonInteractive", "-Command", command],
+    {
+      encoding: "utf8",
+      input: path,
+      timeout: 30_000,
+      windowsHide: true,
+    },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  return result.stdout.trim();
+}
+
+function runPackager(fixture, args, environment = {}) {
   return spawnSync(
     process.execPath,
     [
@@ -336,6 +420,7 @@ function runPackager(fixture, args) {
         ATLASTERM_RELEASE_GIT_COMMAND: "ignored-fake-git",
         ATLASTERM_RELEASE_POWERSHELL_COMMAND: "ignored-fake-powershell",
         ATLASTERM_RELEASE_SIGNTOOL_COMMAND: "ignored-fake-signtool",
+        ...environment,
       },
       stdio: ["ignore", "pipe", "pipe"],
     },
