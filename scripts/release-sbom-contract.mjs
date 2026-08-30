@@ -632,6 +632,12 @@ function findLocalPathLeaks(json, { packageName, rootPath }) {
   const leaks = new Set();
   const normalizedRoot = resolve(rootPath).replaceAll("\\", "/");
   const rootName = basename(resolve(rootPath));
+  // Match a checkout-name token, not a substring of a public package name
+  // such as "istanbul-reports" when the checkout directory is "repo".
+  const checkoutNamePattern = new RegExp(
+    `(?:^|[^\\p{L}\\p{N}])${rootName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?=$|[^\\p{L}\\p{N}])`,
+    "iu",
+  );
 
   visitStrings(json, "$", (value, jsonPath) => {
     const normalized = value.replaceAll("\\", "/");
@@ -654,9 +660,7 @@ function findLocalPathLeaks(json, { packageName, rootPath }) {
       rootName &&
       rootName !== packageName &&
       !isPublicNameCollision &&
-      normalized
-        .toLocaleLowerCase("en-US")
-        .includes(rootName.toLocaleLowerCase("en-US"))
+      checkoutNamePattern.test(normalized)
     ) {
       leaks.add(`${jsonPath} contains checkout name ${rootName}`);
     }

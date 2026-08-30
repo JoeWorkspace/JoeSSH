@@ -490,6 +490,77 @@ test("canonical npm SBOM accepts a product name matching the hosted checkout", (
   );
 });
 
+test("canonical npm SBOM accepts public package names containing a short checkout name", () => {
+  const names = ["istanbul-lib-report", "istanbul-reports"];
+  const rawSbom = JSON.stringify({
+    bomFormat: "CycloneDX",
+    components: names.map((name) => ({
+      "bom-ref": `${name}@1.0.0`,
+      externalReferences: [
+        {
+          type: "distribution",
+          url: `https://registry.npmjs.org/${name}/-/${name}-1.0.0.tgz`,
+        },
+      ],
+      name,
+      properties: [
+        { name: "cdx:npm:package:path", value: `node_modules/${name}` },
+      ],
+      purl: `pkg:npm/${name}@1.0.0`,
+      version: "1.0.0",
+    })),
+    dependencies: [
+      {
+        ref: "istanbul-reports@1.0.0",
+        dependsOn: ["istanbul-lib-report@1.0.0"],
+      },
+    ],
+    metadata: { component: { name: "repo", version: "1.2.3" } },
+    specVersion: "1.5",
+  });
+  const canonical = canonicalizeNpmCycloneDx(rawSbom, {
+    packageName: "atlasterm",
+    rootPath: "/home/runner/work/repo",
+  });
+  assert.deepEqual(
+    JSON.parse(canonical).components.map(({ name }) => name),
+    names,
+  );
+});
+
+for (const value of [
+  "repo",
+  "checkout=REPO",
+  "build-repo-output",
+  "../repo/file",
+  "/home/runner/work/repo/src/main.rs",
+  "C:\\private\\report.txt",
+  "file:///opt/report.txt",
+]) {
+  test(`canonical npm SBOM with a short checkout still rejects local evidence ${value}`, () => {
+    const rawSbom = JSON.stringify({
+      bomFormat: "CycloneDX",
+      components: [
+        {
+          name: "istanbul-reports",
+          version: "1.0.0",
+          properties: [{ name: "build-worktree", value }],
+        },
+      ],
+      metadata: { component: { name: "repo", version: "1.2.3" } },
+      specVersion: "1.5",
+    });
+    assert.throws(
+      () =>
+        canonicalizeNpmCycloneDx(rawSbom, {
+          packageName: "atlasterm",
+          rootPath: "/home/runner/work/repo",
+        }),
+      /contains (checkout name repo|an absolute local path)/,
+    );
+  });
+}
+
 test("canonical npm SBOM still rejects a hosted checkout name outside the root description", () => {
   const rawSbom = JSON.stringify({
     bomFormat: "CycloneDX",
