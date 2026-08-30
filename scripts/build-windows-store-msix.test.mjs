@@ -441,7 +441,7 @@ test("Partner identity is canonical, product-bound and protected-publisher-bound
     assert.throws(() => decodePartnerIdentity(value, legalPublisher));
 });
 
-test("manifest preserves upgrade identity, old OS floor/runtime dependency, legal resource path and all locales", () => {
+test("manifest preserves upgrade identity, OS floor, legal resource path and all locales without a stale framework dependency", () => {
   const manifest = createStoreManifest(partner, "0.1.0-beta.23", languages);
   const parsed = parseMsixManifestContract(manifest);
   assert.equal(parsed.identity.version, "1.1.23.0");
@@ -463,7 +463,11 @@ test("manifest preserves upgrade identity, old OS floor/runtime dependency, lega
   );
   assert.match(
     manifest,
-    /PackageDependency Name="Microsoft.WindowsAppRuntime.1.4" MinVersion="4000.1010.1349.0"/,
+    /<Dependencies>\s*<TargetDeviceFamily Name="Windows\.Desktop" MinVersion="10\.0\.17763\.0" MaxVersionTested="10\.0\.22000\.1" \/>\s*<\/Dependencies>/,
+  );
+  assert.doesNotMatch(
+    manifest,
+    /PackageDependency|Microsoft\.WindowsAppRuntime/i,
   );
   assert.doesNotMatch(
     manifest,

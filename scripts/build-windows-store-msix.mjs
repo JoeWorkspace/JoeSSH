@@ -69,10 +69,6 @@ export const STORE_MSIX_PROFILE = Object.freeze({
   entryPoint: "Windows.FullTrustApplication",
   minVersion: "10.0.17763.0",
   maxVersionTested: "10.0.22000.1",
-  dependencyName: "Microsoft.WindowsAppRuntime.1.4",
-  dependencyMinVersion: "4000.1010.1349.0",
-  dependencyPublisher:
-    "CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US",
 });
 const SCHEMAS = [
   "acl-manifests.json",
@@ -493,7 +489,6 @@ ${languages.map((language) => `    <Resource Language="${xml(language)}" />`).jo
   </Resources>
   <Dependencies>
     <TargetDeviceFamily Name="Windows.Desktop" MinVersion="${p.minVersion}" MaxVersionTested="${p.maxVersionTested}" />
-    <PackageDependency Name="${p.dependencyName}" MinVersion="${p.dependencyMinVersion}" Publisher="${xml(p.dependencyPublisher)}" />
   </Dependencies>
   <Applications><Application Id="${p.applicationId}" Executable="${p.executable.replaceAll("/", "\\")}" EntryPoint="${p.entryPoint}"><uap:VisualElements DisplayName="JoeSSH" Description="SSH terminal, SFTP and local port forwarding" Square150x150Logo="Assets\\Square150x150Logo.png" Square44x44Logo="Assets\\Square44x44Logo.png" BackgroundColor="transparent" /></Application></Applications>
   <Capabilities><rescap:Capability Name="runFullTrust" /></Capabilities>
