@@ -283,8 +283,8 @@ function runWebPackager(root) {
 }
 
 function writeReleaseSbomFixture(root) {
-  const rustMetadata = cargoMetadataFixture("atlasterm-sync");
-  const tauriMetadata = cargoMetadataFixture("atlasterm-desktop-shell");
+  const rustMetadata = cargoMetadataFixture(root, "atlasterm-sync");
+  const tauriMetadata = cargoMetadataFixture(root, "atlasterm-desktop-shell");
   const sbomFiles = [
     ["reports/release/npm-desktop-sbom.cdx.json", cyclonedxFixture("desktop")],
     ["reports/release/npm-web-sbom.cdx.json", cyclonedxFixture("web")],
@@ -356,7 +356,7 @@ function cyclonedxFixture(name) {
   return canonicalNpmSbomFixture(name);
 }
 
-function cargoMetadataFixture(name) {
+function cargoMetadataFixture(root, name) {
   const packageNames =
     name === "atlasterm-desktop-shell"
       ? [
@@ -388,6 +388,18 @@ function cargoMetadataFixture(name) {
   const registrySource =
     "registry+https://github.com/rust-lang/crates.io-index";
   const localPackages = new Set([...workspaceMembers, "atlasterm-core"]);
+  const localManifests = {
+    "atlasterm-core": "crates/core/Cargo.toml",
+    "atlasterm-sync": "services/sync/Cargo.toml",
+    "atlasterm-desktop-shell": "apps/desktop/src-tauri/Cargo.toml",
+  };
+  for (const packageName of localPackages) {
+    writeFile(
+      root,
+      localManifests[packageName],
+      `[package]\nname = "${packageName}"\nversion = "0.1.0-beta.1"\nlicense = "MIT"\n`,
+    );
+  }
   const packageIds = new Map(
     packageNames.map((packageName) => {
       const version = localPackages.has(packageName) ? "0.1.0-beta.1" : "1.0.0";
@@ -416,6 +428,9 @@ function cargoMetadataFixture(name) {
       id: packageIds.get(packageName),
       license: "MIT",
       name: packageName,
+      ...(localManifests[packageName]
+        ? { manifest_path: join(root, localManifests[packageName]) }
+        : {}),
       source: localPackages.has(packageName) ? null : registrySource,
       version: localPackages.has(packageName) ? "0.1.0-beta.1" : "1.0.0",
     })),
