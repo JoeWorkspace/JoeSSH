@@ -55,6 +55,7 @@ const REVIEWED_STEP_SHA256 = Object.freeze({
     "cb5ef2ce1a45bbeb0ad772b7f5bb7466677090e94ab80160a06dc5b00e3e4920",
     "d247a1b86594ba845aa5ccaea78d3caba09108bca47f8a5ab51d110367f7d681",
     "6ced7fd10d582699b0b754c6e6e029095e2034c9da0fff36248dfc002c6a74a0",
+    "81486dc03510dc9e4764a0ddf5d0b0eb2ac29cad65d22d4fcb3f7c794c638600",
     "c0e0758d692b06d516d137fa5e4313626e0bfe8dab2f8f9d5f0e0cae7ee2afe6",
   ],
   attest: [
@@ -216,7 +217,7 @@ export function checkWindowsStoreBuildWorkflowSecurity(workflowText) {
   );
   add(
     results,
-    rawUploads.length > 0 &&
+    rawUploads.length === 1 &&
       rawUploads.every(
         (step) =>
           step.with?.["if-no-files-found"] === "error" &&
@@ -227,6 +228,24 @@ export function checkWindowsStoreBuildWorkflowSecurity(workflowText) {
           !/[\n*?]/u.test(step.with.path),
       ),
     "Raw MSIX uploads contain one exact file, preserve raw bytes, and fail closed without overwrite",
+  );
+  const transportUploads = allSteps.filter(
+    (step) =>
+      step?.uses === PINNED_ACTIONS.upload &&
+      step.with?.name ===
+        "store-source-msix-transport-${{ github.run_id }}-${{ github.run_attempt }}",
+  );
+  add(
+    results,
+    transportUploads.length === 1 &&
+      transportUploads[0].with?.path === rawUploads[0]?.with?.path &&
+      transportUploads[0].with?.archive === true &&
+      transportUploads[0].with?.["compression-level"] === 0 &&
+      transportUploads[0].with?.["if-no-files-found"] === "error" &&
+      transportUploads[0].with?.overwrite === false &&
+      transportUploads[0].with?.["retention-days"] ===
+        "${{ steps.build.outputs.retention_days }}",
+    "Transport artifact wraps the exact raw MSIX for byte-preserving authenticated download",
   );
   const serialized = JSON.stringify(workflow);
   add(

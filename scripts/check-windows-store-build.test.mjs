@@ -267,6 +267,38 @@ test("raw MSIX upload rejects globs, multiple paths, missing files, or overwrite
     );
 });
 
+test("transport upload wraps only the exact raw MSIX with a run-bound name", () => {
+  for (const change of [
+    (step) => {
+      step.with.name = "store-source-msix-transport";
+    },
+    (step) => {
+      step.with.path = "other.msix";
+    },
+    (step) => {
+      step.with.archive = false;
+    },
+    (step) => {
+      step.with["compression-level"] = 6;
+    },
+    (step) => {
+      step.with["if-no-files-found"] = "warn";
+    },
+    (step) => {
+      step.with.overwrite = true;
+    },
+    (step) => {
+      step.with["retention-days"] = 90;
+    },
+  ])
+    assertFailure(
+      mutate((value) =>
+        change(value.jobs.build.steps.find((step) => step.id === "transport")),
+      ),
+      "Transport artifact wraps the exact raw MSIX",
+    );
+});
+
 test("new secrets, token broadening, Authenticode signing, and publication commands are rejected", () => {
   for (const change of [
     (value) => {
