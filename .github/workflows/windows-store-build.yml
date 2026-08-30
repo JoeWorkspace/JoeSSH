@@ -99,6 +99,17 @@ jobs:
           if-no-files-found: error
           overwrite: false
           retention-days: ${{ steps.build.outputs.retention_days }}
+      - name: Upload download-safe MSIX transport
+        id: transport
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: store-source-msix-transport-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ steps.build.outputs.msix_path }}
+          archive: true
+          compression-level: 0
+          if-no-files-found: error
+          overwrite: false
+          retention-days: ${{ steps.build.outputs.retention_days }}
       - name: Upload build and legal evidence
         id: evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
