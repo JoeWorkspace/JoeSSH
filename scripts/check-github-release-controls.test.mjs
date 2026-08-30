@@ -58,6 +58,7 @@ const REQUIRED_SETUP_NODE_JOBS = Object.freeze(
     "ci.yml:visual-qa",
     "desktop-release-artifacts.yml:build-unsigned",
     "windows-invite-beta.yml:build-stage-a",
+    "windows-store-build.yml:build",
     "windows-store-candidate.yml:verify",
   ].sort(),
 );
@@ -1825,7 +1826,7 @@ test("every pinned Rust toolchain action explicitly selects Rust 1.96.0", () => 
 
   assert.equal(
     observed.length,
-    8,
+    9,
     `Review any added or removed Rust toolchain action: ${JSON.stringify(
       observed,
     )}`,

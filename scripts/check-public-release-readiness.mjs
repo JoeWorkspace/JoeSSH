@@ -571,6 +571,8 @@ function checkCiPublicReleaseWiring() {
     "cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --release --lib --locked",
     "cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --release --test variant_str_iter --locked",
     "node --test scripts/package-windows-invite-beta.test.mjs scripts/prepare-windows-store-candidate.test.mjs",
+    "node --test scripts/check-windows-store-build.test.mjs scripts/build-windows-store-msix.test.mjs",
+    "node scripts/check-windows-store-build.mjs",
     "node scripts/run-rust-advisory-gate.mjs",
     "npm run release:sbom",
     "npm run release:sbom:verify",
@@ -617,6 +619,30 @@ function checkCiPublicReleaseWiring() {
       !Object.hasOwn(rustJob, "continue-on-error"),
     "CI Rust job requires the strict audit of both lockfiles without skipping failures",
   );
+  for (const jobName of ["lint", "store-runtime-windows"]) {
+    const job = workflow?.jobs?.[jobName];
+    const steps = Array.isArray(job?.steps) ? job.steps : [];
+    passIf(
+      isRecord(job) &&
+        !Object.hasOwn(job, "if") &&
+        !Object.hasOwn(job, "continue-on-error") &&
+        [
+          "node --test scripts/check-windows-store-build.test.mjs scripts/build-windows-store-msix.test.mjs",
+          "node scripts/check-windows-store-build.mjs",
+        ].every((command) => {
+          const matches = steps.filter((step) => step?.run === command);
+          return (
+            matches.length === 1 &&
+            matches.every(
+              (step) =>
+                !Object.hasOwn(step, "if") &&
+                !Object.hasOwn(step, "continue-on-error"),
+            )
+          );
+        }),
+      `CI ${jobName} requires Store source producer tests and permissions checks without bypasses`,
+    );
+  }
   const publicReleaseJob = isRecord(
     workflow?.jobs?.["public-release-readiness"],
   )

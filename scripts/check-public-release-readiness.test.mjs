@@ -1537,6 +1537,29 @@ for (const unsafeAudit of [
   });
 }
 
+for (const command of [
+  "node --test scripts/check-windows-store-build.test.mjs scripts/build-windows-store-msix.test.mjs",
+  "node scripts/check-windows-store-build.mjs",
+]) {
+  for (const bypass of ["if: false", "continue-on-error: true"]) {
+    test(`rejects bypassed Store source producer gate: ${command} ${bypass}`, (t) => {
+      const result = runChecker(
+        createFixture(t, {
+          ".github/workflows/ci.yml": ciFixture().replace(
+            `      - run: ${command}\n`,
+            `      - run: ${command}\n        ${bypass}\n`,
+          ),
+        }),
+      );
+      assert.equal(result.status, 1);
+      assert.match(
+        result.stdout,
+        /FAIL CI lint requires Store source producer tests and permissions checks without bypasses/,
+      );
+    });
+  }
+}
+
 test("rejects CI E2E jobs that use non-fresh E2E", (t) => {
   const result = runChecker(
     createFixture(t, {

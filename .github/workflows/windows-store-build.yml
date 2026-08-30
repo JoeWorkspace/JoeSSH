@@ -1,0 +1,203 @@
+name: Windows Store Source Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      reviewed_sha:
+        description: "Full reviewed current main SHA with all 14 CI jobs successful."
+        required: true
+        type: string
+      partner_identity_base64:
+        description: "Canonical base64 public Partner Center identity JSON; never signing material."
+        required: true
+        type: string
+      retention_days:
+        description: "Raw MSIX and provenance retention, 1-30 days."
+        required: true
+        default: "14"
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.reviewed_sha }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build source MSIX after human approval
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'JoeWorkspace/JoeSSH' && github.ref == 'refs/heads/main' && github.ref_protected == true && inputs.reviewed_sha == github.sha
+    runs-on: windows-2025
+    timeout-minutes: 90
+    environment: windows-release-stage-b
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      msix_artifact_id: ${{ steps.msix.outputs.artifact-id }}
+      evidence_artifact_id: ${{ steps.evidence.outputs.artifact-id }}
+      file_name: ${{ steps.build.outputs.file_name }}
+      msix_sha256: ${{ steps.build.outputs.msix_sha256 }}
+      predicate_sha256: ${{ steps.build.outputs.predicate_sha256 }}
+      retention_days: ${{ steps.build.outputs.retention_days }}
+    env:
+      REVIEWED_SHA: ${{ inputs.reviewed_sha }}
+      RETENTION_DAYS: ${{ inputs.retention_days }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22.22.2
+      - name: Pin npm 10.9.7
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global --ignore-scripts --no-audit --no-fund npm@10.9.7
+          test "$(npm --version)" = "10.9.7"
+      - uses: dtolnay/rust-toolchain@2c7215f132e9ebf062739d9130488b56d53c060c
+        with:
+          toolchain: 1.96.0
+          targets: x86_64-pc-windows-msvc
+      - name: Install locked dependencies without lifecycle scripts
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          npm ci --ignore-scripts --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { throw "Locked dependency installation failed." }
+      - name: Verify current main CI and actual Stage B approval
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          node scripts/build-windows-store-msix.mjs --verify-ci
+          if ($LASTEXITCODE -ne 0) { throw "Source build policy verification failed." }
+      - name: Compile Store source and pack verified unsigned MSIX
+        id: build
+        shell: pwsh
+        env:
+          ATLASTERM_WINDOWS_LEGAL_PUBLISHER: ${{ vars.ATLASTERM_WINDOWS_LEGAL_PUBLISHER }}
+          PARTNER_IDENTITY_BASE64: ${{ inputs.partner_identity_base64 }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          node scripts/check-windows-store-build.mjs
+          if ($LASTEXITCODE -ne 0) { throw "Source producer contract failed." }
+          node scripts/build-windows-store-msix.mjs
+          if ($LASTEXITCODE -ne 0) { throw "Source MSIX build failed." }
+      - name: Upload raw unsigned MSIX
+        id: msix
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          path: ${{ steps.build.outputs.msix_path }}
+          archive: false
+          if-no-files-found: error
+          overwrite: false
+          retention-days: ${{ steps.build.outputs.retention_days }}
+      - name: Upload build and legal evidence
+        id: evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: store-source-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ steps.build.outputs.evidence_path }}/
+          if-no-files-found: error
+          overwrite: false
+          retention-days: ${{ steps.build.outputs.retention_days }}
+
+  attest:
+    name: Attest exact source-built MSIX
+    needs: build
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'JoeWorkspace/JoeSSH' && github.ref == 'refs/heads/main' && github.ref_protected == true && inputs.reviewed_sha == github.sha
+    runs-on: windows-2025
+    timeout-minutes: 20
+    environment: windows-release-stage-b
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - name: Download exact same-run raw MSIX
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ needs.build.outputs.msix_artifact_id }}
+          path: ${{ runner.temp }}/store-attest/msix
+          merge-multiple: true
+          skip-decompress: true
+          digest-mismatch: error
+      - name: Download exact same-run build evidence
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ needs.build.outputs.evidence_artifact_id }}
+          path: ${{ runner.temp }}/store-attest/evidence
+          merge-multiple: true
+          digest-mismatch: error
+      - name: Verify bytes and source binding before requesting OIDC
+        id: verified
+        shell: pwsh
+        env:
+          EXPECTED_FILE_NAME: ${{ needs.build.outputs.file_name }}
+          EXPECTED_MSIX_SHA256: ${{ needs.build.outputs.msix_sha256 }}
+          EXPECTED_PREDICATE_SHA256: ${{ needs.build.outputs.predicate_sha256 }}
+          REVIEWED_SHA: ${{ inputs.reviewed_sha }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          Set-StrictMode -Version Latest
+          if ($env:EXPECTED_FILE_NAME -cnotmatch '^JoeSSH_[1-9][0-9]*\.[0-9]+\.[0-9]+\.0_x64_[a-f0-9]{12}_[1-9][0-9]*_[1-9][0-9]*\.msix$') { throw "Unsafe MSIX file name." }
+          if ($env:EXPECTED_MSIX_SHA256 -cnotmatch '^[a-f0-9]{64}$' -or $env:EXPECTED_PREDICATE_SHA256 -cnotmatch '^[a-f0-9]{64}$') { throw "Missing build hashes." }
+          $root = Join-Path $env:RUNNER_TEMP "store-attest"
+          $files = @(Get-ChildItem -LiteralPath (Join-Path $root "msix") -Force -Recurse)
+          if ($files.Count -ne 1 -or $files[0].PSIsContainer -or ($files[0].Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw "Expected one direct raw MSIX." }
+          $msix = $files[0].FullName
+          if ($files[0].Name -cne $env:EXPECTED_FILE_NAME) { throw "Raw artifact name mismatch." }
+          $predicate = Join-Path $root "evidence/predicate.json"
+          $predicateFile = Get-Item -LiteralPath $predicate -Force
+          if ($predicateFile.PSIsContainer -or ($predicateFile.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw "Invalid predicate file." }
+          if ((Get-FileHash -LiteralPath $msix -Algorithm SHA256).Hash.ToLowerInvariant() -cne $env:EXPECTED_MSIX_SHA256) { throw "Raw MSIX digest mismatch." }
+          if ((Get-FileHash -LiteralPath $predicate -Algorithm SHA256).Hash.ToLowerInvariant() -cne $env:EXPECTED_PREDICATE_SHA256) { throw "Predicate digest mismatch." }
+          $p = Get-Content -LiteralPath $predicate -Raw | ConvertFrom-Json
+          if ($p.schemaVersion -ne 1 -or $p.source.repository -cne "JoeWorkspace/JoeSSH" -or $p.source.sha -cne $env:GITHUB_SHA -or $env:REVIEWED_SHA -cne $env:GITHUB_SHA -or $p.source.ref -cne "refs/heads/main") { throw "Predicate source mismatch." }
+          if ($p.builder.workflow -cne ".github/workflows/windows-store-build.yml" -or $p.builder.runId -cne $env:GITHUB_RUN_ID -or $p.builder.runAttempt -cne $env:GITHUB_RUN_ATTEMPT -or $p.builder.environment -cne "windows-release-stage-b") { throw "Predicate run mismatch." }
+          if ($p.artifact.path -cne $env:EXPECTED_FILE_NAME -or $p.artifact.sha256 -cne $env:EXPECTED_MSIX_SHA256 -or $p.artifact.sizeBytes -ne $files[0].Length) { throw "Predicate artifact mismatch." }
+          if (-not $p.validation.makeAppxPackAndUnpack -or -not $p.validation.byteExactPayloadRoundTrip -or -not $p.validation.allStoreSurfaceChecks -or $p.publication.storePublicationReady -ne $false) { throw "Invalid validation or publication claim." }
+          "msix_path=$msix" | Out-File -LiteralPath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "predicate_path=$predicate" | Out-File -LiteralPath $env:GITHUB_OUTPUT -Append -Encoding utf8
+      - name: Attest default SLSA build provenance
+        id: slsa
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: ${{ steps.verified.outputs.msix_path }}
+          push-to-registry: false
+          create-storage-record: false
+      - name: Attest compiler payload manifest legal and SBOM bindings
+        id: bindings
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: ${{ steps.verified.outputs.msix_path }}
+          predicate-type: https://github.com/JoeWorkspace/JoeSSH/attestations/windows-store-build/v1
+          predicate-path: ${{ steps.verified.outputs.predicate_path }}
+          push-to-registry: false
+          create-storage-record: false
+      - name: Preserve both signed attestation bundles
+        shell: pwsh
+        env:
+          SLSA_BUNDLE: ${{ steps.slsa.outputs.bundle-path }}
+          BINDINGS_BUNDLE: ${{ steps.bindings.outputs.bundle-path }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $destination = Join-Path $env:RUNNER_TEMP "store-attest/bundles"
+          New-Item -ItemType Directory -Path $destination -ErrorAction Stop | Out-Null
+          Copy-Item -LiteralPath $env:SLSA_BUNDLE -Destination (Join-Path $destination "slsa.sigstore.json") -ErrorAction Stop
+          Copy-Item -LiteralPath $env:BINDINGS_BUNDLE -Destination (Join-Path $destination "bindings.sigstore.json") -ErrorAction Stop
+          "Source MSIX and provenance produced. This does not prove hosted validation, installation, WACK, Store signing, upload or certification." | Out-File -LiteralPath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+      - name: Upload signed provenance bundles
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: store-source-attestations-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/store-attest/bundles/
+          if-no-files-found: error
+          overwrite: false
+          retention-days: ${{ needs.build.outputs.retention_days }}

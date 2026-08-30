@@ -94,6 +94,8 @@ jobs:
             "${GITHUB_WORKSPACE}"
       - run: npm ci
       - run: npm run qa:package-lock-portability
+      - run: node --test scripts/check-windows-store-build.test.mjs scripts/build-windows-store-msix.test.mjs
+      - run: node scripts/check-windows-store-build.mjs
       - run: npm run lint
       - run: npm run qa:accessibility-readiness
       - run: npm run qa:handoff-hygiene
@@ -282,6 +284,9 @@ jobs:
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Test Windows package and native signature verification
         run: node --test scripts/package-windows-invite-beta.test.mjs scripts/prepare-windows-store-candidate.test.mjs
+      - name: Test Store source producer and permissions boundary
+        run: node --test scripts/check-windows-store-build.test.mjs scripts/build-windows-store-msix.test.mjs
+      - run: node scripts/check-windows-store-build.mjs
       - run: npx --no-install playwright install chromium
       - run: npm run qa:windows-store-surfaces:runtime:installed
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
