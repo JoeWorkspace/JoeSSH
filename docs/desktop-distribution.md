@@ -246,7 +246,7 @@ equivalent hash-bound evidence.
 After installers and checksums are present, run:
 
 ```bash
-FULL_RELEASE_VERSION="<DISTINCT_UNUSED_VERSION_AFTER_BETA_22>" # replace before running
+FULL_RELEASE_VERSION="<DISTINCT_UNUSED_VERSION_AFTER_BETA_23>" # replace before running
 git tag -a "v${FULL_RELEASE_VERSION}" -m "JoeSSH ${FULL_RELEASE_VERSION}"
 npm run release:provenance
 npm run release:provenance:verify
@@ -256,9 +256,10 @@ npm run release:desktop:draft
 
 `0.1.0-beta.20` and beta.21 are permanent zero-asset source prereleases, and
 beta.22 keeps the same GitHub zero-asset boundary while reserving its binary
-solely for Partner Center. None of these versions may use this full-release
+solely for Partner Center. The beta.23 maintenance candidate preserves that
+boundary with a new MSIX `1.1.23.0`. None of these versions may use this full-release
 flow. Bump every version surface first and use a distinct unused version after
-beta.22.
+beta.23.
 The publish preflight verifies all Desktop/Web/Sync checksum manifests, Desktop
 signing/notarization evidence, SBOM coverage, release provenance, a healthy Git
 checkout, a clean working tree outside `reports/release/`, a release tag that

@@ -1,14 +1,15 @@
-# JoeSSH 0.1.0-beta.22 Store 候选发布准备手册
+# JoeSSH 0.1.0-beta.23 Store 修复候选发布准备手册
 
-> `v0.1.0-beta.18` 是仅有远端标签的历史预检点，`v0.1.0-beta.20` 与
-> `v0.1.0-beta.21` 是永久零上传资产的 source-only prerelease；这些历史版本
+> `v0.1.0-beta.18` 是仅有远端标签的历史预检点，`v0.1.0-beta.20`、
+> `v0.1.0-beta.21` 与 `v0.1.0-beta.22` 的 GitHub 记录永久保持零上传资产；这些历史版本
 > 都不得删除、移动、补传二进制或复用。本手册只操作新的
-> `v0.1.0-beta.22` 候选。
+> `v0.1.0-beta.23` 候选。
 
 本手册是个人维护者的 Windows-first 收口入口。当前代码版本是
-`0.1.0-beta.22` 候选：GitHub 侧仍是零上传资产的 source prerelease，唯一
-二进制交付路径是 Partner Center 中单独提交的 MSIX。它不是已经获批的商店版
-或付费版。任何门禁失败都表示继续准备，不表示可以通过改文案、改 JSON 或
+`0.1.0-beta.23` 候选，映射 MSIX `1.1.23.0`：GitHub 侧仍是零上传资产的 source
+prerelease，唯一二进制交付路径是 Partner Center 中单独提交的 MSIX。现有
+`1.1.22.0` 商店包不代表这个新版本已构建、获批或发布，也不代表付费版。
+任何门禁失败都表示继续准备，不表示可以通过改文案、改 JSON 或
 手工上传来绕过。
 
 ## 本轮目标与边界
@@ -276,9 +277,11 @@ package identity，再用微软工具外部打包；不能把 NSIS 改后缀或�
 - `0.1.0-beta.21` 的 GitHub Release 同样永久保持零上传资产，不补传或复用。
 - `0.1.0-beta.22` 的 GitHub Release 也保持零上传资产；其 x64 MSIX 只能作为
   精确受保护 `main` 候选，经 Partner Center 单独提交和认证。
+- `0.1.0-beta.23` 是独立修复候选，不能复用 beta.22 的标签、包文件或发布证据；
+  新 GitHub Release 仍须零上传资产，MSIX `1.1.23.0` 单独完成认证。
 - 只有候选改动已通过 PR 合并到受保护的 `main`、目标门禁全部绿色，且外部
   blocker 已关闭后，才创建指向精确候选 commit 的
-  `v0.1.0-beta.22` annotated tag。
+  `v0.1.0-beta.23` annotated tag。
 - 确认 `reports/release/` 没有任何文件后，依次运行：
 
   ```powershell
@@ -291,9 +294,9 @@ package identity，再用微软工具外部打包；不能把 NSIS 改后缀或�
   check 和 GitHub controls，再直接发布并独立验证；本轮不存在需要重新下载和
   复核 SHA-256 的上传制品。
 
-- `npm run release:publish-preflight` 是 beta.22 之后某个独立、未使用版本的完整
-  Desktop/Web/Sync 多平台公开发行门禁，不得用于修改 beta.20、beta.21 或
-  beta.22，也
+- `npm run release:publish-preflight` 是 beta.23 之后某个独立、未使用版本的完整
+  Desktop/Web/Sync 多平台公开发行门禁，不得用于修改 beta.20、beta.21、beta.22
+  或复用 beta.23，也
   不是 Windows Store 候选的快捷通道。缺少 macOS/Linux 或正式 Desktop 证据
   时，它正确地保持失败。
 
