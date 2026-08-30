@@ -17,44 +17,38 @@ export function rustAuditAttemptPassed(result) {
   );
 }
 
-if (scriptPath.endsWith(basename(import.meta.url))) {
-  const attempts = [
-    ["audit", "--deny", "warnings"],
-    ["audit", "--deny", "warnings", "--no-fetch"],
-  ];
-
-  let passed = false;
-  for (const [index, args] of attempts.entries()) {
-    const result = spawnSync("cargo", args, {
-      cwd: resolve(import.meta.dirname, ".."),
-      encoding: "utf8",
-      env: {
-        ...process.env,
-        CARGO_TERM_COLOR: "never",
+export function auditRustLockfiles(runAudit = spawnSync) {
+  return ["Cargo.lock", "apps/desktop/src-tauri/Cargo.lock"].map((lockfile) => {
+    const result = runAudit(
+      "cargo",
+      ["audit", "--deny", "warnings", "--file", lockfile],
+      {
+        cwd: resolve(import.meta.dirname, ".."),
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          CARGO_TERM_COLOR: "never",
+        },
+        stdio: ["ignore", "pipe", "pipe"],
+        timeout: 180_000,
       },
-      stdio: ["ignore", "pipe", "pipe"],
-      timeout: 180_000,
-    });
-    if (result.stdout) {
-      process.stdout.write(result.stdout);
-    }
-    if (result.stderr) {
-      process.stderr.write(result.stderr);
-    }
-    if (rustAuditAttemptPassed(result)) {
-      passed = true;
-      break;
-    }
-    if (index === 0) {
-      console.warn(
-        "RustSec online audit was inconclusive; retrying against the freshly cached advisory database without network fetch.",
-      );
-    }
+    );
+    return { lockfile, result, passed: rustAuditAttemptPassed(result) };
+  });
+}
+
+if (scriptPath.endsWith(basename(import.meta.url))) {
+  const audits = auditRustLockfiles();
+  for (const { lockfile, result, passed } of audits) {
+    console.log(`${passed ? "PASS" : "FAIL"} Rust advisory audit: ${lockfile}`);
+    if (result.stdout) process.stdout.write(result.stdout);
+    if (result.stderr) process.stderr.write(result.stderr);
+    if (result.error) console.error(result.error.message);
   }
 
-  if (!passed) {
+  if (audits.some(({ passed }) => !passed)) {
     console.error(
-      "Strict RustSec gate failed: cargo audit exited unsuccessfully or emitted an error diagnostic.",
+      "Strict RustSec gate failed: every lockfile requires a successful online audit without error diagnostics. Fix reported issues or retry after restoring network access; cached-only results are not accepted.",
     );
     process.exit(1);
   }

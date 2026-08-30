@@ -567,7 +567,8 @@ function checkCiPublicReleaseWiring() {
     "npm run qa:mobile-public-env",
     "npm run qa:source-prerelease",
     "cargo install cargo-audit --version 0.22.2 --locked",
-    "cargo audit --deny warnings",
+    "node --test scripts/run-rust-advisory-gate.test.mjs",
+    "node scripts/run-rust-advisory-gate.mjs",
     "npm run release:sbom",
     "npm run release:sbom:verify",
     "npm run release:third-party-licenses",
@@ -599,6 +600,18 @@ function checkCiPublicReleaseWiring() {
   }
 
   const workflow = parseWorkflow(ci);
+  const rustJob = workflow?.jobs?.rust;
+  const rustAuditStep = rustJob?.steps?.find(
+    (step) => step?.run === "node scripts/run-rust-advisory-gate.mjs",
+  );
+  passIf(
+    isRecord(rustAuditStep) &&
+      !Object.hasOwn(rustAuditStep, "if") &&
+      !Object.hasOwn(rustAuditStep, "continue-on-error") &&
+      !Object.hasOwn(rustJob, "if") &&
+      !Object.hasOwn(rustJob, "continue-on-error"),
+    "CI Rust job requires the strict audit of both lockfiles without skipping failures",
+  );
   const publicReleaseJob = isRecord(
     workflow?.jobs?.["public-release-readiness"],
   )
