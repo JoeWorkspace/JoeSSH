@@ -244,7 +244,7 @@ export function validateBuildContext(env) {
     env.RUNNER_ENVIRONMENT === "github-hosted" &&
       env.RUNNER_OS === "Windows" &&
       env.RUNNER_ARCH === "X64" &&
-      env.ImageOS === "win25",
+      ["win25", "win25-vs2026"].includes(env.ImageOS),
     "Producer requires standard Windows 2025 x64 GitHub-hosted image.",
   );
   requireThat(

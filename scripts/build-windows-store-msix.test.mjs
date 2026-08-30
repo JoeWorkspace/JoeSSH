@@ -65,7 +65,7 @@ function contextEnv() {
     RUNNER_ENVIRONMENT: "github-hosted",
     RUNNER_OS: "Windows",
     RUNNER_ARCH: "X64",
-    ImageOS: "win25",
+    ImageOS: "win25-vs2026",
     GITHUB_RUN_ID: "1234",
     GITHUB_RUN_ATTEMPT: "1",
     RETENTION_DAYS: "14",
@@ -137,6 +137,13 @@ function file(path, bytes = "source-bound content") {
 
 test("context accepts only the exact protected dispatch source on standard Windows 2025", () => {
   assert.equal(validateBuildContext(contextEnv()).sha, sourceSha);
+  assert.equal(
+    validateBuildContext({ ...contextEnv(), ImageOS: "win25" }).sha,
+    sourceSha,
+  );
+  assert.throws(() =>
+    validateBuildContext({ ...contextEnv(), ImageOS: "win25-unreviewed" }),
+  );
   for (const [key, value] of Object.entries({
     GITHUB_ACTIONS: "false",
     GITHUB_EVENT_NAME: "pull_request",
