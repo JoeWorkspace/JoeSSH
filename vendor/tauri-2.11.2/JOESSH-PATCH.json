@@ -166,5 +166,8 @@
     "src/window/scripts/drag.js": "2d47d2e302512024af4ded95b89f8b1f5c8d83530d287c252052112901a59888"
   },
   "additionalFiles": {},
-  "licenseFiles": ["LICENSE_APACHE-2.0", "LICENSE_MIT"]
+  "licenseFiles": [
+    "LICENSE_APACHE-2.0",
+    "LICENSE_MIT"
+  ]
 }

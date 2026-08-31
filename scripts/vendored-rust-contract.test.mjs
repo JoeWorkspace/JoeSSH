@@ -100,6 +100,21 @@ test("verifies the real official backport, license and registry audit identity",
   ]);
 });
 
+test("byte-pinned vendor trees are excluded from automatic formatting", () => {
+  const ignored = new Set(
+    readFileSync(join(repositoryRoot, ".prettierignore"), "utf8")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith("#")),
+  );
+  for (const path of [packagePath, tauriPackagePath]) {
+    assert.ok(
+      ignored.has(`${path}/**`),
+      `${path} must stay byte-for-byte excluded from Prettier.`,
+    );
+  }
+});
+
 test("rejects tampering with the reviewed Tauri Store compatibility patch", (t) => {
   const root = fixture(t);
   const path = join(root, tauriPackagePath, "src/process.rs");
