@@ -1,12 +1,14 @@
 # Microsoft Store Listing Draft
 
-Status: pending listing reference for the distinct JoeSSH `0.1.0-beta.24`
+Status: pending listing reference for the distinct JoeSSH `0.1.0-beta.25`
 Microsoft Store replacement candidate. The package identity, protected-main
 source revision, MSIX hash, and Partner Center validation are not evidence until
-the exact `1.1.24.0` package is generated and recorded. The existing Store
+the exact `1.1.25.0` package is generated and recorded. The existing Store
 package is `1.1.22.0`; it does not prove certification or publication of this
 new candidate. The local `1.1.23.0` qualification attempt is superseded and
-must not be uploaded. Historical source records remain unchanged and
+must not be uploaded. The `1.1.24.0` package and its failed qualification
+evidence are also superseded, immutable, and ineligible for upload. Historical
+source records remain unchanged and
 unavailable for new binary uploads.
 
 This draft deliberately describes only the free Windows Community product that
@@ -42,7 +44,7 @@ fills and verifies its evidence columns.
 - Store listing title: `JoeSSH` for every locale; use descriptions and localized
   keywords for positioning.
 - Release maturity: Windows x64 Store replacement candidate, version
-  `0.1.0-beta.24` / MSIX `1.1.24.0`
+  `0.1.0-beta.25` / MSIX `1.1.25.0`
 - Offer: free Community desktop app; no ads or in-app purchases
 - Primary category: Developer tools
 - Supported device family: Windows desktop
@@ -50,7 +52,7 @@ fills and verifies its evidence columns.
 - Supported operating systems: Windows 10 and Windows 11
 - Pricing: Free
 - Package strategy: use the Store-re-signed, Store-hosted, Store-updated MSIX
-  route. Qualify the exact beta.24 bytes with the repaired offline WACK
+  route. Qualify the exact beta.25 bytes with the repaired offline WACK
   toolchain and clean-machine lifecycle checks before Partner Center upload.
 - Initial discoverability recommendation: direct-link-only until the signed
   candidate, support route, privacy route, and first external test cohort have
@@ -262,8 +264,8 @@ manifest can advance to final human review.
 - Copyright/trademark: use only the truthful owner/publisher information
   accepted by Partner Center; do not claim a registered trademark.
 - Developed by: use the truthful verified publisher display name.
-- What's new: use only the reviewed beta.24 maintenance text after it is bound
-  to the exact package; do not describe the superseded beta.23 attempt as
+- What's new: use only the reviewed beta.25 maintenance text after it is bound
+  to the exact package; do not describe the superseded beta.23 or beta.24 attempts as
   published.
 - Accessibility declaration: leave the voluntary declaration unchecked until
   the exact native candidate passes the complete Microsoft accessibility tool

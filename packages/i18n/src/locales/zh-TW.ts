@@ -81,8 +81,8 @@ export const zhTWComplete = {
   "desktop.safetyReasonHostShutdown": "會立即停止主機",
   "desktop.safetyReasonWindowsDestructive":
     "Windows 破壞性命令會影響檔案、磁碟或主機狀態",
-  "desktop.safetyReasonPowershellDestructive":
-    "PowerShell 破壞性命令會影響磁碟機、系統路徑、磁碟或主機電源狀態",
+  "desktop.safetyReasonWindowsAdminDestructive":
+    "Windows 破壞性命令會影響磁碟機、系統路徑、磁碟或主機電源狀態",
   "desktop.safetyReasonDropDatabase": "會刪除資料庫",
   "desktop.safetyReasonCommandSubstitution": "會嵌入可能執行任意內容的子命令",
   "desktop.context": "情境",

@@ -1157,6 +1157,7 @@ test("MSIX capability allowlist rejects extra base, UAP, and restricted capabili
 test("MSIX version is deterministically bound to the project version", () => {
   assert.equal(deriveMsixVersion("0.1.0-beta.10"), "1.1.10.0");
   assert.equal(deriveMsixVersion("0.1.0-beta.24"), "1.1.24.0");
+  assert.equal(deriveMsixVersion("0.1.0-beta.25"), "1.1.25.0");
   assert.equal(deriveMsixVersion("0.1.0"), "1.1.99.0");
   assert.throws(
     () => deriveMsixVersion("0.1.0-rc.1"),
@@ -1171,6 +1172,7 @@ test("MSIX version mapping preserves beta, stable, and next-patch order", () => 
     "0.1.0-beta.22",
     "0.1.0-beta.23",
     "0.1.0-beta.24",
+    "0.1.0-beta.25",
     "0.1.0-beta.98",
     "0.1.0",
     "0.1.1-beta.1",
@@ -1184,6 +1186,7 @@ test("MSIX version mapping preserves beta, stable, and next-patch order", () => 
     "1.1.22.0",
     "1.1.23.0",
     "1.1.24.0",
+    "1.1.25.0",
     "1.1.98.0",
     "1.1.99.0",
     "1.1.101.0",

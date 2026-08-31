@@ -89,8 +89,8 @@ export const ja = {
   "desktop.safetyReasonHostShutdown": "ホストをただちに停止します",
   "desktop.safetyReasonWindowsDestructive":
     "Windows の破壊的コマンドがファイル、ディスク、またはホスト状態を対象にします",
-  "desktop.safetyReasonPowershellDestructive":
-    "PowerShell の破壊的コマンドがドライブ、システムパス、ディスク、またはホスト電源状態を対象にします",
+  "desktop.safetyReasonWindowsAdminDestructive":
+    "Windows の破壊的コマンドがドライブ、システムパス、ディスク、またはホスト電源状態を対象にします",
   "desktop.safetyReasonDropDatabase": "データベースを削除します",
   "desktop.safetyReasonCommandSubstitution":
     "任意の内容を実行できるサブコマンドを埋め込みます",

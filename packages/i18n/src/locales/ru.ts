@@ -91,8 +91,8 @@ export const ru = {
   "desktop.safetyReasonHostShutdown": "немедленно останавливает хост",
   "desktop.safetyReasonWindowsDestructive":
     "разрушительная команда Windows затрагивает файлы, диски или состояние хоста",
-  "desktop.safetyReasonPowershellDestructive":
-    "разрушительная команда PowerShell затрагивает диск, системный путь, носитель или состояние питания хоста",
+  "desktop.safetyReasonWindowsAdminDestructive":
+    "разрушительная команда Windows затрагивает диск, системный путь, носитель или состояние питания хоста",
   "desktop.safetyReasonDropDatabase": "удаляет базу данных",
   "desktop.safetyReasonCommandSubstitution":
     "встраивает подкоманду, которая может выполнить что угодно",

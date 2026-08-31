@@ -182,7 +182,7 @@ describe("JoeSSH i18n", () => {
       "desktop.safetyReasonRootDownloadOverwrite",
       "desktop.safetyReasonHostShutdown",
       "desktop.safetyReasonWindowsDestructive",
-      "desktop.safetyReasonPowershellDestructive",
+      "desktop.safetyReasonWindowsAdminDestructive",
       "desktop.safetyReasonDropDatabase",
       "desktop.safetyReasonCommandSubstitution",
     ] as const;

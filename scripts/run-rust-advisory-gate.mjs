@@ -72,14 +72,20 @@ export function verifyResolvedRustSources(run = spawnSync) {
     }
     if (
       manifest === "apps/desktop/src-tauri/Cargo.toml" &&
-      (graphPackages.length !== 1 || graphPackages[0].name !== "glib")
+      (graphPackages.length !== 2 ||
+        JSON.stringify(graphPackages.map(({ name }) => name).sort()) !==
+          JSON.stringify(["glib", "tauri"]))
     )
       throw new Error(
-        "The resolved Tauri graph must contain the registered GLib backport",
+        "The resolved Tauri graph must contain the registered GLib and Tauri sources",
       );
     verified.push(...graphPackages);
   }
-  if (verified.length !== 1)
+  if (
+    verified.length !== 2 ||
+    JSON.stringify(verified.map(({ name }) => name).sort()) !==
+      JSON.stringify(["glib", "tauri"])
+  )
     throw new Error("Unexpected vendored packages in Rust workspaces");
   return verified;
 }

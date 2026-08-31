@@ -9,7 +9,13 @@ const PUBLIC_CARGO_PROPERTY_NAMES = new Set([
   "joessh:cargo:source",
   "joessh:cargo:patch-advisory",
   "joessh:cargo:patch-commit",
+  "joessh:cargo:patch-file",
+  "joessh:cargo:patch-kind",
   "joessh:cargo:patch-manifest-sha256",
+  "joessh:cargo:patch-merge-commit",
+  "joessh:cargo:patch-rationale",
+  "joessh:cargo:patch-tree-sha256",
+  "joessh:cargo:patch-upstream-issue",
   "joessh:cargo:patch-url",
   "joessh:cargo:upstream-sha256",
   "joessh:cargo:upstream-source",
@@ -454,17 +460,46 @@ function cargoComponent(packageEntry, lockEntries, label, context) {
 
 export function buildVendoredRustProvenance(record) {
   const { metadata } = record;
+  const files = metadata.patch.files.map(
+    ({ path, originalSha256, patchedSha256 }) => ({
+      path,
+      originalSha256,
+      patchedSha256,
+    }),
+  );
+  let patch;
+  if (metadata.patch.kind === "project-compatibility") {
+    patch = {
+      kind: "project-compatibility",
+      upstreamIssue: metadata.patch.upstreamIssue,
+      rationale: metadata.patch.rationale,
+      files,
+    };
+  } else if (
+    typeof metadata.patch.advisory === "string" &&
+    typeof metadata.patch.url === "string" &&
+    typeof metadata.patch.commit === "string" &&
+    typeof metadata.patch.mergeCommit === "string"
+  ) {
+    patch = {
+      kind: "security-backport",
+      advisory: metadata.patch.advisory,
+      url: metadata.patch.url,
+      commit: metadata.patch.commit,
+      mergeCommit: metadata.patch.mergeCommit,
+      files,
+    };
+  } else {
+    throw new Error(
+      `Vendored ${record.name}@${record.version} patch provenance kind is unsupported`,
+    );
+  }
   return {
     manifest: `${metadata.path}/JOESSH-PATCH.json`,
     manifestSha256: record.metadataSha256,
     treeSha256: record.treeSha256,
     upstream: { ...metadata.upstream },
-    patch: {
-      advisory: metadata.patch.advisory,
-      url: metadata.patch.url,
-      commit: metadata.patch.commit,
-      mergeCommit: metadata.patch.mergeCommit,
-    },
+    patch,
   };
 }
 
@@ -483,6 +518,59 @@ export function buildVendoredCargoComponent(packageEntry, record) {
   }
   const provenance = buildVendoredRustProvenance(record);
   const purl = `pkg:cargo/${encodeURIComponent(name)}@${encodeURIComponent(version)}`;
+  const patchReference =
+    provenance.patch.kind === "security-backport"
+      ? {
+          type: "other",
+          url: provenance.patch.url,
+          comment: `Security backport for ${provenance.patch.advisory}`,
+        }
+      : {
+          type: "other",
+          url: provenance.patch.upstreamIssue,
+          comment: `Project compatibility patch: ${provenance.patch.rationale}`,
+        };
+  const patchProperties = [
+    { name: "joessh:cargo:patch-kind", value: provenance.patch.kind },
+    ...(provenance.patch.kind === "security-backport"
+      ? [
+          {
+            name: "joessh:cargo:patch-advisory",
+            value: provenance.patch.advisory,
+          },
+          { name: "joessh:cargo:patch-url", value: provenance.patch.url },
+          {
+            name: "joessh:cargo:patch-commit",
+            value: provenance.patch.commit,
+          },
+          {
+            name: "joessh:cargo:patch-merge-commit",
+            value: provenance.patch.mergeCommit,
+          },
+        ]
+      : [
+          {
+            name: "joessh:cargo:patch-upstream-issue",
+            value: provenance.patch.upstreamIssue,
+          },
+          {
+            name: "joessh:cargo:patch-rationale",
+            value: provenance.patch.rationale,
+          },
+        ]),
+    ...provenance.patch.files.map((file) => ({
+      name: "joessh:cargo:patch-file",
+      value: JSON.stringify(file),
+    })),
+    {
+      name: "joessh:cargo:patch-manifest-sha256",
+      value: provenance.manifestSha256,
+    },
+    {
+      name: "joessh:cargo:patch-tree-sha256",
+      value: provenance.treeSha256,
+    },
+  ];
   return {
     "bom-ref": purl,
     externalReferences: [
@@ -495,11 +583,7 @@ export function buildVendoredCargoComponent(packageEntry, record) {
         type: "vcs",
         url: `${provenance.upstream.repository}/commit/${provenance.upstream.gitCommit}`,
       },
-      {
-        type: "other",
-        url: provenance.patch.url,
-        comment: `Backport for ${provenance.patch.advisory}`,
-      },
+      patchReference,
     ],
     hashes: [{ alg: "SHA-256", content: provenance.treeSha256 }],
     licenses: [{ expression: license }],
@@ -514,13 +598,7 @@ export function buildVendoredCargoComponent(packageEntry, record) {
         name: "joessh:cargo:upstream-sha256",
         value: provenance.upstream.sha256,
       },
-      { name: "joessh:cargo:patch-advisory", value: provenance.patch.advisory },
-      { name: "joessh:cargo:patch-url", value: provenance.patch.url },
-      { name: "joessh:cargo:patch-commit", value: provenance.patch.commit },
-      {
-        name: "joessh:cargo:patch-manifest-sha256",
-        value: provenance.manifestSha256,
-      },
+      ...patchProperties,
     ],
     purl,
     scope: "required",

@@ -86,8 +86,8 @@ export const ar = {
   "desktop.safetyReasonHostShutdown": "يوقف المضيف فورًا",
   "desktop.safetyReasonWindowsDestructive":
     "أمر Windows تدميري يستهدف الملفات أو الأقراص أو حالة المضيف",
-  "desktop.safetyReasonPowershellDestructive":
-    "أمر PowerShell تدميري يستهدف محركًا أو مسار نظام أو قرصًا أو حالة طاقة المضيف",
+  "desktop.safetyReasonWindowsAdminDestructive":
+    "أمر Windows تدميري يستهدف محركًا أو مسار نظام أو قرصًا أو حالة طاقة المضيف",
   "desktop.safetyReasonDropDatabase": "يحذف قاعدة بيانات",
   "desktop.safetyReasonCommandSubstitution": "يدمج أمرًا فرعيًا قد ينفذ أي شيء",
   "desktop.context": "السياق",

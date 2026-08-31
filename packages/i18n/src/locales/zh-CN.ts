@@ -149,8 +149,8 @@ export const zhCN = {
   "desktop.safetyReasonHostShutdown": "会立即停止主机",
   "desktop.safetyReasonWindowsDestructive":
     "Windows 破坏性命令会影响文件、磁盘或主机状态",
-  "desktop.safetyReasonPowershellDestructive":
-    "PowerShell 破坏性命令会影响驱动器、系统路径、磁盘或主机电源状态",
+  "desktop.safetyReasonWindowsAdminDestructive":
+    "Windows 破坏性命令会影响驱动器、系统路径、磁盘或主机电源状态",
   "desktop.safetyReasonDropDatabase": "会删除数据库",
   "desktop.safetyReasonCommandSubstitution": "会嵌入可执行任意内容的子命令",
   "desktop.context": "上下文",

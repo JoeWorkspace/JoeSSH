@@ -32,17 +32,19 @@ immutable zero-upload-asset Store source checkpoint. `0.1.0-beta.22`
 (`v0.1.0-beta.22`) remains unchanged as the source record for the existing
 `1.1.22.0` Store package. The `0.1.0-beta.23` source revision and local
 `1.1.23.0` package qualification evidence remain immutable, but that package is
-superseded and must not be submitted. `0.1.0-beta.24` is the replacement source
-revision for Microsoft Store x64 candidate `1.1.24.0`; its GitHub Release must
+superseded and must not be submitted. The `0.1.0-beta.24` source revision,
+`1.1.24.0` package, and failed qualification evidence also remain immutable;
+that package is superseded and must not be submitted. `0.1.0-beta.25` is the
+replacement source revision for Microsoft Store x64 candidate `1.1.25.0`; its GitHub Release must
 also have zero uploaded assets, and the Store package is delivered only through
 Partner Center after verification and certification. Version preparation does
 not establish that the new binary is published.
 A future full multi-platform public release must
 first bump every version surface and release-note path to a distinct, unused
-version after `0.1.0-beta.24`; its target remains Desktop, Web Admin, and the
+version after `0.1.0-beta.25`; its target remains Desktop, Web Admin, and the
 self-hosted Sync Service. Mobile device smoke stays a strict-release route.
 
-The beta.24 maintenance closeout may be represented by a source-only GitHub
+The beta.25 maintenance closeout may be represented by a source-only GitHub
 prerelease only after the Store candidate is fully qualified. Before tagging,
 the exact protected `main` commit must have passing required checks and a hosted
 source-producer run. A generic fail-closed verifier must already be reviewed in
@@ -59,7 +61,7 @@ source record. This narrow record does not satisfy or weaken
 `release:publish-preflight`; any later binary release must still pass the complete
 artifact, signing, checksum, SBOM, provenance, and evidence workflow below.
 
-After all beta.24 prerequisites above are evidenced, create and push only its
+After all beta.25 prerequisites above are evidenced, create and push only its
 single annotated source tag, confirm that `reports/release/` contains no files,
 then use the dedicated fail-closed entry point. This GitHub record remains
 zero-asset even though the same source revision is used for the separately
@@ -67,8 +69,8 @@ submitted Store package:
 
 ```bash
 REVIEWED_COMMIT="$(git rev-parse HEAD)"
-git tag -a v0.1.0-beta.24 -m "JoeSSH 0.1.0-beta.24 Source Preview and Store Maintenance Candidate"
-git push origin refs/tags/v0.1.0-beta.24:refs/tags/v0.1.0-beta.24
+git tag -a v0.1.0-beta.25 -m "JoeSSH 0.1.0-beta.25 Source Preview and Store Maintenance Candidate"
+git push origin refs/tags/v0.1.0-beta.25:refs/tags/v0.1.0-beta.25
 npm run release:source-prerelease -- --confirm-billing-ready --dry-run
 npm run release:source-prerelease -- --confirm-billing-ready
 npm run release:source-prerelease:verify
@@ -85,9 +87,9 @@ a file and cannot publish a full binary release.
 ## Recovery Flow
 
 The artifact-building and full-draft steps in this section apply only to a
-future distinct `FULL_RELEASE_VERSION` after beta.24. They must not be used to
+future distinct `FULL_RELEASE_VERSION` after beta.25. They must not be used to
 modify the permanent beta.20/beta.21/beta.22 source-only Releases, attach assets
-to beta.23 or beta.24, or replace the Partner Center-only binary route for these
+to beta.23, beta.24, or beta.25, or replace the Partner Center-only binary route for these
 Store versions.
 
 1. Create or locate a healthy clone of the canonical JoeSSH repository.
@@ -152,7 +154,7 @@ Store versions.
    protected `main` controls.
 
 7. For a later full binary release, choose a distinct unused version after
-   `0.1.0-beta.24`. Tag only after source QA is green, release evidence is
+   `0.1.0-beta.25`. Tag only after source QA is green, release evidence is
    complete, and the checks above are clean. Push that one annotated tag
    explicitly, then resolve the remote peeled tag and compare it with the
    reviewed commit:

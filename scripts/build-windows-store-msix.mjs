@@ -21,6 +21,7 @@ import {
 } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual, TextDecoder } from "node:util";
+import sax from "sax";
 import {
   assertMicrosoftStoreTauriConfig,
   assertMsixIdentityMatches,
@@ -70,6 +71,17 @@ export const STORE_MSIX_PROFILE = Object.freeze({
   minVersion: "10.0.17763.0",
   maxVersionTested: "10.0.22000.1",
 });
+const WINDOWS_APPLICATION_MANIFEST_NAMESPACE =
+  "urn:schemas-microsoft-com:asm.v1";
+const WINDOWS_APPLICATION_MANIFEST_IDENTITY = Object.freeze({
+  type: "win32",
+  name: STORE_MSIX_PROFILE.identifier,
+  version: "1.0.0.0",
+});
+const WINDOWS_SETTINGS_2005_NAMESPACE =
+  "http://schemas.microsoft.com/SMI/2005/WindowsSettings";
+const WINDOWS_SETTINGS_2016_NAMESPACE =
+  "http://schemas.microsoft.com/SMI/2016/WindowsSettings";
 const SCHEMAS = [
   "acl-manifests.json",
   "capabilities.json",
@@ -476,6 +488,171 @@ function xml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll("'", "&apos;");
 }
+
+const STORE_BLOCKED_PROCESS_LAUNCH_APIS = Object.freeze([
+  "CreateProcessW",
+  "ShellExecuteW",
+]);
+
+export function assertNoStoreProcessLaunchApiReferences(data) {
+  requireThat(
+    Buffer.isBuffer(data),
+    "Compiled Store executable inspection requires raw bytes.",
+  );
+  for (const api of STORE_BLOCKED_PROCESS_LAUNCH_APIS) {
+    for (const encoding of ["ascii", "utf16le"]) {
+      requireThat(
+        data.indexOf(Buffer.from(api, encoding)) === -1,
+        `Compiled Store executable retains the blocked process-launch API ${api}.`,
+      );
+    }
+  }
+  return {
+    absent: [...STORE_BLOCKED_PROCESS_LAUNCH_APIS],
+    encodings: ["ASCII", "UTF-16LE"],
+  };
+}
+
+export function assertNoStoreProcessLaunchApiImports(value) {
+  requireThat(
+    typeof value === "string",
+    "Compiled Store executable import inspection requires Dumpbin text.",
+  );
+  const normalized = value.replace(/\r\n?/g, "\n").trim();
+  requireThat(
+    /^Dump of file .+$/m.test(normalized) &&
+      normalized.includes("File Type: EXECUTABLE IMAGE") &&
+      normalized.includes("Section contains the following imports:") &&
+      /^ {2}Summary$/m.test(normalized),
+    "Compiled Store executable import inspection requires complete Dumpbin /imports output.",
+  );
+  for (const api of STORE_BLOCKED_PROCESS_LAUNCH_APIS) {
+    requireThat(
+      !new RegExp(`(^|\\s)${api}(?=\\s|$)`, "m").test(normalized),
+      `Compiled Store executable imports the blocked process-launch API ${api}.`,
+    );
+  }
+  return {
+    absent: [...STORE_BLOCKED_PROCESS_LAUNCH_APIS],
+    inspection: "MSVC Dumpbin /imports",
+    outputSha256: sha256(
+      normalized.replace(/^Dump of file .+$/m, "Dump of file <candidate>"),
+    ),
+  };
+}
+
+export function inspectWindowsApplicationManifest(value) {
+  requireThat(
+    typeof value === "string",
+    "Windows application manifest must be text.",
+  );
+  const document = value.charCodeAt(0) === 0xfeff ? value.slice(1) : value;
+  requireThat(
+    document.startsWith(
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    ),
+    "Windows application manifest must keep its canonical XML declaration.",
+  );
+
+  let depth = 0;
+  let root = null;
+  let firstAssemblyChild = null;
+  let definitionIdentity = null;
+  const settings = { dpiAware: [], dpiAwareness: [] };
+  let capture = null;
+  const parser = sax.parser(true, { xmlns: true });
+  parser.onopentag = (node) => {
+    if (depth === 0) {
+      root = node;
+    } else if (depth === 1 && firstAssemblyChild === null) {
+      firstAssemblyChild = { local: node.local, uri: node.uri };
+    }
+
+    if (
+      depth === 1 &&
+      node.local === "assemblyIdentity" &&
+      node.uri === WINDOWS_APPLICATION_MANIFEST_NAMESPACE
+    ) {
+      requireThat(
+        definitionIdentity === null,
+        "Windows application manifest must contain one definition identity.",
+      );
+      definitionIdentity = Object.fromEntries(
+        Object.values(node.attributes).map((attribute) => [
+          attribute.local,
+          attribute.value,
+        ]),
+      );
+    }
+
+    let setting = null;
+    if (
+      node.local === "dpiAware" &&
+      node.uri === WINDOWS_SETTINGS_2005_NAMESPACE
+    )
+      setting = "dpiAware";
+    if (
+      node.local === "dpiAwareness" &&
+      node.uri === WINDOWS_SETTINGS_2016_NAMESPACE
+    )
+      setting = "dpiAwareness";
+    if (setting) {
+      requireThat(
+        capture === null && settings[setting].length === 0,
+        `Windows application manifest must contain one ${setting} setting.`,
+      );
+      capture = { depth, setting, value: "" };
+    }
+    depth += 1;
+  };
+  parser.ontext = (text) => {
+    if (capture) capture.value += text;
+  };
+  parser.onclosetag = () => {
+    depth -= 1;
+    if (capture?.depth === depth) {
+      settings[capture.setting].push(capture.value.trim());
+      capture = null;
+    }
+  };
+  parser.write(document).close();
+
+  requireThat(
+    root?.local === "assembly" &&
+      root.uri === WINDOWS_APPLICATION_MANIFEST_NAMESPACE &&
+      Object.values(root.attributes).some(
+        (attribute) =>
+          attribute.local === "manifestVersion" && attribute.value === "1.0",
+      ),
+    "Windows application manifest must have the Win32 assembly root.",
+  );
+  requireThat(
+    firstAssemblyChild?.local === "assemblyIdentity" &&
+      firstAssemblyChild.uri === WINDOWS_APPLICATION_MANIFEST_NAMESPACE,
+    "Definition assemblyIdentity must be the first assembly child.",
+  );
+  requireThat(
+    isDeepStrictEqual(
+      Object.keys(definitionIdentity ?? {}).sort(),
+      Object.keys(WINDOWS_APPLICATION_MANIFEST_IDENTITY).sort(),
+    ) &&
+      isDeepStrictEqual(
+        definitionIdentity,
+        WINDOWS_APPLICATION_MANIFEST_IDENTITY,
+      ),
+    "Windows application definition identity must exactly match the reviewed type, name and version without processorArchitecture.",
+  );
+  requireThat(
+    isDeepStrictEqual(settings.dpiAware, ["true"]) &&
+      isDeepStrictEqual(settings.dpiAwareness, ["PerMonitorV2"]),
+    "Windows application manifest must declare true and PerMonitorV2 DPI awareness.",
+  );
+  return {
+    definitionIdentity,
+    dpiAware: settings.dpiAware[0],
+    dpiAwareness: settings.dpiAwareness[0],
+  };
+}
 export function createStoreManifest(partner, version, languages) {
   requireThat(
     languages.length === 15,
@@ -525,16 +702,55 @@ export function findMakeAppx(env = process.env, selectedVersion) {
     .filter(
       (version) =>
         /^10\.0\.\d+\.0$/.test(version) &&
-        existsSync(join(sdkRoot, version, "x64", "makeappx.exe")),
+        existsSync(join(sdkRoot, version, "x64", "makeappx.exe")) &&
+        existsSync(join(sdkRoot, version, "x64", "mt.exe")),
     )
     .sort((a, b) => Number(b.split(".")[2]) - Number(a.split(".")[2]));
-  requireThat(versions.length > 0, "Windows SDK MakeAppx is required.");
+  requireThat(
+    versions.length > 0,
+    "Windows SDK x64 MakeAppx and Mt are required.",
+  );
   const version = selectedVersion ?? versions[0];
   requireThat(
     versions.includes(version),
-    "Selected compiler Windows SDK must provide x64 MakeAppx.",
+    "Selected compiler Windows SDK must provide x64 MakeAppx and Mt.",
   );
-  return { path: join(sdkRoot, version, "x64", "makeappx.exe"), version };
+  return {
+    path: join(sdkRoot, version, "x64", "makeappx.exe"),
+    mtPath: join(sdkRoot, version, "x64", "mt.exe"),
+    version,
+  };
+}
+
+export function validateEmbeddedWindowsApplicationManifest({
+  mt,
+  executable,
+  extractedManifest,
+}) {
+  requireThat(
+    !existsSync(extractedManifest),
+    "Extracted Windows application manifest path must be fresh.",
+  );
+  run(mt, [
+    `-inputresource:${executable};#1`,
+    `-out:${extractedManifest}`,
+    "-validate_manifest",
+    "-nologo",
+  ]);
+  const contract = inspectWindowsApplicationManifest(
+    readFileSync(extractedManifest, "utf8"),
+  );
+  const evidence = fileEvidence(
+    dirname(extractedManifest),
+    basename(extractedManifest),
+  );
+  return {
+    resourceType: "RT_MANIFEST",
+    resourceId: 1,
+    ...contract,
+    sha256: evidence.sha256,
+    sizeBytes: evidence.sizeBytes,
+  };
 }
 export function verifyPackageRoundTrip(stage, unpacked) {
   const before = treeEvidence(stage);
@@ -697,6 +913,12 @@ export function buildWindowsStoreMsix(env = process.env, root = ROOT) {
       identity.productName === "JoeSSH",
     "Existing application identifier and product name must not change.",
   );
+  const nativeApplicationManifestSource = inspectWindowsApplicationManifest(
+    readFileSync(
+      resolve(root, "apps/desktop/src-tauri/windows-app-manifest.xml"),
+      "utf8",
+    ),
+  );
   assertMicrosoftStoreTauriConfig(
     json(
       resolve(root, "apps/desktop/src-tauri/tauri.microsoftstore.conf.json"),
@@ -724,8 +946,10 @@ export function buildWindowsStoreMsix(env = process.env, root = ROOT) {
   mkdirSync(work); // No reuse of stale output, uploaded binaries, or earlier builds.
   const stage = join(work, "package");
   const evidenceRoot = join(work, "evidence");
+  const nativeManifestVerification = join(work, "native-manifest-verification");
   mkdirSync(stage);
   mkdirSync(evidenceRoot);
+  mkdirSync(nativeManifestVerification);
   const ci = json(join(temporaryRoot, "joessh-store-ci.json"));
   requireThat(
     ci.sourceSha === context.sha &&
@@ -769,6 +993,13 @@ export function buildWindowsStoreMsix(env = process.env, root = ROOT) {
     "x64",
     "link.exe",
   );
+  const dumpbin = join(
+    native.VCToolsInstallDir,
+    "bin",
+    "Hostx64",
+    "x64",
+    "dumpbin.exe",
+  );
   buildEnv.CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER = linker;
   const rustc = run("rustup", ["which", "rustc"], { env: buildEnv });
   const cargo = run("rustup", ["which", "cargo"], { env: buildEnv });
@@ -801,10 +1032,12 @@ export function buildWindowsStoreMsix(env = process.env, root = ROOT) {
       version: native.VCToolsVersion,
       compilerSha256: toolHash(cl),
       linkerSha256: toolHash(linker),
+      dumpbinSha256: toolHash(dumpbin),
     },
     windowsSdk: {
       version: sdk.version,
       makeAppxSha256: toolHash(sdk.path),
+      mtSha256: toolHash(sdk.mtPath),
     },
     runner: {
       image: env.ImageOS,
@@ -871,9 +1104,34 @@ export function buildWindowsStoreMsix(env = process.env, root = ROOT) {
     const payload = fileEvidence(dirname(payloadPath), basename(payloadPath), {
       requireSingleLink: false,
     });
+    const payloadBytes = readFileSync(payloadPath);
     requireThat(
-      inspectPortableExecutable(readFileSync(payloadPath)).machine === "x64",
+      inspectPortableExecutable(payloadBytes).machine === "x64",
       "Compiled executable must be Windows x64 PE.",
+    );
+    const compiledProcessLaunchApiGate = {
+      nameBytes: assertNoStoreProcessLaunchApiReferences(payloadBytes),
+      namedImports: assertNoStoreProcessLaunchApiImports(
+        run(dumpbin, ["/nologo", "/imports", payloadPath], { env: buildEnv }),
+      ),
+    };
+    const compiledNativeApplicationManifest =
+      validateEmbeddedWindowsApplicationManifest({
+        mt: sdk.mtPath,
+        executable: payloadPath,
+        extractedManifest: join(nativeManifestVerification, "compiled.xml"),
+      });
+    requireThat(
+      isDeepStrictEqual(
+        {
+          definitionIdentity:
+            compiledNativeApplicationManifest.definitionIdentity,
+          dpiAware: compiledNativeApplicationManifest.dpiAware,
+          dpiAwareness: compiledNativeApplicationManifest.dpiAwareness,
+        },
+        nativeApplicationManifestSource,
+      ),
+      "Embedded RT_MANIFEST differs from the reviewed Windows application manifest contract.",
     );
     const targetExe = resolve(stage, STORE_MSIX_PROFILE.executable);
     mkdirSync(dirname(targetExe), { recursive: true });
@@ -930,6 +1188,37 @@ export function buildWindowsStoreMsix(env = process.env, root = ROOT) {
           legal.sha256,
       "Unpacked executable and notices must equal fresh source build outputs.",
     );
+    const unpackedNativeApplicationManifest =
+      validateEmbeddedWindowsApplicationManifest({
+        mt: sdk.mtPath,
+        executable: resolve(unpacked, STORE_MSIX_PROFILE.executable),
+        extractedManifest: join(nativeManifestVerification, "unpacked.xml"),
+      });
+    requireThat(
+      isDeepStrictEqual(
+        compiledNativeApplicationManifest,
+        unpackedNativeApplicationManifest,
+      ),
+      "Unpacked executable RT_MANIFEST differs from the validated source build output.",
+    );
+    const unpackedExecutable = resolve(unpacked, STORE_MSIX_PROFILE.executable);
+    const unpackedProcessLaunchApiGate = {
+      nameBytes: assertNoStoreProcessLaunchApiReferences(
+        readFileSync(unpackedExecutable),
+      ),
+      namedImports: assertNoStoreProcessLaunchApiImports(
+        run(dumpbin, ["/nologo", "/imports", unpackedExecutable], {
+          env: buildEnv,
+        }),
+      ),
+    };
+    requireThat(
+      isDeepStrictEqual(
+        compiledProcessLaunchApiGate,
+        unpackedProcessLaunchApiGate,
+      ),
+      "Unpacked executable process-launch API gate differs from the source build output.",
+    );
     for (const snapshot of schemaSnapshots) {
       fileEvidence(root, snapshot.path);
       writeFileSync(resolve(root, snapshot.path), snapshot.bytes);
@@ -976,6 +1265,15 @@ export function buildWindowsStoreMsix(env = process.env, root = ROOT) {
       ci,
       packagedFiles,
       manifestSha256: fileEvidence(stage, "AppxManifest.xml").sha256,
+      nativeApplicationManifest: {
+        source: nativeApplicationManifestSource,
+        compiled: compiledNativeApplicationManifest,
+        unpacked: unpackedNativeApplicationManifest,
+      },
+      processLaunchApiGate: {
+        compiled: compiledProcessLaunchApiGate,
+        unpacked: unpackedProcessLaunchApiGate,
+      },
       frontend: {
         profile: "microsoft-store",
         files: treeEvidence(resolve(root, "apps/desktop/dist")),
@@ -992,6 +1290,8 @@ export function buildWindowsStoreMsix(env = process.env, root = ROOT) {
         makeAppxPackAndUnpack: true,
         byteExactPayloadRoundTrip: true,
         allStoreSurfaceChecks: true,
+        embeddedRtManifestMtStrict: true,
+        blockedProcessLaunchApiNamesAndNamedImportsAbsent: true,
       },
       publication: {
         authenticode: "unsigned-awaiting-Microsoft-Store",

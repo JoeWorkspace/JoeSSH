@@ -91,8 +91,8 @@ export const ptBR = {
   "desktop.safetyReasonHostShutdown": "interrompe o host imediatamente",
   "desktop.safetyReasonWindowsDestructive":
     "comando destrutivo do Windows mira arquivos, discos ou estado do host",
-  "desktop.safetyReasonPowershellDestructive":
-    "comando destrutivo do PowerShell mira uma unidade, caminho do sistema, disco ou estado de energia do host",
+  "desktop.safetyReasonWindowsAdminDestructive":
+    "comando destrutivo do Windows mira uma unidade, caminho do sistema, disco ou estado de energia do host",
   "desktop.safetyReasonDropDatabase": "remove um banco de dados",
   "desktop.safetyReasonCommandSubstitution":
     "embute um subcomando que poderia executar qualquer coisa",

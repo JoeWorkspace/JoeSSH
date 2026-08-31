@@ -59,7 +59,7 @@ terminal output in an issue or screenshot.
 The Windows app is available from the Microsoft Store. The project remains a
 Public Beta: evaluate it for your workflow and keep backups before changing
 important files. The beta.20 through beta.22 GitHub prereleases remain
-source-only. Beta.23 and beta.24 are Store-candidate source revisions; GitHub
+source-only. Beta.23 through beta.25 are Store-candidate source revisions; GitHub
 source records do not carry Windows installers. Unsigned CI bundles are for
 staging and installation testing, not public distribution.
 

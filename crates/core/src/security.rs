@@ -138,8 +138,8 @@ pub fn detect_dangerous_command(command: &str) -> Option<DangerousCommandMatch> 
 
     if matches_remote_shell_pipe(&lower) {
         return Some(command_match(
-            "curl|sh",
-            "pipes downloaded content into a shell",
+            "remote pipeline",
+            "pipes downloaded or decoded content into another program",
             DangerousCommandAction::Block,
         ));
     }
@@ -164,14 +164,6 @@ pub fn detect_dangerous_command(command: &str) -> Option<DangerousCommandMatch> 
         return Some(command_match(
             "windows destructive",
             "destructive Windows filesystem or disk command",
-            DangerousCommandAction::Block,
-        ));
-    }
-
-    if matches_powershell_destructive(&lower) {
-        return Some(command_match(
-            "powershell destructive",
-            "destructive PowerShell filesystem or disk command",
             DangerousCommandAction::Block,
         ));
     }
@@ -318,14 +310,22 @@ fn matches_firewall_flush(command: &str) -> bool {
 }
 
 fn matches_remote_shell_pipe(command: &str) -> bool {
-    (command.contains("curl ") || command.contains("wget ") || command.contains("base64 "))
-        && (command.contains("| sh")
-            || command.contains("| bash")
-            || command.contains("| zsh")
-            || command.contains("| dash")
-            || command.contains("| ksh")
-            || command.contains("| sudo sh")
-            || command.contains("| sudo bash"))
+    let segments = command.split('|').map(str::trim).collect::<Vec<_>>();
+    segments.windows(2).any(|pair| {
+        !pair[1].is_empty()
+            && (contains_command_token(pair[0], "curl")
+                || contains_command_token(pair[0], "wget")
+                || (contains_command_token(pair[0], "base64")
+                    && pair[0]
+                        .split_whitespace()
+                        .any(|token| token == "-d" || token == "--decode")))
+    })
+}
+
+fn contains_command_token(segment: &str, expected: &str) -> bool {
+    segment
+        .split_whitespace()
+        .any(|token| token.rsplit('/').next() == Some(expected))
 }
 
 fn matches_root_download_overwrite(command: &str) -> bool {
@@ -367,10 +367,7 @@ fn matches_windows_destructive(command: &str) -> bool {
                 || command.contains("%systemroot%")
                 || command.contains("%windir%")
                 || command.contains("\\\\")))
-}
-
-fn matches_powershell_destructive(command: &str) -> bool {
-    command.contains("clear-disk")
+        || command.contains("clear-disk")
         || command.contains("format-volume")
         || command.contains("initialize-disk")
         || command.contains("remove-partition")

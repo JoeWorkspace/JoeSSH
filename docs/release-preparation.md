@@ -1,13 +1,14 @@
-# JoeSSH 0.1.0-beta.24 Store 修复候选发布准备手册
+# JoeSSH 0.1.0-beta.25 Store 修复候选发布准备手册
 
 > `v0.1.0-beta.18` 是仅有远端标签的历史预检点，`v0.1.0-beta.20`、
 > `v0.1.0-beta.21` 与 `v0.1.0-beta.22` 的 GitHub 记录永久保持零上传资产；这些历史版本
 > 都不得删除、移动、补传二进制或复用。`0.1.0-beta.23` / MSIX `1.1.23.0`
-> 本地资格验证尝试也必须保留且不得提交。本手册只操作新的
-> `v0.1.0-beta.24` 候选。
+> 本地资格验证尝试也必须保留且不得提交。`0.1.0-beta.24` / MSIX
+> `1.1.24.0` 的源码与失败资格验证证据同样保持不可变，不得提交或复用。本手册
+> 只操作新的 `v0.1.0-beta.25` 候选。
 
 本手册是个人维护者的 Windows-first 收口入口。当前代码版本是
-`0.1.0-beta.24` 候选，映射 MSIX `1.1.24.0`：GitHub 侧仍是零上传资产的 source
+`0.1.0-beta.25` 候选，映射 MSIX `1.1.25.0`：GitHub 侧仍是零上传资产的 source
 prerelease，唯一二进制交付路径是 Partner Center 中单独提交的 MSIX。现有
 `1.1.22.0` 商店包不代表这个新版本已构建、获批或发布，也不代表付费版。
 任何门禁失败都表示继续准备，不表示可以通过改文案、改 JSON 或
@@ -203,10 +204,10 @@ Stage B 仍是明确 No-Go。可信 Authenticode、时间戳、Defender、干净
 
 ## 5. Microsoft Store 候选
 
-MSIX 可行性阶段已经结束。beta.24 的正式主路径是由受保护 `main` 的精确源码
+MSIX 可行性阶段已经结束。beta.25 的正式主路径是由受保护 `main` 的精确源码
 生成 Store-unsigned MSIX，再分别完成签名 provenance、hosted candidate 验证、
 独立 native qualification 和 Partner Center 认证。旧 MSIX Packaging Tool/Sandbox
-转换脚本只保留作隔离诊断，不得作为正式 beta.24 producer 或复用 beta.23 包：
+转换脚本只保留作隔离诊断，不得作为正式 beta.25 producer 或复用 beta.23/beta.24 包：
 
 1. 本次发布已经确认由无公司的个人维护者以免费、开源、非商业 Community
    项目发布，因此使用 Individual onboarding。完成个人身份验证后，法定发布者
@@ -310,11 +311,13 @@ SDK 版本与工具 hash 写入 predicate；不能把 NSIS 改后缀、
   精确受保护 `main` 候选，经 Partner Center 单独提交和认证。
 - `0.1.0-beta.23` / MSIX `1.1.23.0` 是已被替代的本地资格验证尝试；保留其
   失败证据，不提交、不修改，也不复用它的包文件或验证结论。
-- `0.1.0-beta.24` 是新的独立修复候选；GitHub Release 仍须零上传资产，
-  MSIX `1.1.24.0` 单独完成资格验证和认证。
+- `0.1.0-beta.24` / MSIX `1.1.24.0` 的 source producer 与失败资格验证证据保持
+  不可变；该包已被替代，不提交、不修改，也不复用。
+- `0.1.0-beta.25` 是新的独立修复候选；GitHub Release 仍须零上传资产，
+  MSIX `1.1.25.0` 单独完成资格验证和认证。
 - 只有候选改动已通过 PR 合并到受保护的 `main`、目标门禁全部绿色，且外部
   blocker 已关闭后，才创建指向精确候选 commit 的
-  `v0.1.0-beta.24` annotated tag。
+  `v0.1.0-beta.25` annotated tag。
 - 确认 `reports/release/` 没有任何文件后，依次运行：
 
   ```powershell
@@ -327,9 +330,9 @@ SDK 版本与工具 hash 写入 predicate；不能把 NSIS 改后缀、
   check 和 GitHub controls，再直接发布并独立验证；本轮不存在需要重新下载和
   复核 SHA-256 的上传制品。
 
-- `npm run release:publish-preflight` 是 beta.24 之后某个独立、未使用版本的完整
+- `npm run release:publish-preflight` 是 beta.25 之后某个独立、未使用版本的完整
   Desktop/Web/Sync 多平台公开发行门禁，不得用于修改 beta.20、beta.21、beta.22
-  或复用 beta.23/beta.24，也
+  或复用 beta.23/beta.24/beta.25，也
   不是 Windows Store 候选的快捷通道。缺少 macOS/Linux 或正式 Desktop 证据
   时，它正确地保持失败。
 

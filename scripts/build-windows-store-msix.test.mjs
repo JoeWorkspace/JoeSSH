@@ -21,17 +21,21 @@ import {
   STORE_CI_JOBS,
   STORE_MSIX_PROFILE,
   STORE_SOURCE_BINDINGS,
+  assertNoStoreProcessLaunchApiImports,
+  assertNoStoreProcessLaunchApiReferences,
   assertPngDimensions,
   createStoreManifest,
   decodePartnerIdentity,
   fileEvidence,
   findMakeAppx,
+  inspectWindowsApplicationManifest,
   nativeBuildEnvironment,
   packAndVerifyMsix,
   run,
   treeEvidence,
   validateBuildContext,
   validateCiEvidence,
+  validateEmbeddedWindowsApplicationManifest,
   verifyLatestMainCi,
   verifyPackageRoundTrip,
 } from "./build-windows-store-msix.mjs";
@@ -40,10 +44,65 @@ import { readWindowsStoreManifestLanguageContract } from "./windows-store-langua
 
 const root = resolve(import.meta.dirname, "..");
 
+test("Store source build rejects blocked process-launch API names and named imports", () => {
+  const imports = (entry) =>
+    `Dump of file C:\\candidate.exe\n\nFile Type: EXECUTABLE IMAGE\n\n  Section contains the following imports:\n\n    KERNEL32.dll\n             ${entry}\n\n  Summary\n\n        1000 .text\n`;
+  const clean = assertNoStoreProcessLaunchApiReferences(
+    Buffer.from("ordinary Store executable bytes", "utf8"),
+  );
+  assert.deepEqual(clean, {
+    absent: ["CreateProcessW", "ShellExecuteW"],
+    encodings: ["ASCII", "UTF-16LE"],
+  });
+  for (const api of ["CreateProcessW", "ShellExecuteW"]) {
+    for (const encoding of ["ascii", "utf16le"]) {
+      assert.throws(
+        () =>
+          assertNoStoreProcessLaunchApiReferences(
+            Buffer.concat([
+              Buffer.from("prefix"),
+              Buffer.from(api, encoding),
+              Buffer.from("suffix"),
+            ]),
+          ),
+        new RegExp(api),
+      );
+    }
+    assert.throws(
+      () => assertNoStoreProcessLaunchApiImports(imports(`123 ${api}`)),
+      new RegExp(api),
+    );
+  }
+  const namedImports = assertNoStoreProcessLaunchApiImports(
+    imports("123 GetCurrentProcessId"),
+  );
+  assert.deepEqual(namedImports.absent, ["CreateProcessW", "ShellExecuteW"]);
+  assert.equal(namedImports.inspection, "MSVC Dumpbin /imports");
+  assert.match(namedImports.outputSha256, /^[a-f0-9]{64}$/);
+  assert.throws(
+    () => assertNoStoreProcessLaunchApiImports(""),
+    /complete Dumpbin/,
+  );
+});
+
 test("Store source evidence binds and validates the native Windows manifest", () => {
   const manifestPath = "apps/desktop/src-tauri/windows-app-manifest.xml";
   assert.ok(STORE_SOURCE_BINDINGS.includes("apps/desktop/src-tauri/build.rs"));
   assert.ok(STORE_SOURCE_BINDINGS.includes(manifestPath));
+  const manifest = readFileSync(resolve(root, manifestPath), "utf8");
+  assert.match(
+    manifest,
+    /^<\?xml version="1\.0" encoding="UTF-8" standalone="yes"\?>/,
+  );
+  assert.deepEqual(inspectWindowsApplicationManifest(manifest), {
+    definitionIdentity: {
+      type: "win32",
+      name: "dev.atlasterm.joessh",
+      version: "1.0.0.0",
+    },
+    dpiAware: "true",
+    dpiAwareness: "PerMonitorV2",
+  });
 
   const values = {};
   let activeSetting = null;
@@ -81,11 +140,35 @@ test("Store source evidence binds and validates the native Windows manifest", ()
   parser.onclosetag = () => {
     activeSetting = null;
   };
-  parser.write(readFileSync(resolve(root, manifestPath), "utf8")).close();
+  parser.write(manifest).close();
 
   assert.equal(values.dpiAware?.trim(), "true");
   assert.equal(values.dpiAwareness?.trim(), "PerMonitorV2");
   assert.equal(commonControlsVersion, "6.0.0.0");
+});
+
+test("native Windows manifest rejects noncanonical definition identity variants", () => {
+  const manifest = readFileSync(
+    resolve(root, "apps/desktop/src-tauri/windows-app-manifest.xml"),
+    "utf8",
+  );
+  assert.throws(
+    () =>
+      inspectWindowsApplicationManifest(
+        manifest.replace(/^<\?xml[^\n]+\n/u, ""),
+      ),
+    /XML declaration/,
+  );
+  assert.throws(
+    () =>
+      inspectWindowsApplicationManifest(
+        manifest.replace(
+          'version="1.0.0.0"',
+          'version="1.0.0.0" processorArchitecture="*"',
+        ),
+      ),
+    /without processorArchitecture/,
+  );
 });
 
 test("successful tool diagnostics never become part of an executable path", () => {
@@ -528,6 +611,10 @@ test("manifest preserves upgrade identity, OS floor, legal resource path and all
     createStoreManifest(partner, "0.1.0-beta.24", languages),
     /Version="1.1.24.0"/,
   );
+  assert.match(
+    createStoreManifest(partner, "0.1.0-beta.25", languages),
+    /Version="1.1.25.0"/,
+  );
   assert.throws(
     () => createStoreManifest(partner, "0.1.0-beta.23", languages.slice(1)),
     /15/,
@@ -580,17 +667,70 @@ test(
     const native = nativeBuildEnvironment(process.env);
     assert.match(native.VCToolsVersion, /^\d+\.\d+\.\d+/);
     const sdkVersion = native.WindowsSDKVersion.replaceAll("\\", "");
-    assert.equal(findMakeAppx(process.env, sdkVersion).version, sdkVersion);
+    const sdk = findMakeAppx(process.env, sdkVersion);
+    assert.equal(sdk.version, sdkVersion);
+    assert.match(
+      fileEvidence(dirname(sdk.mtPath), "mt.exe", { requireSingleLink: false })
+        .sha256,
+      /^[a-f0-9]{64}$/,
+    );
     const compiler = join(native.VCToolsInstallDir, "bin/Hostx64/x64/cl.exe");
+    const dumpbin = join(
+      native.VCToolsInstallDir,
+      "bin/Hostx64/x64/dumpbin.exe",
+    );
     assert.match(
       fileEvidence(dirname(compiler), "cl.exe", { requireSingleLink: false })
         .sha256,
+      /^[a-f0-9]{64}$/,
+    );
+    assert.match(
+      fileEvidence(dirname(dumpbin), "dumpbin.exe", {
+        requireSingleLink: false,
+      }).sha256,
       /^[a-f0-9]{64}$/,
     );
     assert.throws(
       () => findMakeAppx(process.env, "10.0.1.0"),
       /Selected compiler/,
     );
+  },
+);
+
+test(
+  "Windows SDK Mt strictly validates the source and embedded RT_MANIFEST definition identity",
+  { skip: process.platform !== "win32" },
+  (t) => {
+    const directory = temporary(t);
+    const manifest = resolve(
+      root,
+      "apps/desktop/src-tauri/windows-app-manifest.xml",
+    );
+    const sdk = findMakeAppx();
+    run(sdk.mtPath, ["-manifest", manifest, "-validate_manifest", "-nologo"]);
+
+    const executable = join(directory, "fixture.exe");
+    copyFileSync(process.execPath, executable);
+    run(sdk.mtPath, [
+      "-manifest",
+      manifest,
+      `-outputresource:${executable};#1`,
+      "-nologo",
+    ]);
+    const validated = validateEmbeddedWindowsApplicationManifest({
+      mt: sdk.mtPath,
+      executable,
+      extractedManifest: join(directory, "embedded.manifest"),
+    });
+    assert.equal(validated.resourceType, "RT_MANIFEST");
+    assert.equal(validated.resourceId, 1);
+    assert.deepEqual(validated.definitionIdentity, {
+      type: "win32",
+      name: "dev.atlasterm.joessh",
+      version: "1.0.0.0",
+    });
+    assert.equal(validated.dpiAwareness, "PerMonitorV2");
+    assert.match(validated.sha256, /^[a-f0-9]{64}$/);
   },
 );
 

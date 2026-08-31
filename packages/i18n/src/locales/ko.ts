@@ -87,8 +87,8 @@ export const ko = {
   "desktop.safetyReasonHostShutdown": "호스트를 즉시 중지합니다",
   "desktop.safetyReasonWindowsDestructive":
     "Windows 파괴적 명령이 파일, 디스크 또는 호스트 상태를 대상으로 합니다",
-  "desktop.safetyReasonPowershellDestructive":
-    "PowerShell 파괴적 명령이 드라이브, 시스템 경로, 디스크 또는 호스트 전원 상태를 대상으로 합니다",
+  "desktop.safetyReasonWindowsAdminDestructive":
+    "Windows 파괴적 명령이 드라이브, 시스템 경로, 디스크 또는 호스트 전원 상태를 대상으로 합니다",
   "desktop.safetyReasonDropDatabase": "데이터베이스를 삭제합니다",
   "desktop.safetyReasonCommandSubstitution":
     "무엇이든 실행할 수 있는 하위 명령을 포함합니다",

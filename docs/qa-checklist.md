@@ -253,11 +253,12 @@
   prereleases. Beta.22 also has zero GitHub upload assets; its only binary route
   is the exact x64 MSIX submitted through Partner Center. The beta.23
   `1.1.23.0` qualification attempt is superseded and must not be submitted.
-  Beta.24 preserves the zero-GitHub-assets boundary for its distinct MSIX
-  `1.1.24.0` replacement candidate. The other binary package checks below are
+  The beta.24 `1.1.24.0` qualification attempt is also superseded and remains
+  immutable. Beta.25 preserves the zero-GitHub-assets boundary for its distinct
+  MSIX `1.1.25.0` replacement candidate. The other binary package checks below are
   internal validation only for those source trees;
   full multi-platform binary publication requires a distinct unused
-  `FULL_RELEASE_VERSION` after beta.24 and a fresh pass through the complete
+  `FULL_RELEASE_VERSION` after beta.25 and a fresh pass through the complete
   artifact gate.
 - Release machines must run `npm run release:publish-preflight` after Desktop,
   Web Admin, Sync, and SBOM artifacts are generated; this command verifies the

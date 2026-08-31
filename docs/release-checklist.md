@@ -1,7 +1,7 @@
 # JoeSSH Public Beta Release Checklist
 
 This checklist defines the full public beta bar for the next distinct
-multi-platform release version after `0.1.0-beta.24`. Beta.24 is reserved for a
+multi-platform release version after `0.1.0-beta.25`. Beta.25 is reserved for a
 zero-upload-asset GitHub source record plus the separately delivered Microsoft
 Store x64 maintenance candidate; it is not the full Desktop/Web/Sync release
 described below. That future release includes Desktop, Web Admin, and the self-hosted Sync
@@ -19,10 +19,12 @@ binaries to them, edit them into a full release, or reuse their tags. Beta.22
 likewise has zero GitHub upload assets; its only binary delivery route is the
 exact Microsoft Store candidate submitted through Partner Center. Preserve that
 existing record. Beta.23's `1.1.23.0` package is a superseded local
-qualification attempt. Beta.24 follows the same zero-GitHub-assets boundary
-with a new MSIX `1.1.24.0`; the version bump is not proof of a built or approved update. Before
+qualification attempt. Beta.24's `1.1.24.0` package and qualification evidence
+are also superseded and remain immutable. Beta.25 follows the same
+zero-GitHub-assets boundary with a new MSIX `1.1.25.0`; the version bump is not
+proof of a built or approved update. Before
 following the full-release steps below, set an unused `FULL_RELEASE_VERSION`
-after beta.24 and update all version metadata, artifact names, and its versioned
+after beta.25 and update all version metadata, artifact names, and its versioned
 release notes.
 
 ## Current Desktop automation status

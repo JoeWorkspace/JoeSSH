@@ -61,8 +61,9 @@ unsigned MSIX，上传 raw/transport/evidence，并在重新核对同一 run 字
 后生成 SLSA 和 JoeSSH build-bindings 两份 Sigstore attestation。它不读取签名
 secret，也不声称 WACK、Store 签名、认证或发布已经完成。
 
-beta.24 必须使用新的 `1.1.24.0` source build。已被替代的 `1.1.23.0` 包、
-producer evidence 和 native qualification 记录保持不可变，不得重新包装或提交。
+beta.25 必须使用新的 `1.1.25.0` source build。已被替代的 `1.1.23.0` 与
+`1.1.24.0` 包、producer evidence 和 native qualification 记录保持不可变，
+不得重新包装或提交。
 只有新的、可复现且有证据的 MSIX 兼容阻塞才允许另开变更评估 NSIS fallback。
 
 商业发布即使只有一名开发者，也不等于应选 Individual。Individual 只用于真实
@@ -283,7 +284,7 @@ discoverability metadata，不能误报成 80 个完整 UI 语言。
 
 `release:windows-store:msix-sandbox`、MSIX Packaging Tool 离线 bundle 和
 `release:windows-store:msix-finalize` 只保留为历史/隔离诊断工具。它们生成的本地
-包、JSON 或 checksum 不是 beta.24 正式 source provenance，也不能替代上述 workflow。
+包、JSON 或 checksum 不是 beta.25 正式 source provenance，也不能替代上述 workflow。
 不得把 NSIS 改后缀、重打 beta.23 包或把未认证 MSIX 描述为 “Store 已签名”。
 
 独立 WACK、upgrade/clean-install lifecycle、guest cleanup、host evidence rehash 和
@@ -303,16 +304,16 @@ secret，也绝不能包含令牌或签名材料。该 candidate workflow 的 `p
 
 candidate workflow 的 HTTPS URL 加 SHA-256 输入只能证明下载字节与操作员声明
 一致，不能验证私有 Actions artifact 的来源，也不能构成 authenticated provenance。
-beta.24 必须选择同一 source commit 的 GitHub Actions artifact 路径，并让已合并的
-通用 verifier 在候选运行中现场验证该次 source build 的精确 tuple；旧 beta.23 tuple、
-后续源码提交硬编码的 tuple 或只校验 URL 与 SHA-256 的运行都不能复用为 beta.24
+beta.25 必须选择同一 source commit 的 GitHub Actions artifact 路径，并让已合并的
+通用 verifier 在候选运行中现场验证该次 source build 的精确 tuple；旧 beta.23/beta.24 tuple、
+后续源码提交硬编码的 tuple 或只校验 URL 与 SHA-256 的运行都不能复用为 beta.25
 来源证据。下面的本地命令只复核 workflow 已下载并生成 receipt 的 artifact 字节；
 它不是 producer，也不能代替 workflow 对 live metadata 和两份 bundle 的验证：
 
 ```powershell
 node scripts/prepare-windows-store-candidate.mjs `
   --format msix `
-  --artifact C:\staging\JoeSSH_1.1.24.0_x64_<sha12>_<run>_<attempt>.msix `
+  --artifact C:\staging\JoeSSH_1.1.25.0_x64_<sha12>_<run>_<attempt>.msix `
   --github-actions-provenance C:\staging\github-actions-source-provenance.json `
   --expected-sha256 <64位SHA-256> `
   --reviewed-sha <完整Git提交> `

@@ -85,8 +85,8 @@ export const vi = {
   "desktop.safetyReasonHostShutdown": "dừng máy chủ ngay lập tức",
   "desktop.safetyReasonWindowsDestructive":
     "lệnh phá hủy phía Windows nhắm vào tệp, đĩa hoặc trạng thái máy chủ",
-  "desktop.safetyReasonPowershellDestructive":
-    "lệnh phá hủy PowerShell nhắm vào ổ đĩa, đường dẫn hệ thống, đĩa hoặc trạng thái nguồn của máy chủ",
+  "desktop.safetyReasonWindowsAdminDestructive":
+    "lệnh phá hủy Windows nhắm vào ổ đĩa, đường dẫn hệ thống, đĩa hoặc trạng thái nguồn của máy chủ",
   "desktop.safetyReasonDropDatabase": "xóa cơ sở dữ liệu",
   "desktop.safetyReasonCommandSubstitution":
     "nhúng lệnh con có thể thực thi bất cứ thứ gì",

@@ -4,7 +4,8 @@
 
 | Version       | Supported              |
 | ------------- | ---------------------- |
-| 0.1.0-beta.24 | Maintenance candidate  |
+| 0.1.0-beta.25 | Maintenance candidate  |
+| 0.1.0-beta.24 | Superseded candidate   |
 | 0.1.0-beta.23 | Superseded candidate   |
 | 0.1.0-beta.22 | Existing Store package |
 | 0.1.0-beta.21 | Source prerelease      |

@@ -106,15 +106,6 @@
     },
     {
       "ecosystem": "cargo",
-      "name": "libappindicator-sys",
-      "version": "0.9.0",
-      "declaredLicense": "Apache-2.0 OR MIT",
-      "selectedLicense": "MIT",
-      "checksum": "6e9ec52138abedcc58dc17a7c6c0c00a2bdb4f3427c7f63fa97fd0d859155caf",
-      "review": "Exact Cargo.lock package reviewed because its crates.io archive contains no LICENSE/COPYING file; use only the pinned official SPDX body and retain any archive NOTICE/COPYRIGHT evidence."
-    },
-    {
-      "ecosystem": "cargo",
       "name": "ndk",
       "version": "0.9.0",
       "declaredLicense": "MIT OR Apache-2.0",

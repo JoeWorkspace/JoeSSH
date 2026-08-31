@@ -23,12 +23,17 @@ import {
 
 const repositoryRoot = resolve(import.meta.dirname, "..");
 const packagePath = "vendor/glib-0.18.5";
+const tauriPackagePath = "vendor/tauri-2.11.2";
 const identity = Object.freeze({ name: "glib", version: "0.18.5" });
+const tauriIdentity = Object.freeze({ name: "tauri", version: "2.11.2" });
 
 function fixture(t) {
   const tempBase = realpathSync(tmpdir());
   const root = mkdtempSync(join(tempBase, "joessh-vendor-test-"));
   cpSync(join(repositoryRoot, packagePath), join(root, packagePath), {
+    recursive: true,
+  });
+  cpSync(join(repositoryRoot, tauriPackagePath), join(root, tauriPackagePath), {
     recursive: true,
   });
   t.after(() => {
@@ -59,8 +64,11 @@ function changeMetadata(root, mutate) {
 
 test("verifies the real official backport, license and registry audit identity", () => {
   const records = verifyVendoredRustPackages(repositoryRoot);
-  assert.equal(records.length, 1);
-  const record = records[0];
+  assert.equal(records.length, 2);
+  const record = records.find(({ name }) => name === "glib");
+  const tauri = records.find(({ name }) => name === "tauri");
+  assert.ok(record);
+  assert.ok(tauri);
   assert.equal(record.declaredLicense, "MIT");
   assert.equal(Object.keys(record.fileHashes).length, 123);
   assert.equal(Object.keys(record.metadata.files).length, 121);
@@ -76,6 +84,33 @@ test("verifies the real official backport, license and registry audit identity",
   assert.match(record.treeSha256, /^[a-f0-9]{64}$/);
   assert.ok(Object.isFrozen(record));
   assert.ok(Object.isFrozen(record.metadata.files));
+  assert.equal(tauri.declaredLicense, "Apache-2.0 OR MIT");
+  assert.equal(Object.keys(tauri.fileHashes).length, 143);
+  assert.equal(Object.keys(tauri.metadata.files).length, 142);
+  assert.deepEqual(tauri.registryPackage, {
+    ...tauriIdentity,
+    source: "registry+https://github.com/rust-lang/crates.io-index",
+    checksum:
+      "437404997acf375d85f1177afa7e11bb971f274ed6a7b83a2a3e339015f4cc28",
+  });
+  assert.deepEqual(tauri.patchedAdvisories, []);
+  assert.deepEqual(tauri.metadata.licenseFiles, [
+    "LICENSE_APACHE-2.0",
+    "LICENSE_MIT",
+  ]);
+});
+
+test("rejects tampering with the reviewed Tauri Store compatibility patch", (t) => {
+  const root = fixture(t);
+  const path = join(root, tauriPackagePath, "src/process.rs");
+  writeFileSync(
+    path,
+    `${readFileSync(path, "utf8")}\n// unauthorized change\n`,
+  );
+  assert.throws(
+    () => verifyVendoredRustPackage(root, tauriIdentity),
+    /SHA-256 mismatch/,
+  );
 });
 
 test("tree digest is stable after copying the package to another checkout", (t) => {
@@ -312,8 +347,11 @@ test("CLI reports public provenance without disclosing absolute checkout paths",
   );
   assert.equal(result.status, 0, result.stderr);
   const records = JSON.parse(result.stdout);
+  assert.equal(records.length, 2);
   assert.equal(records[0].name, "glib");
   assert.deepEqual(records[0].patchedAdvisories, ["RUSTSEC-2024-0429"]);
+  assert.equal(records[1].name, "tauri");
+  assert.deepEqual(records[1].patchedAdvisories, []);
   assert.equal(result.stdout.includes(repositoryRoot), false);
   assert.equal(Object.hasOwn(records[0], "directory"), false);
 });

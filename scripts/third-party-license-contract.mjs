@@ -1753,6 +1753,40 @@ function toManifestPackage(packageEntry) {
   return result;
 }
 
+function renderVendoredPatchProvenance(vendored) {
+  const lines = [
+    `Vendored third-party source: ${vendored.upstream.archiveUrl}`,
+    `Upstream revision: ${vendored.upstream.gitCommit}`,
+    `Patch kind: ${vendored.patch.kind}`,
+  ];
+  if (vendored.patch.kind === "security-backport") {
+    lines.push(
+      `Security backport: ${vendored.patch.advisory} (${vendored.patch.url})`,
+      `Patch revision: ${vendored.patch.commit}`,
+      `Patch merge revision: ${vendored.patch.mergeCommit}`,
+    );
+  } else if (vendored.patch.kind === "project-compatibility") {
+    lines.push(
+      `Upstream compatibility issue: ${vendored.patch.upstreamIssue}`,
+      `Compatibility rationale: ${vendored.patch.rationale}`,
+    );
+  } else {
+    fail(`Unsupported vendored patch kind ${vendored.patch.kind}.`);
+  }
+  for (const file of vendored.patch.files) {
+    lines.push(
+      `Patched file: ${file.path}`,
+      `Patched file original SHA-256: ${file.originalSha256}`,
+      `Patched file result SHA-256: ${file.patchedSha256}`,
+    );
+  }
+  lines.push(
+    `Patch manifest SHA-256: ${vendored.manifestSha256}`,
+    `Patched source tree SHA-256: ${vendored.treeSha256}`,
+  );
+  return lines;
+}
+
 export function renderThirdPartyNotices(manifest) {
   const lines = [
     "JoeSSH License and Third-Party Notices",
@@ -1816,14 +1850,7 @@ export function renderThirdPartyNotices(manifest) {
         ? `Integrity: ${packageEntry.integrity}`
         : `${packageEntry.vendored ? "Original archive checksum" : "Checksum"}: ${packageEntry.checksum}`,
       ...(packageEntry.vendored
-        ? [
-            `Vendored third-party source: ${packageEntry.vendored.upstream.archiveUrl}`,
-            `Upstream revision: ${packageEntry.vendored.upstream.gitCommit}`,
-            `Security backport: ${packageEntry.vendored.patch.advisory} (${packageEntry.vendored.patch.url})`,
-            `Patch revision: ${packageEntry.vendored.patch.commit}`,
-            `Patch manifest SHA-256: ${packageEntry.vendored.manifestSha256}`,
-            `Patched source tree SHA-256: ${packageEntry.vendored.treeSha256}`,
-          ]
+        ? renderVendoredPatchProvenance(packageEntry.vendored)
         : []),
       `License text SHA-256: ${packageEntry.licenseTexts
         .map(({ sha256: hash }) => hash)

@@ -31,6 +31,37 @@ const registrations = Object.freeze([
     declaredLicense: "MIT",
     authors: Object.freeze(["The gtk-rs Project Developers"]),
     licenseFiles: Object.freeze(["LICENSE", "COPYRIGHT"]),
+    metadataFileCount: 121,
+    additionalFiles: Object.freeze(["tests/variant_str_iter.rs"]),
+    patchedAdvisories: Object.freeze(["RUSTSEC-2024-0429"]),
+    patchKind: "glib-official-backport",
+  }),
+  Object.freeze({
+    name: "tauri",
+    version: "2.11.2",
+    path: "vendor/tauri-2.11.2",
+    metadataSha256:
+      "8cbe92763bc72047cf23cb051b4ee42043e68843f383e6fa5acb1e1d86fc2d97",
+    archiveUrl: "https://static.crates.io/crates/tauri/tauri-2.11.2.crate",
+    archiveSha256:
+      "437404997acf375d85f1177afa7e11bb971f274ed6a7b83a2a3e339015f4cc28",
+    repository: "https://github.com/tauri-apps/tauri",
+    upstreamCommit: "499df79be65ef8c0670abc0207cd9e37b55d8491",
+    issueUrl: "https://github.com/tauri-apps/tauri/issues/14935",
+    patchRationale:
+      "Disable the unused Windows self-relaunch implementation for the Microsoft Store build while retaining upstream behavior on other platforms.",
+    patchPath: "src/process.rs",
+    originalSha256:
+      "9c413b0b6b74df553028f826ee0bc60164db533dceb96d79bf6c47b6358aa8ba",
+    patchedSha256:
+      "53ac553ccfe1d0bc2f829da559e3d4a8193945e01e247306f377e1f8aa3cf609",
+    declaredLicense: "Apache-2.0 OR MIT",
+    authors: Object.freeze(["Tauri Programme within The Commons Conservancy"]),
+    licenseFiles: Object.freeze(["LICENSE_APACHE-2.0", "LICENSE_MIT"]),
+    metadataFileCount: 142,
+    additionalFiles: Object.freeze([]),
+    patchedAdvisories: Object.freeze([]),
+    patchKind: "tauri-store-compatibility",
   }),
 ]);
 
@@ -123,7 +154,7 @@ export function verifyVendoredRustPackage(
     if (actual.get(path) !== hash)
       throw new Error(`Vendor file SHA-256 mismatch: ${path}.`);
   }
-  assertOfficialPatch(directory, registration);
+  assertReviewedPatch(directory, registration);
   const treeSha256 = sha256(
     [...actual.entries()]
       .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
@@ -147,9 +178,10 @@ export function verifyVendoredRustPackage(
       source: registrySource,
       checksum: registration.archiveSha256,
     },
-    // Only this advisory is repaired by the verified patch. Project the package
-    // back into registry auditing so later advisories are never hidden by path.
-    patchedAdvisories: [registration.advisory],
+    // Project the package back into registry auditing so path dependencies never
+    // hide later advisories. Only explicitly registered official backports may
+    // account for an unchanged upstream advisory.
+    patchedAdvisories: [...registration.patchedAdvisories],
   });
 }
 
@@ -178,44 +210,116 @@ function assertRegisteredMetadata(metadata, entry) {
     metadata.upstream?.sha256 !== entry.archiveSha256 ||
     metadata.upstream?.repository !== entry.repository ||
     metadata.upstream?.gitCommit !== entry.upstreamCommit ||
-    metadata.patch?.advisory !== entry.advisory ||
-    metadata.patch?.url !== entry.patchUrl ||
-    metadata.patch?.commit !== entry.patchCommit ||
-    metadata.patch?.mergeCommit !== entry.mergeCommit ||
     !Array.isArray(patch) ||
     patch.length !== 1 ||
     patch[0].path !== entry.patchPath ||
     patch[0].originalSha256 !== entry.originalSha256 ||
     patch[0].patchedSha256 !== entry.patchedSha256 ||
     metadata.files?.[entry.patchPath] !== entry.originalSha256 ||
-    Object.keys(metadata.files ?? {}).length !== 121 ||
-    Object.keys(metadata.additionalFiles ?? {}).length !== 1 ||
-    !Object.hasOwn(metadata.additionalFiles, "tests/variant_str_iter.rs") ||
+    Object.keys(metadata.files ?? {}).length !== entry.metadataFileCount ||
+    JSON.stringify(Object.keys(metadata.additionalFiles ?? {}).sort()) !==
+      JSON.stringify([...entry.additionalFiles].sort()) ||
     JSON.stringify(metadata.licenseFiles) !== JSON.stringify(entry.licenseFiles)
   ) {
     throw new Error(
       "Vendor metadata differs from the fixed upstream/patch/license registration.",
     );
   }
+  if (
+    entry.patchKind === "glib-official-backport" &&
+    (metadata.patch?.advisory !== entry.advisory ||
+      metadata.patch?.url !== entry.patchUrl ||
+      metadata.patch?.commit !== entry.patchCommit ||
+      metadata.patch?.mergeCommit !== entry.mergeCommit)
+  ) {
+    throw new Error(
+      "GLib metadata differs from the official backport registration.",
+    );
+  }
+  if (
+    entry.patchKind === "tauri-store-compatibility" &&
+    (metadata.patch?.kind !== "project-compatibility" ||
+      metadata.patch?.upstreamIssue !== entry.issueUrl ||
+      metadata.patch?.rationale !== entry.patchRationale)
+  ) {
+    throw new Error(
+      "Tauri metadata differs from the Store compatibility registration.",
+    );
+  }
 }
 
-function assertOfficialPatch(directory, registration) {
+function assertReviewedPatch(directory, registration) {
   let original = decodeUtf8(
     readFileSync(checkedPath(directory, registration.patchPath, "file")),
   );
-  original = replaceExactlyOnce(
-    original,
-    "let mut p: *mut libc::c_char = std::ptr::null_mut();",
-    "let p: *mut libc::c_char = std::ptr::null_mut();",
-  );
-  original = replaceExactlyOnce(
-    original,
-    "                &mut p,",
-    "                &p,",
-  );
+  if (registration.patchKind === "glib-official-backport") {
+    original = replaceExactlyOnce(
+      original,
+      "let mut p: *mut libc::c_char = std::ptr::null_mut();",
+      "let p: *mut libc::c_char = std::ptr::null_mut();",
+    );
+    original = replaceExactlyOnce(
+      original,
+      "                &mut p,",
+      "                &p,",
+    );
+  } else if (registration.patchKind === "tauri-store-compatibility") {
+    const patched = `pub fn restart(env: &Env) -> ! {
+  #[cfg(target_os = "windows")]
+  {
+    // JoeSSH never exposes or calls the restart API. A packaged Microsoft
+    // Store desktop binary must not retain Tauri's otherwise-unused local
+    // process-launch implementation because it imports CreateProcessW and is
+    // rejected by WACK's blocked executable test. Preserve the API contract
+    // as a clean exit if an upstream path unexpectedly requests a restart.
+    let _ = env;
+    log::warn!("self-relaunch is disabled in the JoeSSH Microsoft Store build");
+    std::process::exit(0);
+  }
+
+  #[cfg(not(target_os = "windows"))]
+  {
+    use std::process::{exit, Command};
+
+    if let Ok(path) = current_binary(env) {
+      // on macOS on updates the binary name might have changed
+      // so we'll read the Contents/Info.plist file to determine the binary path
+      #[cfg(target_os = "macos")]
+      restart_macos_app(&path, env);
+
+      if let Err(e) = Command::new(path).args(env.args_os.iter().skip(1)).spawn() {
+        log::error!("failed to restart app: {e}");
+      }
+    }
+
+    exit(0);
+  }
+}`;
+    const upstream = `pub fn restart(env: &Env) -> ! {
+  use std::process::{exit, Command};
+
+  if let Ok(path) = current_binary(env) {
+    // on macOS on updates the binary name might have changed
+    // so we'll read the Contents/Info.plist file to determine the binary path
+    #[cfg(target_os = "macos")]
+    restart_macos_app(&path, env);
+
+    if let Err(e) = Command::new(path).args(env.args_os.iter().skip(1)).spawn() {
+      log::error!("failed to restart app: {e}");
+    }
+  }
+
+  exit(0);
+}`;
+    original = replaceExactlyOnce(original, patched, upstream);
+  } else {
+    throw new Error(
+      `Unknown reviewed vendor patch kind: ${registration.patchKind}.`,
+    );
+  }
   if (sha256(original) !== registration.originalSha256) {
     throw new Error(
-      "Vendored glib changes do not reconstruct the pinned official source.",
+      `Vendored ${registration.name} changes do not reconstruct the pinned upstream source.`,
     );
   }
 }
@@ -223,7 +327,7 @@ function assertOfficialPatch(directory, registration) {
 function replaceExactlyOnce(text, before, after) {
   const index = text.indexOf(before);
   if (index < 0 || index !== text.lastIndexOf(before)) {
-    throw new Error("Official glib patch must occur exactly once.");
+    throw new Error("Reviewed vendor patch must occur exactly once.");
   }
   return text.replace(before, after);
 }
