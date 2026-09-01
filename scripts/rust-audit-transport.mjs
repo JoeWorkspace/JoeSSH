@@ -32,6 +32,7 @@ const SCOPE_DENIALS = new Map([
     ["--deny", "unsound", "--deny", "yanked"],
   ],
   ["vendored:glib@0.18.5", ["--deny", "yanked"]],
+  ["vendored:tauri@2.11.2", ["--deny", "warnings"]],
 ]);
 
 function processSucceeded(result) {
