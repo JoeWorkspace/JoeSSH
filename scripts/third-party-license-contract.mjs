@@ -27,6 +27,7 @@ import {
   buildVendoredCargoComponent,
   buildVendoredRustProvenance,
 } from "./release-sbom-contract.mjs";
+import { verifyVendoredNpmPackages } from "./vendored-npm-contract.mjs";
 
 export const licenseArtifactPaths = Object.freeze({
   checksum: "reports/release/THIRD-PARTY-LICENSES-SHA256SUMS.txt",
@@ -321,9 +322,14 @@ export function verifyPublishedThirdPartyLicenseBundle(inputRoot) {
 
 export function buildThirdPartyLicenseInputEvidence(inputRoot) {
   const root = resolve(inputRoot);
-  const vendoredInputs = existsSync(resolve(root, "vendor"))
+  const vendoredRustInputs = existsSync(resolve(root, "vendor"))
     ? verifyVendoredRustPackages(root).map(
         (record) => `${record.metadata.path}/JOESSH-PATCH.json`,
+      )
+    : [];
+  const vendoredNpmInputs = existsSync(resolve(root, "vendor"))
+    ? verifyVendoredNpmPackages(root).map(
+        (record) => `${record.path}/JOESSH-PATCH.json`,
       )
     : [];
   return [
@@ -335,7 +341,8 @@ export function buildThirdPartyLicenseInputEvidence(inputRoot) {
     ...npmSboms.map(({ path }) => path),
     ...cargoSboms,
     ...cargoGraphs.map(({ lockPath }) => lockPath),
-    ...vendoredInputs,
+    ...vendoredRustInputs,
+    ...vendoredNpmInputs,
   ]
     .map((path) => ({
       path,

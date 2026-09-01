@@ -24,6 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   manifest tool used by the build.
 - Reject downloaded or decoded content piped into any remote program, while
   keeping unrelated commands outside the same pipeline valid.
+- Replace Expo Router's vulnerable URI decoder with the official linear-time
+  `0.5.0` implementation through a checksum-bound CommonJS compatibility
+  entry, preserving deep-link and query-string behavior.
 
 ### Changed
 

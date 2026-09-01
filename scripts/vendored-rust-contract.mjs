@@ -1,6 +1,10 @@
 import { createHash } from "node:crypto";
 import { lstatSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import {
+  isRegisteredVendoredNpmDirectory,
+  verifyVendoredNpmDirectory,
+} from "./vendored-npm-contract.mjs";
 
 const registrySource = "registry+https://github.com/rust-lang/crates.io-index";
 const metadataFile = "JOESSH-PATCH.json";
@@ -75,14 +79,25 @@ const firstPartyManifests = Object.freeze({
 export function verifyVendoredRustPackages(root) {
   const rootPath = checkedRoot(root);
   const vendorPath = checkedPath(rootPath, "vendor", "directory");
-  const expected = registrations.map((entry) =>
+  const expectedRust = registrations.map((entry) =>
     entry.path.slice("vendor/".length),
   );
   const entries = readdirSync(vendorPath).sort();
-  if (JSON.stringify(entries) !== JSON.stringify(expected.sort())) {
+  if (expectedRust.some((entry) => !entries.includes(entry))) {
     throw new Error(
       "Vendor directory contains missing or unregistered entries.",
     );
+  }
+  for (const entry of entries) {
+    if (expectedRust.includes(entry)) {
+      continue;
+    }
+    if (!isRegisteredVendoredNpmDirectory(entry)) {
+      throw new Error(
+        "Vendor directory contains missing or unregistered entries.",
+      );
+    }
+    verifyVendoredNpmDirectory(rootPath, entry);
   }
   return registrations.map(({ name, version }) =>
     verifyVendoredRustPackage(rootPath, { name, version }),

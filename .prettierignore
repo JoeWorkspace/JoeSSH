@@ -2,3 +2,4 @@
 docs/assets/microsoft-store/manifest.json
 vendor/glib-0.18.5/**
 vendor/tauri-2.11.2/**
+vendor/decode-uri-component-0.5.0/**

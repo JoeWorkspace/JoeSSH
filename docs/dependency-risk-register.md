@@ -40,11 +40,12 @@ scoped Tauri maintenance notices and review deadline are recorded in the
 [Rust maintenance risk register](rust-maintenance-risk-register.md); they do not
 permit vulnerabilities or unverified vendor changes.
 
-### Remediated Production Runtime Finding
+### Remediated Production Runtime Findings
 
-| Package                                  | Severity | Advisory                                          | Runtime Impact                                                                                                                                                                                                                                                      | Public Beta Decision                                          | Follow-up                                                                                         |
-| ---------------------------------------- | -------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `uuid` via Expo config plugins / `xcode` | Moderate | https://github.com/advisories/GHSA-w5hq-g745-h8pq | The affected package is used by Expo's iOS project-generation toolchain. It is not shipped in the Desktop, Web Admin, or self-hosted Sync runtime paths, and Mobile remains outside the first public release because its pairing and credential flow is incomplete. | Remediated by the tested workspace override to `uuid 11.1.1`. | Keep the override until Expo's supported dependency range resolves to a patched version directly. |
+| Package                                                 | Severity | Advisory                                          | Runtime Impact                                                                                                                                                                                                                                                            | Public Beta Decision                                                                                                                                               | Follow-up                                                                                                                                            |
+| ------------------------------------------------------- | -------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `uuid` via Expo config plugins / `xcode`                | Moderate | https://github.com/advisories/GHSA-w5hq-g745-h8pq | The affected package is used by Expo's iOS project-generation toolchain. It is not shipped in the Desktop, Web Admin, or self-hosted Sync runtime paths, and Mobile remains outside the first public release because its pairing and credential flow is incomplete.       | Remediated by the tested workspace override to `uuid 11.1.1`.                                                                                                      | Keep the override until Expo's supported dependency range resolves to a patched version directly.                                                    |
+| `decode-uri-component` via Expo Router / `query-string` | Moderate | https://github.com/advisories/GHSA-vcc3-ghjq-m6fr | Mobile deep-link and URL query parsing can reach the affected decoder and could spend excessive CPU on malformed percent-encoded input. The package is not in the Microsoft Store Desktop binary, but the repository treats the Mobile production graph as release-gated. | Remediated with the official `0.5.0` linear-time decoder plus a hash-bound CommonJS compatibility entry for Expo Router's current `query-string 7.1.3` dependency. | Remove the compatibility entry when Expo Router supports `query-string 9.5.0` or later; keep the byte, lockfile, route, and audit checks until then. |
 
 The former npm audit path ran through
 `expo`, `@expo/cli`, `@expo/config`, `@expo/config-plugins`,
@@ -53,6 +54,17 @@ The former npm audit path ran through
 `uuid`. The root override now pins the patched `11.1.1` line, and the native
 preflight, type checks, unit tests, and lockfile portability gate pass with that
 resolution.
+
+The decoder finding entered the GitHub Advisory Database on 2026-08-31. A bare
+override to `decode-uri-component 0.5.0` is not compatible because the patched
+release is ESM-only while `query-string 7.1.3` calls it through CommonJS. A
+major override to `query-string 9.5.0` also breaks Expo Router 57 because its
+compiled code expects top-level `parse` and `stringify` exports. The vendored
+package therefore preserves the official `0.5.0` ESM implementation byte for
+byte and exposes the same function through a derived CommonJS entry. CI pins
+the npm archive identity, every vendored file, the one-line source transform,
+the lockfile override, direct query parsing, Expo Router route parsing, and a
+malformed-input timeout. The production npm audit is required to remain clean.
 
 ### Remediated Mobile Build-tooling Finding
 
