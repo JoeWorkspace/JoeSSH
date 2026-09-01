@@ -204,9 +204,10 @@ test("pins known scope denials while leaving advisory acceptance to the caller",
       "unmaintained",
     ],
     ["vendored:glib@0.18.5", ["yanked"], "unsound"],
+    ["vendored:tauri@2.11.2", ["warnings"], null],
   ]) {
     const { runAudit, calls } = successfulRunner(root, (result, args) => {
-      if (args.includes("terminal")) {
+      if (warning && args.includes("terminal")) {
         result.stdout = `Warning:  ${warning}\n`;
         result.stderr += "warning: 1 allowed warning found\n";
       }

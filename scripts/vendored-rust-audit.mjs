@@ -8,6 +8,14 @@ export function registryAuditLockfile(verified) {
 }
 
 export function assessVendoredRustAudit(report, verified) {
+  if (verified.patchedAdvisories?.length === 0) {
+    const assessment = assessRustAuditReport(report, "Cargo.lock");
+    if (report?.lockfile?.["dependency-count"] !== 1)
+      assessment.errors.push(
+        "The vendored registry audit must cover exactly one package",
+      );
+    return { ...assessment, backports: [] };
+  }
   const backports = [];
   const remaining = structuredClone(report);
   const expected = verified.registryPackage;

@@ -4,7 +4,7 @@
 
 [package]
 name = "atlasterm-desktop-shell"
-version = "0.1.0-beta.24"
+version = "0.1.0-beta.25"
 edition = "2021"
 license = "MIT"
 rust-version = "1.96"
@@ -17,7 +17,11 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+# The Store build uses a reviewed local Tauri patch that disables the unused
+# Windows self-relaunch path. Stock Tauri links CreateProcessW for that path,
+# which makes an otherwise clean packaged desktop app fail WACK's blocked
+# executable test. JoeSSH does not expose or call Tauri's restart API.
+tauri = { path = "../../../vendor/tauri-2.11.2", default-features = false, features = ["wry", "compression", "dynamic-acl", "x11", "dbus"] }
 atlasterm-core = { path = "../../../crates/core" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "io-util"] }
 serde = { version = "1", features = ["derive"] }

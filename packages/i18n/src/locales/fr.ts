@@ -94,8 +94,8 @@ export const fr = {
   "desktop.safetyReasonHostShutdown": "arrête immédiatement l’hôte",
   "desktop.safetyReasonWindowsDestructive":
     "commande destructive Windows ciblant fichiers, disques ou état de l’hôte",
-  "desktop.safetyReasonPowershellDestructive":
-    "commande destructive PowerShell ciblant un lecteur, chemin système, disque ou état d’alimentation de l’hôte",
+  "desktop.safetyReasonWindowsAdminDestructive":
+    "commande destructive Windows ciblant un lecteur, chemin système, disque ou état d’alimentation de l’hôte",
   "desktop.safetyReasonDropDatabase": "supprime une base de données",
   "desktop.safetyReasonCommandSubstitution":
     "intègre une sous-commande qui pourrait exécuter n’importe quel contenu",

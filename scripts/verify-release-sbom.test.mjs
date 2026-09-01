@@ -1105,10 +1105,15 @@ test("Cargo SBOM records a verified local third-party patch without misclassifyi
   const fixture = vendoredCargoFixture(t);
   const json = JSON.parse(fixture.build());
   const glib = json.components.find((entry) => entry.name === "glib");
+  const tauri = json.components.find((entry) => entry.name === "tauri");
   const core = json.components.find((entry) => entry.name === "atlasterm-core");
   const record = verifyVendoredRustPackage(fixture.root, {
     name: "glib",
     version: "0.18.5",
+  });
+  const tauriRecord = verifyVendoredRustPackage(fixture.root, {
+    name: "tauri",
+    version: "2.11.2",
   });
 
   assert.equal(
@@ -1129,6 +1134,37 @@ test("Cargo SBOM records a verified local third-party patch without misclassifyi
   assert.ok(
     glib.properties.some((entry) => entry.value === "RUSTSEC-2024-0429"),
   );
+  assert.equal(
+    tauri.properties.find((entry) => entry.name === "joessh:cargo:patch-kind")
+      .value,
+    "project-compatibility",
+  );
+  assert.equal(
+    tauri.properties.find(
+      (entry) => entry.name === "joessh:cargo:patch-upstream-issue",
+    ).value,
+    tauriRecord.metadata.patch.upstreamIssue,
+  );
+  assert.equal(
+    tauri.properties.find(
+      (entry) => entry.name === "joessh:cargo:patch-rationale",
+    ).value,
+    tauriRecord.metadata.patch.rationale,
+  );
+  assert.deepEqual(
+    JSON.parse(
+      tauri.properties.find((entry) => entry.name === "joessh:cargo:patch-file")
+        .value,
+    ),
+    tauriRecord.metadata.patch.files[0],
+  );
+  assert.equal(tauri.hashes[0].content, tauriRecord.treeSha256);
+  assert.ok(
+    tauri.externalReferences.some(
+      (entry) => entry.url === tauriRecord.metadata.patch.upstreamIssue,
+    ),
+  );
+  assert.doesNotMatch(JSON.stringify(tauri), /undefined/);
   assert.deepEqual(
     inspectCanonicalCargoCycloneDx(fixture.build(), fixture.options),
     [],
@@ -1203,6 +1239,21 @@ test("Cargo SBOM inspection rejects forged patch provenance and license claims",
   assert.ok(failures.some((entry) => /vendored component/i.test(entry)));
 });
 
+test("Cargo SBOM inspection rejects forged Tauri compatibility provenance", (t) => {
+  const fixture = vendoredCargoFixture(t);
+  const json = JSON.parse(fixture.build());
+  const tauri = json.components.find((entry) => entry.name === "tauri");
+  tauri.properties.find(
+    (entry) => entry.name === "joessh:cargo:patch-rationale",
+  ).value = "forged compatibility rationale";
+
+  const failures = inspectCanonicalCargoCycloneDx(
+    stableJson(json),
+    fixture.options,
+  );
+  assert.ok(failures.some((entry) => /vendored component/i.test(entry)));
+});
+
 test("Cargo SBOM inspection rejects third-party components relabeled as workspace packages", (t) => {
   const fixture = vendoredCargoFixture(t);
   const json = JSON.parse(fixture.build());
@@ -1219,17 +1270,19 @@ test("Cargo SBOM inspection rejects third-party components relabeled as workspac
 function vendoredCargoFixture(t) {
   const root = mkdtempSync(join(tmpdir(), "vendored-cargo-sbom-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
-  cpSync(
-    resolve(import.meta.dirname, "../vendor/glib-0.18.5"),
-    join(root, "vendor", "glib-0.18.5"),
-    { recursive: true },
-  );
-  const packageFor = (name, version, manifest) => ({
+  for (const directory of ["glib-0.18.5", "tauri-2.11.2"]) {
+    cpSync(
+      resolve(import.meta.dirname, "../vendor", directory),
+      join(root, "vendor", directory),
+      { recursive: true },
+    );
+  }
+  const packageFor = (name, version, manifest, license = "MIT") => ({
     id: `path+file:///${root.replaceAll("\\", "/")}/${manifest}#${name}@${version}`,
     name,
     version,
     source: null,
-    license: "MIT",
+    license,
     manifest_path: join(root, ...manifest.split("/")),
   });
   const core = packageFor("atlasterm-core", VERSION, "crates/core/Cargo.toml");
@@ -1239,6 +1292,12 @@ function vendoredCargoFixture(t) {
     "apps/desktop/src-tauri/Cargo.toml",
   );
   const glib = packageFor("glib", "0.18.5", "vendor/glib-0.18.5/Cargo.toml");
+  const tauri = packageFor(
+    "tauri",
+    "2.11.2",
+    "vendor/tauri-2.11.2/Cargo.toml",
+    "Apache-2.0 OR MIT",
+  );
   for (const own of [core, shell]) {
     mkdirSync(resolve(own.manifest_path, ".."), { recursive: true });
     writeFileSync(
@@ -1250,23 +1309,27 @@ function vendoredCargoFixture(t) {
     root,
     metadata: {
       version: 1,
-      packages: [shell, core, glib],
+      packages: [shell, core, glib, tauri],
       workspace_members: [shell.id],
       resolve: {
         nodes: [
           {
             id: shell.id,
-            deps: [{ pkg: core.id, dep_kinds: [{ kind: null }] }],
+            deps: [
+              { pkg: core.id, dep_kinds: [{ kind: null }] },
+              { pkg: tauri.id, dep_kinds: [{ kind: null }] },
+            ],
           },
           {
             id: core.id,
             deps: [{ pkg: glib.id, dep_kinds: [{ kind: null }] }],
           },
           { id: glib.id, deps: [] },
+          { id: tauri.id, deps: [] },
         ],
       },
     },
-    lock: `version = 4\n\n[[package]]\nname = "glib"\nversion = "0.18.5"\n`,
+    lock: `version = 4\n\n[[package]]\nname = "glib"\nversion = "0.18.5"\n\n[[package]]\nname = "tauri"\nversion = "2.11.2"\n`,
     options: {
       boundary: TAURI_BOUNDARY,
       packageName: "atlasterm-tauri-shell",

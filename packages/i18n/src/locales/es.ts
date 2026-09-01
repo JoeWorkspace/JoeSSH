@@ -92,8 +92,8 @@ export const es = {
   "desktop.safetyReasonHostShutdown": "detiene el host de inmediato",
   "desktop.safetyReasonWindowsDestructive":
     "comando destructivo de Windows que afecta archivos, discos o estado del host",
-  "desktop.safetyReasonPowershellDestructive":
-    "comando destructivo de PowerShell que afecta una unidad, ruta del sistema, disco o estado de energía del host",
+  "desktop.safetyReasonWindowsAdminDestructive":
+    "comando destructivo de Windows que afecta una unidad, ruta del sistema, disco o estado de energía del host",
   "desktop.safetyReasonDropDatabase": "elimina una base de datos",
   "desktop.safetyReasonCommandSubstitution":
     "incrusta un subcomando que podría ejecutar cualquier contenido",

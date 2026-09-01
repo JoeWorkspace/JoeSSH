@@ -6,7 +6,7 @@ repository. They must never be inferred from a previous run or committed as
 repository dependencies. The small tracked
 [`windows-store-native-verification-bundle.json`](windows-store-native-verification-bundle.json)
 binds the exact reviewed harness files and seven-component offline toolchain
-manifest required for the beta.24 qualification run.
+manifest required for the beta.25 qualification run.
 
 Before preparing a job, copy the reviewed harness and toolchain into a new
 operator-controlled evidence directory. Recompute every file SHA256 and require
@@ -18,11 +18,18 @@ code `{E8BE09DF-D93B-AE40-FD63-05E5ABEFB6D9}`. A six-component snapshot or the
 similarly named Store Apps Metadata product is not a substitute.
 
 Run the manifest's `selfTest.command` with Windows PowerShell 5.1 and require
-35/35 passing checks before each real job. Then invoke
+36/36 passing checks before each real job. The reviewed writer emits BOM-less
+UTF-8 JSON constrained to the ASCII subset with JSON Unicode escapes, and the
+shared reader strictly decodes UTF-8 while rejecting a BOM or invalid bytes. The
+36th self-test covers Windows PowerShell 5.1 default parsing, the shared strict
+reader, BOM and invalid-UTF-8 rejection, and top-level array cardinality. Before
+the bundle is used, a separate compatibility review must parse every JSON file
+from the fresh self-test directory with Windows PowerShell 5.1, PowerShell 7,
+and Python and record those runtime versions and results. Then invoke
 `Prepare-NativeVerification.ps1` with all of these explicit inputs:
 
-- the exact source-built beta.24 MSIX path, independently anchored SHA256, exact
-  merged 40-character source commit, and `-ExpectedVersion 1.1.24.0`;
+- the exact source-built beta.25 MSIX path, independently anchored SHA256, exact
+  merged 40-character source commit, and `-ExpectedVersion 1.1.25.0`;
 - the immutable published `1.1.22.0` baseline path and its independently anchored
   SHA256;
 - only the baseline's uniquely matching Windows App Runtime dependency and the

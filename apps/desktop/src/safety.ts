@@ -51,13 +51,12 @@ const dangerousPatterns = [
     test: (command: string) => /(?:^|[;&|]\s*)(?:sudo\s+)?(?:iptables|ip6tables|nft(?:ables)?)\s+(?:-\S+\s+)*-(?:f|x|z|-flush|-delete-chain|-zero)(?:\s|$|[;&|])/.test(command),
   },
   {
-    pattern: "curl|sh",
+    pattern: "remote pipeline",
     reasonKey: "desktop.safetyReasonRemoteShellPipe",
     test: (command: string) =>
-      /\bcurl\s+[^|]+\|\s*(?:sudo\s+)?(?:ba|z|k|d)?sh\b/.test(command) ||
-      /\bwget\s+[^|]+\|\s*(?:sudo\s+)?(?:ba|z|k|d)?sh\b/.test(command) ||
-      /\bbase64\s+(?:-d|--decode|-d\s+|--decode\s+)[^|]*\|\s*(?:sudo\s+)?(?:ba|z|k|d)?sh\b/.test(command) ||
-      /\|\s*base64\s+(?:-d|--decode)[^|]*\|\s*(?:sudo\s+)?(?:ba|z|k|d)?sh\b/.test(command),
+      /\b(?:curl|wget)\s+[^|]+\|\s*\S+/.test(command) ||
+      /\bbase64\s+(?:-d|--decode|-d\s+|--decode\s+)[^|]*\|\s*\S+/.test(command) ||
+      /\|\s*base64\s+(?:-d|--decode)[^|]*\|\s*\S+/.test(command),
   },
   {
     pattern: "wget -O /",
@@ -83,11 +82,11 @@ const dangerousPatterns = [
       /(?:^|[;&|]\s*)diskpart(?:\s|$|[;&|])/i.test(command),
   },
   {
-    pattern: "powershell destructive",
-    reasonKey: "desktop.safetyReasonPowershellDestructive",
+    pattern: "windows admin destructive",
+    reasonKey: "desktop.safetyReasonWindowsAdminDestructive",
     test: (command: string) =>
-      /(?:^|[;&|]\s*)(?:(?:powershell(?:\.exe)?|pwsh(?:\.exe)?)\s+(?:[^\s;&|]+\s+){0,8})?(?:remove-item|rm|ri|del|erase|rmdir)\s+(?=[^;&|]*(?:-recurse|-r\b|\/s\b))[^;&|]*(?:[a-z]:\\(?:\s|$|[;&|])|[a-z]:\\(?:windows|program files|programdata|users|documents and settings|system volume information)\b|\\\\|%systemroot%|%windir%)/i.test(command) ||
-      /(?:^|[;&|]\s*)(?:(?:powershell(?:\.exe)?|pwsh(?:\.exe)?)\s+(?:[^\s;&|]+\s+){0,8})?(?:clear-disk|format-volume|initialize-disk|remove-partition|stop-computer|restart-computer)(?:\s|$|[;&|])/i.test(command),
+      /(?:^|[;&|]\s*)(?:[a-z0-9_.-]+\s+(?:-[a-z0-9_.-]+\s+)*)?(?:remove-item|rm|ri|del|erase|rmdir)\s+(?=[^;&|]*(?:-recurse|-r\b|\/s\b))[^;&|]*(?:[a-z]:\\(?:\s|$|[;&|])|[a-z]:\\(?:windows|program files|programdata|users|documents and settings|system volume information)\b|\\\\|%systemroot%|%windir%)/i.test(command) ||
+      /(?:^|[;&|]\s*)(?:[a-z0-9_.-]+\s+(?:-[a-z0-9_.-]+\s+)*)?(?:clear-disk|format-volume|initialize-disk|remove-partition|stop-computer|restart-computer)(?:\s|$|[;&|])/i.test(command),
   },
   { pattern: "drop database", reasonKey: "desktop.safetyReasonDropDatabase", test: (command: string) => command.includes("drop database") },
   {

@@ -4,6 +4,11 @@
   xmlns:asmv3="urn:schemas-microsoft-com:asm.v3"
   manifestVersion="1.0"
 >
+  <assemblyIdentity
+    type="win32"
+    name="dev.atlasterm.joessh"
+    version="1.0.0.0"
+  />
   <dependency>
     <dependentAssembly>
       <assemblyIdentity

@@ -88,8 +88,8 @@ export const id = {
   "desktop.safetyReasonHostShutdown": "menghentikan host segera",
   "desktop.safetyReasonWindowsDestructive":
     "perintah destruktif Windows menargetkan file, disk, atau status host",
-  "desktop.safetyReasonPowershellDestructive":
-    "perintah destruktif PowerShell menargetkan drive, jalur sistem, disk, atau status daya host",
+  "desktop.safetyReasonWindowsAdminDestructive":
+    "perintah destruktif Windows menargetkan drive, jalur sistem, disk, atau status daya host",
   "desktop.safetyReasonDropDatabase": "menghapus database",
   "desktop.safetyReasonCommandSubstitution":
     "menyisipkan sub-perintah yang dapat menjalankan apa saja",

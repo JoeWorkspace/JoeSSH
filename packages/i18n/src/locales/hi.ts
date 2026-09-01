@@ -89,8 +89,8 @@ export const hi = {
   "desktop.safetyReasonHostShutdown": "होस्ट को तुरंत रोकता है",
   "desktop.safetyReasonWindowsDestructive":
     "Windows का विनाशकारी कमांड फ़ाइलों, डिस्क या होस्ट स्थिति को लक्षित करता है",
-  "desktop.safetyReasonPowershellDestructive":
-    "PowerShell का विनाशकारी कमांड ड्राइव, सिस्टम पथ, डिस्क या होस्ट पावर स्थिति को लक्षित करता है",
+  "desktop.safetyReasonWindowsAdminDestructive":
+    "Windows का विनाशकारी कमांड ड्राइव, सिस्टम पथ, डिस्क या होस्ट पावर स्थिति को लक्षित करता है",
   "desktop.safetyReasonDropDatabase": "डेटाबेस हटाता है",
   "desktop.safetyReasonCommandSubstitution":
     "ऐसा सब-कमांड एम्बेड करता है जो कुछ भी चला सकता है",

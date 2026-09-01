@@ -170,7 +170,7 @@ hardening requirements.
 
 - **Windows Desktop:** install the free app from the
   [Microsoft Store](https://apps.microsoft.com/detail/9nk5llmf8lhm). GitHub
-  beta.20 through beta.22 prereleases are source-only. Beta.23 and beta.24 are
+  beta.20 through beta.22 prereleases are source-only. Beta.23 through beta.25 are
   Store-candidate source revisions; their GitHub source records do not carry
   Windows installers. Unsigned CI bundles remain review-only staging artifacts.
   Source builds and distribution workflows are described in

@@ -27,6 +27,12 @@ scripts/spdx-license-texts/** whitespace=-blank-at-eol
 # Preserve the verified upstream crate and security backport byte-for-byte.
 vendor/glib-0.18.5/** -text whitespace=-blank-at-eol,-blank-at-eof
 
+# Preserve the verified upstream Tauri crate and JoeSSH compatibility patch byte-for-byte.
+vendor/tauri-2.11.2/** -text whitespace=-blank-at-eol,-blank-at-eof
+
+# Preserve the verified upstream URI decoder and CommonJS bridge byte-for-byte.
+vendor/decode-uri-component-0.5.0/** -text whitespace=-blank-at-eol,-blank-at-eof
+
 # Never run line-ending conversion or textual merge drivers over artifacts.
 docs/assets/microsoft-store/*.csv binary
 *.png binary

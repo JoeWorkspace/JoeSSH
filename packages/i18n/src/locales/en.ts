@@ -161,8 +161,8 @@ export const en = {
   "desktop.safetyReasonHostShutdown": "halts the host immediately",
   "desktop.safetyReasonWindowsDestructive":
     "Windows-side destructive command targets files, disks, or host state",
-  "desktop.safetyReasonPowershellDestructive":
-    "PowerShell destructive command targets a drive, system path, disk, or host power state",
+  "desktop.safetyReasonWindowsAdminDestructive":
+    "Windows destructive command targets a drive, system path, disk, or host power state",
   "desktop.safetyReasonDropDatabase": "drops a database",
   "desktop.safetyReasonCommandSubstitution":
     "embeds a sub-command that could execute anything",

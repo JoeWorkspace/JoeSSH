@@ -257,9 +257,10 @@ npm run release:desktop:draft
 `0.1.0-beta.20` and beta.21 are permanent zero-asset source prereleases, and
 beta.22 keeps the same GitHub zero-asset boundary while reserving its binary
 solely for Partner Center. The beta.23 MSIX `1.1.23.0` attempt is superseded.
-The beta.24 maintenance candidate preserves the boundary with a new MSIX
-`1.1.24.0`. None of these versions may use this full-release flow. Bump every
-version surface first and use a distinct unused version after beta.24.
+The beta.24 MSIX `1.1.24.0` attempt is also superseded and remains immutable.
+The beta.25 maintenance candidate preserves the boundary with a new MSIX
+`1.1.25.0`. None of these versions may use this full-release flow. Bump every
+version surface first and use a distinct unused version after beta.25.
 The publish preflight verifies all Desktop/Web/Sync checksum manifests, Desktop
 signing/notarization evidence, SBOM coverage, release provenance, a healthy Git
 checkout, a clean working tree outside `reports/release/`, a release tag that

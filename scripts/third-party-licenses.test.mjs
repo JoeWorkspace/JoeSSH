@@ -1262,6 +1262,11 @@ test("license bundles retain verified vendored Cargo source, patch provenance, a
     ),
   );
   const glib = manifest.packages.find((entry) => entry.name === "glib");
+  const tauri = manifest.packages.find((entry) => entry.name === "tauri");
+  const tauriRecord = verifyVendoredRustPackage(root, {
+    name: "tauri",
+    version: "2.11.2",
+  });
   assert.equal(glib.checksum, record.metadata.upstream.sha256);
   assert.equal(glib.vendored.treeSha256, record.treeSha256);
   assert.equal(glib.vendored.manifestSha256, record.metadataSha256);
@@ -1275,6 +1280,20 @@ test("license bundles retain verified vendored Cargo source, patch provenance, a
       (entry) => entry.path === "vendor/glib-0.18.5/JOESSH-PATCH.json",
     ),
   );
+  assert.equal(tauri.checksum, tauriRecord.metadata.upstream.sha256);
+  assert.equal(tauri.vendored.treeSha256, tauriRecord.treeSha256);
+  assert.equal(tauri.vendored.manifestSha256, tauriRecord.metadataSha256);
+  assert.deepEqual(tauri.vendored.patch, {
+    kind: "project-compatibility",
+    upstreamIssue: tauriRecord.metadata.patch.upstreamIssue,
+    rationale: tauriRecord.metadata.patch.rationale,
+    files: tauriRecord.metadata.patch.files,
+  });
+  assert.ok(
+    manifest.inputs.some(
+      (entry) => entry.path === "vendor/tauri-2.11.2/JOESSH-PATCH.json",
+    ),
+  );
   const notices = readFileSync(
     join(root, "reports/release/third-party-licenses/THIRD-PARTY-NOTICES.txt"),
     "utf8",
@@ -1284,6 +1303,20 @@ test("license bundles retain verified vendored Cargo source, patch provenance, a
     /Vendored third-party source: https:\/\/static.crates.io\/crates\/glib\/glib-0.18.5.crate/,
   );
   assert.match(notices, /Security backport: RUSTSEC-2024-0429/);
+  assert.match(notices, /Patch kind: project-compatibility/);
+  assert.match(
+    notices,
+    new RegExp(escapeRegExp(tauriRecord.metadata.patch.upstreamIssue)),
+  );
+  assert.match(
+    notices,
+    new RegExp(escapeRegExp(tauriRecord.metadata.patch.rationale)),
+  );
+  assert.match(
+    notices,
+    new RegExp(tauriRecord.metadata.patch.files[0].patchedSha256),
+  );
+  assert.doesNotMatch(notices, /\bundefined\b/);
   assert.ok(!notices.includes(root));
   for (const args of [[], ["--artifact-only"]]) {
     const verified = run(verifier, root, args);
@@ -1305,6 +1338,30 @@ test("published license verification rejects self-consistent forged vendored pat
   manifest.packages.find(
     (entry) => entry.name === "glib",
   ).vendored.patch.commit = "f".repeat(40);
+  writePublishedBundle(root, {
+    manifestText: `${JSON.stringify(manifest, null, 2)}\n`,
+    noticesText: renderThirdPartyNotices(manifest),
+  });
+
+  const verified = run(verifier, root, ["--artifact-only"]);
+  assert.notEqual(verified.status, 0);
+  assert.match(verified.stderr, /vendored patch provenance does not match/);
+});
+
+test("published license verification rejects forged Tauri compatibility file provenance", (t) => {
+  const root = createFixture(t);
+  addVendoredLicenseFixture(root);
+  const generated = run(generator, root);
+  assert.equal(generated.status, 0, generated.stderr);
+  const manifest = JSON.parse(
+    readFileSync(
+      join(root, "reports/release/third-party-licenses/manifest.json"),
+      "utf8",
+    ),
+  );
+  manifest.packages.find(
+    (entry) => entry.name === "tauri",
+  ).vendored.patch.files[0].patchedSha256 = "f".repeat(64);
   writePublishedBundle(root, {
     manifestText: `${JSON.stringify(manifest, null, 2)}\n`,
     noticesText: renderThirdPartyNotices(manifest),
@@ -1381,20 +1438,30 @@ test("license generation verifies vendor files before collecting their text", (t
 });
 
 function addVendoredLicenseFixture(root) {
-  cpSync(
-    join(repositoryRoot, "vendor/glib-0.18.5"),
-    join(root, "vendor/glib-0.18.5"),
-    { recursive: true },
-  );
+  for (const directory of ["glib-0.18.5", "tauri-2.11.2"]) {
+    cpSync(
+      join(repositoryRoot, "vendor", directory),
+      join(root, "vendor", directory),
+      { recursive: true },
+    );
+  }
   const record = verifyVendoredRustPackage(root, {
     name: "glib",
     version: "0.18.5",
   });
+  const tauriRecord = verifyVendoredRustPackage(root, {
+    name: "tauri",
+    version: "2.11.2",
+  });
   const id = `path+file:///${root.replaceAll("\\", "/")}/vendor/glib-0.18.5#glib@0.18.5`;
+  const tauriId = `path+file:///${root.replaceAll("\\", "/")}/vendor/tauri-2.11.2#tauri@2.11.2`;
   for (const path of ["Cargo.lock", "apps/desktop/src-tauri/Cargo.lock"]) {
+    const tauriLockEntry = path.startsWith("apps/desktop/")
+      ? '\n[[package]]\nname = "tauri"\nversion = "2.11.2"\n'
+      : "";
     appendFileSync(
       join(root, path),
-      '\n[[package]]\nname = "glib"\nversion = "0.18.5"\n',
+      `\n[[package]]\nname = "glib"\nversion = "0.18.5"\n${tauriLockEntry}`,
     );
   }
   for (const path of [
@@ -1417,6 +1484,23 @@ function addVendoredLicenseFixture(root) {
       .find((node) => node.id === metadata.workspace_members[0])
       .deps.push({ pkg: id, dep_kinds: [{ kind: null }] });
     metadata.resolve.nodes.push({ id, deps: [] });
+    if (path.includes("tauri-cargo-metadata")) {
+      metadata.packages.push({
+        id: tauriId,
+        name: "tauri",
+        version: "2.11.2",
+        source: null,
+        license: "Apache-2.0 OR MIT",
+        license_file: null,
+        authors: tauriRecord.authors,
+        repository: tauriRecord.repository,
+        manifest_path: join(tauriRecord.directory, "Cargo.toml"),
+      });
+      metadata.resolve.nodes
+        .find((node) => node.id === metadata.workspace_members[0])
+        .deps.push({ pkg: tauriId, dep_kinds: [{ kind: null }] });
+      metadata.resolve.nodes.push({ id: tauriId, deps: [] });
+    }
     writeJson(join(root, path), metadata);
   }
   for (const path of [
@@ -1430,6 +1514,18 @@ function addVendoredLicenseFixture(root) {
         record,
       ),
     );
+    if (path.includes("tauri-cargo-sbom")) {
+      sbom.components.push(
+        buildVendoredCargoComponent(
+          {
+            name: "tauri",
+            version: "2.11.2",
+            license: "Apache-2.0 OR MIT",
+          },
+          tauriRecord,
+        ),
+      );
+    }
     writeJson(join(root, path), sbom);
   }
   return record;

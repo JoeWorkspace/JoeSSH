@@ -89,8 +89,8 @@ export const de = {
   "desktop.safetyReasonHostShutdown": "hält den Host sofort an",
   "desktop.safetyReasonWindowsDestructive":
     "destruktiver Windows-Befehl zielt auf Dateien, Datenträger oder Hostzustand",
-  "desktop.safetyReasonPowershellDestructive":
-    "destruktiver PowerShell-Befehl zielt auf Laufwerk, Systempfad, Datenträger oder Energiezustand des Hosts",
+  "desktop.safetyReasonWindowsAdminDestructive":
+    "destruktiver Windows-Befehl zielt auf Laufwerk, Systempfad, Datenträger oder Energiezustand des Hosts",
   "desktop.safetyReasonDropDatabase": "löscht eine Datenbank",
   "desktop.safetyReasonCommandSubstitution":
     "bettet einen Unterbefehl ein, der beliebige Inhalte ausführen könnte",

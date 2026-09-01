@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-beta.25] - 2026-08-31
+
+> Replacement Microsoft Store maintenance candidate. The beta.23 and beta.24
+> qualification evidence remains immutable, and neither package may be
+> submitted or reused. This entry is not evidence that `1.1.25.0` has been
+> built, certified, or published.
+
+### Fixed
+
+- Remove the unused Windows self-relaunch path from the Store desktop build
+  through a checksum-bound Tauri compatibility patch, eliminating its process
+  launch imports without changing normal startup or shutdown behavior.
+- Give the embedded Windows application manifest a valid definition identity
+  and validate both compiled and packaged manifests with the same Windows SDK
+  manifest tool used by the build.
+- Reject downloaded or decoded content piped into any remote program, while
+  keeping unrelated commands outside the same pipeline valid.
+- Replace Expo Router's vulnerable URI decoder with the official linear-time
+  `0.5.0` implementation through a checksum-bound CommonJS compatibility
+  entry, preserving deep-link and query-string behavior.
+
+### Changed
+
+- Advance every application and runtime version surface to
+  `0.1.0-beta.25`, mapped to MSIX `1.1.25.0`, without changing historical
+  beta.23 or beta.24 records.
+- Bind the vendored Tauri source, exact upstream archive, compatibility patch,
+  licenses, and advisory identity into the existing fail-closed supply-chain
+  checks.
+
 ## [0.1.0-beta.24] - 2026-08-31
 
 > Replacement Microsoft Store maintenance candidate. The rejected local

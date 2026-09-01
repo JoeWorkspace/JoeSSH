@@ -18,7 +18,7 @@
     },
     {
       "path": "Invoke-SandboxVerification.ps1",
-      "sha256": "b45b751463bd21bbba1fcd3db06d873d8b947e14365ad551817285f906acdf9a"
+      "sha256": "e06dc2fe16e35fbb5226edaaab854fd7edf1eb5205874d36c5b8e273f2eae4ee"
     },
     {
       "path": "JoeSSH-NativeVerification.wsb.template",
@@ -26,29 +26,29 @@
     },
     {
       "path": "NativeVerification.Common.ps1",
-      "sha256": "3cbfacd5d7853c5d0a3c6c9d63f2d636e30b8c27aa285e92b5219f16dcb0387f"
+      "sha256": "5d7326db08f74298f56c9b83a92d9d4239c5385cea77679028c7289027792662"
     },
     {
       "path": "Prepare-NativeVerification.ps1",
-      "sha256": "d760a2362d3e5b3b6a208dfd1b90b78ce758cf4dff90da2d98d64494109669a5"
+      "sha256": "ab2e939cff982abee63905b474e4e3738e6a14abeae5f15d9d18236aa8cc9633"
     },
     {
       "path": "README.md",
-      "sha256": "821cf613246c84029924988d2174b721947b98330a26a8098cd9024f56e8581c"
+      "sha256": "c02c6678ace03367e7560607757e1e33f6a5dcd6b42736b285790cd589effb29"
     },
     {
       "path": "Test-Harness.ps1",
-      "sha256": "2ce727e5a07dbc22d16519936418652efa38870b538b820b069159abeb7b5530"
+      "sha256": "63bb338877e2fa18047a79f05e9dc017f80b8f3497701f9a2397c1aeb91694a4"
     },
     {
       "path": "Verify-NativeEvidence.ps1",
-      "sha256": "5283f0e4cd90507a01e1907311e498587e764a479b518d02900b5487b3dd4fa0"
+      "sha256": "519b67d934c9dd1b4dcc69acc1b85518d6ac482c3f0c93622f3b336571246ccc"
     }
   ],
   "selfTest": {
     "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File Test-Harness.ps1",
-    "passed": 35,
-    "total": 35,
-    "resultSha256": "b15b4d3c70fee25c7ccb604dbcfa9cf80270a9081ea24ee24399f45d638a9bb4"
+    "passed": 36,
+    "total": 36,
+    "resultSha256": "dfead45140724fcb9798ad8707c202d206449541ece269487409025093eec3a6"
   }
 }

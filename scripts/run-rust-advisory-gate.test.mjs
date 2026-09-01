@@ -20,9 +20,12 @@ const scopes = [
   "Cargo.lock",
   "apps/desktop/src-tauri/Cargo.lock",
   "vendored:glib@0.18.5",
+  "vendored:tauri@2.11.2",
 ];
-const [glib] = verifyVendoredRustPackages(resolve(import.meta.dirname, ".."));
-const resolveSources = () => [glib];
+const vendors = verifyVendoredRustPackages(resolve(import.meta.dirname, ".."));
+const glib = vendors.find(({ name }) => name === "glib");
+const tauri = vendors.find(({ name }) => name === "tauri");
+const resolveSources = () => [glib, tauri];
 
 function metadataFor(manifest) {
   const packages = [
@@ -33,13 +36,20 @@ function metadataFor(manifest) {
       manifest_path: resolve(import.meta.dirname, "../crates/core/Cargo.toml"),
     },
   ];
-  if (manifest !== "Cargo.toml")
+  if (manifest !== "Cargo.toml") {
     packages.push({
       name: "glib",
       version: "0.18.5",
       source: null,
       manifest_path: resolve(glib.directory, "Cargo.toml"),
     });
+    packages.push({
+      name: "tauri",
+      version: "2.11.2",
+      source: null,
+      manifest_path: resolve(tauri.directory, "Cargo.toml"),
+    });
+  }
   return { resolve: {}, packages };
 }
 
@@ -56,7 +66,7 @@ test("verifies the resolved source paths in both independent Rust workspaces", (
   ]);
   assert.deepEqual(
     verified.map(({ name }) => name),
-    ["glib"],
+    ["glib", "tauri"],
   );
 });
 
@@ -93,7 +103,7 @@ function cleanResult(scope) {
     vulnerabilities: { found: false, count: 0, list: [] },
     warnings: {},
   };
-  if (scope === scopes[2])
+  if (scope === "vendored:glib@0.18.5")
     report.warnings.unsound = [
       {
         kind: "unsound",
@@ -122,7 +132,7 @@ test("audits both real lockfiles and the verified vendor's registry identity", (
   const audits = auditRustLockfiles(
     (path, { scope }) => {
       calls.push(scope);
-      if (scope === scopes[2]) {
+      if (scope.startsWith("vendored:")) {
         projectionPath = path;
         assert.match(readFileSync(path, "utf8"), /source = "registry\+/);
       }
@@ -178,7 +188,7 @@ test("does not treat future GLib advisories as repaired by the existing backport
   const audits = auditRustLockfiles(
     (_path, { scope }) => {
       const outcome = cleanResult(scope);
-      if (scope === scopes[2]) {
+      if (scope === "vendored:glib@0.18.5") {
         const report = JSON.parse(outcome.result.stdout);
         report.vulnerabilities.list.push({
           advisory: { id: "RUSTSEC-2026-9999" },
@@ -191,7 +201,10 @@ test("does not treat future GLib advisories as repaired by the existing backport
     now,
     resolveSources,
   );
-  assert.equal(audits[2].passed, false);
+  assert.equal(
+    audits.find(({ lockfile }) => lockfile === "vendored:glib@0.18.5").passed,
+    false,
+  );
 });
 
 test("rejects a Cargo graph resolving GLib from another source path", () => {

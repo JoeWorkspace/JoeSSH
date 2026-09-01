@@ -71,6 +71,39 @@ test("accounts only for the verified official backport without changing the raw 
   assert.equal(report.warnings.unsound.length, 1);
 });
 
+test("audits an unmodified advisory identity for a compatibility-only patch", () => {
+  const verified = {
+    name: "tauri",
+    version: "2.11.2",
+    registryPackage: {
+      name: "tauri",
+      version: "2.11.2",
+      source: "registry+https://github.com/rust-lang/crates.io-index",
+      checksum:
+        "437404997acf375d85f1177afa7e11bb971f274ed6a7b83a2a3e339015f4cc28",
+    },
+    patchedAdvisories: [],
+  };
+  const report = fixture().report;
+  report.warnings = {};
+  const assessment = assessVendoredRustAudit(report, verified);
+  assert.deepEqual(assessment.errors, []);
+  assert.deepEqual(assessment.backports, []);
+});
+
+test("compatibility-only vendor audit rejects additional packages", () => {
+  const f = fixture();
+  f.verified = {
+    ...f.verified,
+    name: "tauri",
+    version: "2.11.2",
+    patchedAdvisories: [],
+  };
+  f.report.warnings = {};
+  f.report.lockfile["dependency-count"] = 2;
+  assert.ok(assessVendoredRustAudit(f.report, f.verified).errors.length > 0);
+});
+
 for (const [name, mutate] of [
   [
     "future vulnerability",

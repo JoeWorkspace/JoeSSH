@@ -84,8 +84,8 @@ export const th = {
   "desktop.safetyReasonHostShutdown": "หยุดโฮสต์ทันที",
   "desktop.safetyReasonWindowsDestructive":
     "คำสั่งทำลายล้างของ Windows มุ่งเป้าไฟล์ ดิสก์ หรือสถานะโฮสต์",
-  "desktop.safetyReasonPowershellDestructive":
-    "คำสั่งทำลายล้างของ PowerShell มุ่งเป้าไดรฟ์ พาธระบบ ดิสก์ หรือสถานะพลังงานของโฮสต์",
+  "desktop.safetyReasonWindowsAdminDestructive":
+    "คำสั่งทำลายล้างของ Windows มุ่งเป้าไดรฟ์ พาธระบบ ดิสก์ หรือสถานะพลังงานของโฮสต์",
   "desktop.safetyReasonDropDatabase": "ลบฐานข้อมูล",
   "desktop.safetyReasonCommandSubstitution":
     "ฝังคำสั่งย่อยที่อาจเรียกใช้อะไรก็ได้",

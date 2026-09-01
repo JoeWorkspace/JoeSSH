@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "package": {
+    "name": "decode-uri-component",
+    "version": "0.5.0",
+    "license": "MIT"
+  },
+  "source": {
+    "archive": "https://registry.npmjs.org/decode-uri-component/-/decode-uri-component-0.5.0.tgz",
+    "integrity": "sha512-1BiQVoK8C9gUbQU6NzAtO/tkz2qOFpEObMWpcFvhx4fYnj4Oc5yzaJN/LD36ihkVUdXyh5ZekzX+yM+ty/SrPg==",
+    "shasum": "4592fa1e1d640ec5e2760e2e168ad2ab5f2c9da1",
+    "repository": "https://github.com/SamVerschueren/decode-uri-component",
+    "gitCommit": "a12fabaa28303cc8b5b07e93d128f4fc09fc31e5",
+    "securityFixCommit": "fa479dafeede7bedf04e5c89aa78f2a78c664005",
+    "advisory": "https://github.com/advisories/GHSA-vcc3-ghjq-m6fr"
+  },
+  "patch": {
+    "kind": "module-compatibility",
+    "rationale": "Expo Router 57 resolves query-string 7.1.3, whose CommonJS decoder import cannot consume the ESM-only patched release. JoeSSH retains the official 0.5.0 linear-time implementation and adds a CommonJS export of the same function until Expo Router supports query-string 9.5.0 or later.",
+    "changes": [
+      {
+        "path": "index.cjs",
+        "derivedFrom": "index.js",
+        "transform": "Replace the single export default function declaration with module.exports = function; all decoder logic remains byte-identical."
+      },
+      {
+        "path": "package.json",
+        "derivedFrom": "package.original.json",
+        "transform": "Preserve upstream identity, author, and runtime metadata; add main, module, and types entry points, conditional import and require exports, and index.cjs to the published file list. Omit scripts, devDependencies, overrides, and tsd because npm treats the file dependency as a local package and would otherwise pull package-only development tooling into the root lock graph."
+      }
+    ]
+  },
+  "files": {
+    "index.cjs": {
+      "role": "commonjs-compatibility-entry",
+      "sha256": "684ba79779327ba789733a3a563050370a928a57eb7dd33d19b346f43b32cbb7"
+    },
+    "index.d.ts": {
+      "role": "upstream",
+      "sha256": "f7f52a51b25daac3448d6b455a89738dfa1f004eccaca168318834093a315ba2"
+    },
+    "index.js": {
+      "role": "upstream-security-fix",
+      "sha256": "9401353df38f8010ad7035fe8d666bce6a4902bc1cff809afc4ab23fa2e0bdaa"
+    },
+    "license": {
+      "role": "upstream",
+      "sha256": "ed7a9a0f74e43951b2520efe1a4349cb9ed5f3dff0b0f268e2e51a4d38df7ea4"
+    },
+    "package.json": {
+      "role": "module-compatibility-metadata",
+      "sha256": "5500ca25cc84d61ce3fecdceed036de08e1cc90605dbf8e201c6e41f97b1e8e0"
+    },
+    "package.original.json": {
+      "role": "upstream",
+      "sha256": "8900e5bd4176ce39e17c647facc5aaa0726db4cd0a3e789ed7582da60c22e185"
+    },
+    "readme.md": {
+      "role": "upstream",
+      "sha256": "4c341a0e19d537e679a680504b1ae1537d3698d81ae64e8c431a84b964d15046"
+    }
+  }
+}
