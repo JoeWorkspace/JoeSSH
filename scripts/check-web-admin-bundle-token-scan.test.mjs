@@ -6,6 +6,7 @@ import test from 'node:test';
 
 import {
   WEB_ADMIN_BUNDLE_FORBIDDEN_NEEDLES,
+  WEB_ADMIN_BUNDLE_REVIEWED_HIGH_ENTROPY_LITERALS,
   formatWebAdminBundleTokenLeaks,
   scanWebAdminBundleForTokenLeaks,
 } from './check-web-admin-bundle-token-scan.mjs';
@@ -21,12 +22,16 @@ test('passes when Web Admin dist files do not contain admin snapshot token marke
         'fetch("/api/admin/snapshot", { headers: { Accept: "application/json" } });',
         'const chunkHash = "0123456789abcdefghijklmnopqrstuvwxyzABCDEF";',
         'const integrity = "sha384-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+/=";',
+        `const locale={"desktop.authPrivateKey":"Private key","${WEB_ADMIN_BUNDLE_REVIEWED_HIGH_ENTROPY_LITERALS[0]}":"Windows destructive command"};`,
       ].join('\n'),
     );
 
     const result = scanWebAdminBundleForTokenLeaks(root);
 
     assert.equal(result.filesScanned, 2);
+    assert.deepEqual(WEB_ADMIN_BUNDLE_REVIEWED_HIGH_ENTROPY_LITERALS, [
+      'desktop.safetyReasonWindowsAdminDestructive',
+    ]);
     assert.deepEqual(result.leaks, []);
     assert.match(formatWebAdminBundleTokenLeaks(result), /OK Web Admin bundle token scan passed \(2 files\)\./);
   } finally {
@@ -44,17 +49,49 @@ test('reports token env names, bearer literals, and high-entropy credential lite
       join(root, 'assets', 'secret.js'),
       'const adminSecret = "0123456789abcdefghijklmnopqrstuvwxyzABCDEF";',
     );
+    writeFileSync(
+      join(root, 'assets', 'api-key.js'),
+      'const config = { apiKey: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/" };',
+    );
+    writeFileSync(
+      join(root, 'assets', 'allowlisted-key-plus-secret.js'),
+      `const tokenMap = { "${WEB_ADMIN_BUNDLE_REVIEWED_HIGH_ENTROPY_LITERALS[0]}": true, adminSecret: "0123456789abcdefghijklmnopqrstuvwxyzABCDEF" };`,
+    );
+    writeFileSync(
+      join(root, 'assets', 'credential-call.js'),
+      'setCredential("admin", "0123456789abcdefghijklmnopqrstuvwxyzABCDEF");',
+    );
+    writeFileSync(
+      join(root, 'assets', 'reviewed-literal-near-miss.js'),
+      'const tokenMap = { "desktop.safetyReasonWindowsAdminDestructivf": true };',
+    );
 
     const result = scanWebAdminBundleForTokenLeaks(root);
 
     assert.deepEqual(result.leaks, [
       {
+        filePath: 'assets/allowlisted-key-plus-secret.js',
+        label: 'high-entropy credential literal',
+      },
+      {
+        filePath: 'assets/api-key.js',
+        label: 'high-entropy credential literal',
+      },
+      {
         filePath: 'assets/auth.js',
         label: 'bearer token literal',
       },
       {
+        filePath: 'assets/credential-call.js',
+        label: 'high-entropy credential literal',
+      },
+      {
         filePath: 'assets/env.js',
         label: 'JoeSSH token environment variable name',
+      },
+      {
+        filePath: 'assets/reviewed-literal-near-miss.js',
+        label: 'high-entropy credential literal',
       },
       {
         filePath: 'assets/secret.js',

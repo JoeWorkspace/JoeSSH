@@ -13,6 +13,10 @@ export const WEB_ADMIN_BUNDLE_FORBIDDEN_NEEDLES = Object.freeze([
   },
 ]);
 
+export const WEB_ADMIN_BUNDLE_REVIEWED_HIGH_ENTROPY_LITERALS = Object.freeze([
+  'desktop.safetyReasonWindowsAdminDestructive',
+]);
+
 export function scanWebAdminBundleForTokenLeaks(
   distDir = 'apps/web/dist',
   forbiddenNeedles = WEB_ADMIN_BUNDLE_FORBIDDEN_NEEDLES,
@@ -111,9 +115,13 @@ function hasCredentialContextHighEntropyLiteral(contents) {
       return false;
     }
 
-    return [...line.matchAll(/["'`]([A-Za-z0-9._~+/=-]{32,})["'`]/g)].some((match) => {
-      const value = match[1];
-      return shannonEntropy(value) >= 4.2 && uniqueCharacterCount(value) >= 12;
+    return [...line.matchAll(/(["'`])([A-Za-z0-9._~+/=-]{32,})\1/g)].some((match) => {
+      const value = match[2];
+      return (
+        !WEB_ADMIN_BUNDLE_REVIEWED_HIGH_ENTROPY_LITERALS.includes(value) &&
+        shannonEntropy(value) >= 4.2 &&
+        uniqueCharacterCount(value) >= 12
+      );
     });
   });
 }
