@@ -258,9 +258,12 @@ npm run release:desktop:draft
 beta.22 keeps the same GitHub zero-asset boundary while reserving its binary
 solely for Partner Center. The beta.23 MSIX `1.1.23.0` attempt is superseded.
 The beta.24 MSIX `1.1.24.0` attempt is also superseded and remains immutable.
-The beta.25 maintenance candidate preserves the boundary with a new MSIX
-`1.1.25.0`. None of these versions may use this full-release flow. Bump every
-version surface first and use a distinct unused version after beta.25.
+The beta.25 MSIX `1.1.25.0` attempt is superseded after its strict WACK run
+returned the required TEST 92 `DPIAwarenessValidation` warning; its package and
+evidence remain immutable and cannot qualify another version. The beta.26
+maintenance candidate preserves the boundary with a new MSIX `1.1.26.0`. None
+of these versions may use this full-release flow. Bump every version surface
+first and use a distinct unused version after beta.26.
 The publish preflight verifies all Desktop/Web/Sync checksum manifests, Desktop
 signing/notarization evidence, SBOM coverage, release provenance, a healthy Git
 checkout, a clean working tree outside `reports/release/`, a release tag that

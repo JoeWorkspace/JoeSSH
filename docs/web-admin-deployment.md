@@ -18,11 +18,11 @@ node scripts/verify-web-release-package.mjs
 The generated `_headers` file must be deployed with the static assets. It
 provides HTTP-only protections that HTML meta tags cannot enforce, including
 clickjacking protection.
-For the source-only beta.20/beta.21 revisions and the Store-only beta.22 through beta.25
+For the source-only beta.20/beta.21 revisions and the Store-only beta.22 through beta.26
 source revisions, these commands are local build/deployment validation only; do not
 attach the generated zip to any of their zero-asset GitHub prereleases. A later
 public binary release must first use a distinct unused `FULL_RELEASE_VERSION`
-after beta.25. For that release,
+after beta.26. For that release,
 `release:web` writes Web
 Admin checksums to
 `reports/release/web/SHA256SUMS.txt` and packages the deployable static bundle

@@ -21,6 +21,7 @@ import {
   removeOwnedTemporaryDirectory,
   validateArtifactMetadata,
   validateCanonicalSourceCandidateName,
+  validateBindingsPredicate,
   validateProducerRunMetadata,
   validateVerifiedAttestation,
   validateWindowsStoreSourceReceiptMetadata,
@@ -162,6 +163,9 @@ function buildBindings(candidate) {
       makeAppxPackAndUnpack: true,
       byteExactPayloadRoundTrip: true,
       allStoreSurfaceChecks: true,
+      embeddedRtManifestMtStrict: true,
+      embeddedRtManifestRawByteExact: true,
+      blockedProcessLaunchApiNamesAndNamedImportsAbsent: true,
     },
     publication: {
       storePublicationReady: false,
@@ -170,6 +174,31 @@ function buildBindings(candidate) {
     },
   };
 }
+
+test("signed source predicate requires every executable safety gate", () => {
+  const candidate = {
+    fileName: "candidate.msix",
+    sha256: "d".repeat(64),
+    sizeBytes: 123,
+  };
+  const valid = buildBindings(candidate);
+  assert.doesNotThrow(() => validateBindingsPredicate(valid, context(candidate)));
+  for (const key of [
+    "embeddedRtManifestMtStrict",
+    "embeddedRtManifestRawByteExact",
+    "blockedProcessLaunchApiNamesAndNamedImportsAbsent",
+  ]) {
+    for (const value of [false, undefined]) {
+      const changed = structuredClone(valid);
+      if (value === undefined) delete changed.validation[key];
+      else changed.validation[key] = value;
+      assert.throws(
+        () => validateBindingsPredicate(changed, context(candidate)),
+        /outside the approved boundary/,
+      );
+    }
+  }
+});
 
 function slsaPredicate() {
   const identity = `https://github.com/${policy.repository}/${policy.workflowPath}@${policy.sourceRef}`;
@@ -347,14 +376,14 @@ test("artifact metadata treats IDs as selectors and proves same run, source, dig
 });
 
 test("candidate name is canonical ASCII and bound to source SHA, run, and attempt", () => {
-  const valid = `JoeSSH_1.1.25.0_x64_${SOURCE_SHA.slice(0, 12)}_${RUN_ID}_${RUN_ATTEMPT}.msix`;
+  const valid = `JoeSSH_1.1.26.0_x64_${SOURCE_SHA.slice(0, 12)}_${RUN_ID}_${RUN_ATTEMPT}.msix`;
   assert.equal(validateCanonicalSourceCandidateName(valid, context()), valid);
   for (const invalid of [
     valid.replace(SOURCE_SHA.slice(0, 12), "b".repeat(12)),
     valid.replace(`_${RUN_ID}_`, "_40000000002_"),
     valid.replace(`_${RUN_ATTEMPT}.msix`, "_3.msix"),
-    valid.replace("1.1.25.0", "01.1.25.0"),
-    valid.replace("1.1.25.0", "1.1.65536.0"),
+    valid.replace("1.1.26.0", "01.1.26.0"),
+    valid.replace("1.1.26.0", "1.1.65536.0"),
     valid.replace(".msix", ".MSIX"),
     valid.replace("JoeSSH_", "JoeSSH_\n"),
     valid.replace("_x64_", "/x64/"),
@@ -399,7 +428,7 @@ test("generic verifier resolves a full tuple from live API and both offline bund
     mkdirSync(attestationsDirectory);
     const candidatePath = resolve(
       candidateDirectory,
-      `JoeSSH_1.1.25.0_x64_${SOURCE_SHA.slice(0, 12)}_${RUN_ID}_${RUN_ATTEMPT}.msix`,
+      `JoeSSH_1.1.26.0_x64_${SOURCE_SHA.slice(0, 12)}_${RUN_ID}_${RUN_ATTEMPT}.msix`,
     );
     writeFileSync(candidatePath, "fixture candidate bytes\n");
     const candidateBytes = readFileSync(candidatePath);

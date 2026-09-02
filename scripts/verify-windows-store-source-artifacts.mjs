@@ -987,7 +987,7 @@ function verifyEvidenceTree(directory) {
   };
 }
 
-function validateBindingsPredicate(predicate, context) {
+export function validateBindingsPredicate(predicate, context) {
   const policy = WINDOWS_STORE_SOURCE_POLICY;
   if (
     predicate?.schemaVersion !== 1 ||
@@ -1013,6 +1013,10 @@ function validateBindingsPredicate(predicate, context) {
     predicate?.validation?.makeAppxPackAndUnpack !== true ||
     predicate?.validation?.byteExactPayloadRoundTrip !== true ||
     predicate?.validation?.allStoreSurfaceChecks !== true ||
+    predicate?.validation?.embeddedRtManifestMtStrict !== true ||
+    predicate?.validation?.embeddedRtManifestRawByteExact !== true ||
+    predicate?.validation?.blockedProcessLaunchApiNamesAndNamedImportsAbsent !==
+      true ||
     predicate?.publication?.storePublicationReady !== false ||
     predicate?.publication?.partnerCenterUpload !== "not-performed" ||
     predicate?.publication?.storeCertification !== "not-performed"

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   copyFileSync,
   cpSync,
@@ -31,11 +32,13 @@ import {
   inspectWindowsApplicationManifest,
   nativeBuildEnvironment,
   packAndVerifyMsix,
+  readRawWindowsApplicationManifest,
   run,
   treeEvidence,
   validateBuildContext,
   validateCiEvidence,
   validateEmbeddedWindowsApplicationManifest,
+  verifyRawWindowsApplicationManifest,
   verifyLatestMainCi,
   verifyPackageRoundTrip,
 } from "./build-windows-store-msix.mjs";
@@ -90,6 +93,16 @@ test("Store source evidence binds and validates the native Windows manifest", ()
   assert.ok(STORE_SOURCE_BINDINGS.includes("apps/desktop/src-tauri/build.rs"));
   assert.ok(STORE_SOURCE_BINDINGS.includes(manifestPath));
   const manifest = readFileSync(resolve(root, manifestPath), "utf8");
+  const buildScript = readFileSync(
+    resolve(root, "apps/desktop/src-tauri/build.rs"),
+    "utf8",
+  );
+  assert.match(buildScript, /new_without_app_manifest\(\)/);
+  assert.match(
+    buildScript,
+    /append_rc_content\(r#"1 24 "windows-app-manifest\.xml""#\)/,
+  );
+  assert.doesNotMatch(buildScript, /\.app_manifest\(/);
   assert.match(
     manifest,
     /^<\?xml version="1\.0" encoding="UTF-8" standalone="yes"\?>/,
@@ -612,8 +625,8 @@ test("manifest preserves upgrade identity, OS floor, legal resource path and all
     /Version="1.1.24.0"/,
   );
   assert.match(
-    createStoreManifest(partner, "0.1.0-beta.25", languages),
-    /Version="1.1.25.0"/,
+    createStoreManifest(partner, "0.1.0-beta.26", languages),
+    /Version="1.1.26.0"/,
   );
   assert.throws(
     () => createStoreManifest(partner, "0.1.0-beta.23", languages.slice(1)),
@@ -731,6 +744,249 @@ test(
     });
     assert.equal(validated.dpiAwareness, "PerMonitorV2");
     assert.match(validated.sha256, /^[a-f0-9]{64}$/);
+  },
+);
+
+test(
+  "Windows Resource Compiler preserves exact manifest bytes and the raw gate rejects the old leading-space form",
+  { skip: process.platform !== "win32" },
+  (t) => {
+    const directory = temporary(t);
+    const source = readFileSync(
+      resolve(root, "apps/desktop/src-tauri/windows-app-manifest.xml"),
+    );
+    const native = nativeBuildEnvironment(process.env);
+    const sdk = findMakeAppx(
+      native,
+      native.WindowsSDKVersion.replaceAll("\\", ""),
+    );
+    const rc = join(dirname(sdk.path), "rc.exe");
+    const linker = join(
+      native.VCToolsInstallDir,
+      "bin",
+      "Hostx64",
+      "x64",
+      "link.exe",
+    );
+
+    const compile = (name, manifestBytes, { extraResource = false } = {}) => {
+      writeFileSync(join(directory, `${name}.xml`), manifestBytes);
+      if (extraResource) {
+        writeFileSync(join(directory, `${name}.bin`), Buffer.from([0x4a]));
+      }
+      writeFileSync(
+        join(directory, `${name}.rc`),
+        [
+          extraResource ? `1 RCDATA "${name}.bin"` : null,
+          `1 24 "${name}.xml"`,
+        ]
+          .filter(Boolean)
+          .join("\n") + "\n",
+      );
+      run(
+        rc,
+        ["/nologo", "/fo", join(directory, `${name}.res`), `${name}.rc`],
+        { cwd: directory, env: native },
+      );
+      const executable = join(directory, `${name}.dll`);
+      run(
+        linker,
+        [
+          "/NOLOGO",
+          "/DLL",
+          "/NOENTRY",
+          "/MACHINE:X64",
+          `/OUT:${executable}`,
+          join(directory, `${name}.res`),
+        ],
+        { cwd: directory, env: native },
+      );
+      return readFileSync(executable);
+    };
+
+    const canonical = compile("canonical", source);
+    assert.deepEqual(verifyRawWindowsApplicationManifest(canonical, source), {
+      resourceType: "RT_MANIFEST",
+      resourceId: 1,
+      languageId: 1033,
+      codePage: 0,
+      sizeBytes: source.length,
+      sha256: createHash("sha256").update(source).digest("hex"),
+      firstByteHex: "3c",
+      byteExactSource: true,
+    });
+
+    const peOffset = canonical.readUInt32LE(0x3c);
+    const optionalOffset = peOffset + 24;
+    const withoutDeclaredDirectories = Buffer.from(canonical);
+    withoutDeclaredDirectories.writeUInt32LE(0, optionalOffset + 108);
+    assert.throws(
+      () => readRawWindowsApplicationManifest(withoutDeclaredDirectories),
+      /invalid data-directory count/,
+    );
+
+    const excessiveDeclaredDirectories = Buffer.from(canonical);
+    excessiveDeclaredDirectories.writeUInt32LE(0xffffffff, optionalOffset + 108);
+    assert.throws(
+      () => readRawWindowsApplicationManifest(excessiveDeclaredDirectories),
+      /invalid data-directory count/,
+    );
+
+    const reservedTypeIdBits = Buffer.from(canonical);
+    const resourceRva = reservedTypeIdBits.readUInt32LE(optionalOffset + 128);
+    const sectionCount = reservedTypeIdBits.readUInt16LE(peOffset + 6);
+    const optionalSize = reservedTypeIdBits.readUInt16LE(peOffset + 20);
+    const sectionTable = optionalOffset + optionalSize;
+    let resourceBase = -1;
+    for (let index = 0; index < sectionCount; index += 1) {
+      const section = sectionTable + index * 40;
+      const virtualAddress = reservedTypeIdBits.readUInt32LE(section + 12);
+      const rawSize = reservedTypeIdBits.readUInt32LE(section + 16);
+      if (
+        resourceRva >= virtualAddress &&
+        resourceRva < virtualAddress + rawSize
+      ) {
+        resourceBase =
+          reservedTypeIdBits.readUInt32LE(section + 20) +
+          resourceRva -
+          virtualAddress;
+        break;
+      }
+    }
+    assert.notEqual(resourceBase, -1);
+    const rootNamedCount = reservedTypeIdBits.readUInt16LE(resourceBase + 12);
+    const rootIdCount = reservedTypeIdBits.readUInt16LE(resourceBase + 14);
+    let manifestTypeEntry = -1;
+    for (let index = 0; index < rootNamedCount + rootIdCount; index += 1) {
+      const entry = resourceBase + 16 + index * 8;
+      if (reservedTypeIdBits.readUInt32LE(entry) === 24) {
+        manifestTypeEntry = entry;
+        break;
+      }
+    }
+    assert.notEqual(manifestTypeEntry, -1);
+    reservedTypeIdBits.writeUInt32LE(0x00010018, manifestTypeEntry);
+    assert.throws(
+      () => readRawWindowsApplicationManifest(reservedTypeIdBits),
+      /numeric ID uses reserved high bits/,
+    );
+
+    const invalidPartition = Buffer.from(canonical);
+    assert.equal(rootNamedCount, 0);
+    assert.ok(rootIdCount > 0);
+    invalidPartition.writeUInt16LE(1, resourceBase + 12);
+    invalidPartition.writeUInt16LE(rootIdCount - 1, resourceBase + 14);
+    assert.throws(
+      () => readRawWindowsApplicationManifest(invalidPartition),
+      /only numeric resource IDs/,
+    );
+
+    const resourceSize = canonical.readUInt32LE(optionalOffset + 132);
+    const resourceSection = Array.from(
+      { length: sectionCount },
+      (_, index) => sectionTable + index * 40,
+    ).find((section) => {
+      const virtualAddress = canonical.readUInt32LE(section + 12);
+      const rawSize = canonical.readUInt32LE(section + 16);
+      return (
+        resourceRva >= virtualAddress &&
+        resourceRva + resourceSize <= virtualAddress + rawSize
+      );
+    });
+    const otherSection = Array.from(
+      { length: sectionCount },
+      (_, index) => sectionTable + index * 40,
+    ).find((section) => section !== resourceSection);
+    assert.notEqual(resourceSection, undefined);
+    assert.notEqual(otherSection, undefined);
+    const overlappingSections = Buffer.from(canonical);
+    overlappingSections.writeUInt32LE(resourceRva, otherSection + 12);
+    overlappingSections.writeUInt32LE(resourceSize, otherSection + 16);
+    overlappingSections.writeUInt32LE(resourceBase, otherSection + 20);
+    assert.throws(
+      () => readRawWindowsApplicationManifest(overlappingSections),
+      /ambiguously overlaps/,
+    );
+
+    const typeDirectory =
+      resourceBase +
+      (canonical.readUInt32LE(manifestTypeEntry + 4) & 0x7fffffff);
+    const nameEntry = typeDirectory + 16;
+    assert.equal(canonical.readUInt32LE(nameEntry), 1);
+    const languageDirectory =
+      resourceBase +
+      (canonical.readUInt32LE(nameEntry + 4) & 0x7fffffff);
+    const languageEntry = languageDirectory + 16;
+    assert.equal(canonical.readUInt32LE(languageEntry), 1033);
+    const dataEntry =
+      resourceBase +
+      (canonical.readUInt32LE(languageEntry + 4) & 0x7fffffff);
+    const reservedDataEntry = Buffer.from(canonical);
+    reservedDataEntry.writeUInt32LE(1, dataEntry + 12);
+    assert.throws(
+      () => readRawWindowsApplicationManifest(reservedDataEntry),
+      /reserved field/,
+    );
+
+    const withExtra = compile("with-extra", source, { extraResource: true });
+    const extraPeOffset = withExtra.readUInt32LE(0x3c);
+    const extraOptionalOffset = extraPeOffset + 24;
+    const extraResourceRva = withExtra.readUInt32LE(extraOptionalOffset + 128);
+    const extraSectionCount = withExtra.readUInt16LE(extraPeOffset + 6);
+    const extraOptionalSize = withExtra.readUInt16LE(extraPeOffset + 20);
+    const extraSectionTable = extraOptionalOffset + extraOptionalSize;
+    let extraResourceBase = -1;
+    for (let index = 0; index < extraSectionCount; index += 1) {
+      const section = extraSectionTable + index * 40;
+      const virtualAddress = withExtra.readUInt32LE(section + 12);
+      const rawSize = withExtra.readUInt32LE(section + 16);
+      if (
+        extraResourceRva >= virtualAddress &&
+        extraResourceRva < virtualAddress + rawSize
+      ) {
+        extraResourceBase =
+          withExtra.readUInt32LE(section + 20) +
+          extraResourceRva -
+          virtualAddress;
+        break;
+      }
+    }
+    assert.notEqual(extraResourceBase, -1);
+    const extraNamedCount = withExtra.readUInt16LE(extraResourceBase + 12);
+    const extraIdCount = withExtra.readUInt16LE(extraResourceBase + 14);
+    assert.equal(extraNamedCount, 0);
+    assert.ok(extraIdCount >= 2);
+    let otherTypeEntry = -1;
+    for (let index = 0; index < extraIdCount; index += 1) {
+      const entry = extraResourceBase + 16 + index * 8;
+      if (withExtra.readUInt32LE(entry) !== 24) {
+        otherTypeEntry = entry;
+        break;
+      }
+    }
+    assert.notEqual(otherTypeEntry, -1);
+    const aliasedOtherType = Buffer.from(withExtra);
+    aliasedOtherType.writeUInt32LE(0x00010018, otherTypeEntry);
+    assert.throws(
+      () => readRawWindowsApplicationManifest(aliasedOtherType),
+      /numeric ID uses reserved high bits/,
+    );
+    const unsortedTypes = Buffer.from(withExtra);
+    unsortedTypes.writeUInt32LE(25, otherTypeEntry);
+    assert.throws(
+      () => readRawWindowsApplicationManifest(unsortedTypes),
+      /numeric IDs are not strictly sorted/,
+    );
+
+    const leading = compile(
+      "leading",
+      Buffer.concat([Buffer.from(" "), source]),
+    );
+    assert.equal(readRawWindowsApplicationManifest(leading).firstByteHex, "20");
+    assert.throws(
+      () => verifyRawWindowsApplicationManifest(leading, source),
+      /leading byte/,
+    );
   },
 );
 
