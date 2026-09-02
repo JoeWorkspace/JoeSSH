@@ -1,15 +1,17 @@
 # Microsoft Store Listing Draft
 
-Status: pending listing reference for the distinct JoeSSH `0.1.0-beta.25`
+Status: pending listing reference for the distinct JoeSSH `0.1.0-beta.26`
 Microsoft Store replacement candidate. The package identity, protected-main
 source revision, MSIX hash, and Partner Center validation are not evidence until
-the exact `1.1.25.0` package is generated and recorded. The existing Store
+the exact `1.1.26.0` package is generated and recorded. The existing Store
 package is `1.1.22.0`; it does not prove certification or publication of this
 new candidate. The local `1.1.23.0` qualification attempt is superseded and
 must not be uploaded. The `1.1.24.0` package and its failed qualification
-evidence are also superseded, immutable, and ineligible for upload. Historical
-source records remain unchanged and
-unavailable for new binary uploads.
+evidence are also superseded, immutable, and ineligible for upload. The beta.25
+`1.1.25.0` strict qualification run returned a required WACK Requirement 26,
+TEST 92 `DPIAwarenessValidation` warning. Its package and evidence are
+immutable, superseded, and cannot be uploaded or reused for beta.26. Historical
+source records remain unchanged and unavailable for new binary uploads.
 
 This draft deliberately describes only the free Windows Community product that
 exists today. It does not advertise Mobile SSH, hosted Sync, team mutations,
@@ -44,7 +46,7 @@ fills and verifies its evidence columns.
 - Store listing title: `JoeSSH` for every locale; use descriptions and localized
   keywords for positioning.
 - Release maturity: Windows x64 Store replacement candidate, version
-  `0.1.0-beta.25` / MSIX `1.1.25.0`
+  `0.1.0-beta.26` / MSIX `1.1.26.0`
 - Offer: free Community desktop app; no ads or in-app purchases
 - Primary category: Developer tools
 - Supported device family: Windows desktop
@@ -52,7 +54,7 @@ fills and verifies its evidence columns.
 - Supported operating systems: Windows 10 and Windows 11
 - Pricing: Free
 - Package strategy: use the Store-re-signed, Store-hosted, Store-updated MSIX
-  route. Qualify the exact beta.25 bytes with the repaired offline WACK
+  route. Qualify the exact beta.26 bytes with the repaired offline WACK
   toolchain and clean-machine lifecycle checks before Partner Center upload.
 - Initial discoverability recommendation: direct-link-only until the signed
   candidate, support route, privacy route, and first external test cohort have
@@ -72,6 +74,14 @@ fills and verifies its evidence columns.
 ### Short description
 
 Public Beta: local-first SSH, terminal, SFTP, and port forwarding for Windows.
+
+### What's new draft
+
+Improves Microsoft Store high-DPI package compatibility by embedding the
+reviewed UTF-8 Windows application manifest directly as the executable's sole
+`RT_MANIFEST/#1` resource and verifying its raw bytes before and after MSIX
+packaging. This text remains pending until the exact `1.1.26.0` package passes
+all release gates.
 
 ### Description
 
@@ -141,6 +151,12 @@ Use no more than seven entries:
 ### 简短说明
 
 Public Beta：面向 Windows 的本地优先 SSH、终端、SFTP 与端口转发工具。
+
+### “此版本的新增功能”草案
+
+改进 Microsoft Store 高 DPI 包兼容性：把审核后的 UTF-8 Windows 应用清单按原始
+字节直接嵌入为可执行文件中唯一的 `RT_MANIFEST/#1` 资源，并在 MSIX 打包前后
+验证原始字节。只有精确的 `1.1.26.0` 包通过全部发布门禁后，才可使用这段文案。
 
 ### 说明
 
@@ -264,9 +280,9 @@ manifest can advance to final human review.
 - Copyright/trademark: use only the truthful owner/publisher information
   accepted by Partner Center; do not claim a registered trademark.
 - Developed by: use the truthful verified publisher display name.
-- What's new: use only the reviewed beta.25 maintenance text after it is bound
-  to the exact package; do not describe the superseded beta.23 or beta.24 attempts as
-  published.
+- What's new: use only the reviewed beta.26 maintenance text after it is bound
+  to the exact package; do not describe the superseded beta.23, beta.24, or
+  beta.25 attempts as published.
 - Accessibility declaration: leave the voluntary declaration unchecked until
   the exact native candidate passes the complete Microsoft accessibility tool
   and assistive-technology matrix. Keyboard coverage alone is not sufficient.
@@ -359,8 +375,10 @@ The listing is still `NO-GO` until all of the following are true:
   Web Admin, and Mobile preview surfaces;
 - every required JoeSSH Windows App Certification Kit test plus Partner Center
   package validation, silent install/uninstall, ARP, and single-product-entry
-  evidence is attached to the exact candidate; optional WACK findings are
-  recorded and reviewed separately rather than hidden or treated as required;
+  evidence is attached to the exact candidate; any required warning fails the
+  candidate, and optional WACK findings are recorded and reviewed separately
+  rather than hidden or treated as required. Beta.25 TEST 92 evidence cannot
+  approve beta.26;
 - no future, hosted, paid, or unavailable capability appears in the listing.
 
 Current Microsoft references:

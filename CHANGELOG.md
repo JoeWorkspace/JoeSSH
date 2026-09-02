@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-beta.26] - 2026-09-02
+
+> Replacement Microsoft Store maintenance candidate. The beta.25
+> `1.1.25.0` qualification run ended with a required WACK Requirement 26,
+> TEST 92 `DPIAwarenessValidation` warning. That package and its evidence are
+> immutable, superseded, and ineligible for submission or reuse. This entry is
+> not evidence that `1.1.26.0` has been built, certified, or published.
+
+### Fixed
+
+- Bypass `tauri-winres` inline-manifest serialization and let Windows Resource
+  Compiler embed the reviewed UTF-8 application manifest bytes directly as the
+  sole `RT_MANIFEST` resource at ID 1, removing the strict-parser risk created
+  by beta.25's leading whitespace. A clean full WACK rerun is still required to
+  confirm that the Sandbox warning is gone.
+- Add a raw PE resource gate that requires exactly one `RT_MANIFEST/#1`
+  en-US resource, rejects a BOM or leading byte, and proves byte-for-byte
+  equality with the reviewed source manifest before and after the MSIX
+  pack/unpack round trip.
+
+### Changed
+
+- Advance every application and runtime version surface to
+  `0.1.0-beta.26`, mapped to MSIX `1.1.26.0`, without changing the historical
+  beta.25 changelog or release notes.
+
 ## [0.1.0-beta.25] - 2026-08-31
 
 > Replacement Microsoft Store maintenance candidate. The beta.23 and beta.24

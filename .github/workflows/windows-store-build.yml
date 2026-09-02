@@ -174,7 +174,7 @@ jobs:
           if ($p.schemaVersion -ne 1 -or $p.source.repository -cne "JoeWorkspace/JoeSSH" -or $p.source.sha -cne $env:GITHUB_SHA -or $env:REVIEWED_SHA -cne $env:GITHUB_SHA -or $p.source.ref -cne "refs/heads/main") { throw "Predicate source mismatch." }
           if ($p.builder.workflow -cne ".github/workflows/windows-store-build.yml" -or $p.builder.runId -cne $env:GITHUB_RUN_ID -or $p.builder.runAttempt -cne $env:GITHUB_RUN_ATTEMPT -or $p.builder.environment -cne "windows-release-stage-b") { throw "Predicate run mismatch." }
           if ($p.artifact.path -cne $env:EXPECTED_FILE_NAME -or $p.artifact.sha256 -cne $env:EXPECTED_MSIX_SHA256 -or $p.artifact.sizeBytes -ne $files[0].Length) { throw "Predicate artifact mismatch." }
-          if (-not $p.validation.makeAppxPackAndUnpack -or -not $p.validation.byteExactPayloadRoundTrip -or -not $p.validation.allStoreSurfaceChecks -or $p.publication.storePublicationReady -ne $false) { throw "Invalid validation or publication claim." }
+          if (-not $p.validation.makeAppxPackAndUnpack -or -not $p.validation.byteExactPayloadRoundTrip -or -not $p.validation.allStoreSurfaceChecks -or -not $p.validation.embeddedRtManifestMtStrict -or -not $p.validation.embeddedRtManifestRawByteExact -or -not $p.validation.blockedProcessLaunchApiNamesAndNamedImportsAbsent -or $p.publication.storePublicationReady -ne $false) { throw "Invalid validation or publication claim." }
           "msix_path=$msix" | Out-File -LiteralPath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "predicate_path=$predicate" | Out-File -LiteralPath $env:GITHUB_OUTPUT -Append -Encoding utf8
       - name: Attest default SLSA build provenance

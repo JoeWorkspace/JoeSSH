@@ -6,7 +6,14 @@ repository. They must never be inferred from a previous run or committed as
 repository dependencies. The small tracked
 [`windows-store-native-verification-bundle.json`](windows-store-native-verification-bundle.json)
 binds the exact reviewed harness files and seven-component offline toolchain
-manifest required for the beta.25 qualification run.
+manifest required for the beta.26 qualification run.
+
+The beta.25 `1.1.25.0` job is a closed historical record: WACK Requirement 26,
+TEST 92 `DPIAwarenessValidation` returned a required warning, so the strict host
+verifier failed it. Preserve its original package, WACK XML, result, checksum
+inventory, and UI observations without modification. None of those bytes or
+conclusions can qualify beta.26; prepare a new source build, job directory, and
+evidence inventory for `1.1.26.0`.
 
 Before preparing a job, copy the reviewed harness and toolchain into a new
 operator-controlled evidence directory. Recompute every file SHA256 and require
@@ -28,14 +35,21 @@ from the fresh self-test directory with Windows PowerShell 5.1, PowerShell 7,
 and Python and record those runtime versions and results. Then invoke
 `Prepare-NativeVerification.ps1` with all of these explicit inputs:
 
-- the exact source-built beta.25 MSIX path, independently anchored SHA256, exact
-  merged 40-character source commit, and `-ExpectedVersion 1.1.25.0`;
+- the exact source-built beta.26 MSIX path, independently anchored SHA256, exact
+  merged 40-character source commit, and `-ExpectedVersion 1.1.26.0`;
 - the immutable published `1.1.22.0` baseline path and its independently anchored
   SHA256;
 - only the baseline's uniquely matching Windows App Runtime dependency and the
   reviewed offline WebView2 installer;
 - the reviewed seven-component `-Toolchain`, a new output directory, and the
   explicit disposable-Sandbox signing/UI-review switches required by the run.
+
+Before job preparation, the source-build evidence must show that the executable
+used Windows Resource Compiler to embed the reviewed BOM-less UTF-8 manifest
+directly as the sole `RT_MANIFEST/#1` resource. The raw PE gate must prove type
+24, ID 1, en-US language 1033, first byte `<`, byte equality with the reviewed
+source file, and the same result after MSIX pack/unpack. `mt.exe` XML validation
+or a semantic DPI check does not replace this byte-level prerequisite.
 
 The preparation script must reject a dirty identity, wrong package version,
 wrong hash, stale output directory, unsigned input without the explicit

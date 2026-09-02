@@ -653,6 +653,319 @@ export function inspectWindowsApplicationManifest(value) {
     dpiAwareness: settings.dpiAwareness[0],
   };
 }
+
+function checkedPeRange(bytes, offset, size, label) {
+  requireThat(
+    Number.isSafeInteger(offset) &&
+      Number.isSafeInteger(size) &&
+      offset >= 0 &&
+      size >= 0 &&
+      offset <= bytes.length - size,
+    `Invalid ${label} range in Windows executable.`,
+  );
+  return offset;
+}
+
+function peRvaToFileOffset(bytes, sections, rva, size, label) {
+  requireThat(
+    Number.isSafeInteger(rva) && rva > 0,
+    `Invalid ${label} RVA in Windows executable.`,
+  );
+  const matches = [];
+  for (const section of sections) {
+    const relativeOffset = rva - section.virtualAddress;
+    if (
+      relativeOffset >= 0 &&
+      relativeOffset <= section.rawSize &&
+      size <= section.rawSize - relativeOffset
+    ) {
+      matches.push(section.rawOffset + relativeOffset);
+    }
+  }
+  requireThat(
+    matches.length === 1,
+    matches.length === 0
+      ? `${label} RVA is outside every file-backed PE section.`
+      : `${label} RVA ambiguously overlaps multiple file-backed PE sections.`,
+  );
+  return checkedPeRange(bytes, matches[0], size, label);
+}
+
+function readPeResourceDirectory(
+  bytes,
+  baseOffset,
+  resourceSize,
+  relativeOffset,
+  label,
+) {
+  requireThat(
+    relativeOffset <= resourceSize - 16,
+    `${label} directory escapes the PE resource table.`,
+  );
+  const offset = checkedPeRange(
+    bytes,
+    baseOffset + relativeOffset,
+    16,
+    `${label} directory`,
+  );
+  const namedCount = bytes.readUInt16LE(offset + 12);
+  const idCount = bytes.readUInt16LE(offset + 14);
+  const count = namedCount + idCount;
+  requireThat(
+    namedCount === 0,
+    `${label} must use only numeric resource IDs for this Store executable.`,
+  );
+  requireThat(
+    relativeOffset + 16 + count * 8 <= resourceSize,
+    `${label} entries escape the PE resource table.`,
+  );
+  checkedPeRange(bytes, offset + 16, count * 8, `${label} entries`);
+  const entries = Array.from({ length: count }, (_, index) => {
+    const entryOffset = offset + 16 + index * 8;
+    const name = bytes.readUInt32LE(entryOffset);
+    const target = bytes.readUInt32LE(entryOffset + 4);
+    const named = (name & 0x80000000) !== 0;
+    requireThat(
+      named === (index < namedCount),
+      `${label} entries do not preserve the PE named/ID partition.`,
+    );
+    requireThat(
+      (target & 0x7fffffff) <= resourceSize - 16,
+      `${label} entry target escapes the PE resource table.`,
+    );
+    requireThat(
+      (name & 0xffff0000) === 0,
+      `${label} numeric ID uses reserved high bits.`,
+    );
+    return {
+      named,
+      validNumericId: true,
+      id: name,
+      directory: (target & 0x80000000) !== 0,
+      target: target & 0x7fffffff,
+    };
+  });
+  for (let index = namedCount + 1; index < count; index += 1) {
+    requireThat(
+      entries[index - 1].id < entries[index].id,
+      `${label} numeric IDs are not strictly sorted.`,
+    );
+  }
+  return entries;
+}
+
+function requireSinglePeResourceId(entries, id, label, directory) {
+  const matches = entries.filter(
+    (entry) => entry.validNumericId && entry.id === id,
+  );
+  requireThat(
+    matches.length === 1 && matches[0].directory === directory,
+    `Windows executable must contain exactly one ${label} resource node.`,
+  );
+  return matches[0];
+}
+
+export function readRawWindowsApplicationManifest(executableBytes) {
+  const bytes = Buffer.from(executableBytes);
+  checkedPeRange(bytes, 0, 0x40, "DOS header");
+  requireThat(
+    bytes.readUInt16LE(0) === 0x5a4d,
+    "Windows executable must begin with an MZ header.",
+  );
+  const peOffset = bytes.readUInt32LE(0x3c);
+  checkedPeRange(bytes, peOffset, 24, "PE header");
+  requireThat(
+    bytes.readUInt32LE(peOffset) === 0x00004550,
+    "Windows executable must contain a PE signature.",
+  );
+  const sectionCount = bytes.readUInt16LE(peOffset + 6);
+  const optionalHeaderSize = bytes.readUInt16LE(peOffset + 20);
+  requireThat(
+    sectionCount > 0 && sectionCount <= 96,
+    "Windows executable has an invalid PE section count.",
+  );
+  const optionalOffset = peOffset + 24;
+  checkedPeRange(
+    bytes,
+    optionalOffset,
+    optionalHeaderSize,
+    "PE optional header",
+  );
+  const magic = bytes.readUInt16LE(optionalOffset);
+  requireThat(
+    magic === 0x20b && optionalHeaderSize >= 136,
+    "Store executable raw manifest gate requires a PE32+ image.",
+  );
+  const dataDirectoryCount = bytes.readUInt32LE(optionalOffset + 108);
+  requireThat(
+    dataDirectoryCount >= 3 &&
+      dataDirectoryCount <= 16 &&
+      112 + dataDirectoryCount * 8 <= optionalHeaderSize,
+    "Store executable PE32+ header has an invalid data-directory count.",
+  );
+  const dataDirectoryOffset = optionalOffset + 112;
+  checkedPeRange(
+    bytes,
+    dataDirectoryOffset,
+    3 * 8,
+    "PE data directories",
+  );
+  const resourceRva = bytes.readUInt32LE(dataDirectoryOffset + 2 * 8);
+  const resourceSize = bytes.readUInt32LE(dataDirectoryOffset + 2 * 8 + 4);
+  requireThat(
+    resourceRva > 0 && resourceSize >= 16,
+    "Windows executable has no PE resource directory.",
+  );
+  const sectionTableOffset = optionalOffset + optionalHeaderSize;
+  checkedPeRange(
+    bytes,
+    sectionTableOffset,
+    sectionCount * 40,
+    "PE section table",
+  );
+  const sections = Array.from({ length: sectionCount }, (_, index) => {
+    const offset = sectionTableOffset + index * 40;
+    return {
+      virtualSize: bytes.readUInt32LE(offset + 8),
+      virtualAddress: bytes.readUInt32LE(offset + 12),
+      rawSize: bytes.readUInt32LE(offset + 16),
+      rawOffset: bytes.readUInt32LE(offset + 20),
+    };
+  });
+  const resourceBase = peRvaToFileOffset(
+    bytes,
+    sections,
+    resourceRva,
+    resourceSize,
+    "PE resource directory",
+  );
+  const type = requireSinglePeResourceId(
+    readPeResourceDirectory(
+      bytes,
+      resourceBase,
+      resourceSize,
+      0,
+      "resource type",
+    ),
+    24,
+    "RT_MANIFEST type 24",
+    true,
+  );
+  const names = readPeResourceDirectory(
+    bytes,
+    resourceBase,
+    resourceSize,
+    type.target,
+    "RT_MANIFEST name",
+  );
+  requireThat(
+    names.length === 1,
+    "Windows executable must contain only RT_MANIFEST/#1 for its application manifest.",
+  );
+  const name = requireSinglePeResourceId(
+    names,
+    1,
+    "RT_MANIFEST ID 1",
+    true,
+  );
+  const languages = readPeResourceDirectory(
+    bytes,
+    resourceBase,
+    resourceSize,
+    name.target,
+    "RT_MANIFEST language",
+  );
+  requireThat(
+    languages.length === 1 &&
+      languages[0].validNumericId &&
+      !languages[0].directory &&
+      languages[0].id === 1033,
+    "RT_MANIFEST/#1 must have exactly one en-US (1033) language entry.",
+  );
+  requireThat(
+    languages[0].target <= resourceSize - 16,
+    "RT_MANIFEST data entry escapes the PE resource table.",
+  );
+  const dataEntryOffset = checkedPeRange(
+    bytes,
+    resourceBase + languages[0].target,
+    16,
+    "RT_MANIFEST data entry",
+  );
+  const dataRva = bytes.readUInt32LE(dataEntryOffset);
+  const sizeBytes = bytes.readUInt32LE(dataEntryOffset + 4);
+  const codePage = bytes.readUInt32LE(dataEntryOffset + 8);
+  const reserved = bytes.readUInt32LE(dataEntryOffset + 12);
+  requireThat(
+    sizeBytes > 0 &&
+      sizeBytes <= resourceSize &&
+      codePage === 0 &&
+      reserved === 0,
+    "RT_MANIFEST/#1 has an invalid raw byte length, code page, or reserved field.",
+  );
+  const fileOffset = peRvaToFileOffset(
+    bytes,
+    sections,
+    dataRva,
+    sizeBytes,
+    "RT_MANIFEST data",
+  );
+  const rawBytes = bytes.subarray(fileOffset, fileOffset + sizeBytes);
+  return {
+    resourceType: "RT_MANIFEST",
+    resourceId: 1,
+    languageId: languages[0].id,
+    codePage,
+    sizeBytes,
+    sha256: sha256(rawBytes),
+    firstByteHex: rawBytes[0].toString(16).padStart(2, "0"),
+    rawBytes,
+  };
+}
+
+export function verifyRawWindowsApplicationManifest(
+  executableBytes,
+  reviewedManifestBytes,
+) {
+  const reviewed = Buffer.from(reviewedManifestBytes);
+  requireThat(
+    reviewed.length > 0 && reviewed[0] === 0x3c,
+    "Reviewed Windows application manifest must begin immediately with '<'.",
+  );
+  const reviewedText = new TextDecoder("utf-8", { fatal: true }).decode(
+    reviewed,
+  );
+  const reviewedContract = inspectWindowsApplicationManifest(reviewedText);
+  const embedded = readRawWindowsApplicationManifest(executableBytes);
+  requireThat(
+    embedded.rawBytes[0] === 0x3c,
+    "Embedded RT_MANIFEST/#1 has a BOM or leading byte before the XML declaration.",
+  );
+  requireThat(
+    embedded.rawBytes.equals(reviewed),
+    "Embedded RT_MANIFEST/#1 raw bytes differ from the reviewed source manifest.",
+  );
+  const embeddedText = new TextDecoder("utf-8", { fatal: true }).decode(
+    embedded.rawBytes,
+  );
+  requireThat(
+    isDeepStrictEqual(
+      inspectWindowsApplicationManifest(embeddedText),
+      reviewedContract,
+    ),
+    "Embedded RT_MANIFEST/#1 semantic contract differs from source.",
+  );
+  return {
+    resourceType: embedded.resourceType,
+    resourceId: embedded.resourceId,
+    languageId: embedded.languageId,
+    codePage: embedded.codePage,
+    sizeBytes: embedded.sizeBytes,
+    sha256: embedded.sha256,
+    firstByteHex: embedded.firstByteHex,
+    byteExactSource: true,
+  };
+}
 export function createStoreManifest(partner, version, languages) {
   requireThat(
     languages.length === 15,
@@ -913,10 +1226,16 @@ export function buildWindowsStoreMsix(env = process.env, root = ROOT) {
       identity.productName === "JoeSSH",
     "Existing application identifier and product name must not change.",
   );
+  const nativeApplicationManifestPath = resolve(
+    root,
+    "apps/desktop/src-tauri/windows-app-manifest.xml",
+  );
+  const nativeApplicationManifestSourceBytes = readFileSync(
+    nativeApplicationManifestPath,
+  );
   const nativeApplicationManifestSource = inspectWindowsApplicationManifest(
-    readFileSync(
-      resolve(root, "apps/desktop/src-tauri/windows-app-manifest.xml"),
-      "utf8",
+    new TextDecoder("utf-8", { fatal: true }).decode(
+      nativeApplicationManifestSourceBytes,
     ),
   );
   assertMicrosoftStoreTauriConfig(
@@ -1115,6 +1434,11 @@ export function buildWindowsStoreMsix(env = process.env, root = ROOT) {
         run(dumpbin, ["/nologo", "/imports", payloadPath], { env: buildEnv }),
       ),
     };
+    const compiledRawNativeApplicationManifest =
+      verifyRawWindowsApplicationManifest(
+        payloadBytes,
+        nativeApplicationManifestSourceBytes,
+      );
     const compiledNativeApplicationManifest =
       validateEmbeddedWindowsApplicationManifest({
         mt: sdk.mtPath,
@@ -1202,6 +1526,18 @@ export function buildWindowsStoreMsix(env = process.env, root = ROOT) {
       "Unpacked executable RT_MANIFEST differs from the validated source build output.",
     );
     const unpackedExecutable = resolve(unpacked, STORE_MSIX_PROFILE.executable);
+    const unpackedRawNativeApplicationManifest =
+      verifyRawWindowsApplicationManifest(
+        readFileSync(unpackedExecutable),
+        nativeApplicationManifestSourceBytes,
+      );
+    requireThat(
+      isDeepStrictEqual(
+        compiledRawNativeApplicationManifest,
+        unpackedRawNativeApplicationManifest,
+      ),
+      "Unpacked executable raw RT_MANIFEST differs from the source build output.",
+    );
     const unpackedProcessLaunchApiGate = {
       nameBytes: assertNoStoreProcessLaunchApiReferences(
         readFileSync(unpackedExecutable),
@@ -1269,6 +1605,10 @@ export function buildWindowsStoreMsix(env = process.env, root = ROOT) {
         source: nativeApplicationManifestSource,
         compiled: compiledNativeApplicationManifest,
         unpacked: unpackedNativeApplicationManifest,
+        raw: {
+          compiled: compiledRawNativeApplicationManifest,
+          unpacked: unpackedRawNativeApplicationManifest,
+        },
       },
       processLaunchApiGate: {
         compiled: compiledProcessLaunchApiGate,
@@ -1291,6 +1631,7 @@ export function buildWindowsStoreMsix(env = process.env, root = ROOT) {
         byteExactPayloadRoundTrip: true,
         allStoreSurfaceChecks: true,
         embeddedRtManifestMtStrict: true,
+        embeddedRtManifestRawByteExact: true,
         blockedProcessLaunchApiNamesAndNamedImportsAbsent: true,
       },
       publication: {

@@ -170,9 +170,10 @@ hardening requirements.
 
 - **Windows Desktop:** install the free app from the
   [Microsoft Store](https://apps.microsoft.com/detail/9nk5llmf8lhm). GitHub
-  beta.20 through beta.22 prereleases are source-only. Beta.23 through beta.25 are
-  Store-candidate source revisions; their GitHub source records do not carry
-  Windows installers. Unsigned CI bundles remain review-only staging artifacts.
+  beta.20 through beta.22 prereleases are source-only. Beta.23 through beta.26
+  are Store-candidate source revisions; their GitHub source records do not
+  carry Windows installers. Beta.23 through beta.25 qualification candidates
+  are superseded. Unsigned CI bundles remain review-only staging artifacts.
   Source builds and distribution workflows are described in
   [Desktop Distribution](desktop-distribution.md).
 - **Web Admin:** deploy the static read-only administration surface with its
