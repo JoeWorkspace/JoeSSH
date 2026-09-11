@@ -13,6 +13,7 @@ type TauriInvoke = (
 
 interface TauriInternals {
   invoke: TauriInvoke;
+  unregisterCallback?: (id: number) => void;
 }
 
 function getTauriInvoke(): TauriInvoke | undefined {
@@ -208,12 +209,56 @@ export function thirdPartyNotices(): Promise<string> {
 
 // --- Interactive PTY (desktop runtime only) ---
 
-export function ptyOpen(
+export type PtyEvent =
+  | { kind: "data"; pty_id: string; sequence: number; data: number[] }
+  | { kind: "exited"; code: number }
+  | { kind: "failed" };
+
+export async function ptyOpen(
   sessionId: string,
   cols: number,
   rows: number,
+  events: import("./usePtySession").PtyEvents,
 ): Promise<string> {
-  return invoke<string>("pty_open", { sessionId, cols, rows });
+  const { Channel } = await import("@tauri-apps/api/core");
+  if (events.signal.aborted) throw new Error("PTY opening cancelled");
+  const channel = new Channel<PtyEvent>((event) => {
+    if (events.signal.aborted) return;
+    if (event.kind === "data") {
+      void Promise.resolve(events.onData(event.data))
+        .then(() => {
+          if (!events.signal.aborted)
+            return invoke<void>("pty_output_ack", {
+              ptyId: event.pty_id,
+              sequence: event.sequence,
+            });
+        })
+        .catch(() => {
+          if (!events.signal.aborted) events.onError();
+        });
+    } else if (event.kind === "exited") events.onExit(event.code);
+    else events.onError();
+  });
+  const dispose = () => {
+    channel.onmessage = () => {};
+    const internals = (
+      window as unknown as { __TAURI_INTERNALS__?: TauriInternals }
+    ).__TAURI_INTERNALS__;
+    internals?.unregisterCallback?.(channel.id);
+  };
+  events.signal.addEventListener("abort", dispose, { once: true });
+  try {
+    return await invoke<string>("pty_open", {
+      sessionId,
+      cols,
+      rows,
+      onEvent: channel,
+    });
+  } catch (error) {
+    dispose();
+    events.signal.removeEventListener("abort", dispose);
+    throw error;
+  }
 }
 
 export function ptyWrite(ptyId: string, data: number[]): Promise<void> {
@@ -230,33 +275,4 @@ export function ptyResize(
 
 export function ptyClose(ptyId: string): Promise<void> {
   return invoke<void>("pty_close", { ptyId });
-}
-
-/// An unsubscribe handle for a PTY event listener.
-export type Unlisten = () => void;
-
-/// Subscribe to a PTY's output (`Uint8Array` chunks) and exit. Returns a
-/// promise of an unlisten function. Uses Tauri's event API, dynamically
-/// imported so the web bundle/tests never load it. No-op outside the desktop
-/// runtime.
-export async function onPtyOutput(
-  ptyId: string,
-  onData: (bytes: number[]) => void,
-  onExit: (code: number) => void,
-): Promise<Unlisten> {
-  if (!isDesktopRuntime()) return () => {};
-  const { listen } = await import("@tauri-apps/api/event");
-  const unlistenData = await listen<{ data: number[] }>(
-    `pty://output/${ptyId}`,
-    (event) => {
-      onData(event.payload.data);
-    },
-  );
-  const unlistenExit = await listen<number>(`pty://exit/${ptyId}`, (event) => {
-    onExit(event.payload);
-  });
-  return () => {
-    unlistenData();
-    unlistenExit();
-  };
 }

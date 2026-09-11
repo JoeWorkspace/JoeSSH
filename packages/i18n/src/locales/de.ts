@@ -1,4 +1,10 @@
 export const de = {
+  "desktop.preparedInputNotSent":
+    "Die Eingabe wurde nicht gesendet. Warten Sie, bis das Zielterminal verbunden ist, und versuchen Sie es erneut.",
+  "desktop.sftpTargetExpired":
+    "Die Verbindung hat sich geändert. Der Upload wurde nicht gestartet.",
+  "desktop.connectionChangesNextConnect":
+    "Konfigurationsänderungen gelten ab der nächsten Verbindung",
   "desktop.demoScopeSummary": "Demodaten – keine echte SSH-Sitzung",
   "desktop.demoShell": "Beispiel-Shell",
   "desktop.noSession": "Keine SSH-Sitzung",

@@ -1,4 +1,8 @@
 export const zhCN = {
+  "desktop.preparedInputNotSent":
+    "输入未发送。请等目标终端连接就绪后重新操作。",
+  "desktop.sftpTargetExpired": "连接已变化，未开始上传。",
+  "desktop.connectionChangesNextConnect": "配置修改将在下次连接时生效",
   "desktop.demoScopeSummary": "演示数据 · 尚未连接真实 SSH",
   "desktop.demoShell": "示例终端",
   "desktop.noSession": "未连接 SSH",

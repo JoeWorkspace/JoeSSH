@@ -7,22 +7,25 @@ function makeDeps(overrides: Partial<PtyDeps> = {}) {
   const unlisten = vi.fn();
   let dataSink: (b: number[]) => void = () => {};
   let exitSink: (c: number) => void = () => {};
+  const open = overrides.open ?? vi.fn().mockResolvedValue("pty-1");
   const deps: PtyDeps = {
-    open: vi.fn().mockResolvedValue("pty-1"),
     write: vi.fn().mockResolvedValue(undefined),
     resize: vi.fn().mockResolvedValue(undefined),
     close: vi.fn().mockResolvedValue(undefined),
-    subscribe: vi.fn(async (_id, onData, onExit) => {
-      dataSink = onData;
-      exitSink = onExit;
-      return unlisten;
-    }),
     ...overrides,
+    open: vi.fn((cols, rows, events) => {
+      dataSink = events.onData;
+      exitSink = events.onExit;
+      events.signal.addEventListener("abort", unlisten, { once: true });
+      return open(cols, rows, events);
+    }),
   };
   return {
     deps,
     unlisten,
-    emitData: (b: number[]) => dataSink(b),
+    emitData: (b: number[]) => {
+      void dataSink(b);
+    },
     emitExit: (c: number) => exitSink(c),
   };
 }
@@ -38,6 +41,61 @@ function deferred<T>() {
 }
 
 describe("usePtySession", () => {
+  it("keeps first bytes and an exit received before open resolves without resurrecting the PTY", async () => {
+    const bytes = vi.fn();
+    const pending = deferred<string>();
+    const { deps } = makeDeps({
+      open: vi.fn((_cols, _rows, events) => {
+        events.onData([65]);
+        events.onExit(17);
+        return pending.promise;
+      }),
+    });
+    const { result } = renderHook(() => usePtySession(deps, bytes));
+    let opening!: Promise<void>;
+    act(() => {
+      opening = result.current.open(80, 24);
+    });
+    expect(bytes).toHaveBeenCalledWith([65]);
+    expect(result.current.status).toBe("closed");
+    await act(async () => {
+      pending.resolve("early-pty");
+      await opening;
+    });
+    expect(result.current.status).toBe("closed");
+    expect(result.current.exitCode).toBe(17);
+    expect(deps.close).toHaveBeenCalledWith("early-pty");
+  });
+
+  it("serializes bounded input and drops queued input on close without replaying after reconnect", async () => {
+    const pending = deferred<void>();
+    const write = vi
+      .fn()
+      .mockImplementationOnce(() => pending.promise)
+      .mockResolvedValue(undefined);
+    const { deps } = makeDeps({ write });
+    const { result } = renderHook(() => usePtySession(deps, () => {}));
+    await act(async () => {
+      await result.current.open(80, 24);
+    });
+    act(() => {
+      expect(result.current.write(new Array(32 * 1024).fill(65))).toBe(true);
+      expect(result.current.write(new Array(128 * 1024).fill(66))).toBe(false);
+    });
+    expect(write).toHaveBeenCalledTimes(1);
+    expect(write.mock.calls[0][1]).toHaveLength(16 * 1024);
+    act(() => result.current.close());
+    await act(async () => {
+      pending.resolve();
+      await pending.promise;
+      await result.current.open(80, 24);
+    });
+    expect(write).toHaveBeenCalledTimes(1);
+    act(() => {
+      result.current.write([67]);
+    });
+    expect(write).toHaveBeenLastCalledWith("pty-1", [67]);
+  });
   it("is inactive and does nothing when deps is undefined", async () => {
     const { result } = renderHook(() => usePtySession(undefined, () => {}));
     expect(result.current.active).toBe(false);
@@ -55,7 +113,7 @@ describe("usePtySession", () => {
     await act(async () => {
       await result.current.open(80, 24);
     });
-    expect(deps.open).toHaveBeenCalledWith(80, 24);
+    expect(deps.open).toHaveBeenCalledWith(80, 24, expect.any(Object));
     expect(result.current.status).toBe("open");
 
     act(() => emitData([104, 105]));
@@ -152,7 +210,7 @@ describe("usePtySession", () => {
       await result.current.open(100, 30);
     });
     expect(deps.open).toHaveBeenCalledTimes(2);
-    expect(deps.open).toHaveBeenLastCalledWith(100, 30);
+    expect(deps.open).toHaveBeenLastCalledWith(100, 30, expect.any(Object));
     expect(result.current.status).toBe("open");
   });
 
@@ -197,7 +255,7 @@ describe("usePtySession", () => {
     });
 
     expect(deps.open).toHaveBeenCalledTimes(1);
-    expect(deps.open).toHaveBeenCalledWith(80, 24);
+    expect(deps.open).toHaveBeenCalledWith(80, 24, expect.any(Object));
 
     await act(async () => {
       pendingOpen.resolve("pty-pending");
@@ -275,12 +333,8 @@ describe("usePtySession", () => {
     await act(async () => {
       await result.current.open(100, 30);
     });
-    expect(second.deps.open).toHaveBeenCalledWith(100, 30);
-    expect(second.deps.subscribe).toHaveBeenCalledWith(
-      "pty-new",
-      expect.any(Function),
-      expect.any(Function),
-    );
+    expect(second.deps.open).toHaveBeenCalledWith(100, 30, expect.any(Object));
+
     expect(result.current.status).toBe("open");
   });
 
@@ -308,17 +362,12 @@ describe("usePtySession", () => {
     });
 
     expect(first.deps.close).toHaveBeenCalledWith("pty-late");
-    expect(first.deps.subscribe).not.toHaveBeenCalled();
 
     await act(async () => {
       await result.current.open(120, 40);
     });
-    expect(second.deps.open).toHaveBeenCalledWith(120, 40);
-    expect(second.deps.subscribe).toHaveBeenCalledWith(
-      "pty-new",
-      expect.any(Function),
-      expect.any(Function),
-    );
+    expect(second.deps.open).toHaveBeenCalledWith(120, 40, expect.any(Object));
+
     expect(result.current.status).toBe("open");
   });
 

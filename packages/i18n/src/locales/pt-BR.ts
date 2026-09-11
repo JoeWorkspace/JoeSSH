@@ -1,4 +1,9 @@
 export const ptBR = {
+  "desktop.preparedInputNotSent":
+    "A entrada não foi enviada. Aguarde a conexão do terminal de destino e tente novamente.",
+  "desktop.sftpTargetExpired": "A conexão mudou; o envio não foi iniciado.",
+  "desktop.connectionChangesNextConnect":
+    "As alterações de configuração serão aplicadas na próxima conexão",
   "desktop.demoScopeSummary": "Dados de demonstração — sem sessão SSH real",
   "desktop.demoShell": "Shell de exemplo",
   "desktop.noSession": "Nenhuma sessão SSH",

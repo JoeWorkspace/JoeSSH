@@ -62,6 +62,7 @@
     "test:artifact-checksums": "node --test scripts/verify-artifact-checksums.test.mjs",
     "test:desktop-real-ssh-smoke-env": "node --test scripts/require-real-ssh-smoke-env.test.mjs",
     "test:desktop-real-ssh-smoke-fixture": "node --test scripts/run-real-ssh-smoke-fixture.test.mjs",
+    "test:known-hosts-recovery": "node --test scripts/repair-known-hosts-revocation.test.mjs",
     "test:desktop-release-package": "node --test scripts/package-desktop-release.test.mjs",
     "test:package-lock-portability": "node --test scripts/check-package-lock-portability.test.mjs",
     "test:windows-invite-beta": "node --test scripts/check-windows-invite-beta.test.mjs",

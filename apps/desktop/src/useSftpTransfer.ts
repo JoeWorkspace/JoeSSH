@@ -45,6 +45,9 @@ export function useSftpTransfer(
   useEffect(() => {
     operationSeq.current += 1;
     setStatus({ phase: "idle" });
+    return () => {
+      operationSeq.current += 1;
+    };
   }, [read, write]);
 
   const download = useCallback(

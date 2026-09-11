@@ -150,6 +150,8 @@ version = "0.1.0-beta.26"
 dependencies = [
  "atlasterm-core",
  "glib",
+ "rand",
+ "russh",
  "serde",
  "serde_json",
  "tauri",

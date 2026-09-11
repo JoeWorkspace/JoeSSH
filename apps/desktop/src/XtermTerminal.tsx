@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
 import { ChevronDown, ChevronUp, Search, X } from "lucide-react";
@@ -85,6 +85,8 @@ export function measureTerminalDimensions(
 ///
 export function XtermTerminal({
   deps,
+  active = true,
+  onInputReady,
   label,
   cols = 80,
   rows = 24,
@@ -94,6 +96,8 @@ export function XtermTerminal({
   statusLabels = defaultStatusLabels,
 }: {
   deps: PtyDeps;
+  active?: boolean;
+  onInputReady?: (send: (text: string) => boolean) => void;
   label: string;
   cols?: number;
   rows?: number;
@@ -109,20 +113,48 @@ export function XtermTerminal({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [bufferVersion, setBufferVersion] = useState(0);
   const [currentSearchIndex, setCurrentSearchIndex] = useState(0);
-  const pty = usePtySession(deps, (bytes) => {
-    termRef.current?.write(
-      decoderRef.current.decode(new Uint8Array(bytes), { stream: true }),
-      () => setBufferVersion((version) => version + 1),
-    );
-  });
+  const pty = usePtySession(
+    deps,
+    (bytes) =>
+      new Promise<void>((resolve) => {
+        if (!termRef.current) {
+          resolve();
+          return;
+        }
+        termRef.current.write(
+          decoderRef.current.decode(new Uint8Array(bytes), { stream: true }),
+          () => {
+            setBufferVersion((version) => version + 1);
+            resolve();
+          },
+        );
+      }),
+  );
   const { close, open, resize, write } = pty;
+  const liveRef = useRef({ active, write, resize, status: pty.status });
+  liveRef.current = { active, write, resize, status: pty.status };
+  const openPty = useCallback(
+    (cols: number, rows: number) => {
+      decoderRef.current = new TextDecoder();
+      return open(cols, rows);
+    },
+    [open],
+  );
+  const sendPrepared = useCallback((text: string) => {
+    if (!liveRef.current.active || liveRef.current.status !== "open")
+      return false;
+    const sent = liveRef.current.write(Array.from(encoder.encode(text)));
+    if (sent) termRef.current?.focus();
+    return sent;
+  }, []);
+  useEffect(() => {
+    onInputReady?.(sendPrepared);
+  }, [onInputReady, sendPrepared]);
   const searchMatches = useMemo(() => {
     void bufferVersion;
     void pty.status;
     const rawQuery = search?.query ?? "";
-    const query = rawQuery.trim()
-      ? rawQuery.toLocaleLowerCase()
-      : "";
+    const query = rawQuery.trim() ? rawQuery.toLocaleLowerCase() : "";
     const terminal = termRef.current;
     if (!search?.open || !query || !terminal) return [];
 
@@ -170,11 +202,10 @@ export function XtermTerminal({
   }, [currentSearchIndex, searchMatches]);
 
   useEffect(() => {
-    if (!preparedInput || pty.status !== "open") return;
-    write(Array.from(encoder.encode(preparedInput)));
-    termRef.current?.focus();
+    if (!preparedInput || !active) return;
+    sendPrepared(preparedInput);
     onPreparedInputConsumed?.();
-  }, [onPreparedInputConsumed, preparedInput, pty.status, write]);
+  }, [active, onPreparedInputConsumed, preparedInput, sendPrepared]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -191,15 +222,17 @@ export function XtermTerminal({
       convertEol: false,
       fontFamily: "monospace",
       fontSize: 13,
+      scrollback: 2000,
     });
     termRef.current = term;
     term.open(container);
     const dataSub = term.onData((input) => {
-      write(Array.from(encoder.encode(input)));
+      if (liveRef.current.active)
+        liveRef.current.write(Array.from(encoder.encode(input)));
     });
-    void open(initialDimensions.cols, initialDimensions.rows);
 
     const applyDimensions = (next: TerminalDimensions) => {
+      if (!liveRef.current.active) return;
       const current = dimensionsRef.current;
       if (current.cols === next.cols && current.rows === next.rows) {
         return;
@@ -207,13 +240,19 @@ export function XtermTerminal({
 
       dimensionsRef.current = next;
       term.resize(next.cols, next.rows);
-      resize(next.cols, next.rows);
+      liveRef.current.resize(next.cols, next.rows);
     };
 
     let disconnectResize: (() => void) | undefined;
     if (typeof ResizeObserver !== "undefined") {
       const observer = new ResizeObserver((entries) => {
         const target = entries[0]?.target;
+        if (
+          !liveRef.current.active ||
+          !container.clientWidth ||
+          !container.clientHeight
+        )
+          return;
         applyDimensions(
           measureTerminalDimensions(
             target instanceof HTMLElement ? target : container,
@@ -237,11 +276,38 @@ export function XtermTerminal({
     return () => {
       disconnectResize?.();
       dataSub.dispose();
-      close();
       term.dispose();
       termRef.current = null;
     };
-  }, [close, cols, open, resize, rows, write]);
+  }, [cols, rows]);
+
+  useEffect(() => {
+    void openPty(dimensionsRef.current.cols, dimensionsRef.current.rows);
+    return close;
+  }, [openPty, close]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (
+      !active ||
+      !container ||
+      !container.clientWidth ||
+      !container.clientHeight
+    )
+      return;
+    const dimensions = measureTerminalDimensions(
+      container,
+      dimensionsRef.current,
+    );
+    if (
+      dimensions.cols !== dimensionsRef.current.cols ||
+      dimensions.rows !== dimensionsRef.current.rows
+    ) {
+      dimensionsRef.current = dimensions;
+      termRef.current?.resize(dimensions.cols, dimensions.rows);
+      resize(dimensions.cols, dimensions.rows);
+    }
+  }, [active, resize]);
 
   const statusText =
     pty.blockedReason !== null
@@ -332,7 +398,10 @@ export function XtermTerminal({
             size="sm"
             variant="ghost"
             onClick={() => {
-              void open(dimensionsRef.current.cols, dimensionsRef.current.rows);
+              void openPty(
+                dimensionsRef.current.cols,
+                dimensionsRef.current.rows,
+              );
             }}
           >
             {statusLabels.reconnect}

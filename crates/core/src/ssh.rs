@@ -81,7 +81,7 @@ pub struct SshConfig {
     pub username: String,
     pub auth: SshAuth,
     pub host_key_policy: HostKeyPolicy,
-    /// Abort the TCP+handshake if it does not complete within this many ms.
+    /// Shared deadline for TCP, handshake, and authentication, in milliseconds.
     pub connect_timeout_ms: u64,
 }
 
@@ -130,12 +130,52 @@ impl client::Handler for ClientHandler {
 pub struct SshClient {
     handle: Arc<Handle<ClientHandler>>,
     server_fingerprint: Option<String>,
+    transport: SshTransport,
+}
+
+// Own the socket independently of russh's detached session task. Cancelling
+// connect/authentication or dropping the last client must interrupt that task's
+// I/O, including a peer that never answers authentication.
+struct SshTransport(std::net::TcpStream);
+
+impl Drop for SshTransport {
+    fn drop(&mut self) {
+        let _ = self.0.shutdown(std::net::Shutdown::Both);
+    }
+}
+
+async fn connect_transport(
+    host: &str,
+    port: u16,
+    deadline: tokio::time::Instant,
+) -> Result<(tokio::net::TcpStream, SshTransport), SshError> {
+    let socket = tokio::time::timeout_at(deadline, tokio::net::TcpStream::connect((host, port)))
+        .await
+        .map_err(|_| SshError::TimedOut)?
+        .map_err(|e| SshError::Connect(e.to_string()))?;
+    socket
+        .set_nodelay(true)
+        .map_err(|e| SshError::Connect(e.to_string()))?;
+    let socket = socket
+        .into_std()
+        .map_err(|e| SshError::Connect(e.to_string()))?;
+    let transport = SshTransport(
+        socket
+            .try_clone()
+            .map_err(|e| SshError::Connect(e.to_string()))?,
+    );
+    let socket =
+        tokio::net::TcpStream::from_std(socket).map_err(|e| SshError::Connect(e.to_string()))?;
+    Ok((socket, transport))
 }
 
 impl SshClient {
     /// Open a TCP connection, run the SSH handshake (verifying the host key via
     /// `config.host_key_policy`), and authenticate.
     pub async fn connect(config: SshConfig) -> Result<Self, SshError> {
+        let deadline = tokio::time::Instant::now()
+            + std::time::Duration::from_millis(config.connect_timeout_ms);
+        let (socket, transport) = connect_transport(&config.host, config.port, deadline).await?;
         let russh_config = Arc::new(client::Config::default());
         let captured_fingerprint = Arc::new(std::sync::Mutex::new(None));
         let handler = ClientHandler {
@@ -143,9 +183,9 @@ impl SshClient {
             captured_fingerprint: Arc::clone(&captured_fingerprint),
         };
 
-        let mut handle = tokio::time::timeout(
-            std::time::Duration::from_millis(config.connect_timeout_ms),
-            client::connect(russh_config, (config.host.as_str(), config.port), handler),
+        let mut handle = tokio::time::timeout_at(
+            deadline,
+            client::connect_stream(russh_config, socket, handler),
         )
         .await
         .map_err(|_| SshError::TimedOut)?
@@ -158,30 +198,38 @@ impl SshClient {
             other => SshError::Connect(other.to_string()),
         })?;
 
-        let authenticated = match &config.auth {
-            SshAuth::Password(password) => handle
-                .authenticate_password(&config.username, password)
-                .await
-                .map_err(|e| SshError::Session(e.to_string()))?,
-            SshAuth::PrivateKey { pem, passphrase } => {
-                let key = russh::keys::decode_secret_key(pem, passphrase.as_deref())
-                    .map_err(|e| SshError::Session(e.to_string()))?;
-                let hash_alg = handle
-                    .best_supported_rsa_hash()
+        let authenticated = tokio::time::timeout_at(deadline, async {
+            Ok::<_, SshError>(match &config.auth {
+                SshAuth::Password(password) => handle
+                    .authenticate_password(&config.username, password)
                     .await
-                    .ok()
-                    .flatten()
-                    .flatten();
-                let key_with_alg = russh::keys::PrivateKeyWithHashAlg::new(Arc::new(key), hash_alg);
-                handle
-                    .authenticate_publickey(&config.username, key_with_alg)
-                    .await
-                    .map_err(|e| SshError::Session(e.to_string()))?
-            }
-        };
+                    .map_err(|e| SshError::Session(e.to_string()))?,
+                SshAuth::PrivateKey { pem, passphrase } => {
+                    let key = russh::keys::decode_secret_key(pem, passphrase.as_deref())
+                        .map_err(|e| SshError::Session(e.to_string()))?;
+                    let hash_alg = handle
+                        .best_supported_rsa_hash()
+                        .await
+                        .ok()
+                        .flatten()
+                        .flatten();
+                    let key_with_alg =
+                        russh::keys::PrivateKeyWithHashAlg::new(Arc::new(key), hash_alg);
+                    handle
+                        .authenticate_publickey(&config.username, key_with_alg)
+                        .await
+                        .map_err(|e| SshError::Session(e.to_string()))?
+                }
+            })
+        })
+        .await
+        .map_err(|_| SshError::TimedOut)??;
 
         if !authenticated.success() {
             return Err(SshError::AuthFailed);
+        }
+        if tokio::time::Instant::now() >= deadline {
+            return Err(SshError::TimedOut);
         }
 
         let server_fingerprint = captured_fingerprint
@@ -191,7 +239,14 @@ impl SshClient {
         Ok(Self {
             handle: Arc::new(handle),
             server_fingerprint,
+            transport,
         })
+    }
+
+    /// Interrupt all channels, including in-flight SFTP/exec operations.
+    /// Removing a registry entry alone is insufficient when operations hold Arc clones.
+    pub fn disconnect(&self) {
+        let _ = self.transport.0.shutdown(std::net::Shutdown::Both);
     }
 
     /// The SHA-256 fingerprint the server presented during the handshake
@@ -557,6 +612,9 @@ pub async fn probe_host_key(
     port: u16,
     connect_timeout_ms: u64,
 ) -> Result<String, SshError> {
+    let deadline =
+        tokio::time::Instant::now() + std::time::Duration::from_millis(connect_timeout_ms);
+    let (socket, _transport) = connect_transport(host, port, deadline).await?;
     let russh_config = Arc::new(client::Config::default());
     let captured_fingerprint = Arc::new(std::sync::Mutex::new(None));
     let handler = ClientHandler {
@@ -564,9 +622,9 @@ pub async fn probe_host_key(
         captured_fingerprint: Arc::clone(&captured_fingerprint),
     };
 
-    let handle = tokio::time::timeout(
-        std::time::Duration::from_millis(connect_timeout_ms),
-        client::connect(russh_config, (host, port), handler),
+    let handle = tokio::time::timeout_at(
+        deadline,
+        client::connect_stream(russh_config, socket, handler),
     )
     .await
     .map_err(|_| SshError::TimedOut)?
@@ -578,13 +636,15 @@ pub async fn probe_host_key(
         .and_then(|slot| slot.clone())
         .ok_or_else(|| SshError::HostKeyRejected("server host key was not captured".into()));
 
-    let _ = handle
-        .disconnect(
+    let _ = tokio::time::timeout_at(
+        deadline,
+        handle.disconnect(
             russh::Disconnect::ByApplication,
             "JoeSSH host key probe",
             "",
-        )
-        .await;
+        ),
+    )
+    .await;
 
     fingerprint
 }
@@ -724,6 +784,79 @@ mod tests {
         };
         let result = SshClient::connect(config).await;
         assert!(matches!(result, Err(SshError::TimedOut)));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn authentication_deadline_closes_transport_for_password_and_private_key() {
+        struct AuthServer(Arc<tokio::sync::Notify>, Arc<tokio::sync::Notify>);
+        impl russh::server::Handler for AuthServer {
+            type Error = russh::Error;
+            async fn auth_password(
+                &mut self,
+                _: &str,
+                _: &str,
+            ) -> Result<russh::server::Auth, Self::Error> {
+                self.0.notify_one();
+                self.1.notified().await;
+                Ok(russh::server::Auth::Accept)
+            }
+            async fn auth_publickey_offered(
+                &mut self,
+                _: &str,
+                _: &PublicKey,
+            ) -> Result<russh::server::Auth, Self::Error> {
+                self.0.notify_one();
+                self.1.notified().await;
+                Ok(russh::server::Auth::Accept)
+            }
+        }
+        for auth in [
+            SshAuth::Password("fixture".into()),
+            SshAuth::PrivateKey {
+                pem: TEST_ED25519_KEY.into(),
+                passphrase: None,
+            },
+        ] {
+            let entered = Arc::new(tokio::sync::Notify::new());
+            let release = Arc::new(tokio::sync::Notify::new());
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let address = listener.local_addr().unwrap();
+            let handler = AuthServer(entered.clone(), release.clone());
+            let server = tokio::spawn(async move {
+                let config = russh::server::Config {
+                    keys: vec![russh::keys::decode_secret_key(TEST_ED25519_KEY, None).unwrap()],
+                    ..Default::default()
+                };
+                let (socket, _) = listener.accept().await.unwrap();
+                let session = russh::server::run_stream(Arc::new(config), socket, handler)
+                    .await
+                    .unwrap();
+                let _ = session.await;
+            });
+            let connecting = tokio::spawn(SshClient::connect(SshConfig {
+                host: address.ip().to_string(),
+                port: address.port(),
+                username: "test".into(),
+                auth,
+                host_key_policy: HostKeyPolicy::AcceptAny,
+                connect_timeout_ms: 800,
+            }));
+            tokio::time::timeout(std::time::Duration::from_secs(2), entered.notified())
+                .await
+                .expect("fixture must reach authentication");
+            // An unrelated connection remains usable while this authentication is blocked.
+            assert_eq!(exec_with_completion_fixture("success").await.unwrap().0, 0);
+            let result = tokio::time::timeout(std::time::Duration::from_secs(2), connecting)
+                .await
+                .expect("authentication must respect the shared deadline")
+                .unwrap();
+            assert!(matches!(result, Err(SshError::TimedOut)));
+            release.notify_one();
+            tokio::time::timeout(std::time::Duration::from_secs(2), server)
+                .await
+                .expect("cancelled client must close its actual socket")
+                .unwrap();
+        }
     }
 
     async fn exec_with_completion_fixture(command: &str) -> Result<(u32, Vec<u8>), SshError> {

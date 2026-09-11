@@ -207,6 +207,12 @@
           "markdownDescription": "Allows the main window to open interactive PTY shells."
         },
         {
+          "description": "Allow the main window to acknowledge consumed terminal output.",
+          "type": "string",
+          "const": "allow-pty-output-ack",
+          "markdownDescription": "Allow the main window to acknowledge consumed terminal output."
+        },
+        {
           "description": "Allows the main window to resize PTY shells.",
           "type": "string",
           "const": "allow-pty-resize",

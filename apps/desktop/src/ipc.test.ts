@@ -8,7 +8,6 @@ import {
   knownHostsCount,
   knownHostsList,
   knownHostsRemove,
-  onPtyOutput,
   ptyClose,
   ptyOpen,
   ptyResize,
@@ -26,24 +25,27 @@ import {
 
 type InvokeMock = ReturnType<typeof vi.fn>;
 
-// Records the latest handler registered per event name, so tests can drive
-// the mocked Tauri event listeners.
-const listenHandlers: Record<string, (event: unknown) => void> = {};
-let unlistenCalls = 0;
-vi.mock("@tauri-apps/api/event", () => ({
-  listen: async (name: string, handler: (event: unknown) => void) => {
-    listenHandlers[name] = handler;
-    return () => {
-      unlistenCalls += 1;
-    };
-  },
-}));
-
+const callbacks = new Map<number, (message: unknown) => void>();
+let nextCallback = 0;
 function installTauri(invoke: InvokeMock) {
-  (
-    window as unknown as { __TAURI_INTERNALS__?: { invoke: InvokeMock } }
-  ).__TAURI_INTERNALS__ = {
-    invoke,
+  Object.assign(window, {
+    __TAURI_INTERNALS__: {
+      invoke,
+      transformCallback: (callback: (message: unknown) => void) => {
+        const id = ++nextCallback;
+        callbacks.set(id, callback);
+        return id;
+      },
+      unregisterCallback: (id: number) => callbacks.delete(id),
+    },
+  });
+}
+function ptyEvents() {
+  return {
+    onData: vi.fn(),
+    onExit: vi.fn(),
+    onError: vi.fn(),
+    signal: new AbortController().signal,
   };
 }
 
@@ -303,11 +305,12 @@ describe("desktop IPC bridge", () => {
     installTauri(invoke);
 
     invoke.mockResolvedValueOnce("pty-1");
-    await expect(ptyOpen("s1", 80, 24)).resolves.toBe("pty-1");
+    await expect(ptyOpen("s1", 80, 24, ptyEvents())).resolves.toBe("pty-1");
     expect(invoke).toHaveBeenLastCalledWith("pty_open", {
       sessionId: "s1",
       cols: 80,
       rows: 24,
+      onEvent: expect.any(Object),
     });
 
     await ptyWrite("pty-1", [104, 105]);
@@ -327,29 +330,71 @@ describe("desktop IPC bridge", () => {
     expect(invoke).toHaveBeenLastCalledWith("pty_close", { ptyId: "pty-1" });
   });
 
-  it("onPtyOutput is a no-op (returns an unlisten) outside the desktop runtime", async () => {
-    const unlisten = await onPtyOutput(
-      "pty-1",
-      () => {},
-      () => {},
+  it("registers one ordered Channel before invoke and releases it on cancellation", async () => {
+    let callback: ((message: unknown) => void) | undefined;
+    const invoke = vi.fn(
+      async (command: string, args: Record<string, unknown>) => {
+        if (command !== "pty_open") return;
+        const channel = args.onEvent as { id: number };
+        callback = callbacks.get(channel.id);
+        expect(callback).toBeDefined();
+        // The SDK must reorder an early exit that arrives before the first chunk.
+        callback?.({ index: 1, message: { kind: "exited", code: 7 } });
+        callback?.({
+          index: 0,
+          message: {
+            kind: "data",
+            pty_id: "pty-9",
+            sequence: 1,
+            data: [1, 2, 3],
+          },
+        });
+        return "pty-9";
+      },
     );
-    expect(typeof unlisten).toBe("function");
-    expect(() => unlisten()).not.toThrow();
+    installTauri(invoke);
+    const controller = new AbortController();
+    const events = { ...ptyEvents(), signal: controller.signal };
+    const before = callbacks.size;
+    await expect(ptyOpen("s1", 80, 24, events)).resolves.toBe("pty-9");
+    expect(events.onData).toHaveBeenCalledWith([1, 2, 3]);
+    expect(events.onExit).toHaveBeenCalledWith(7);
+    controller.abort();
+    expect(callbacks.size).toBe(before);
+    callback?.({ index: 2, message: { kind: "data", data: [9] } });
+    expect(events.onData).toHaveBeenCalledTimes(1);
   });
 
-  it("onPtyOutput subscribes to output/exit events and unlistens in the desktop runtime", async () => {
-    installTauri(vi.fn());
-    const onData = vi.fn();
-    const onExit = vi.fn();
-    const unlisten = await onPtyOutput("pty-9", onData, onExit);
-
-    // The mocked listen (see vi.mock below) records handlers per event name.
-    listenHandlers["pty://output/pty-9"]({ payload: { data: [1, 2, 3] } });
-    listenHandlers["pty://exit/pty-9"]({ payload: 7 });
-    expect(onData).toHaveBeenCalledWith([1, 2, 3]);
-    expect(onExit).toHaveBeenCalledWith(7);
-
-    unlisten();
-    expect(unlistenCalls).toBe(2);
+  it("returns output credit only after the terminal consumes the bytes", async () => {
+    let consume!: () => void;
+    const consumed = new Promise<void>((resolve) => {
+      consume = resolve;
+    });
+    const invoke = vi.fn(
+      async (command: string, args: Record<string, unknown>) => {
+        if (command === "pty_open") {
+          const callback = callbacks.get((args.onEvent as { id: number }).id);
+        if (!callback) throw new Error("Missing Channel callback");
+          callback({
+            index: 0,
+            message: { kind: "data", pty_id: "pty-1", sequence: 1, data: [65] },
+          });
+          return "pty-1";
+        }
+      },
+    );
+    installTauri(invoke);
+    await ptyOpen("s1", 80, 24, { ...ptyEvents(), onData: () => consumed });
+    expect(invoke).not.toHaveBeenCalledWith(
+      "pty_output_ack",
+      expect.anything(),
+    );
+    consume();
+    await consumed;
+    await Promise.resolve();
+    expect(invoke).toHaveBeenCalledWith("pty_output_ack", {
+      ptyId: "pty-1",
+      sequence: 1,
+    });
   });
 });

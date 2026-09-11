@@ -1,4 +1,9 @@
 export const ru = {
+  "desktop.preparedInputNotSent":
+    "Ввод не отправлен. Дождитесь подключения целевого терминала и повторите попытку.",
+  "desktop.sftpTargetExpired": "Соединение изменилось; загрузка не начата.",
+  "desktop.connectionChangesNextConnect":
+    "Изменения настроек применятся при следующем подключении",
   "desktop.demoScopeSummary":
     "Демонстрационные данные — без реального сеанса SSH",
   "desktop.demoShell": "Пример оболочки",

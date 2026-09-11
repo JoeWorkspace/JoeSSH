@@ -23,6 +23,7 @@
     "allow-pty-open",
     "allow-pty-write",
     "allow-pty-resize",
+    "allow-pty-output-ack",
     "allow-pty-close",
     "allow-test-connection",
     "allow-third-party-notices"

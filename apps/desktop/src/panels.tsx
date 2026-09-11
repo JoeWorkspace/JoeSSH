@@ -463,6 +463,8 @@ export type SftpDirectoryView = {
 };
 
 export type SftpTransferView = {
+  targetId?: string;
+  targetLabel?: string;
   status:
     | { phase: "idle" }
     | { phase: "transferring" }
@@ -526,9 +528,16 @@ export const SftpPanel = memo(function SftpPanel({
     live?.status.phase === "ready" ? live.status.entries : undefined;
   const canTransfer = Boolean(transfer);
   const uploadInputRef = useRef<HTMLInputElement>(null);
+  type UploadOrigin = {
+    transfer: SftpTransferView;
+    directoryPath: string;
+    entries: typeof liveEntries;
+  };
+  const uploadOriginRef = useRef<UploadOrigin | null>(null);
   const [pendingUpload, setPendingUpload] = useState<{
     file: File;
     directoryPath: string;
+    origin: UploadOrigin;
   } | null>(null);
   const [selectedDownloadName, setSelectedDownloadName] = useState<
     string | null
@@ -551,15 +560,22 @@ export const SftpPanel = memo(function SftpPanel({
   useEffect(() => {
     setPendingUpload(null);
     setSelectedDownloadName(null);
-  }, [live?.path, liveEntries]);
+  }, [live?.path, liveEntries, transfer?.targetId]);
 
   function queueOrUploadFile(file: File) {
-    const collision = liveEntries?.some((entry) => entry.name === file.name);
+    const origin =
+      uploadOriginRef.current ??
+      (transfer && !transfer.targetId
+        ? { transfer, directoryPath: live?.path ?? ".", entries: liveEntries }
+        : null);
+    uploadOriginRef.current = null;
+    if (!origin) return;
+    const collision = origin.entries?.some((entry) => entry.name === file.name);
     if (collision) {
-      setPendingUpload({ file, directoryPath: live?.path ?? "." });
+      setPendingUpload({ file, directoryPath: origin.directoryPath, origin });
       return;
     }
-    transfer?.onUpload(file, live?.path);
+    origin.transfer.onUpload(file, origin.directoryPath);
   }
 
   function handleUploadFileChange(event: FormEvent<HTMLInputElement>) {
@@ -570,11 +586,14 @@ export const SftpPanel = memo(function SftpPanel({
   }
 
   function confirmPendingUpload() {
-    if (!pendingUpload || pendingUpload.directoryPath !== live?.path) {
+    if (!pendingUpload) {
       setPendingUpload(null);
       return;
     }
-    transfer?.onUpload(pendingUpload.file, pendingUpload.directoryPath);
+    pendingUpload.origin.transfer.onUpload(
+      pendingUpload.file,
+      pendingUpload.directoryPath,
+    );
     setPendingUpload(null);
   }
 
@@ -592,7 +611,15 @@ export const SftpPanel = memo(function SftpPanel({
             size="sm"
             variant="ghost"
             disabled={!canTransfer || transferBusy}
-            onClick={() => uploadInputRef.current?.click()}
+            onClick={() => {
+              if (!transfer) return;
+              uploadOriginRef.current = {
+                transfer,
+                directoryPath: live?.path ?? ".",
+                entries: liveEntries,
+              };
+              uploadInputRef.current?.click();
+            }}
             title={
               !canTransfer ? t("desktop.noSessionActionDetail") : undefined
             }
@@ -685,6 +712,10 @@ export const SftpPanel = memo(function SftpPanel({
             aria-label={t("desktop.sftpOverwriteTitle")}
           >
             <strong>{t("desktop.sftpOverwriteTitle")}</strong>
+            <small>
+              {pendingUpload.origin.transfer.targetLabel}{" "}
+              {pendingUpload.directoryPath}
+            </small>
             <small>
               {t("desktop.sftpOverwriteDetail", {
                 name: pendingUpload.file.name,

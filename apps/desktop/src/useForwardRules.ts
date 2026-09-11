@@ -33,9 +33,12 @@ export function useForwardRules(start?: ForwardStartFn, stop?: ForwardStopFn) {
 
   useEffect(() => {
     backendSeq.current += 1;
-    inFlightRules.current.clear();
+    const operations = inFlightRules.current;
+    operations.clear();
     setRuntime({});
     return () => {
+      backendSeq.current += 1;
+      operations.clear();
       if (!stop) return;
       const activeForwardIds = Object.values(runtimeRef.current)
         .filter((entry) => entry.active && entry.forwardId)

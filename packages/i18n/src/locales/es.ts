@@ -1,4 +1,9 @@
 export const es = {
+  "desktop.preparedInputNotSent":
+    "La entrada no se envió. Espere a que el terminal de destino esté conectado y vuelva a intentarlo.",
+  "desktop.sftpTargetExpired": "La conexión cambió; no se inició la carga.",
+  "desktop.connectionChangesNextConnect":
+    "Los cambios de configuración se aplicarán en la próxima conexión",
   "desktop.demoScopeSummary": "Datos de demostración — sin sesión SSH real",
   "desktop.demoShell": "Shell de ejemplo",
   "desktop.noSession": "Sin sesión SSH",

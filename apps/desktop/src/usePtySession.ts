@@ -1,209 +1,210 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Unlisten } from "./ipc";
 
 export type PtyStatus = "idle" | "opening" | "open" | "closed" | "error";
-
+export type PtyEvents = {
+  onData: (bytes: number[]) => void | Promise<void>;
+  onExit: (code: number) => void;
+  onError: () => void;
+  signal: AbortSignal;
+};
 export type PtyDeps = {
-  open: (cols: number, rows: number) => Promise<string>;
+  open: (cols: number, rows: number, events: PtyEvents) => Promise<string>;
   write: (ptyId: string, data: number[]) => Promise<void>;
   resize: (ptyId: string, cols: number, rows: number) => Promise<void>;
   close: (ptyId: string) => Promise<void>;
-  subscribe: (
-    ptyId: string,
-    onData: (bytes: number[]) => void,
-    onExit: (code: number) => void,
-  ) => Promise<Unlisten>;
 };
 
+export const PTY_INPUT_CHUNK_BYTES = 16 * 1024;
+export const PTY_PENDING_INPUT_BYTES = 128 * 1024;
 const PTY_COMMAND_BLOCKED_PREFIX = "pty input blocked by desktop safety policy";
+type Attempt = {
+  number: number;
+  controller: AbortController;
+  id: string | null;
+  ended: boolean;
+  busy: boolean;
+  queue: number[][];
+  pendingBytes: number;
+};
 
-/// Drives an interactive PTY's lifecycle. IPC is injected (the desktop wires
-/// real `pty*` calls); `onData` is the sink for output bytes (xterm.write).
-/// Inactive when `deps` is undefined so the pane keeps its line fallback.
 export function usePtySession(
   deps: PtyDeps | undefined,
-  onData: (bytes: number[]) => void,
+  onData: (bytes: number[]) => void | Promise<void>,
 ) {
   const [status, setStatus] = useState<PtyStatus>("idle");
   const [exitCode, setExitCode] = useState<number | null>(null);
   const [blockedReason, setBlockedReason] = useState<string | null>(null);
-  const ptyIdRef = useRef<string | null>(null);
-  const unlistenRef = useRef<Unlisten | null>(null);
-  const generationRef = useRef(0);
-  const openingGenerationRef = useRef<number | null>(null);
+  const [attemptNumber, setAttemptNumber] = useState(0);
+  const attemptRef = useRef<Attempt | null>(null);
+  const counter = useRef(0);
   const onDataRef = useRef(onData);
   onDataRef.current = onData;
 
-  const resetRefs = useCallback(() => {
-    unlistenRef.current?.();
-    unlistenRef.current = null;
-    const ptyId = ptyIdRef.current;
-    ptyIdRef.current = null;
-    return ptyId;
+  const reset = useCallback(() => {
+    const attempt = attemptRef.current;
+    attemptRef.current = null;
+    if (attempt) {
+      attempt.ended = true;
+      attempt.controller.abort();
+      attempt.queue = [];
+      attempt.pendingBytes = 0;
+    }
+    return attempt?.id;
   }, []);
 
-  const open = useCallback(
-    async (cols: number, rows: number) => {
-      if (!deps || ptyIdRef.current || openingGenerationRef.current !== null) {
-        return;
-      }
-      const generation = generationRef.current;
-      openingGenerationRef.current = generation;
-      setStatus("opening");
-      setExitCode(null);
-      setBlockedReason(null);
-      try {
-        const ptyId = await deps.open(cols, rows);
-        if (generationRef.current !== generation) {
-          void deps.close(ptyId);
-          return;
-        }
-
-        ptyIdRef.current = ptyId;
-        const isCurrentPty = () =>
-          generationRef.current === generation && ptyIdRef.current === ptyId;
-        const unlisten = await deps.subscribe(
-          ptyId,
-          (bytes) => {
-            if (isCurrentPty()) onDataRef.current(bytes);
-          },
-          (code) => {
-            if (!isCurrentPty()) return;
-            resetRefs();
-            setExitCode(code);
-            setBlockedReason(null);
-            setStatus("closed");
-          },
-        );
-        if (
-          generationRef.current !== generation ||
-          ptyIdRef.current !== ptyId
-        ) {
-          unlisten();
-          if (ptyIdRef.current === ptyId) {
-            ptyIdRef.current = null;
-            void deps.close(ptyId);
-          }
-          return;
-        }
-
-        unlistenRef.current = unlisten;
-        setStatus("open");
-      } catch {
-        if (generationRef.current === generation) {
-          const ptyId = resetRefs();
-          if (ptyId) void deps.close(ptyId);
-          setExitCode(null);
-          setBlockedReason(null);
-          setStatus("error");
-        }
-      } finally {
-        if (openingGenerationRef.current === generation) {
-          openingGenerationRef.current = null;
-        }
-      }
-    },
-    [deps, resetRefs],
-  );
-
-  const write = useCallback(
-    (data: number[]) => {
-      const ptyId = ptyIdRef.current;
-      if (!deps || !ptyId) return;
-      const generation = generationRef.current;
-      void deps.write(ptyId, data).then(
-        () => {
-          if (
-            generationRef.current === generation &&
-            ptyIdRef.current === ptyId
-          ) {
-            setBlockedReason(null);
-          }
-        },
-        (error: unknown) => {
-          if (
-            generationRef.current !== generation ||
-            ptyIdRef.current !== ptyId
-          ) {
-            return;
-          }
-
-          const reason = ptyCommandBlockedReason(error);
-          if (reason !== null) {
-            setBlockedReason(reason);
-            return;
-          }
-
-          generationRef.current += 1;
-          const failedPtyId = resetRefs();
-          if (failedPtyId) {
-            void deps.close(failedPtyId);
-          }
-          setExitCode(null);
-          setBlockedReason(null);
-          setStatus("error");
-        },
-      );
-    },
-    [deps, resetRefs],
-  );
-
-  const resize = useCallback(
-    (cols: number, rows: number) => {
-      if (deps && ptyIdRef.current)
-        void deps.resize(ptyIdRef.current, cols, rows);
-    },
-    [deps],
-  );
-
   const close = useCallback(() => {
-    generationRef.current += 1;
-    openingGenerationRef.current = null;
-    const ptyId = resetRefs();
-    if (deps && ptyId) void deps.close(ptyId);
-    setExitCode(null);
-    setBlockedReason(null);
+    const id = reset();
+    if (deps && id) void deps.close(id).catch(() => {});
     setStatus("closed");
-  }, [deps, resetRefs]);
+    setBlockedReason(null);
+  }, [deps, reset]);
 
-  // Tear down on unmount or when the active backend/session changes.
   useEffect(() => {
     setStatus("idle");
     setExitCode(null);
     setBlockedReason(null);
     return () => {
-      generationRef.current += 1;
-      openingGenerationRef.current = null;
-      const ptyId = resetRefs();
-      if (deps && ptyId) void deps.close(ptyId);
+      const id = reset();
+      if (deps && id) void deps.close(id).catch(() => {});
     };
-  }, [deps, resetRefs]);
+  }, [deps, reset]);
+
+  const open = useCallback(
+    async (cols: number, rows: number) => {
+      if (!deps || (attemptRef.current && !attemptRef.current.ended)) return;
+      const attempt: Attempt = {
+        number: ++counter.current,
+        controller: new AbortController(),
+        id: null,
+        ended: false,
+        busy: false,
+        queue: [],
+        pendingBytes: 0,
+      };
+      attemptRef.current = attempt;
+      setAttemptNumber(attempt.number);
+      setStatus("opening");
+      setExitCode(null);
+      setBlockedReason(null);
+      const current = () => attemptRef.current === attempt && !attempt.ended;
+      try {
+        const id = await deps.open(cols, rows, {
+          signal: attempt.controller.signal,
+          onData: (bytes) => {
+            if (current()) return onDataRef.current(bytes);
+          },
+          onError: () => {
+            if (current()) {
+              const id = reset();
+              if (id) void deps.close(id).catch(() => {});
+              setStatus("error");
+            }
+          },
+          onExit: (code) => {
+            if (!current()) return;
+            attempt.ended = true;
+            attempt.id = null;
+            attempt.queue = [];
+            attempt.pendingBytes = 0;
+            attempt.controller.abort();
+            setExitCode(code);
+            setBlockedReason(null);
+            setStatus("closed");
+          },
+        });
+        if (!current()) {
+          void deps.close(id).catch(() => {});
+          return;
+        }
+        attempt.id = id;
+        setStatus("open");
+      } catch {
+        if (current()) {
+          reset();
+          setStatus("error");
+        }
+      }
+    },
+    [deps, reset],
+  );
+
+  const write = useCallback(
+    (data: number[]): boolean => {
+      const attempt = attemptRef.current;
+      if (!deps || !attempt?.id || attempt.ended) return false;
+      if (attempt.pendingBytes + data.length > PTY_PENDING_INPUT_BYTES) {
+        setBlockedReason("Input queue is full; this input was not sent.");
+        return false;
+      }
+      setBlockedReason(null);
+      for (
+        let offset = 0;
+        offset < data.length;
+        offset += PTY_INPUT_CHUNK_BYTES
+      ) {
+        attempt.queue.push(data.slice(offset, offset + PTY_INPUT_CHUNK_BYTES));
+      }
+      attempt.pendingBytes += data.length;
+      if (attempt.busy) return true;
+      attempt.busy = true;
+      void (async () => {
+        try {
+          while (
+            attempt.queue.length &&
+            attemptRef.current === attempt &&
+            !attempt.ended
+          ) {
+            const chunk = attempt.queue.shift();
+            if (!chunk || !attempt.id) break;
+            await deps.write(attempt.id, chunk);
+            attempt.pendingBytes -= chunk.length;
+          }
+        } catch (error) {
+          if (attemptRef.current !== attempt || attempt.ended) return;
+          attempt.queue = [];
+          attempt.pendingBytes = 0;
+          const message =
+            error instanceof Error ? error.message : String(error);
+          if (message.startsWith(PTY_COMMAND_BLOCKED_PREFIX)) {
+            setBlockedReason(
+              message
+                .slice(PTY_COMMAND_BLOCKED_PREFIX.length)
+                .replace(/^: /, ""),
+            );
+          } else {
+            const id = reset();
+            if (id) void deps.close(id).catch(() => {});
+            setExitCode(null);
+            setBlockedReason(null);
+            setStatus("error");
+          }
+        } finally {
+          attempt.busy = false;
+        }
+      })();
+      return true;
+    },
+    [deps, reset],
+  );
+
+  const resize = useCallback(
+    (cols: number, rows: number) => {
+      const attempt = attemptRef.current;
+      if (deps && attempt?.id && !attempt.ended)
+        void deps.resize(attempt.id, cols, rows).catch(() => {});
+    },
+    [deps],
+  );
 
   return {
     status,
     exitCode,
     blockedReason,
+    attemptNumber,
     active: deps !== undefined,
     open,
     write,
     resize,
     close,
   };
-}
-
-function ptyCommandBlockedReason(error: unknown) {
-  const message =
-    error instanceof Error
-      ? error.message
-      : typeof error === "string"
-        ? error
-        : "";
-  if (message === PTY_COMMAND_BLOCKED_PREFIX) {
-    return "";
-  }
-  if (message.startsWith(`${PTY_COMMAND_BLOCKED_PREFIX}: `)) {
-    return message.slice(PTY_COMMAND_BLOCKED_PREFIX.length + 2);
-  }
-
-  return null;
 }

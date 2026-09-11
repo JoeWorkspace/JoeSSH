@@ -1,4 +1,9 @@
 export const hi = {
+  "desktop.preparedInputNotSent":
+    "इनपुट नहीं भेजा गया। लक्ष्य टर्मिनल के कनेक्ट होने तक प्रतीक्षा करें, फिर दोबारा प्रयास करें।",
+  "desktop.sftpTargetExpired": "कनेक्शन बदल गया; अपलोड शुरू नहीं हुआ।",
+  "desktop.connectionChangesNextConnect":
+    "सेटिंग में बदलाव अगले कनेक्शन पर लागू होंगे",
   "desktop.demoScopeSummary": "डेमो डेटा — कोई वास्तविक SSH सत्र नहीं",
   "desktop.demoShell": "नमूना शेल",
   "desktop.noSession": "कोई SSH सत्र नहीं",

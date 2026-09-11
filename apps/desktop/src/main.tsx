@@ -61,16 +61,6 @@ import {
   sshDisconnect,
   sshExec,
   sshHostKeyProbe,
-  sftpList,
-  sftpRead,
-  sftpWrite,
-  forwardStart,
-  forwardStop,
-  ptyOpen,
-  ptyWrite,
-  ptyResize,
-  ptyClose,
-  onPtyOutput,
   testConnection,
   knownHostsClear,
   knownHostsList,
@@ -80,9 +70,14 @@ import {
 } from "./ipc";
 import { ConnectModal } from "./ConnectModal";
 import { NewConnectionModal } from "./NewConnectionModal";
-import type { PtyDeps } from "./usePtySession";
+import {
+  DesktopSessionRuntime,
+  equalSessionControls,
+  type SessionControls,
+} from "./DesktopSessionRuntime";
 import { useSftpDirectory } from "./useSftpDirectory";
 import { joinSftpRemoteEntryPath } from "./sftpRemotePath";
+import { uploadWithSessionLease } from "./sftpUploadLease";
 import { useForwardRules } from "./useForwardRules";
 import { SFTP_TRANSFER_MAX_BYTES, useSftpTransfer } from "./useSftpTransfer";
 import {
@@ -188,9 +183,6 @@ const LazyForwardingPanel = lazy(() =>
 );
 const LazySettingsPanel = lazy(() =>
   import("./panels").then((m) => ({ default: m.SettingsPanel })),
-);
-const LazyXtermTerminal = lazy(() =>
-  import("./XtermTerminal").then((m) => ({ default: m.XtermTerminal })),
 );
 
 declare global {
@@ -592,6 +584,28 @@ function App({
   );
   // Maps a connection profile name to its live native SSH session id.
   const desktopSessionsRef = useRef<Record<string, string>>({});
+  const desktopTargetsRef = useRef<Record<string, ConnectionTarget>>({});
+  const desktopConfiguredTargetsRef = useRef<Record<string, ConnectionTarget>>(
+    {},
+  );
+  const tabIdsRef = useRef<Record<string, string>>({});
+  const [sessionControls, setSessionControls] = useState<
+    Record<string, SessionControls>
+  >({});
+  const updateSessionControls = useCallback(
+    (id: string, controls: SessionControls | undefined) => {
+      setSessionControls((current) => {
+        if (controls && equalSessionControls(current[id], controls))
+          return current;
+        if (!controls && !current[id]) return current;
+        const next = { ...current };
+        if (controls) next[id] = controls;
+        else delete next[id];
+        return next;
+      });
+    },
+    [],
+  );
   // Bumped whenever a connection is established or closed so derived runtime state refreshes.
   const [connectVersion, setConnectVersion] = useState(0);
   const effectiveConnections = useMemo<DesktopConnection[]>(() => {
@@ -724,65 +738,35 @@ function App({
       initialTerminalSession,
     );
   const formatters = useMemo(() => createLocaleFormatters(locale), [locale]);
-  // Real SFTP loader bound to the active connection's live session (desktop only).
-  const sftpListFn = useMemo(() => {
-    void connectVersion;
-    const sessionId = desktopSessionsRef.current[activeConnection.name];
-    if (!isDesktopRuntime() || !sessionId) return undefined;
-    return (path: string) => sftpList(sessionId, path);
-  }, [activeConnection.name, connectVersion]);
-  const sftpDirectory = useSftpDirectory(sftpListFn);
-  // Real port-forward start/stop bound to the active connection's live session.
-  const forwardFns = useMemo(() => {
-    void connectVersion;
-    const sessionId = desktopSessionsRef.current[activeConnection.name];
-    if (!isDesktopRuntime() || !sessionId)
-      return { start: undefined, stop: undefined };
-    return {
-      start: (bindAddr: string, targetHost: string, targetPort: number) =>
-        forwardStart(sessionId, bindAddr, targetHost, targetPort),
-      stop: (forwardId: string) => forwardStop(forwardId),
-    };
-  }, [activeConnection.name, connectVersion]);
-  const forwardRules = useForwardRules(forwardFns.start, forwardFns.stop);
+  const emptyDirectory = useSftpDirectory(undefined);
+  const emptyForwards = useForwardRules();
+  const emptyTransfer = useSftpTransfer();
+  const controls = sessionControls[activeDesktopSessionId];
+  const sftpDirectory = controls?.directory ?? emptyDirectory;
+  const forwardRules = controls?.forwards ?? emptyForwards;
+  const sftpTransfer = controls?.transfer ?? emptyTransfer;
+  const prepareTerminalInput = useCallback(
+    (text: string) => {
+      if (!text) {
+        setCommandInput("");
+        return;
+      }
+      if (!isDesktopRuntime()) {
+        setCommandInput(text);
+        return;
+      }
+      if (!sessionControls[activeDesktopSessionId]?.prepareInput(text)) {
+        addToast(t("desktop.preparedInputNotSent"), "warning");
+      }
+    },
+    [activeDesktopSessionId, addToast, sessionControls, t],
+  );
   const [customForwardRules, setCustomForwardRules] = useState<ForwardRule[]>(
     readStoredForwardRules,
   );
   useEffect(() => {
     writeStorageJson(FORWARD_RULES_STORAGE_KEY, customForwardRules);
   }, [customForwardRules]);
-  // Real SFTP transfer (download/upload) bound to the active connection's session.
-  const transferFns = useMemo(() => {
-    void connectVersion;
-    const sessionId = desktopSessionsRef.current[activeConnection.name];
-    if (!isDesktopRuntime() || !sessionId)
-      return { read: undefined, write: undefined };
-    return {
-      read: (path: string) => sftpRead(sessionId, path),
-      write: (path: string, data: number[]) => sftpWrite(sessionId, path, data),
-    };
-  }, [activeConnection.name, connectVersion]);
-  const sftpTransfer = useSftpTransfer(transferFns.read, transferFns.write, {
-    limitMessage: () =>
-      t("desktop.sftpTransferTooLarge", {
-        limit: formatters.fileSize(SFTP_TRANSFER_MAX_BYTES),
-      }),
-    maxBytes: SFTP_TRANSFER_MAX_BYTES,
-  });
-  // PTY deps for the interactive xterm terminal, bound to the active session.
-  const ptyDeps = useMemo<PtyDeps | undefined>(() => {
-    void connectVersion;
-    const sessionId = desktopSessionsRef.current[activeConnection.name];
-    if (!isDesktopRuntime() || !sessionId) return undefined;
-    return {
-      open: (cols, rows) => ptyOpen(sessionId, cols, rows),
-      write: (ptyId, data) => ptyWrite(ptyId, data),
-      resize: (ptyId, cols, rows) => ptyResize(ptyId, cols, rows),
-      close: (ptyId) => ptyClose(ptyId),
-      subscribe: (ptyId, onData, onExit) => onPtyOutput(ptyId, onData, onExit),
-    };
-  }, [activeConnection.name, connectVersion]);
-
   async function handleSftpDownload(
     name: string,
     size: number | null,
@@ -796,7 +780,12 @@ function App({
     const bytes = await sftpTransfer.download(remotePath, {
       knownSizeBytes: size,
     });
-    if (!bytes) return;
+    if (
+      !bytes ||
+      desktopSessionsRef.current[activeConnection.name] !==
+        activeDesktopSessionId
+    )
+      return;
     const blob = new Blob([new Uint8Array(bytes)], {
       type: "application/octet-stream",
     });
@@ -821,9 +810,29 @@ function App({
       addToast(t("desktop.sftpTransferError"), "error");
       return;
     }
-    const bytes = Array.from(new Uint8Array(await file.arrayBuffer()));
-    const ok = await sftpTransfer.upload(remotePath, bytes);
-    if (ok) {
+    // This closure belongs to the picker origin, even when the visible tab changes.
+    const originName = activeConnection.name;
+    const originSession = activeDesktopSessionId;
+    const current = () =>
+      Boolean(originSession) &&
+      desktopSessionsRef.current[originName] === originSession;
+    if (!current()) {
+      addToast(t("desktop.sftpTargetExpired"), "warning");
+      return;
+    }
+    const result = await uploadWithSessionLease(file, remotePath, {
+      isCurrent: current,
+      upload: sftpTransfer.upload,
+    });
+    if (result === "expired") {
+      addToast(t("desktop.sftpTargetExpired"), "warning");
+      return;
+    }
+    if (result === "failed") {
+      addToast(t("desktop.sftpTransferError"), "error");
+      return;
+    }
+    if (result === "uploaded") {
       addToast(sftpUploadCompleteToast(t, file.name), "success");
       sftpDirectory.refresh();
     }
@@ -971,6 +980,7 @@ function App({
   const openGettingStartedConnect = useCallback(() => {
     closeGettingStarted();
     if (!isDesktopRuntime()) return;
+    if (desktopSessionsRef.current[activeConnection.name]) return;
     setConnectProfileName(activeConnection.name);
     setConnectTargetOverride(null);
     setConnectOpen(true);
@@ -1067,9 +1077,6 @@ function App({
   const openConnectionTab = useCallback((name: string) => {
     setOpenTerminalTabs((tabs) => addTerminalTab(tabs, name));
   }, []);
-  const clearPreparedTerminalInput = useCallback(() => {
-    setCommandInput("");
-  }, []);
 
   const activateConnection = useCallback(
     (name: string) => {
@@ -1119,7 +1126,11 @@ function App({
       return false;
     }
 
-    delete desktopSessionsRef.current[activeConnection.name];
+    if (desktopSessionsRef.current[activeConnection.name] === sessionId) {
+      delete desktopSessionsRef.current[activeConnection.name];
+      delete desktopTargetsRef.current[sessionId];
+      delete desktopConfiguredTargetsRef.current[sessionId];
+    }
     setConnectVersion((version) => version + 1);
     setCommandInput("");
     setCommandFeedback(null);
@@ -1727,7 +1738,7 @@ function App({
         languageChoice={languageChoice}
         locale={locale}
         onActivateConnection={activateConnection}
-        onCommandInputChange={setCommandInput}
+        onCommandInputChange={prepareTerminalInput}
         onGroupDispatch={groupDispatch}
         onLanguageChoiceChange={onLanguageChoiceChange}
         onOpenPalette={openPalette}
@@ -1884,6 +1895,63 @@ function App({
               : "terminal-grid--single"
           }`}
         >
+          {Object.entries(desktopSessionsRef.current).map(
+            ([name, sessionId]) => {
+              const endpoint = desktopTargetsRef.current[sessionId];
+              const profile = effectiveConnections.find(
+                (connection) => connection.name === name,
+              );
+              const configured = profile
+                ? getConnectionTarget(profile)
+                : undefined;
+              const original = desktopConfiguredTargetsRef.current[sessionId];
+              const changed =
+                original &&
+                configured &&
+                (original.host !== configured.host ||
+                  (original.port ?? 22) !== (configured.port ?? 22) ||
+                  original.username !== configured.username);
+              const target = endpoint ? formatSshCommand(endpoint) : name;
+              return (
+                <DesktopSessionRuntime
+                  key={tabIdsRef.current[name] ?? name}
+                  sessionId={sessionId}
+                  active={name === activeConnection.name}
+                  target={
+                    changed
+                      ? target +
+                        " · " +
+                        t("desktop.connectionChangesNextConnect")
+                      : target
+                  }
+                  t={t}
+                  onControlsChange={updateSessionControls}
+                  transferLimitMessage={t("desktop.sftpTransferTooLarge", {
+                    limit: formatters.fileSize(SFTP_TRANSFER_MAX_BYTES),
+                  })}
+                  search={
+                    name === activeConnection.name
+                      ? {
+                          closeLabel: t("desktop.searchClose"),
+                          matchesLabel: (count) =>
+                            t("desktop.searchMatches", { count }),
+                          nextLabel: t("desktop.searchNextMatch"),
+                          onClose: () => {
+                            setSearchOpen(false);
+                            setSearchQuery("");
+                          },
+                          onQueryChange: setSearchQuery,
+                          open: searchOpen,
+                          placeholder: t("desktop.searchPlaceholder"),
+                          previousLabel: t("desktop.searchPrevMatch"),
+                          query: searchQuery,
+                        }
+                      : undefined
+                  }
+                />
+              );
+            },
+          )}
           {activeConnection.status === "locked" ? (
             <TerminalPane
               statusLabel={t("desktop.locked")}
@@ -1893,41 +1961,7 @@ function App({
             />
           ) : (
             <>
-              {ptyDeps ? (
-                <div className="terminal-pane terminal-pane--xterm">
-                  <Suspense fallback={<PanelLoadingState t={t} />}>
-                    <LazyXtermTerminal
-                      deps={ptyDeps}
-                      label={t("desktop.xtermTerminalLabel")}
-                      onPreparedInputConsumed={clearPreparedTerminalInput}
-                      preparedInput={commandInput}
-                      search={{
-                        closeLabel: t("desktop.searchClose"),
-                        matchesLabel: (count) =>
-                          t("desktop.searchMatches", { count }),
-                        nextLabel: t("desktop.searchNextMatch"),
-                        onClose: () => {
-                          setSearchOpen(false);
-                          setSearchQuery("");
-                        },
-                        onQueryChange: setSearchQuery,
-                        open: searchOpen,
-                        placeholder: t("desktop.searchPlaceholder"),
-                        previousLabel: t("desktop.searchPrevMatch"),
-                        query: searchQuery,
-                      }}
-                      statusLabels={{
-                        opening: t("desktop.ptyOpening"),
-                        open: t("desktop.ptyOpen"),
-                        blocked: t("desktop.ptyBlocked"),
-                        closed: t("desktop.ptyClosed"),
-                        error: t("desktop.ptyError"),
-                        reconnect: t("desktop.ptyReconnect"),
-                      }}
-                    />
-                  </Suspense>
-                </div>
-              ) : (
+              {!hasActiveDesktopSession ? (
                 <TerminalPane
                   active={hasActiveDesktopSession}
                   commandFeedback={commandFeedback}
@@ -1961,7 +1995,7 @@ function App({
                       : t("desktop.demoShell")
                   }
                 />
-              )}
+              ) : null}
               {activeConnection.name === "prod-edge-01" ? (
                 <TerminalPane
                   statusLabel={t("desktop.split")}
@@ -2000,7 +2034,7 @@ function App({
               formatters={formatters}
               hasActiveSession={hasActiveDesktopSession}
               onPrepareCommand={() =>
-                setCommandInput(`${commandSnippets[0].command}\r`)
+                prepareTerminalInput(`${commandSnippets[0].command}\r`)
               }
               onOpenForwarding={() => setRightPanel("forwarding")}
               sessionContext={inspectorSessionContext}
@@ -2025,6 +2059,14 @@ function App({
                 sftpTransfer.active
                   ? {
                       status: sftpTransfer.status,
+                      targetId: activeDesktopSessionId,
+                      targetLabel: desktopTargetsRef.current[
+                        activeDesktopSessionId
+                      ]
+                        ? formatSshCommand(
+                            desktopTargetsRef.current[activeDesktopSessionId],
+                          )
+                        : activeConnection.name,
                       onUpload: (file, directoryPath) =>
                         void handleSftpUploadFile(file, directoryPath),
                       onDownload: (name, size, directoryPath) =>
@@ -2311,6 +2353,9 @@ function App({
                   void sshDisconnect(sessionId)
                     .then(() => {
                       delete desktopSessionsRef.current[name];
+                      delete tabIdsRef.current[name];
+                      delete desktopTargetsRef.current[sessionId];
+                      delete desktopConfiguredTargetsRef.current[sessionId];
                       setConnectVersion((version) => version + 1);
                       removeProfile();
                     })
@@ -2457,13 +2502,37 @@ function App({
             setConnectTargetOverride(null);
           }}
           onConnect={async (connectInput) => {
+            const connectionName = connectProfileName ?? activeConnection.name;
+            const existing = desktopSessionsRef.current[connectionName];
+            if (existing) return existing;
             const result = await sshConnect(connectInput);
+            desktopTargetsRef.current[result.session_id] = {
+              host: connectInput.host,
+              port: connectInput.port,
+              username: connectInput.username,
+            };
             return result.session_id;
           }}
           onHostKeyProbe={isDesktopRuntime() ? sshHostKeyProbe : undefined}
           onConnected={(sessionId) => {
             const connectionName = connectProfileName ?? activeConnection.name;
+            const previous = desktopSessionsRef.current[connectionName];
+            if (previous && previous !== sessionId) {
+              // A late duplicate must not replace the already live connection.
+              void sshDisconnect(sessionId).catch(() =>
+                addToast(t("desktop.connectFailed"), "error"),
+              );
+              delete desktopTargetsRef.current[sessionId];
+              sessionId = previous;
+            }
+            tabIdsRef.current[connectionName] ??= crypto.randomUUID();
             desktopSessionsRef.current[connectionName] = sessionId;
+            const profile = effectiveConnections.find(
+              (connection) => connection.name === connectionName,
+            );
+            if (profile)
+              desktopConfiguredTargetsRef.current[sessionId] ??=
+                getConnectionTarget(profile);
             openConnectionTab(connectionName);
             setActiveConnectionName(connectionName);
             setConnectProfileName(null);

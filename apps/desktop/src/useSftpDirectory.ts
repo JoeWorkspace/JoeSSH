@@ -64,6 +64,9 @@ export function useSftpDirectory(
     loadSeq.current += 1;
     setPath(normalizedInitialPath);
     setStatus({ phase: "idle" });
+    return () => {
+      loadSeq.current += 1;
+    };
   }, [list, normalizedInitialPath]);
 
   useEffect(() => {

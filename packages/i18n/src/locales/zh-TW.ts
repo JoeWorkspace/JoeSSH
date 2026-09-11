@@ -1,4 +1,8 @@
 export const zhTWComplete = {
+  "desktop.preparedInputNotSent":
+    "輸入未傳送。請等目標終端連線就緒後重新操作。",
+  "desktop.sftpTargetExpired": "連線已變更，未開始上傳。",
+  "desktop.connectionChangesNextConnect": "設定修改將在下次連線時生效",
   "desktop.demoScopeSummary": "示範資料 · 尚未連線至真實 SSH",
   "desktop.demoShell": "範例終端機",
   "desktop.noSession": "尚未連線至 SSH",
