@@ -15,12 +15,17 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use atlasterm_core::security::{detect_dangerous_command, DangerousCommandAction};
 use atlasterm_core::{
     probe_host_key, probe_tcp, validate_local_bind_addr, HostKeyPolicy, ProbeOutcome, PtyOutput,
-    PtyWriter, SftpEntry, SshAuth, SshClient, SshConfig, TcpForwardHandle,
+    SftpEntry, SshAuth, SshClient, SshConfig, TcpForwardHandle,
 };
 use serde::{Deserialize, Serialize};
-use tauri::{Emitter, Manager};
+use tauri::Manager;
 use tokio::sync::Mutex;
 use uuid::Uuid;
+
+mod known_hosts_store;
+mod pty_runtime;
+use known_hosts_store::with_store;
+use pty_runtime::PtyRuntime;
 
 const KNOWN_HOSTS_FILE: &str = "known-hosts.json";
 const KNOWN_HOSTS_FILE_VERSION: u8 = 1;
@@ -43,11 +48,9 @@ const FORWARD_BIND_ADDR_UNSAFE: &str =
 /// the frontend.
 #[derive(Default)]
 struct AppState {
-    sessions: Mutex<HashMap<Uuid, Arc<SshClient>>>,
+    sessions: Arc<Mutex<HashMap<Uuid, Arc<SshClient>>>>,
     forwards: Mutex<HashMap<Uuid, SessionResource<TcpForwardHandle>>>,
-    ptys: Mutex<HashMap<Uuid, SessionResource<PtyWriter>>>,
-    pty_input_buffers: Mutex<HashMap<Uuid, Vec<u8>>>,
-    known_hosts: Mutex<()>,
+    ptys: Mutex<HashMap<Uuid, SessionResource<Arc<PtyRuntime>>>>,
 }
 
 struct SessionResource<T> {
@@ -170,63 +173,68 @@ async fn ssh_connect(
     state: tauri::State<'_, AppState>,
     input: ConnectInput,
 ) -> Result<ConnectOutput, String> {
-    let _known_hosts_guard = state.known_hosts.lock().await;
     let known_hosts_path = known_hosts_path(&app)?;
     let host_key = known_host_key(&input.host, input.port);
-    let known_hosts = read_known_hosts_file(&known_hosts_path)?;
-    let stored_fingerprint = known_hosts
-        .get(&host_key)
-        .map(|record| record.fingerprint.clone());
+    let timeout_ms = input.connect_timeout_ms.unwrap_or(15_000).clamp(1, 120_000);
+    let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(timeout_ms);
+    let path = known_hosts_path.clone();
+    let snapshot = tokio::task::spawn_blocking(move || {
+        with_store(&path, deadline.into_std(), |s| s.snapshot(&host_key))
+    })
+    .await
+    .map_err(|_| HOST_KEY_STORAGE_UNAVAILABLE.to_string())??;
     let manual_fingerprint = normalize_manual_fingerprint(input.pinned_fingerprint);
-    let host_key_policy = host_key_policy_for(stored_fingerprint.clone(), manual_fingerprint)?;
+    let host_key_policy = host_key_policy_for(snapshot.fingerprint.clone(), manual_fingerprint)?;
 
     let config = SshConfig {
-        host: input.host,
+        host: input.host.trim().to_string(),
         port: input.port,
         username: input.username,
         auth: input.auth.into(),
         host_key_policy,
-        connect_timeout_ms: input.connect_timeout_ms.unwrap_or(15_000),
+        connect_timeout_ms: timeout_ms,
     };
-    let client = SshClient::connect(config)
+    let client = tokio::time::timeout_at(deadline, SshClient::connect(config))
         .await
+        .map_err(|_| "connection timed out".to_string())?
         .map_err(sanitize_ssh_error)?;
     let fingerprint = client.server_fingerprint().map(|s| s.to_string());
-
-    if stored_fingerprint.is_none() {
-        let fingerprint = fingerprint
-            .as_deref()
-            .ok_or_else(|| HOST_KEY_VERIFICATION_FAILED.to_string())?;
-        persist_known_host_if_first_use(
-            &known_hosts_path,
-            &host_key,
-            fingerprint,
-            KnownHostSource::Confirmed,
-        )?;
-    }
-
-    let id = Uuid::new_v4();
-    state.sessions.lock().await.insert(id, Arc::new(client));
-    Ok(ConnectOutput {
-        session_id: id.to_string(),
-        fingerprint,
+    // Registry first, file lock second. No async lock is awaited with the file
+    // lock held. Pin recheck, atomic save, and registration share one boundary.
+    let mut sessions = tokio::time::timeout_at(deadline, state.sessions.clone().lock_owned())
+        .await
+        .map_err(|_| "connection timed out".to_string())?;
+    tokio::task::spawn_blocking(move || {
+        with_store(&known_hosts_path, deadline.into_std(), |store| {
+            store.commit(
+                &snapshot,
+                fingerprint
+                    .as_deref()
+                    .ok_or_else(|| HOST_KEY_VERIFICATION_FAILED.to_string())?,
+            )?;
+            if tokio::time::Instant::now() >= deadline {
+                return Err("connection timed out".into());
+            }
+            let id = Uuid::new_v4();
+            sessions.insert(id, Arc::new(client));
+            Ok(ConnectOutput {
+                session_id: id.to_string(),
+                fingerprint,
+            })
+        })
     })
+    .await
+    .map_err(|_| HOST_KEY_STORAGE_UNAVAILABLE.to_string())?
 }
 
 #[tauri::command]
 async fn ssh_host_key_probe(
     app: tauri::AppHandle,
-    state: tauri::State<'_, AppState>,
     input: HostKeyProbeInput,
 ) -> Result<HostKeyProbeOutput, String> {
-    let _known_hosts_guard = state.known_hosts.lock().await;
     let known_hosts_path = known_hosts_path(&app)?;
     let host = input.host.trim().to_string();
     let host_key = known_host_key(&host, input.port);
-    let known_hosts = read_known_hosts_file(&known_hosts_path)?;
-    let stored_fingerprint = known_hosts
-        .get(&host_key)
-        .map(|record| record.fingerprint.clone());
     let presented_fingerprint = probe_host_key(
         &host,
         input.port,
@@ -234,6 +242,13 @@ async fn ssh_host_key_probe(
     )
     .await
     .map_err(sanitize_ssh_error)?;
+    let stored_fingerprint = tokio::task::spawn_blocking(move || {
+        with_store(&known_hosts_path, store_deadline(), |s| {
+            Ok(s.snapshot(&host_key)?.fingerprint)
+        })
+    })
+    .await
+    .map_err(|_| HOST_KEY_STORAGE_UNAVAILABLE.to_string())??;
     let status = host_key_probe_status(stored_fingerprint.as_deref(), &presented_fingerprint);
 
     Ok(HostKeyProbeOutput {
@@ -246,44 +261,47 @@ async fn ssh_host_key_probe(
 }
 
 #[tauri::command]
-async fn known_hosts_count(
-    app: tauri::AppHandle,
-    state: tauri::State<'_, AppState>,
-) -> Result<usize, String> {
-    let _known_hosts_guard = state.known_hosts.lock().await;
+async fn known_hosts_count(app: tauri::AppHandle) -> Result<usize, String> {
     let path = known_hosts_path(&app)?;
-    Ok(read_known_hosts_file(&path)?.len())
+    tokio::task::spawn_blocking(move || {
+        with_store(&path, store_deadline(), |s| Ok(s.read()?.len()))
+    })
+    .await
+    .map_err(|_| HOST_KEY_STORAGE_UNAVAILABLE.to_string())?
 }
 
 #[tauri::command]
-async fn known_hosts_list(
-    app: tauri::AppHandle,
-    state: tauri::State<'_, AppState>,
-) -> Result<Vec<KnownHostRecord>, String> {
-    let _known_hosts_guard = state.known_hosts.lock().await;
+async fn known_hosts_list(app: tauri::AppHandle) -> Result<Vec<KnownHostRecord>, String> {
     let path = known_hosts_path(&app)?;
-    Ok(sorted_known_host_records(read_known_hosts_file(&path)?))
+    tokio::task::spawn_blocking(move || {
+        with_store(&path, store_deadline(), |s| {
+            Ok(sorted_known_host_records(s.read()?))
+        })
+    })
+    .await
+    .map_err(|_| HOST_KEY_STORAGE_UNAVAILABLE.to_string())?
 }
 
 #[tauri::command]
-async fn known_hosts_remove(
-    app: tauri::AppHandle,
-    state: tauri::State<'_, AppState>,
-    host_key: String,
-) -> Result<(), String> {
-    let _known_hosts_guard = state.known_hosts.lock().await;
+async fn known_hosts_remove(app: tauri::AppHandle, host_key: String) -> Result<(), String> {
     let path = known_hosts_path(&app)?;
-    remove_known_host(&path, &host_key)
+    tokio::task::spawn_blocking(move || {
+        with_store(&path, store_deadline(), |s| s.remove(Some(&host_key)))
+    })
+    .await
+    .map_err(|_| HOST_KEY_STORAGE_UNAVAILABLE.to_string())?
 }
 
 #[tauri::command]
-async fn known_hosts_clear(
-    app: tauri::AppHandle,
-    state: tauri::State<'_, AppState>,
-) -> Result<(), String> {
-    let _known_hosts_guard = state.known_hosts.lock().await;
+async fn known_hosts_clear(app: tauri::AppHandle) -> Result<(), String> {
     let path = known_hosts_path(&app)?;
-    write_known_hosts_file(&path, &HashMap::new())
+    tokio::task::spawn_blocking(move || with_store(&path, store_deadline(), |s| s.remove(None)))
+        .await
+        .map_err(|_| HOST_KEY_STORAGE_UNAVAILABLE.to_string())?
+}
+
+fn store_deadline() -> std::time::Instant {
+    std::time::Instant::now() + std::time::Duration::from_secs(2)
 }
 
 /// Run a one-shot remote command on an existing session.
@@ -424,19 +442,29 @@ async fn ssh_disconnect(
     session_id: String,
 ) -> Result<(), String> {
     let id = parse_id(&session_id)?;
-    state.sessions.lock().await.remove(&id);
+    if let Some(client) = state.sessions.lock().await.remove(&id) {
+        client.disconnect();
+    }
     close_session_resources(&state, id).await;
     Ok(())
 }
 
 #[derive(Clone, Serialize)]
-struct PtyOutputEvent {
-    data: Vec<u8>,
+#[serde(tag = "kind", rename_all = "snake_case")]
+enum PtyEvent {
+    Data {
+        pty_id: String,
+        sequence: u64,
+        data: Vec<u8>,
+    },
+    Exited {
+        code: u32,
+    },
+    Failed,
 }
 
-/// Open an interactive PTY shell on a session. Spawns a background task that
-/// pumps output to `pty://output/<pty_id>` events and an exit to
-/// `pty://exit/<pty_id>`; returns the pty id used for writes/resizes/events.
+/// The Channel callback is registered by JS before invoke; data and exit share
+/// one ordered stream, including output produced before this command returns.
 #[tauri::command]
 async fn pty_open(
     app: tauri::AppHandle,
@@ -444,6 +472,7 @@ async fn pty_open(
     session_id: String,
     cols: u32,
     rows: u32,
+    on_event: tauri::ipc::Channel<PtyEvent>,
 ) -> Result<String, String> {
     let session_uuid = parse_id(&session_id)?;
     let client = session_by_id(&state, session_uuid).await?;
@@ -452,47 +481,49 @@ async fn pty_open(
         .await
         .map_err(sanitize_ssh_error)?;
     let (writer, mut reader) = pty.split();
-    let mut writer = Some(writer);
-
+    let runtime = Arc::new(PtyRuntime::new(writer));
     let pty_id = Uuid::new_v4();
     let registered = {
         let sessions = state.sessions.lock().await;
         if sessions.contains_key(&session_uuid) {
-            state.ptys.lock().await.insert(
-                pty_id,
-                SessionResource::new(
-                    session_uuid,
-                    writer
-                        .take()
-                        .expect("pty writer is registered at most once"),
-                ),
-            );
+            state
+                .ptys
+                .lock()
+                .await
+                .insert(pty_id, SessionResource::new(session_uuid, runtime.clone()));
             true
         } else {
             false
         }
     };
     if !registered {
-        if let Some(writer) = writer {
-            let _ = writer.close().await;
-        }
-        return Err("session not found".to_string());
+        runtime.close().await;
+        return Err("session not found".into());
     }
-    state
-        .pty_input_buffers
-        .lock()
-        .await
-        .insert(pty_id, Vec::new());
-
-    let output_event = format!("pty://output/{pty_id}");
-    let exit_event = format!("pty://exit/{pty_id}");
-    let app_handle = app.clone();
-    tokio::spawn(async move {
-        let mut exit_code = 0u32;
-        while let Some(output) = reader.next_output().await {
+    let task_runtime = runtime.clone();
+    let reader_task = tokio::spawn(async move {
+        let mut exit_code = 0;
+        let mut failed = false;
+        'output: while let Some(output) = reader.next_output().await {
             match output {
                 PtyOutput::Data(data) => {
-                    let _ = app_handle.emit(&output_event, PtyOutputEvent { data });
+                    for chunk in data.chunks(pty_runtime::MAX_INPUT_CHUNK) {
+                        let Ok(sequence) = task_runtime.output.reserve(chunk.len()).await else {
+                            failed = true;
+                            break 'output;
+                        };
+                        if on_event
+                            .send(PtyEvent::Data {
+                                pty_id: pty_id.to_string(),
+                                sequence,
+                                data: chunk.to_vec(),
+                            })
+                            .is_err()
+                        {
+                            failed = true;
+                            break 'output;
+                        }
+                    }
                 }
                 PtyOutput::Exit(code) => {
                     exit_code = code;
@@ -500,45 +531,40 @@ async fn pty_open(
                 }
             }
         }
-        let _ = app_handle.emit(&exit_event, exit_code);
-        if let Some(state) = app_handle.try_state::<AppState>() {
+        task_runtime.finish().await;
+        let _ = on_event.send(if failed {
+            PtyEvent::Failed
+        } else {
+            PtyEvent::Exited { code: exit_code }
+        });
+        if let Some(state) = app.try_state::<AppState>() {
             state.ptys.lock().await.remove(&pty_id);
-            state.pty_input_buffers.lock().await.remove(&pty_id);
         }
     });
-
+    runtime.set_reader(reader_task.abort_handle());
     Ok(pty_id.to_string())
 }
 
-/// Send stdin bytes to a PTY.
+async fn pty_runtime(state: &AppState, pty_id: &str) -> Result<Arc<PtyRuntime>, String> {
+    let id = parse_id(pty_id)?;
+    state
+        .ptys
+        .lock()
+        .await
+        .get(&id)
+        .map(|r| r.value.clone())
+        .ok_or_else(|| "pty not found".into())
+}
+
 #[tauri::command]
 async fn pty_write(
     state: tauri::State<'_, AppState>,
     pty_id: String,
     data: Vec<u8>,
 ) -> Result<(), String> {
-    let id = parse_id(&pty_id)?;
-    {
-        let ptys = state.ptys.lock().await;
-        if !ptys.contains_key(&id) {
-            return Err("pty not found".to_string());
-        }
-    }
-
-    if let Err(error) = ensure_safe_pty_write(&state, id, &data).await {
-        let ptys = state.ptys.lock().await;
-        if let Some(writer) = ptys.get(&id) {
-            let _ = writer.value.write(&[0x03]).await;
-        }
-        return Err(error);
-    }
-
-    let ptys = state.ptys.lock().await;
-    let writer = ptys.get(&id).ok_or_else(|| "pty not found".to_string())?;
-    writer.value.write(&data).await.map_err(sanitize_ssh_error)
+    pty_runtime(&state, &pty_id).await?.write(&data).await
 }
 
-/// Resize a PTY's terminal window.
 #[tauri::command]
 async fn pty_resize(
     state: tauri::State<'_, AppState>,
@@ -546,24 +572,27 @@ async fn pty_resize(
     cols: u32,
     rows: u32,
 ) -> Result<(), String> {
-    let id = parse_id(&pty_id)?;
-    let ptys = state.ptys.lock().await;
-    let writer = ptys.get(&id).ok_or_else(|| "pty not found".to_string())?;
-    writer
-        .value
-        .resize(cols, rows)
-        .await
-        .map_err(sanitize_ssh_error)
+    pty_runtime(&state, &pty_id).await?.resize(cols, rows).await
 }
 
-/// Close a PTY and drop its writer.
+#[tauri::command]
+async fn pty_output_ack(
+    state: tauri::State<'_, AppState>,
+    pty_id: String,
+    sequence: u64,
+) -> Result<(), String> {
+    if let Ok(runtime) = pty_runtime(&state, &pty_id).await {
+        runtime.output.acknowledge(sequence);
+    }
+    Ok(())
+}
+
 #[tauri::command]
 async fn pty_close(state: tauri::State<'_, AppState>, pty_id: String) -> Result<(), String> {
     let id = parse_id(&pty_id)?;
     let resource = state.ptys.lock().await.remove(&id);
-    state.pty_input_buffers.lock().await.remove(&id);
     if let Some(resource) = resource {
-        let _ = resource.value.close().await;
+        resource.value.close().await;
     }
     Ok(())
 }
@@ -653,23 +682,16 @@ async fn close_session_resources(state: &tauri::State<'_, AppState>, session_id:
         resource.value.shutdown();
     }
 
-    let (pty_ids, ptys) = {
+    let ptys = {
         let mut ptys = state.ptys.lock().await;
-        let ids = resource_ids_for_session(&ptys, session_id);
-        let resources = ids
-            .iter()
-            .filter_map(|id| ptys.remove(id))
-            .collect::<Vec<_>>();
-        (ids, resources)
+        remove_resources_for_session(&mut ptys, session_id)
     };
-    {
-        let mut buffers = state.pty_input_buffers.lock().await;
-        for id in pty_ids {
-            buffers.remove(&id);
-        }
+    // Mark every resource closed before waiting for any close handshake.
+    for resource in &ptys {
+        resource.value.mark_closed();
     }
     for resource in ptys {
-        let _ = resource.value.close().await;
+        resource.value.close().await;
     }
 }
 
@@ -734,6 +756,7 @@ pub fn run() {
             pty_open,
             pty_write,
             pty_resize,
+            pty_output_ack,
             pty_close,
             test_connection,
             third_party_notices,
@@ -807,28 +830,10 @@ fn write_known_hosts_file(
     };
     let json = serde_json::to_string_pretty(&file)
         .map_err(|_| HOST_KEY_STORAGE_UNAVAILABLE.to_string())?;
-    std::fs::write(path, format!("{json}\n"))
-        .map_err(|_| HOST_KEY_STORAGE_UNAVAILABLE.to_string())?;
-    harden_known_hosts_file_permissions(path)
+    known_hosts_store::atomic_write(path, format!("{json}\n").as_bytes())
 }
 
-fn harden_known_hosts_file_permissions(path: &Path) -> Result<(), String> {
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-
-        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600))
-            .map_err(|_| HOST_KEY_STORAGE_UNAVAILABLE.to_string())?;
-    }
-
-    #[cfg(not(unix))]
-    {
-        let _ = path;
-    }
-
-    Ok(())
-}
-
+#[cfg(test)]
 fn persist_known_host_if_first_use(
     path: &Path,
     host_key: &str,
@@ -911,6 +916,7 @@ fn sorted_known_host_records(
     records
 }
 
+#[cfg(test)]
 fn remove_known_host(path: &Path, host_key: &str) -> Result<(), String> {
     let mut known_hosts = read_known_hosts_file(path)?;
     known_hosts.remove(host_key);
@@ -1016,16 +1022,6 @@ fn ensure_safe_ssh_exec_command(command: &str) -> Result<(), String> {
             Err(format!("{SSH_EXEC_COMMAND_BLOCKED}: {}", detected.pattern))
         }
     }
-}
-
-async fn ensure_safe_pty_write(
-    state: &tauri::State<'_, AppState>,
-    pty_id: Uuid,
-    data: &[u8],
-) -> Result<(), String> {
-    let mut buffers = state.pty_input_buffers.lock().await;
-    let buffer = buffers.entry(pty_id).or_default();
-    apply_pty_input_safety(buffer, data)
 }
 
 fn apply_pty_input_safety(buffer: &mut Vec<u8>, data: &[u8]) -> Result<(), String> {

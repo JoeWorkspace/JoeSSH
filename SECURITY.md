@@ -4,11 +4,12 @@
 
 | Version       | Supported              |
 | ------------- | ---------------------- |
-| 0.1.0-beta.26 | Maintenance candidate  |
+| 0.1.0-beta.27 | Maintenance candidate  |
+| 0.1.0-beta.26 | Current Store package  |
 | 0.1.0-beta.25 | Superseded candidate   |
 | 0.1.0-beta.24 | Superseded candidate   |
 | 0.1.0-beta.23 | Superseded candidate   |
-| 0.1.0-beta.22 | Existing Store package |
+| 0.1.0-beta.22 | Previous Store package |
 | 0.1.0-beta.21 | Source prerelease      |
 | 0.1.0-beta.20 | Source prerelease      |
 | 0.1.x         | :white_check_mark:     |

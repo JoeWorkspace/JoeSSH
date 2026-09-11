@@ -1,4 +1,10 @@
 export const fr = {
+  "desktop.preparedInputNotSent":
+    "La saisie n’a pas été envoyée. Attendez que le terminal cible soit connecté, puis réessayez.",
+  "desktop.sftpTargetExpired":
+    "La connexion a changé ; l’envoi n’a pas démarré.",
+  "desktop.connectionChangesNextConnect":
+    "Les modifications de configuration s’appliqueront à la prochaine connexion",
   "desktop.demoScopeSummary":
     "Données de démonstration — aucune session SSH réelle",
   "desktop.demoShell": "Shell d’exemple",

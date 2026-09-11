@@ -106,21 +106,24 @@ function makeDeps(label: string, overrides: Partial<PtyDeps> = {}) {
   const unlisten = vi.fn();
   let dataSink: (b: number[]) => void = () => {};
   let exitSink: (c: number) => void = () => {};
+  const open = overrides.open ?? vi.fn().mockResolvedValue(`${label}-pty`);
   const deps: PtyDeps = {
-    open: vi.fn().mockResolvedValue(`${label}-pty`),
     write: vi.fn().mockResolvedValue(undefined),
     resize: vi.fn().mockResolvedValue(undefined),
     close: vi.fn().mockResolvedValue(undefined),
-    subscribe: vi.fn(async (_id, onData, onExit) => {
-      dataSink = onData;
-      exitSink = onExit;
-      return unlisten;
-    }),
     ...overrides,
+    open: vi.fn((cols, rows, events) => {
+      dataSink = events.onData;
+      exitSink = events.onExit;
+      events.signal.addEventListener("abort", unlisten, { once: true });
+      return open(cols, rows, events);
+    }),
   };
   return {
     deps,
-    emitData: (b: number[]) => dataSink(b),
+    emitData: (b: number[]) => {
+      void dataSink(b);
+    },
     emitExit: (c: number) => exitSink(c),
     unlisten,
   };
@@ -140,6 +143,75 @@ afterEach(() => {
 });
 
 describe("XtermTerminal", () => {
+  it.each([2, 8])(
+    "keeps %i terminal instances alive across 100 switches and accepts input only on the active tab",
+    async (count) => {
+      const sessions = Array.from({ length: count }, (_, index) =>
+        makeDeps(String(index)),
+      );
+      const view = (active: number) => (
+        <>
+          {sessions.map((session, index) => (
+            <XtermTerminal
+              key={index}
+              active={index === active}
+              deps={session.deps}
+              label={String(index)}
+            />
+          ))}
+        </>
+      );
+      const { rerender, unmount } = render(view(0));
+      await waitFor(() =>
+        expect(screen.getAllByText("Terminal connected")).toHaveLength(count),
+      );
+      for (let index = 0; index < 100; index++) rerender(view(index % count));
+      expect(terminalMock.instances).toHaveLength(count);
+      sessions.forEach((session) => {
+        expect(session.deps.open).toHaveBeenCalledTimes(1);
+        expect(session.deps.close).not.toHaveBeenCalled();
+      });
+      act(() => {
+        terminalMock.instances.forEach((terminal) =>
+          terminal.emitData("whoami\r"),
+        );
+      });
+      sessions.forEach((session, index) =>
+        expect(session.deps.write).toHaveBeenCalledTimes(
+          index === 99 % count ? 1 : 0,
+        ),
+      );
+      act(() =>
+        terminalMock.resizeObservers[0].trigger(
+          screen.getByLabelText("0"),
+          0,
+          0,
+        ),
+      );
+      expect(sessions[0].deps.resize).not.toHaveBeenCalled();
+      unmount();
+      sessions.forEach((session) =>
+        expect(session.deps.close).toHaveBeenCalledTimes(1),
+      );
+    },
+  );
+
+  it("resets the streaming UTF-8 decoder before a PTY reconnect", async () => {
+    const session = makeDeps("utf8");
+    render(<XtermTerminal deps={session.deps} label="UTF-8" />);
+    await screen.findByText("Terminal connected");
+    act(() => {
+      session.emitData([0xe4]);
+      session.emitExit(0);
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Reconnect" }));
+    await screen.findByText("Terminal connected");
+    act(() => session.emitData([65]));
+    expect(terminalMock.instances[0].write).toHaveBeenLastCalledWith(
+      "A",
+      expect.any(Function),
+    );
+  });
   it("uses the localized terminal label", () => {
     const first = makeDeps("first");
 
@@ -160,7 +232,9 @@ describe("XtermTerminal", () => {
       />,
     );
 
-    await waitFor(() => expect(first.deps.open).toHaveBeenCalledWith(100, 32));
+    await waitFor(() =>
+      expect(first.deps.open).toHaveBeenCalledWith(100, 32, expect.any(Object)),
+    );
     expect(terminalMock.instances).toHaveLength(1);
     expect(terminalMock.instances[0]?.open).toHaveBeenCalledWith(
       screen.getByLabelText("Localized terminal"),
@@ -171,13 +245,7 @@ describe("XtermTerminal", () => {
     const first = makeDeps("first");
 
     render(<XtermTerminal deps={first.deps} label="Localized terminal" />);
-    await waitFor(() =>
-      expect(first.deps.subscribe).toHaveBeenCalledWith(
-        "first-pty",
-        expect.any(Function),
-        expect.any(Function),
-      ),
-    );
+    await screen.findByText("Terminal connected");
 
     act(() => first.emitData([104, 105]));
     expect(terminalMock.instances[0]?.write).toHaveBeenCalledWith(
@@ -215,13 +283,7 @@ describe("XtermTerminal", () => {
         }}
       />,
     );
-    await waitFor(() =>
-      expect(first.deps.subscribe).toHaveBeenCalledWith(
-        "first-pty",
-        expect.any(Function),
-        expect.any(Function),
-      ),
-    );
+    await screen.findByText("Terminal connected");
 
     act(() => terminalMock.instances[0]?.emitData("rm -rf /\n"));
 
@@ -231,14 +293,16 @@ describe("XtermTerminal", () => {
     expect(screen.queryByRole("button", { name: "Reconnect" })).toBeNull();
   });
 
-  it("disposes the old terminal and opens a new PTY when deps change", async () => {
+  it("changes transport without rebuilding the display when callbacks change", async () => {
     const first = makeDeps("first");
     const second = makeDeps("second");
     const { rerender } = render(
       <XtermTerminal deps={first.deps} label="Localized terminal" />,
     );
 
-    await waitFor(() => expect(first.deps.open).toHaveBeenCalledWith(80, 24));
+    await waitFor(() =>
+      expect(first.deps.open).toHaveBeenCalledWith(80, 24, expect.any(Object)),
+    );
     const oldTerm = terminalMock.instances[0];
 
     rerender(<XtermTerminal deps={second.deps} label="Localized terminal" />);
@@ -247,10 +311,12 @@ describe("XtermTerminal", () => {
       expect(first.deps.close).toHaveBeenCalledWith("first-pty"),
     );
     expect(first.unlisten).toHaveBeenCalled();
-    expect(oldTerm?.dataDispose).toHaveBeenCalled();
-    expect(oldTerm?.dispose).toHaveBeenCalled();
-    await waitFor(() => expect(second.deps.open).toHaveBeenCalledWith(80, 24));
-    expect(terminalMock.instances).toHaveLength(2);
+    expect(oldTerm?.dataDispose).not.toHaveBeenCalled();
+    expect(oldTerm?.dispose).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(second.deps.open).toHaveBeenCalledWith(80, 24, expect.any(Object)),
+    );
+    expect(terminalMock.instances).toHaveLength(1);
   });
 
   it("resizes the existing terminal and PTY when the container changes size", async () => {
@@ -264,7 +330,9 @@ describe("XtermTerminal", () => {
       />,
     );
 
-    await waitFor(() => expect(first.deps.open).toHaveBeenCalledWith(80, 24));
+    await waitFor(() =>
+      expect(first.deps.open).toHaveBeenCalledWith(80, 24, expect.any(Object)),
+    );
     const terminal = terminalMock.instances[0];
     const host = screen.getByLabelText("Localized terminal");
 
@@ -283,13 +351,7 @@ describe("XtermTerminal", () => {
     const first = makeDeps("first");
 
     render(<XtermTerminal deps={first.deps} label="Localized terminal" />);
-    await waitFor(() =>
-      expect(first.deps.subscribe).toHaveBeenCalledWith(
-        "first-pty",
-        expect.any(Function),
-        expect.any(Function),
-      ),
-    );
+    await screen.findByText("Terminal connected");
 
     act(() => first.emitExit(7));
 
@@ -299,7 +361,11 @@ describe("XtermTerminal", () => {
     });
 
     await waitFor(() => expect(first.deps.open).toHaveBeenCalledTimes(2));
-    expect(first.deps.open).toHaveBeenLastCalledWith(80, 24);
+    expect(first.deps.open).toHaveBeenLastCalledWith(
+      80,
+      24,
+      expect.any(Object),
+    );
     expect(terminalMock.instances).toHaveLength(1);
   });
 
@@ -349,7 +415,7 @@ describe("XtermTerminal", () => {
     fireEvent.keyDown(
       screen.getByRole("textbox", { name: "Search terminal" }),
       {
-      key: "Escape",
+        key: "Escape",
       },
     );
     expect(onClose).toHaveBeenCalledOnce();
@@ -359,7 +425,11 @@ describe("XtermTerminal", () => {
     const first = makeDeps("first");
     const onPreparedInputConsumed = vi.fn();
 
-    render(
+    const { rerender } = render(
+      <XtermTerminal deps={first.deps} label="Localized terminal" />,
+    );
+    await screen.findByText("Terminal connected");
+    rerender(
       <XtermTerminal
         deps={first.deps}
         label="Localized terminal"

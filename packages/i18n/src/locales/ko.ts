@@ -1,4 +1,9 @@
 export const ko = {
+  "desktop.preparedInputNotSent":
+    "입력이 전송되지 않았습니다. 대상 터미널이 연결된 후 다시 시도하세요.",
+  "desktop.sftpTargetExpired": "연결이 변경되어 업로드를 시작하지 않았습니다.",
+  "desktop.connectionChangesNextConnect":
+    "설정 변경은 다음 연결부터 적용됩니다",
   "desktop.demoScopeSummary": "데모 데이터 · 실제 SSH에 연결되지 않음",
   "desktop.demoShell": "샘플 터미널",
   "desktop.noSession": "SSH에 연결되지 않음",

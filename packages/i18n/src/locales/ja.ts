@@ -1,4 +1,10 @@
 export const ja = {
+  "desktop.preparedInputNotSent":
+    "入力は送信されませんでした。対象のターミナルが接続されてから、もう一度お試しください。",
+  "desktop.sftpTargetExpired":
+    "接続が変更されたため、アップロードは開始されませんでした。",
+  "desktop.connectionChangesNextConnect":
+    "設定の変更は次回の接続時に適用されます",
   "desktop.demoScopeSummary": "デモデータ · 実際の SSH には未接続",
   "desktop.demoShell": "サンプルターミナル",
   "desktop.noSession": "SSH 未接続",

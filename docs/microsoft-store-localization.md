@@ -1,3 +1,9 @@
+> 2026-09-11: The current maintenance candidate is `0.1.0-beta.27` / MSIX
+> `1.1.27.0`; the verified current Store package is `1.1.26.0`. Use the
+> [September maintenance release entry](desktop-maintenance-release-2026-09.md)
+> and its versioned notes. The beta.26-specific package, listing text, tag
+> commands, and qualification statements below are historical references.
+
 # Microsoft Store Localization Draft
 
 This tracked catalog is a historical listing draft, not candidate-bound evidence

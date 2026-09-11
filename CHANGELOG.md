@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-beta.27] - 2026-09-11
+
+> Microsoft Store maintenance candidate for `1.1.27.0`, following the verified
+> published `1.1.26.0` package. Source preparation is not Store publication.
+
+### Fixed
+
+- Preserve live terminals, SFTP state, and forwards across tab switches and
+  unrelated connections; bind prepared input and uploads to their original
+  active connection, and retain the actual connected target after config edits.
+- Bound SSH establishment with one deadline, isolate each PTY's input and
+  cleanup, and handle early/late output events with consumption backpressure.
+- Coordinate known-hosts writes and revocation across processes without changing
+  the main JSON format; add an explicit, tested metadata recovery tool.
+- Patch xmldom and js-yaml dependencies; replace yanked `der 0.8.0` and
+  `wnaf 0.14.0` with `0.8.2` and `0.14.1`. Report failed audit details in CI.
+- Update the Vitest test-tool packages to `4.1.11` to fix development-server
+  redirect-mock file disclosure, and explicitly declare the root test runner.
+
+### Changed
+
+- Advance application version metadata to `0.1.0-beta.27` / MSIX `1.1.27.0`.
+  No separate Web, Sync, or Mobile distribution is included.
+- Add lifecycle and failure-path regression coverage while preserving the
+  existing 95% coverage and strict online audit gates.
+
 ## [0.1.0-beta.26] - 2026-09-02
 
 > Replacement Microsoft Store maintenance candidate. The beta.25

@@ -709,6 +709,45 @@ describe("extracted desktop panels", () => {
     expect(container.querySelector(".sftp-overwrite-confirm")).toBeNull();
   });
 
+  it("binds file picking and overwrite confirmation to the original SSH target", () => {
+    const uploadA = vi.fn();
+    const uploadB = vi.fn();
+    const entries = [{ name: "app.log", is_dir: false, size: 12 }];
+    const view = (target: string, onUpload: typeof uploadA) => (
+      <SftpPanel
+        formatters={formatters}
+        sftpItems={sftpItems}
+        t={t}
+        directory={{
+          active: true,
+          path: "/srv",
+          status: { phase: "ready", entries },
+        }}
+        transfer={{
+          targetId: target,
+          targetLabel: target,
+          status: { phase: "idle" },
+          onUpload,
+          onDownload: vi.fn(),
+        }}
+      />
+    );
+    const { container, rerender } = render(view("server-A", uploadA));
+    fireEvent.click(within(container).getByRole("button", { name: "Upload" }));
+    rerender(view("server-B", uploadB));
+    const file = new File(["replace"], "app.log");
+    fireEvent.change(container.querySelector('input[type="file"]') as HTMLInputElement, {
+      target: { files: [file] },
+    });
+    const confirm = container.querySelector(
+      ".sftp-overwrite-confirm",
+    ) as HTMLElement;
+    expect(confirm.textContent).toContain("server-A /srv");
+    fireEvent.click(within(confirm).getByRole("button", { name: "Overwrite" }));
+    expect(uploadA).toHaveBeenCalledWith(file, "/srv");
+    expect(uploadB).not.toHaveBeenCalled();
+  });
+
   it("clears pending SFTP overwrite confirmation when the directory changes", () => {
     const onUpload = vi.fn();
     const onDownload = vi.fn();

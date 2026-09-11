@@ -1,4 +1,9 @@
 export const en = {
+  "desktop.preparedInputNotSent":
+    "Terminal input was not sent. Wait until the target terminal is connected, then try again.",
+  "desktop.sftpTargetExpired": "Connection changed; upload was not started.",
+  "desktop.connectionChangesNextConnect":
+    "Configuration changes apply on the next connection",
   "desktop.demoScopeSummary": "Demo sample - no real SSH session",
   "desktop.demoShell": "sample shell",
   "desktop.noSession": "No SSH session",

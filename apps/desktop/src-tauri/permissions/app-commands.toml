@@ -92,3 +92,8 @@ commands.allow = ["test_connection"]
 identifier = "allow-third-party-notices"
 description = "Allows the main window to read the immutable third-party notices bundled with this app build."
 commands.allow = ["third_party_notices"]
+
+[[permission]]
+identifier = "allow-pty-output-ack"
+description = "Allow the main window to acknowledge consumed terminal output."
+commands.allow = ["pty_output_ack"]

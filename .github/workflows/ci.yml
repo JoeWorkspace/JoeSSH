@@ -282,6 +282,8 @@ jobs:
           test "$(npm --version)" = "10.9.7"
       - name: Install locked dependencies without lifecycle scripts
         run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Test trust metadata recovery on Windows
+        run: npm run test:known-hosts-recovery
       - name: Test Windows package and native signature verification
         run: node --test scripts/package-windows-invite-beta.test.mjs scripts/prepare-windows-store-candidate.test.mjs scripts/verify-windows-store-source-artifacts.test.mjs
       - name: Test Store source producer and permissions boundary

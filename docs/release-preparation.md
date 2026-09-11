@@ -1,3 +1,9 @@
+> 2026-09-11: The current maintenance candidate is `0.1.0-beta.27` / MSIX
+> `1.1.27.0`; the verified current Store package is `1.1.26.0`. Use the
+> [September maintenance release entry](desktop-maintenance-release-2026-09.md)
+> and its versioned notes. The beta.26-specific package, listing text, tag
+> commands, and qualification statements below are historical references.
+
 # JoeSSH 0.1.0-beta.26 Store 修复候选发布准备手册
 
 > `v0.1.0-beta.18` 是仅有远端标签的历史预检点，`v0.1.0-beta.20`、

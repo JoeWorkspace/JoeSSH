@@ -1,4 +1,9 @@
 export const ar = {
+  "desktop.preparedInputNotSent":
+    "لم يُرسل الإدخال. انتظر حتى يتصل الطرف المستهدف ثم حاول مجددًا.",
+  "desktop.sftpTargetExpired": "تغيّر الاتصال؛ لم يبدأ رفع الملف.",
+  "desktop.connectionChangesNextConnect":
+    "تُطبّق تغييرات الإعدادات عند الاتصال التالي",
   "desktop.demoScopeSummary": "عرض تجريبي — بلا جلسة SSH حقيقية",
   "desktop.demoShell": "طرفية تجريبية",
   "desktop.noSession": "لا توجد جلسة SSH",

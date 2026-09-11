@@ -42,6 +42,11 @@
         "description": "Allows the main window to open interactive PTY shells.",
         "commands": { "allow": ["pty_open"], "deny": [] }
       },
+      "allow-pty-output-ack": {
+        "identifier": "allow-pty-output-ack",
+        "description": "Allow the main window to acknowledge consumed terminal output.",
+        "commands": { "allow": ["pty_output_ack"], "deny": [] }
+      },
       "allow-pty-resize": {
         "identifier": "allow-pty-resize",
         "description": "Allows the main window to resize PTY shells.",

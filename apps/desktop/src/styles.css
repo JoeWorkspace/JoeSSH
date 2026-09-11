@@ -2564,6 +2564,22 @@ kbd {
   overflow: hidden;
 }
 
+.terminal-session-runtime {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.terminal-session-target {
+  color: var(--atlas-text-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  padding-bottom: 6px;
+}
+
+.terminal-session-runtime .xterm-shell {
+  min-height: 0;
+}
+
 .xterm-shell {
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;

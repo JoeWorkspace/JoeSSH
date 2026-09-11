@@ -1,4 +1,9 @@
 export const id = {
+  "desktop.preparedInputNotSent":
+    "Input tidak terkirim. Tunggu hingga terminal tujuan terhubung, lalu coba lagi.",
+  "desktop.sftpTargetExpired": "Koneksi berubah; unggahan belum dimulai.",
+  "desktop.connectionChangesNextConnect":
+    "Perubahan konfigurasi berlaku pada koneksi berikutnya",
   "desktop.demoScopeSummary": "Data demo — tidak ada sesi SSH nyata",
   "desktop.demoShell": "Shell sampel",
   "desktop.noSession": "Tidak ada sesi SSH",

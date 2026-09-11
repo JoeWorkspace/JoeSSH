@@ -1,4 +1,9 @@
 export const th = {
+  "desktop.preparedInputNotSent":
+    "ไม่ได้ส่งข้อมูลเข้า โปรดรอให้เทอร์มินัลปลายทางเชื่อมต่อแล้วลองอีกครั้ง",
+  "desktop.sftpTargetExpired": "การเชื่อมต่อเปลี่ยนไป จึงไม่ได้เริ่มอัปโหลด",
+  "desktop.connectionChangesNextConnect":
+    "การเปลี่ยนแปลงการตั้งค่าจะมีผลเมื่อเชื่อมต่อครั้งถัดไป",
   "desktop.demoScopeSummary":
     "ข้อมูลตัวอย่างสำหรับสาธิต — ไม่มีเซสชัน SSH จริง",
   "desktop.demoShell": "เชลล์ตัวอย่าง",

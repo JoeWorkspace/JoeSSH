@@ -1,4 +1,9 @@
 export const vi = {
+  "desktop.preparedInputNotSent":
+    "Chưa gửi dữ liệu nhập. Hãy đợi thiết bị đầu cuối đích kết nối rồi thử lại.",
+  "desktop.sftpTargetExpired": "Kết nối đã thay đổi; chưa bắt đầu tải lên.",
+  "desktop.connectionChangesNextConnect":
+    "Thay đổi cấu hình sẽ có hiệu lực ở lần kết nối tiếp theo",
   "desktop.demoScopeSummary": "Dữ liệu minh họa — không có phiên SSH thực",
   "desktop.demoShell": "Shell mẫu",
   "desktop.noSession": "Không có phiên SSH",
