@@ -496,8 +496,10 @@ JOESSH_GITHUB_RELEASE_CONTROLS_GH_ARGS;
       "// SFTP_MAX_TRANSFER_BYTES SFTP_TRANSFER_LIMIT_EXCEEDED SFTP_REMOTE_PATH_UNSAFE normalize_sftp_remote_path(&path)? download_limited(&path, SFTP_MAX_TRANSFER_BYTES) sanitize_sftp_transfer_error ensure_sftp_transfer_size(data.len()) sftp_remote_path_guard_rejects_unsafe_paths sftp_transfer_errors_use_sftp_limit_copy sftp_transfer_size_guard_rejects_oversized_payloads",
       "// OutputLimitExceeded command output exceeded desktop safety limit",
       "// SSH_EXEC_COMMAND_BLOCKED ensure_safe_ssh_exec_command(&command) detect_dangerous_command(command) DangerousCommandAction::Block ssh_exec_native_safety_blocks_destructive_commands",
-      "// PTY_COMMAND_BLOCKED pty_input_buffers ensure_safe_pty_write(&state, id, &data) apply_pty_input_safety pty_input_safety_blocks_destructive_line_across_chunks",
+      "// PTY_COMMAND_BLOCKED pty_runtime(&state, &pty_id).await?.write(&data).await apply_pty_input_safety pty_input_safety_blocks_destructive_line_across_chunks",
     ].join("\n"),
+    "apps/desktop/src-tauri/src/pty_runtime.rs":
+      "input: Mutex<Vec<u8>>\nlet mut input = self.input.lock().await\nsuper::apply_pty_input_safety(&mut input, data)\n.write(&[0x03])\nreturn Err(error)\nMAX_PENDING_INPUT\nstalled_real_pty_is_isolated_bounded_and_can_be_closed\n",
     "crates/core/src/ssh.rs":
       'pub async fn probe_host_key() { let policy = HostKeyPolicy::AcceptAny; handle.disconnect(russh::Disconnect::ByApplication, "", ""); }\nSSH_EXEC_MAX_OUTPUT_BYTES\nOutputLimitExceeded\nexec_output_would_exceed_limit\nexec_output_limit_allows_boundary_and_rejects_growth\nis_safe_sftp_entry_name\nUNSAFE_SFTP_ENTRY_FORMAT_RANGES\nfilter_map(|entry|\nsftp_entry_name_guard_rejects_paths_and_control_characters\nsafe\\u{202e}cod.exe\n',
     "crates/core/tests/core_tests.rs":
@@ -521,11 +523,11 @@ JOESSH_GITHUB_RELEASE_CONTROLS_GH_ARGS;
     "apps/desktop/src/useForwardRules.test.ts":
       "ignores duplicate start calls while a forward is pending\nignores duplicate stop calls while a forward stop is pending\nstops active native forwards and clears runtime state when the backend session changes\nignores stale start results after the backend session changes\ntoHaveBeenCalledTimes(1)\n",
     "apps/desktop/src/panels.tsx":
-      "knownHosts.entries knownHosts.onRemove desktop.knownHostFirstSeen desktop.knownHostLastSeen desktop.removeKnownHost desktop.confirmKnownHostRemove desktop.confirmKnownHostsClear pendingKnownHostAction\npendingUpload directoryPath desktop.sftpOverwriteTitle desktop.sftpOverwriteDetail desktop.sftpOverwriteConfirm desktop.sftpOverwriteCancel transfer?.onUpload(pendingUpload.file, pendingUpload.directoryPath)\nconst isPending = Boolean(rt?.pending)\ndisabled={!forwards || isPending}\n",
+      "knownHosts.entries knownHosts.onRemove desktop.knownHostFirstSeen desktop.knownHostLastSeen desktop.removeKnownHost desktop.confirmKnownHostRemove desktop.confirmKnownHostsClear pendingKnownHostAction\npendingUpload directoryPath desktop.sftpOverwriteTitle desktop.sftpOverwriteDetail desktop.sftpOverwriteConfirm desktop.sftpOverwriteCancel pendingUpload.origin.transfer.onUpload(pendingUpload.file, pendingUpload.directoryPath,); origin.transfer.onUpload(file, origin.directoryPath);\nconst isPending = Boolean(rt?.pending)\ndisabled={!forwards || isPending}\n",
     "apps/desktop/src/panels.test.tsx":
-      "lists known-host pins with audit metadata and confirms before removing one pin\nshows the stored known-host count and confirms before clearing them\nSHA256:abc\nRemove host key\nrequires confirmation before overwriting an existing SFTP file\nReplace existing file?\nA file named app.log already exists in this folder.\nOverwrite\nclears pending SFTP overwrite confirmation when the directory changes\ndisables forwarding controls while a start or stop action is pending\npending: true\n",
+      "lists known-host pins with audit metadata and confirms before removing one pin\nshows the stored known-host count and confirms before clearing them\nSHA256:abc\nRemove host key\nrequires confirmation before overwriting an existing SFTP file\nReplace existing file?\nA file named app.log already exists in this folder.\nOverwrite\nclears pending SFTP overwrite confirmation when the directory changes\nbinds file picking and overwrite confirmation to the original SSH target\ndisables forwarding controls while a start or stop action is pending\npending: true\n",
     "apps/desktop/src/usePtySession.ts":
-      "export type PtyStatus\nexitCode\nsetExitCode(code)\nblockedReason\nptyCommandBlockedReason\nresize: (ptyId: string, cols: number, rows: number) => Promise<void>\n",
+      "export type PtyStatus\nexitCode\nsetExitCode(code)\nblockedReason\nmessage.startsWith(PTY_COMMAND_BLOCKED_PREFIX)\nsetBlockedReason(\nresize: (ptyId: string, cols: number, rows: number) => Promise<void>\n",
     "apps/desktop/src/XtermTerminal.tsx":
       'ResizeObserver\nmeasureTerminalDimensions\nterm.resize(next.cols, next.rows)\nresize(next.cols, next.rows)\nstatusLabels.reconnect\nstatusLabels.blocked\nrole={pty.blockedReason !== null ? "alert" : "status"}\nTerminal exited\n',
     "apps/desktop/src/XtermTerminal.test.tsx":
@@ -2235,6 +2237,40 @@ test("rejects missing Desktop PTY resize and reconnect runtime surface", (t) => 
     /FAIL Desktop PTY lifecycle hook includes 'exitCode'/,
   );
 });
+
+for (const [label, path, snippet] of [
+  [
+    "Desktop native PTY command safety guard",
+    "apps/desktop/src-tauri/src/lib.rs",
+    "pty_runtime(&state, &pty_id).await?.write(&data).await",
+  ],
+  [
+    "Desktop serialized PTY command safety runtime",
+    "apps/desktop/src-tauri/src/pty_runtime.rs",
+    "super::apply_pty_input_safety(&mut input, data)",
+  ],
+  [
+    "Desktop serialized PTY command safety runtime",
+    "apps/desktop/src-tauri/src/pty_runtime.rs",
+    "let mut input = self.input.lock().await",
+  ],
+  [
+    "Desktop SFTP overwrite confirmation UX",
+    "apps/desktop/src/panels.tsx",
+    "pendingUpload.origin.transfer.onUpload(",
+  ],
+]) {
+  test(`rejects removing the maintenance safety boundary: ${snippet}`, (t) => {
+    const root = createFixture(t);
+    const file = join(root, path);
+    const source = readFileSync(file, "utf8");
+    assert.ok(source.includes(snippet));
+    writeFileSync(file, source.replace(snippet, "REMOVED"));
+    const result = runChecker(root);
+    assert.equal(result.status, 1);
+    assert.ok(result.stdout.includes(`FAIL ${label} includes '${snippet}'`));
+  });
+}
 
 test("rejects missing Desktop SFTP overwrite and path safety surface", (t) => {
   const result = runChecker(

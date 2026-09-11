@@ -3,6 +3,8 @@
 > [September maintenance release entry](desktop-maintenance-release-2026-09.md)
 > and its versioned notes. The beta.26-specific package, listing text, tag
 > commands, and qualification statements below are historical references.
+> The future source-only tag is `v0.1.0-beta.27`; create it only after the
+> current entry's exact-candidate qualification gates have passed.
 
 # Repository Release Handoff Playbook
 
