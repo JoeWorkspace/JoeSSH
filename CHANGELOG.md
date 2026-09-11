@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the main JSON format; add an explicit, tested metadata recovery tool.
 - Patch xmldom and js-yaml dependencies; replace yanked `der 0.8.0` and
   `wnaf 0.14.0` with `0.8.2` and `0.14.1`. Report failed audit details in CI.
+- Update the Vitest test-tool packages to `4.1.11` to fix development-server
+  redirect-mock file disclosure, and explicitly declare the root test runner.
 
 ### Changed
 

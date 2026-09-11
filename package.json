@@ -266,7 +266,7 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^22.20.0",
-    "@vitest/coverage-v8": "^4.1.7",
+    "@vitest/coverage-v8": "^4.1.11",
     "audit-ci": "^7.1.0",
     "eslint": "^10.8.0",
     "eslint-plugin-react-hooks": "^7.1.1",
@@ -281,6 +281,7 @@
     "sax": "1.6.1",
     "size-limit": "^12.1.0",
     "typescript-eslint": "^8.65.0",
+    "vitest": "4.1.11",
     "yaml": "2.9.0"
   }
 }
