@@ -164,6 +164,7 @@ if (resolve(process.argv[1] ?? "").endsWith(basename(import.meta.url))) {
       for (const error of assessment.errors) console.error(error);
       if (!passed) {
         for (const result of [transport.probe, transport.result]) {
+          if (result?.stdout) process.stdout.write(result.stdout);
           if (result?.stderr) process.stderr.write(result.stderr);
           if (result?.error) console.error(result.error.message);
         }

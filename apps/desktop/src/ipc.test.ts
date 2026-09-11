@@ -56,10 +56,114 @@ function clearTauri() {
 
 afterEach(() => {
   clearTauri();
+  callbacks.clear();
   vi.restoreAllMocks();
 });
 
 describe("desktop IPC bridge", () => {
+  it("does not allocate a Channel or invoke native open for an already cancelled attempt", async () => {
+    const invoke = vi.fn();
+    installTauri(invoke);
+    const controller = new AbortController();
+    controller.abort();
+    await expect(
+      ptyOpen("s1", 80, 24, { ...ptyEvents(), signal: controller.signal }),
+    ).rejects.toThrow("cancelled");
+    expect(invoke).not.toHaveBeenCalled();
+    expect(callbacks.size).toBe(0);
+  });
+
+  it("releases the Channel when native open fails", async () => {
+    const invoke = vi.fn().mockRejectedValue(new Error("no session"));
+    installTauri(invoke);
+    await expect(ptyOpen("s1", 80, 24, ptyEvents())).rejects.toThrow(
+      "no session",
+    );
+    expect(callbacks.size).toBe(0);
+  });
+
+  it.each(["sync consumer", "async consumer", "ack", "native"])(
+    "reports %s output failure without acknowledging unconsumed bytes",
+    async (failure) => {
+      let emit!: (message: unknown) => void;
+      const invoke = vi.fn(
+        async (command: string, args: Record<string, unknown>) => {
+          if (command === "pty_open") {
+            const callback = callbacks.get((args.onEvent as { id: number }).id);
+            if (!callback) throw new Error("Missing Channel callback");
+            emit = callback;
+            return "pty-1";
+          }
+          throw new Error("ack failed");
+        },
+      );
+      installTauri(invoke);
+      const controller = new AbortController();
+      const onData = vi.fn(() => {
+        if (failure === "sync consumer") throw new Error("renderer failed");
+        if (failure === "async consumer")
+          return Promise.reject(new Error("renderer stopped"));
+      });
+      const events = { ...ptyEvents(), signal: controller.signal, onData };
+      await ptyOpen("s1", 80, 24, events);
+      emit({
+        index: 0,
+        message:
+          failure === "native"
+            ? { kind: "failed" }
+            : { kind: "data", pty_id: "pty-1", sequence: 1, data: [65] },
+      });
+      await vi.waitFor(() => expect(events.onError).toHaveBeenCalledOnce());
+      expect(
+        invoke.mock.calls.filter(([command]) => command === "pty_output_ack"),
+      ).toHaveLength(failure === "ack" ? 1 : 0);
+      controller.abort();
+      expect(callbacks.size).toBe(0);
+    },
+  );
+
+  it.each([false, true])(
+    "ignores a pending consumer after cancellation (reject=%s)",
+    async (reject) => {
+      let finish!: () => void;
+      let emit!: (message: unknown) => void;
+      const consumed = new Promise<void>((resolve, rejectPromise) => {
+        finish = () =>
+          reject ? rejectPromise(new Error("closed")) : resolve();
+      });
+      const invoke = vi.fn(
+        async (command: string, args: Record<string, unknown>) => {
+          if (command === "pty_open") {
+            const callback = callbacks.get((args.onEvent as { id: number }).id);
+            if (!callback) throw new Error("Missing Channel callback");
+            emit = callback;
+            return "pty-1";
+          }
+        },
+      );
+      installTauri(invoke);
+      const controller = new AbortController();
+      const events = {
+        ...ptyEvents(),
+        signal: controller.signal,
+        onData: vi.fn(() => consumed),
+      };
+      await ptyOpen("s1", 80, 24, events);
+      emit({
+        index: 0,
+        message: { kind: "data", pty_id: "pty-1", sequence: 1, data: [65] },
+      });
+      controller.abort();
+      finish();
+      await consumed.catch(() => {});
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(events.onError).not.toHaveBeenCalled();
+      expect(invoke).toHaveBeenCalledTimes(1);
+      expect(callbacks.size).toBe(0);
+    },
+  );
+
   it("reports no desktop runtime when the Tauri global is absent", () => {
     expect(isDesktopRuntime()).toBe(false);
   });
@@ -374,7 +478,7 @@ describe("desktop IPC bridge", () => {
       async (command: string, args: Record<string, unknown>) => {
         if (command === "pty_open") {
           const callback = callbacks.get((args.onEvent as { id: number }).id);
-        if (!callback) throw new Error("Missing Channel callback");
+          if (!callback) throw new Error("Missing Channel callback");
           callback({
             index: 0,
             message: { kind: "data", pty_id: "pty-1", sequence: 1, data: [65] },

@@ -3,6 +3,15 @@
 param([Parameter(Mandatory = $true)][string]$AppDataDirectory)
 
 $ErrorActionPreference = 'Stop'
+# Windows PowerShell 5.1 parses small JSON integers as Int32; PowerShell 7
+# uses Int64. Accept both without accepting strings or floating-point values.
+function Test-JsonInteger($Value) { return $Value -is [int] -or $Value -is [long] }
+function Get-TrustFileHash([string]$Path) {
+    $stream = [IO.File]::OpenRead($Path)
+    $hasher = [Security.Cryptography.SHA256]::Create()
+    try { return ([BitConverter]::ToString($hasher.ComputeHash($stream))).Replace('-', '') }
+    finally { $hasher.Dispose(); $stream.Dispose() }
+}
 $dataDirectory = (Resolve-Path -LiteralPath $AppDataDirectory).Path
 if ((Split-Path -Leaf $dataDirectory) -ne 'dev.atlasterm.joessh') {
     throw 'Select the actual JoeSSH app-data directory ending in dev.atlasterm.joessh.'
@@ -37,17 +46,17 @@ try {
         throw 'The main known-hosts file is not a valid object. No repair was performed.'
     }
     if ($mainData.PSObject.Properties.Name -contains 'hosts') {
-        if ($mainData.version -isnot [long] -or $mainData.version -ne 1 -or $mainData.hosts -isnot [PSCustomObject]) { throw 'Unsupported or malformed main known-hosts format.' }
+        if (-not (Test-JsonInteger $mainData.version) -or $mainData.version -ne 1 -or $mainData.hosts -isnot [PSCustomObject]) { throw 'Unsupported or malformed main known-hosts format.' }
         foreach ($entry in $mainData.hosts.PSObject.Properties) {
             $record = $entry.Value
             foreach ($field in @('key', 'host', 'port', 'fingerprint', 'source')) {
                 if ($record.PSObject.Properties.Name -notcontains $field) { throw 'Malformed known-host record.' }
             }
-            if ($record.key -cne $entry.Name -or $record.host -isnot [string] -or $record.port -isnot [long] -or
+            if ($record.key -cne $entry.Name -or $record.host -isnot [string] -or -not (Test-JsonInteger $record.port) -or
                 $record.port -lt 0 -or $record.port -gt 65535 -or $record.fingerprint -isnot [string] -or
                 $record.source -cnotin @('legacy', 'tofu', 'confirmed')) { throw 'Malformed known-host record.' }
             foreach ($field in @('first_seen_at_ms', 'last_seen_at_ms')) {
-                if ($null -ne $record.$field -and ($record.$field -isnot [long] -or $record.$field -lt 0)) { throw 'Malformed known-host timestamp.' }
+                if ($null -ne $record.$field -and (-not (Test-JsonInteger $record.$field) -or $record.$field -lt 0)) { throw 'Malformed known-host timestamp.' }
             }
         }
     } else {
@@ -55,7 +64,7 @@ try {
             if ($entry.Value -isnot [string]) { throw 'Malformed legacy known-hosts format.' }
         }
     }
-    $mainHash = (Get-FileHash -LiteralPath $mainPath -Algorithm SHA256).Hash
+    $mainHash = Get-TrustFileHash $mainPath
     $backupPath = $null
     if (Test-Path -LiteralPath $revisionPath) {
         $revisionText = [IO.File]::ReadAllText($revisionPath)
@@ -67,7 +76,7 @@ try {
             throw 'The sidecar may use a newer format. Use its matching application version; do not reset it.'
         }
         $parsedToken = [Guid]::Empty
-        if ($revision -is [PSCustomObject] -and $revision.version -is [long] -and $revision.version -eq 1 -and
+        if ($revision -is [PSCustomObject] -and (Test-JsonInteger $revision.version) -and $revision.version -eq 1 -and
             $revision.token -is [string] -and [Guid]::TryParse($revision.token, [ref]$parsedToken)) {
             Write-Output 'Coordination metadata is already valid. Nothing changed.'
             return
@@ -83,7 +92,7 @@ try {
     if (Test-Path -LiteralPath $revisionPath) { [IO.File]::Replace($temporaryPath, $revisionPath, [NullString]::Value) }
     else { [IO.File]::Move($temporaryPath, $revisionPath) }
     $temporaryPath = $null
-    if ((Get-FileHash -LiteralPath $mainPath -Algorithm SHA256).Hash -ne $mainHash) { throw 'Main file changed unexpectedly. Stop and inspect the app-data directory.' }
+    if ((Get-TrustFileHash $mainPath) -ne $mainHash) { throw 'Main file changed unexpectedly. Stop and inspect the app-data directory.' }
     @{ status = 'repaired'; mainSha256 = $mainHash; backup = $backupPath } | ConvertTo-Json
 } finally {
     if ($temporaryPath -and (Test-Path -LiteralPath $temporaryPath)) { Remove-Item -LiteralPath $temporaryPath }

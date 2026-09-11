@@ -225,7 +225,14 @@ export async function ptyOpen(
   const channel = new Channel<PtyEvent>((event) => {
     if (events.signal.aborted) return;
     if (event.kind === "data") {
-      void Promise.resolve(events.onData(event.data))
+      let consumed: void | Promise<void>;
+      try {
+        consumed = events.onData(event.data);
+      } catch {
+        events.onError();
+        return;
+      }
+      void Promise.resolve(consumed)
         .then(() => {
           if (!events.signal.aborted)
             return invoke<void>("pty_output_ack", {
