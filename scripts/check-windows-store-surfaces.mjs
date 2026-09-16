@@ -22,7 +22,7 @@ const STORE_RUNTIME_FILE_HASHES = Object.freeze({
   "tests/e2e/playwright.desktop-store.config.ts":
     "b7420f628fa35a1d09d84398597d2c1108df925aa44c56975551d2c2c007dce8",
   "tests/e2e/specs/desktop-store-release.spec.ts":
-    "41d9c17ae66e2b25c6a236b275ea5648c80a215ecb23c027117407909290d071",
+    "08fef6b9145d3d5273383284964de9aea1d479d04bb2c4038f9065f1dba4b8d7",
 });
 const STORE_RUNTIME_REPORT_PATH = "tests/e2e/test-results/store-runtime/";
 

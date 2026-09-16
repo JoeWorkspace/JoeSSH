@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-beta.28] - 2026-09-16
+
+> Corrective Microsoft Store maintenance candidate for `1.1.28.0`; Store submission and certification remain pending.
+
+### Fixed
+
+- Keep built-in sample hosts out of real connection onboarding and preserve a user's explicit Quick Connect target, including sample-address collisions.
+- Add Store release E2E coverage and exact Store-surface hash protection for these onboarding boundaries.
+
 ## [0.1.0-beta.27] - 2026-09-11
 
 > Microsoft Store maintenance candidate for `1.1.27.0`, following the verified

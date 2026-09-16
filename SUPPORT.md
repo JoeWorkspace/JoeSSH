@@ -31,13 +31,13 @@ custom deployments, incident response, or general infrastructure consulting.
 - Report security vulnerabilities only through the private route documented in
   [SECURITY.md](SECURITY.md). Never disclose a vulnerability in a public issue.
 
-The Store release support route is still blocked. Before publication, render
-the static support template from a private staging copy, insert a monitored
-public HTTPS page or form that works while logged out, and pass the checklist in
-[docs/commercial-release-readiness.md](docs/commercial-release-readiness.md)
-before the free Store listing is submitted. Do not commit the personal
-publisher identity or private contact material here. No customer portal or
-paid-support channel is currently offered.
+JoeSSH is available from the
+[Microsoft Store](https://apps.microsoft.com/detail/9nk5llmf8lhm). Store users
+can read existing reports in the public
+[issue tracker](https://github.com/JoeWorkspace/JoeSSH/issues) and use the
+[issue templates](https://github.com/JoeWorkspace/JoeSSH/issues/new/choose) to
+report a reproducible problem. Submitting an issue requires a GitHub account.
+No customer portal or paid-support channel is currently offered.
 
 ## Voluntary Support
 

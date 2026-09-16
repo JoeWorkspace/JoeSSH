@@ -981,10 +981,15 @@ function App({
     closeGettingStarted();
     if (!isDesktopRuntime()) return;
     if (desktopSessionsRef.current[activeConnection.name]) return;
+    // Browsing the guide must not turn a built-in sample into a real SSH target.
+    if (builtinConnectionNameSet.has(activeConnection.name)) {
+      openOnboardingNewConnection();
+      return;
+    }
     setConnectProfileName(activeConnection.name);
     setConnectTargetOverride(null);
     setConnectOpen(true);
-  }, [activeConnection.name, closeGettingStarted]);
+  }, [activeConnection.name, closeGettingStarted, openOnboardingNewConnection]);
   const openGettingStartedNewConnection = useCallback(() => {
     closeGettingStarted();
     openOnboardingNewConnection();
@@ -1527,7 +1532,10 @@ function App({
       if (item.kind === "quick-connect") {
         const target = splitConnectionTarget(item.sub ?? paletteState.input);
         const existingConnectionName = findConnectionNameByTarget(
-          effectiveConnections,
+          // Explicit input owns its profile even if it matches a sample address.
+          effectiveConnections.filter(
+            (connection) => !builtinConnectionNameSet.has(connection.name),
+          ),
           target,
         );
         const existingConnection = effectiveConnections.find(
@@ -2646,7 +2654,7 @@ const errorMonitor = desktopTelemetryAvailable
   ? createErrorMonitor({
       app: "desktop",
       endpoint: desktopEnv.VITE_ATLASTERM_ERROR_MONITOR_ENDPOINT,
-      version: desktopEnv.VITE_ATLASTERM_APP_VERSION ?? "0.1.0-beta.27",
+      version: desktopEnv.VITE_ATLASTERM_APP_VERSION ?? "0.1.0-beta.28",
     })
   : createNoopErrorMonitor();
 
