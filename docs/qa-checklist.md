@@ -84,6 +84,14 @@
 
 ## Desktop Workbench
 
+- In the Store build, opening Connect from the getting-started guide while a
+  built-in sample is selected opens a blank New connection form. Creating the
+  profile continues to Connect with its host, port, and username; existing
+  custom and Quick Connect profiles keep their targets, including an explicitly
+  entered Quick Connect address that happens to match a built-in sample. The
+  Store runtime tests cover these paths with an IPC mock and assert that no host-key probe or
+  authentication happens before the user supplies credentials. This is browser
+  behavior evidence, separate from real SSH and installed Store verification.
 - Terminal panes render with LTR terminal content under LTR and RTL UI locales.
 - Terminal session rendering uses structured line IDs so repeated command text does not collide or reorder in React.
 - Terminal command input accepts safe commands through the local safety preflight before they reach the session log.

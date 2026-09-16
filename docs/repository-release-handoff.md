@@ -1,9 +1,9 @@
-> 2026-09-11: The current maintenance candidate is `0.1.0-beta.27` / MSIX
-> `1.1.27.0`; the verified current Store package is `1.1.26.0`. Use the
+> 2026-09-16: The current maintenance candidate is `0.1.0-beta.28` / MSIX
+> `1.1.28.0`; the verified current Store package is `1.1.27.0`. Use the
 > [September maintenance release entry](desktop-maintenance-release-2026-09.md)
 > and its versioned notes. The beta.26-specific package, listing text, tag
 > commands, and qualification statements below are historical references.
-> The future source-only tag is `v0.1.0-beta.27`; create it only after the
+> The future source-only tag is `v0.1.0-beta.28`; create it only after the
 > current entry's exact-candidate qualification gates have passed.
 
 # Repository Release Handoff Playbook
