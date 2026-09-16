@@ -36,9 +36,9 @@ when this baseline was checked. Recheck main and Partner Center before release.
    and notices from this source; reuse no earlier build attestation.
 4. Prepare a fresh native verification directory and review the existing
    [native harness](windows-store-native-verification.md) for this candidate.
-   Its tracked bundle is pinned to beta.26 and a `1.1.22.0` baseline: it must
-   not silently qualify this release. Keep old evidence unchanged; review and
-   bind the new candidate, `1.1.26.0` baseline, SDK/toolchain, and harness hashes.
+   Its tracked bundle is pinned to earlier evidence and must not silently qualify
+   this release. Keep old evidence unchanged; review and bind the new candidate,
+   `1.1.27.0` baseline, SDK/toolchain, and harness hashes.
 5. Require WACK and clean-install/upgrade/uninstall checks in an isolated
    Windows environment. Exercise 2 and 8 real SSH sessions, hidden output,
    input targeting, SFTP selection/confirmation across switches, forwarding,
