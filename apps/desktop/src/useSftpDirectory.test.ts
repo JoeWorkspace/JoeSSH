@@ -165,6 +165,7 @@ describe("useSftpDirectory", () => {
 
     rerender({ list: newList });
     await waitFor(() => expect(result.current.path).toBe("."));
+    expect(newList.mock.calls).toEqual([["."]]);
     await waitFor(() =>
       expect(result.current.status).toEqual({
         phase: "ready",
@@ -180,6 +181,23 @@ describe("useSftpDirectory", () => {
       phase: "ready",
       entries: [entry("new-home.log")],
     });
+  });
+
+  it("lists only the new initial directory when the initial path changes", async () => {
+    const list = vi.fn().mockResolvedValue([entry("file")]);
+    const { result, rerender } = renderHook(
+      ({ initialPath }) => useSftpDirectory(list, initialPath),
+      { initialProps: { initialPath: "/home/first" } },
+    );
+    await waitFor(() => expect(result.current.status.phase).toBe("ready"));
+    act(() => result.current.openChild("private"));
+    await waitFor(() => expect(result.current.status.phase).toBe("ready"));
+    list.mockClear();
+
+    rerender({ initialPath: "/home/second/" });
+    await waitFor(() => expect(result.current.status.phase).toBe("ready"));
+    expect(result.current.path).toBe("/home/second");
+    expect(list.mock.calls).toEqual([["/home/second"]]);
   });
 
   it("normalizes opened paths before reloading", async () => {

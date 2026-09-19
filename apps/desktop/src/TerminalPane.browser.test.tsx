@@ -239,6 +239,25 @@ describe("TerminalPane", () => {
     expect(screen.getByText(/atlas@prod-edge-01/)).toBeTruthy();
   });
 
+  it("scrolls through an inactive transcript beyond the first virtualized page", () => {
+    render(
+      <TerminalPane
+        title="Disconnected transcript"
+        lines={makeLines(400)}
+        statusLabel="Disconnected"
+        t={mockT as never}
+      />,
+    );
+    const transcript = screen.getByRole("log", { name: "Disconnected transcript" });
+    expect(screen.queryByText("Line 300 content")).toBeNull();
+
+    transcript.scrollTop = 300 * 18;
+    fireEvent.scroll(transcript);
+
+    expect(screen.getByText("Line 300 content")).toBeTruthy();
+    expect(screen.queryByText("Line 0 content")).toBeNull();
+  });
+
   it("renders search match count as current/total", () => {
     const lines: TerminalLine[] = [
       { id: "1", text: "hello world", kind: "output" },

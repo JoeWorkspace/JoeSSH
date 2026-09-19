@@ -45,11 +45,20 @@ describe("splitConnectionTarget", () => {
     expect(splitConnectionTarget("prod-edge-01")).toEqual({ host: "prod-edge-01" });
     expect(splitConnectionTarget("@prod-edge-01")).toEqual({ host: "@prod-edge-01" });
     expect(splitConnectionTarget("atlas@")).toEqual({ host: "atlas@" });
-    expect(splitConnectionTarget("prod-edge-01:99999")).toEqual({ host: "prod-edge-01", port: undefined });
-    expect(splitConnectionTarget("prod-edge-01:0")).toEqual({ host: "prod-edge-01", port: undefined });
     expect(splitConnectionTarget("2001:db8::10")).toEqual({ host: "2001:db8::10" });
     expect(splitConnectionTarget("ssh://")).toEqual({ host: "ssh://" });
     expect(splitConnectionTarget("   ")).toEqual({ host: "   " });
+  });
+
+  it.each([
+    ["prod-edge-01:99999", "prod-edge-01", 99999],
+    ["prod-edge-01:0", "prod-edge-01", 0],
+    ["[2001:db8::10]:0", "2001:db8::10", 0],
+    ["ssh://prod-edge-01:0", "prod-edge-01", 0],
+  ])("preserves explicit invalid ports for form validation: %s", (input, host, port) => {
+    const target = splitConnectionTarget(String(input));
+    expect(target).toMatchObject({ host, port });
+    expect(formatConnectionTarget(target)).toContain(`:${port}`);
   });
 
   it("parses targets whose optional URL and IPv6 fields are omitted", () => {

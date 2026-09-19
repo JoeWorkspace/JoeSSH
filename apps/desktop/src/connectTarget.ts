@@ -7,7 +7,7 @@ export type ConnectionTarget = {
 export function formatConnectionTarget(target: ConnectionTarget): string {
   const host = target.host.includes(":") ? `[${target.host}]` : target.host;
   const destination = target.username ? `${target.username}@${host}` : host;
-  return target.port ? `${destination}:${target.port}` : destination;
+  return target.port === undefined ? destination : `${destination}:${target.port}`;
 }
 
 export function splitConnectionTarget(target: string): ConnectionTarget {
@@ -65,8 +65,9 @@ function parsePort(value: string | undefined): number | undefined {
   if (!value) {
     return undefined;
   }
-  const port = Number(value);
-  return Number.isInteger(port) && port >= 1 && port <= 65535 ? port : undefined;
+  // Keep explicit ports, including invalid values, for the connection form to
+  // reject. Dropping an invalid port silently redirects the request to port 22.
+  return Number(value);
 }
 
 function stripIpv6Brackets(value: string): string {

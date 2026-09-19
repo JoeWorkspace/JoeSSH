@@ -37,6 +37,7 @@ export function useSftpDirectory(
   const [path, setPath] = useState(() => normalizedInitialPath);
   const [status, setStatus] = useState<SftpDirectoryStatus>({ phase: "idle" });
   const loadSeq = useRef(0);
+  const sourceRef = useRef({ list, initialPath: normalizedInitialPath });
 
   const load = useCallback(
     async (target: string) => {
@@ -61,17 +62,23 @@ export function useSftpDirectory(
   );
 
   useEffect(() => {
-    loadSeq.current += 1;
-    setPath(normalizedInitialPath);
-    setStatus({ phase: "idle" });
+    const sourceChanged =
+      sourceRef.current.list !== list ||
+      sourceRef.current.initialPath !== normalizedInitialPath;
+    sourceRef.current = { list, initialPath: normalizedInitialPath };
+    if (sourceChanged) {
+      setPath(normalizedInitialPath);
+      setStatus({ phase: "idle" });
+    }
+    // The old navigation path must never be sent to a replacement backend.
+    // If resetting changes the path, its next render starts the first listing.
+    if (!sourceChanged || path === normalizedInitialPath) {
+      void load(path);
+    }
     return () => {
       loadSeq.current += 1;
     };
-  }, [list, normalizedInitialPath]);
-
-  useEffect(() => {
-    void load(path);
-  }, [load, path]);
+  }, [list, load, normalizedInitialPath, path]);
 
   const open = useCallback(
     (next: string) => setPath(normalizeSftpRemotePath(next)),

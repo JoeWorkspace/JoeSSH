@@ -531,7 +531,7 @@ export const SftpPanel = memo(function SftpPanel({
   type UploadOrigin = {
     transfer: SftpTransferView;
     directoryPath: string;
-    entries: typeof liveEntries;
+    entries: NonNullable<typeof liveEntries>;
   };
   const uploadOriginRef = useRef<UploadOrigin | null>(null);
   const [pendingUpload, setPendingUpload] = useState<{
@@ -548,8 +548,11 @@ export const SftpPanel = memo(function SftpPanel({
       !entry.is_dir &&
       entry.name === selectedDownloadName,
   );
-  const canDownloadSelected = Boolean(transfer && selectedEntry);
   const transferBusy = transfer?.status.phase === "transferring";
+  const canUpload = Boolean(transfer && liveEntries && !transferBusy);
+  const canDownloadSelected = Boolean(
+    transfer && selectedEntry && !transferBusy,
+  );
 
   useEffect(() => {
     if (!canTransfer) {
@@ -558,19 +561,35 @@ export const SftpPanel = memo(function SftpPanel({
   }, [canTransfer]);
 
   useEffect(() => {
-    setPendingUpload(null);
+    setPendingUpload((pending) => {
+      if (
+        pending &&
+        pending.origin.transfer.targetId !== undefined &&
+        pending.origin.transfer.targetId !== transfer?.targetId
+      ) {
+        // A picker/confirmation belongs to its original session. Keep it
+        // visible while another target's directory changes or transfers.
+        return pending;
+      }
+      return null;
+    });
+  }, [live?.path, liveEntries, transfer?.targetId]);
+
+  useEffect(() => {
     setSelectedDownloadName(null);
   }, [live?.path, liveEntries, transfer?.targetId]);
 
   function queueOrUploadFile(file: File) {
     const origin =
       uploadOriginRef.current ??
-      (transfer && !transfer.targetId
+      (transfer && !transfer.targetId && liveEntries && !transferBusy
         ? { transfer, directoryPath: live?.path ?? ".", entries: liveEntries }
         : null);
     uploadOriginRef.current = null;
-    if (!origin) return;
-    const collision = origin.entries?.some((entry) => entry.name === file.name);
+    const originIsVisibleTarget =
+      !origin || !transfer?.targetId || origin.transfer.targetId === transfer.targetId;
+    if (!origin || (originIsVisibleTarget && transferBusy)) return;
+    const collision = origin.entries.some((entry) => entry.name === file.name);
     if (collision) {
       setPendingUpload({ file, directoryPath: origin.directoryPath, origin });
       return;
@@ -586,6 +605,12 @@ export const SftpPanel = memo(function SftpPanel({
   }
 
   function confirmPendingUpload() {
+    if (
+      transferBusy &&
+      (!pendingUpload?.origin.transfer.targetId ||
+        pendingUpload.origin.transfer.targetId === transfer?.targetId)
+    )
+      return;
     if (!pendingUpload) {
       setPendingUpload(null);
       return;
@@ -610,9 +635,9 @@ export const SftpPanel = memo(function SftpPanel({
           <Button
             size="sm"
             variant="ghost"
-            disabled={!canTransfer || transferBusy}
+            disabled={!canUpload}
             onClick={() => {
-              if (!transfer) return;
+              if (!transfer || !liveEntries || transferBusy) return;
               uploadOriginRef.current = {
                 transfer,
                 directoryPath: live?.path ?? ".",
@@ -641,7 +666,7 @@ export const SftpPanel = memo(function SftpPanel({
             variant="ghost"
             disabled={!canDownloadSelected}
             onClick={
-              selectedEntry && transfer
+              canDownloadSelected && selectedEntry && transfer
                 ? () =>
                     transfer.onDownload(
                       selectedEntry.name,
@@ -725,7 +750,11 @@ export const SftpPanel = memo(function SftpPanel({
               <Button
                 size="sm"
                 variant="ghost"
-                disabled={transferBusy}
+                disabled={
+                  transferBusy &&
+                  (!pendingUpload.origin.transfer.targetId ||
+                    pendingUpload.origin.transfer.targetId === transfer?.targetId)
+                }
                 onClick={() => setPendingUpload(null)}
               >
                 <X size={13} aria-hidden="true" />{" "}
@@ -734,7 +763,11 @@ export const SftpPanel = memo(function SftpPanel({
               <Button
                 size="sm"
                 variant="ghost"
-                disabled={transferBusy}
+                disabled={
+                  transferBusy &&
+                  (!pendingUpload.origin.transfer.targetId ||
+                    pendingUpload.origin.transfer.targetId === transfer?.targetId)
+                }
                 onClick={confirmPendingUpload}
               >
                 <UploadCloud size={13} aria-hidden="true" />{" "}

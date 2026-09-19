@@ -4,6 +4,61 @@ import { describe, expect, it, vi } from "vitest";
 import { useSftpTransfer } from "./useSftpTransfer";
 
 describe("useSftpTransfer", () => {
+  it("keeps the first download when another transfer starts before it settles", async () => {
+    let resolveRead: (bytes: number[]) => void = () => {};
+    const read = vi.fn(
+      () => new Promise<number[]>((resolve) => {
+        resolveRead = resolve;
+      }),
+    );
+    const write = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => useSftpTransfer(read, write));
+    let first: Promise<number[] | undefined> = Promise.resolve(undefined);
+    await act(async () => {
+      first = result.current.download("/first");
+      expect(await result.current.download("/second")).toBeUndefined();
+      expect(await result.current.upload("/upload", [4])).toBe(false);
+      result.current.rejectTooLarge();
+    });
+    expect(result.current.status).toEqual({ phase: "transferring" });
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(write).not.toHaveBeenCalled();
+
+    await act(async () => {
+      resolveRead([1, 2, 3]);
+      expect(await first).toEqual([1, 2, 3]);
+    });
+    expect(result.current.status).toEqual({ phase: "idle" });
+    await act(async () => {
+      expect(await result.current.upload("/upload", [4])).toBe(true);
+    });
+  });
+
+  it("preserves a successful upload when a second transfer is attempted", async () => {
+    let resolveWrite: () => void = () => {};
+    const read = vi.fn().mockResolvedValue([9]);
+    const write = vi.fn(
+      () => new Promise<void>((resolve) => {
+        resolveWrite = resolve;
+      }),
+    );
+    const { result } = renderHook(() => useSftpTransfer(read, write));
+    let first: Promise<boolean> = Promise.resolve(false);
+    await act(async () => {
+      first = result.current.upload("/first", [1]);
+      expect(await result.current.download("/download")).toBeUndefined();
+      expect(await result.current.upload("/second", [2])).toBe(false);
+    });
+    expect(result.current.status).toEqual({ phase: "transferring" });
+    expect(read).not.toHaveBeenCalled();
+    expect(write).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      resolveWrite();
+      expect(await first).toBe(true);
+    });
+    expect(result.current.status).toEqual({ phase: "idle" });
+  });
+
   it("is inactive and no-ops when no IPC is wired", async () => {
     const { result } = renderHook(() => useSftpTransfer());
     expect(result.current.active).toBe(false);
@@ -183,6 +238,47 @@ describe("useSftpTransfer", () => {
     });
 
     expect(staleBytes).toBeUndefined();
+    expect(result.current.status).toEqual({ phase: "idle" });
+  });
+
+  it("keeps a replacement backend busy when an old transfer settles", async () => {
+    let resolveOld: (bytes: number[]) => void = () => {};
+    let resolveNew: (bytes: number[]) => void = () => {};
+    const oldRead = vi.fn(
+      () => new Promise<number[]>((resolve) => {
+        resolveOld = resolve;
+      }),
+    );
+    const newRead = vi.fn(
+      () => new Promise<number[]>((resolve) => {
+        resolveNew = resolve;
+      }),
+    );
+    const write = vi.fn();
+    const { result, rerender } = renderHook(
+      ({ read }) => useSftpTransfer(read, write),
+      { initialProps: { read: oldRead } },
+    );
+    let oldDownload: Promise<number[] | undefined> = Promise.resolve(undefined);
+    let newDownload: Promise<number[] | undefined> = Promise.resolve(undefined);
+    act(() => {
+      oldDownload = result.current.download("/old");
+    });
+    rerender({ read: newRead });
+    act(() => {
+      newDownload = result.current.download("/new");
+    });
+    await act(async () => {
+      resolveOld([1]);
+      expect(await oldDownload).toBeUndefined();
+      expect(await result.current.download("/duplicate")).toBeUndefined();
+    });
+    expect(result.current.status).toEqual({ phase: "transferring" });
+    expect(newRead.mock.calls).toEqual([["/new"]]);
+    await act(async () => {
+      resolveNew([2]);
+      expect(await newDownload).toEqual([2]);
+    });
     expect(result.current.status).toEqual({ phase: "idle" });
   });
 

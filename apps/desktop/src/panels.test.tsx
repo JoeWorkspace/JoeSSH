@@ -612,6 +612,110 @@ describe("extracted desktop panels", () => {
     ).toBe("alert");
   });
 
+  it("disables both transfer actions while a file is transferring", () => {
+    const onUpload = vi.fn();
+    const onDownload = vi.fn();
+    const directory = {
+      active: true,
+      path: "/srv",
+      status: {
+        phase: "ready" as const,
+        entries: [{ name: "app.log", is_dir: false, size: 12 }],
+      },
+    };
+    const view = (phase: "idle" | "transferring") => (
+      <SftpPanel
+        formatters={formatters}
+        sftpItems={sftpItems}
+        t={t}
+        directory={directory}
+        transfer={{ status: { phase }, onUpload, onDownload }}
+      />
+    );
+    const { container, rerender } = render(view("idle"));
+    fireEvent.click(
+      container.querySelector(".file-list button") as HTMLElement,
+    );
+    const download = within(container).getByRole("button", {
+      name: "Download",
+    }) as HTMLButtonElement;
+    expect(download.disabled).toBe(false);
+    rerender(view("transferring"));
+    const upload = within(container).getByRole("button", {
+      name: "Upload",
+    }) as HTMLButtonElement;
+    expect(download.disabled).toBe(true);
+    expect(upload.disabled).toBe(true);
+    fireEvent.click(download);
+    fireEvent.click(upload);
+    fireEvent.change(
+      container.querySelector('input[type="file"]') as HTMLInputElement,
+      { target: { files: [new File(["data"], "new.log")] } },
+    );
+    expect(onDownload).not.toHaveBeenCalled();
+    expect(onUpload).not.toHaveBeenCalled();
+    rerender(view("idle"));
+    expect(download.disabled).toBe(false);
+    expect(upload.disabled).toBe(false);
+  });
+
+  it.each(["idle", "loading", "error"] as const)(
+    "requires a ready directory before uploading from the %s state",
+    (phase) => {
+      const onUpload = vi.fn();
+      const onDownload = vi.fn();
+      const { container, rerender } = render(
+        <SftpPanel
+          formatters={formatters}
+          sftpItems={sftpItems}
+          t={t}
+          directory={{
+            active: true,
+            path: "/srv",
+            status: phase === "error"
+              ? { phase, message: "permission denied" }
+              : { phase },
+          }}
+          transfer={{ status: { phase: "idle" }, onUpload, onDownload }}
+        />,
+      );
+      const upload = within(container).getByRole("button", {
+        name: "Upload",
+      }) as HTMLButtonElement;
+      const input = container.querySelector(
+        'input[type="file"]',
+      ) as HTMLInputElement;
+      expect(upload.disabled).toBe(true);
+      fireEvent.click(upload);
+      const file = new File(["replace"], "app.log");
+      fireEvent.change(input, { target: { files: [file] } });
+      expect(onUpload).not.toHaveBeenCalled();
+      expect(container.querySelector(".sftp-overwrite-confirm")).toBeNull();
+
+      rerender(
+        <SftpPanel
+          formatters={formatters}
+          sftpItems={sftpItems}
+          t={t}
+          directory={{
+            active: true,
+            path: "/srv",
+            status: {
+              phase: "ready",
+              entries: [{ name: "app.log", is_dir: false, size: 12 }],
+            },
+          }}
+          transfer={{ status: { phase: "idle" }, onUpload, onDownload }}
+        />,
+      );
+      expect(upload.disabled).toBe(false);
+      fireEvent.click(upload);
+      fireEvent.change(input, { target: { files: [file] } });
+      expect(onUpload).not.toHaveBeenCalled();
+      expect(container.querySelector(".sftp-overwrite-confirm")).not.toBeNull();
+    },
+  );
+
   it("disables unsafe live SFTP entry names before navigation or download", () => {
     const onUpload = vi.fn();
     const onDownload = vi.fn();
@@ -709,7 +813,9 @@ describe("extracted desktop panels", () => {
     expect(container.querySelector(".sftp-overwrite-confirm")).toBeNull();
   });
 
-  it("binds file picking and overwrite confirmation to the original SSH target", () => {
+  it.each(["idle", "transferring"] as const)(
+    "binds file picking and overwrite confirmation to the original target while another target is %s",
+    (otherPhase) => {
     const uploadA = vi.fn();
     const uploadB = vi.fn();
     const entries = [{ name: "app.log", is_dir: false, size: 12 }];
@@ -726,7 +832,7 @@ describe("extracted desktop panels", () => {
         transfer={{
           targetId: target,
           targetLabel: target,
-          status: { phase: "idle" },
+          status: { phase: target === "server-A" ? "idle" : otherPhase },
           onUpload,
           onDownload: vi.fn(),
         }}
@@ -745,6 +851,90 @@ describe("extracted desktop panels", () => {
     expect(confirm.textContent).toContain("server-A /srv");
     fireEvent.click(within(confirm).getByRole("button", { name: "Overwrite" }));
     expect(uploadA).toHaveBeenCalledWith(file, "/srv");
+    expect(uploadB).not.toHaveBeenCalled();
+    },
+  );
+
+  it("uploads a new file to its picker origin while the visible target is busy", () => {
+    const uploadA = vi.fn();
+    const uploadB = vi.fn();
+    const view = (target: string, onUpload: typeof uploadA) => (
+      <SftpPanel
+        formatters={formatters}
+        sftpItems={sftpItems}
+        t={t}
+        directory={{
+          active: true,
+          path: target === "server-A" ? "/srv/a" : "/srv/b",
+          status: { phase: "ready", entries: [] },
+        }}
+        transfer={{
+          targetId: target,
+          status: { phase: target === "server-A" ? "idle" : "transferring" },
+          onUpload,
+          onDownload: vi.fn(),
+        }}
+      />
+    );
+    const { container, rerender } = render(view("server-A", uploadA));
+    fireEvent.click(within(container).getByRole("button", { name: "Upload" }));
+    rerender(view("server-B", uploadB));
+    const file = new File(["new"], "new.log");
+    fireEvent.change(
+      container.querySelector('input[type="file"]') as HTMLInputElement,
+      { target: { files: [file] } },
+    );
+    expect(uploadA).toHaveBeenCalledWith(file, "/srv/a");
+    expect(uploadB).not.toHaveBeenCalled();
+  });
+
+  it("keeps an overwrite confirmation when the visible target changes directory", () => {
+    const uploadA = vi.fn();
+    const uploadB = vi.fn();
+    const view = (target: string, onUpload: typeof uploadA) => (
+      <SftpPanel
+        formatters={formatters}
+        sftpItems={sftpItems}
+        t={t}
+        directory={{
+          active: true,
+          path: target === "server-A" ? "/srv/a" : "/srv/b",
+          status: {
+            phase: "ready",
+            entries:
+              target === "server-A"
+                ? [{ name: "app.log", is_dir: false, size: 12 }]
+                : [],
+          },
+        }}
+        transfer={{
+          targetId: target,
+          targetLabel: target,
+          status: { phase: target === "server-A" ? "idle" : "transferring" },
+          onUpload,
+          onDownload: vi.fn(),
+        }}
+      />
+    );
+    const { container, rerender } = render(view("server-A", uploadA));
+    fireEvent.click(within(container).getByRole("button", { name: "Upload" }));
+    const file = new File(["replace"], "app.log");
+    fireEvent.change(
+      container.querySelector('input[type="file"]') as HTMLInputElement,
+      { target: { files: [file] } },
+    );
+    rerender(view("server-B", uploadB));
+    const confirm = container.querySelector(
+      ".sftp-overwrite-confirm",
+    ) as HTMLElement;
+    expect(confirm.textContent).toContain("server-A /srv/a");
+    expect(
+      (within(confirm).getByRole("button", {
+        name: "Overwrite",
+      }) as HTMLButtonElement).disabled,
+    ).toBe(false);
+    fireEvent.click(within(confirm).getByRole("button", { name: "Overwrite" }));
+    expect(uploadA).toHaveBeenCalledWith(file, "/srv/a");
     expect(uploadB).not.toHaveBeenCalled();
   });
 

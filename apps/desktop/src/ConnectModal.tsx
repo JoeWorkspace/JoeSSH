@@ -1,4 +1,4 @@
-import { memo, useRef, useState, type FormEvent } from "react";
+import { memo, useEffect, useRef, useState, type FormEvent } from "react";
 import { Plug, X } from "lucide-react";
 import { Button, IconButton } from "@atlasterm/ui";
 import type { Translator } from "@atlasterm/i18n";
@@ -49,7 +49,7 @@ export const ConnectModal = memo(function ConnectModal({
     onConnect,
     {
       host: defaultHost ?? "",
-      port: defaultPort ? String(defaultPort) : "22",
+      port: defaultPort === undefined ? "22" : String(defaultPort),
       username: defaultUsername ?? "",
     },
   );
@@ -61,11 +61,21 @@ export const ConnectModal = memo(function ConnectModal({
   const authenticating = status.phase === "connecting";
   const connecting = authenticating || probingHostKey;
 
+  useEffect(
+    () => () => {
+      // A probe can outlive its dialog. Its result must never start authentication
+      // after the user has closed the window or its owner has unmounted it.
+      hostKeyProbeSeq.current += 1;
+    },
+    [],
+  );
+
   function requestClose() {
     // The backend does not expose authentication cancellation. Keeping the
     // dialog mounted prevents a successful late response from creating a
     // session after the user believed the operation had been cancelled.
     if (!authenticating) {
+      hostKeyProbeSeq.current += 1;
       onClose();
     }
   }

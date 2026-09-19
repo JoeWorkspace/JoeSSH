@@ -63,12 +63,15 @@ export function useTerminalPane({
   // --- Command history navigation ---
   const [historyIdx, setHistoryIdx] = useState(-1);
   const [savedInput, setSavedInput] = useState("");
-  const isNavigatingHistory = useRef(false);
+  const pendingHistoryInput = useRef<string | null>(null);
   const canAcceptCommand = active && onCommandInputChange && onCommandSubmit;
 
   useEffect(() => {
-    if (isNavigatingHistory.current) {
-      isNavigatingHistory.current = false;
+    // Repeating an arrow at a history boundary can leave the input unchanged.
+    // Only the expected history value may preserve navigation, not a later edit.
+    const fromHistory = pendingHistoryInput.current === commandInput;
+    pendingHistoryInput.current = null;
+    if (fromHistory) {
       return;
     }
     setHistoryIdx(-1);
@@ -131,7 +134,7 @@ export function useTerminalPane({
       const next = historyIdx < 0 ? commandHistory.length - 1 : Math.max(0, historyIdx - 1);
       if (historyIdx < 0) setSavedInput(commandInput ?? "");
       setHistoryIdx(next);
-      isNavigatingHistory.current = true;
+      pendingHistoryInput.current = commandHistory[next];
       onCommandInputChange?.(commandHistory[next]);
     } else if (event.key === "ArrowDown") {
       event.preventDefault();
@@ -140,11 +143,11 @@ export function useTerminalPane({
       const next = historyIdx + 1;
       if (next >= commandHistory.length) {
         setHistoryIdx(-1);
-        isNavigatingHistory.current = true;
+        pendingHistoryInput.current = savedInput;
         onCommandInputChange?.(savedInput);
       } else {
         setHistoryIdx(next);
-        isNavigatingHistory.current = true;
+        pendingHistoryInput.current = commandHistory[next];
         onCommandInputChange?.(commandHistory[next]);
       }
     }
