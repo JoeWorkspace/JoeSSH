@@ -370,7 +370,36 @@ describe("useTerminalPane", () => {
   });
 
   describe("history navigation edge cases", () => {
-    it("skips isNavigatingHistory when commandInput changes from history", () => {
+    it("keeps a manual edit after repeatedly navigating to the oldest command", () => {
+      const onChange = vi.fn();
+      const props = { ...defaultProps, commandHistory: ["oldest", "latest"], onCommandInputChange: onChange };
+      const { result, rerender } = renderHook(
+        (nextProps) => useTerminalPane(nextProps),
+        { initialProps: { ...props, commandInput: "draft" } },
+      );
+      const press = (key: string) => act(() => {
+        result.current.handleCommandKeyDown({ key, preventDefault: vi.fn() } as never);
+      });
+
+      press("ArrowUp");
+      rerender({ ...props, commandInput: "latest" });
+      press("ArrowUp");
+      rerender({ ...props, commandInput: "oldest" });
+      // At the boundary the value stays the same, so there is no input effect.
+      press("ArrowUp");
+      rerender({ ...props, commandInput: "edited draft" });
+      onChange.mockClear();
+
+      press("ArrowDown");
+      expect(onChange).not.toHaveBeenCalled();
+      press("ArrowUp");
+      expect(onChange).toHaveBeenLastCalledWith("latest");
+      rerender({ ...props, commandInput: "latest" });
+      press("ArrowDown");
+      expect(onChange).toHaveBeenLastCalledWith("edited draft");
+    });
+
+    it("preserves navigation when commandInput changes to the expected history value", () => {
       const onChange = vi.fn();
       const history = ["cmd1", "cmd2"];
       const { result, rerender } = renderHook(
@@ -387,7 +416,7 @@ describe("useTerminalPane", () => {
       // Simulate React re-rendering with new commandInput from history
       rerender({ ...defaultProps, commandHistory: history, commandInput: "cmd2", onCommandInputChange: onChange });
 
-      // The historyIdx should be 1 (not reset to -1) because isNavigatingHistory was true
+      // The historyIdx should be 1 because this is the expected history value.
       // Now manually change commandInput (not from history navigation)
       rerender({ ...defaultProps, commandHistory: history, commandInput: "manual", onCommandInputChange: onChange });
       // historyIdx should reset to -1
@@ -467,6 +496,24 @@ describe("useTerminalPane", () => {
     it("exposes handleTerminalScroll", () => {
       const { result } = renderHook(() => useTerminalPane(defaultProps));
       expect(typeof result.current.handleTerminalScroll).toBe("function");
+    });
+
+    it("preserves inactive transcript position while active panes follow output", () => {
+      const { result, rerender } = renderHook(
+        (props) => useTerminalPane(props),
+        { initialProps: { ...defaultProps, active: false } },
+      );
+      const transcript = document.createElement("pre");
+      transcript.scrollTop = 120;
+      Object.defineProperty(transcript, "scrollHeight", { value: 1000 });
+      (result.current.terminalPreRef as { current: HTMLPreElement | null }).current = transcript;
+
+      const updatedLines = makeLines(11);
+      rerender({ ...defaultProps, active: false, lines: updatedLines });
+      expect(transcript.scrollTop).toBe(120);
+
+      rerender({ ...defaultProps, active: true, lines: updatedLines });
+      expect(transcript.scrollTop).toBe(1000);
     });
 
     it("handleTerminalScroll does nothing when ref is null", () => {

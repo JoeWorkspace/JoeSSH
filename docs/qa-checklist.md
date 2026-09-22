@@ -84,6 +84,10 @@
 
 ## Desktop Workbench
 
+- Closing the Connect dialog by its close button, Escape, backdrop, or owner
+  unmount invalidates any pending host-key probe; a late probe result must never
+  start authentication. Explicit invalid ports such as `0` and `99999` remain
+  visible and fail validation instead of silently falling back to port 22.
 - In the Store build, opening Connect from the getting-started guide while a
   built-in sample is selected opens a blank New connection form. Creating the
   profile continues to Connect with its host, port, and username; existing
@@ -101,10 +105,29 @@
 - Automated Axe checks tagged for WCAG 2.2 AA run with the normally disabled `target-size` rule enabled; focusable controls retain at least a 24 CSS pixel target or equivalent spacing, and focused controls scroll fully into view without being obscured by a scroll-container edge.
 - `npm run qa:accessibility-readiness` validates the public assessment-in-progress notice, explicit no-formal-conformance-claim boundary, known limitations, safe accessibility feedback form, WCAG 2.2 E2E wiring, and focus scroll-padding contracts before release.
 - SFTP upload/download uses a 25 MiB per-operation safety limit; the UI refuses known oversized remote downloads and local uploads before allocating file bytes where possible, remote listing entry names must pass safe single-segment validation before navigation/download/upload path joins, the core SFTP downloader enforces the cap before and during remote reads, and the Tauri backend rejects oversized upload IPC payloads before writing.
+- SFTP allows only one transfer at a time per transfer hook, including repeated
+  clicks before the next render. Upload requires a ready directory listing for
+  overwrite confirmation; file selection keeps its originating session and
+  directory even when the visible tab changes. Replacing the directory backend
+  lists its initial path, never the previous backend's navigated path. A stale
+  transfer completion cannot release a replacement backend's transfer lock.
 - Team access review flow opens from the Review action, supports keyboard approval/rejection, updates pending JIT state, and records an audit event.
 - Connection Move to group actions persist validated per-connection group overrides and survive reload without mutating the base connection catalog.
 - Connection drag ordering persists validated per-connection order and survives reload without dropping newly added default connections.
 - Terminal command history supports repeated ArrowUp/ArrowDown traversal through prior accepted commands.
+- Transcript/preview terminal panes remain scrollable through virtualized logs
+  when inactive, preserve their reading position on mount and log updates, and
+  opening search observes the existing log container. Automatic output following
+  applies only to active panes. Editing
+  input after repeatedly reaching the oldest history entry exits history
+  navigation, so ArrowDown cannot overwrite the edited draft. Native interactive
+  SSH uses the separate Xterm surface.
+- Native PTY output retains an explicit exit status received after SSH EOF.
+  Transport loss, signal termination, and closure without an exit status emit
+  `Failed`, never an invented successful exit. After EOF the reader waits at most
+  five seconds for completion; normally idle shells without EOF have no such
+  deadline. Loopback russh tests cover protocol ordering and the timeout, separate
+  from real OpenSSH and installed Store acceptance.
 - Desktop real SSH dogfood runs in CI with `npm run qa:desktop:real-ssh-smoke`
   against a loopback OpenSSH fixture with `JOESSH_REAL_SSH_SMOKE=1`, covering
   host-key probe and pinned trust, password authentication, exec, PTY output,

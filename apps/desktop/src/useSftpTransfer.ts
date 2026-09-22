@@ -29,6 +29,7 @@ export function useSftpTransfer(
 ) {
   const [status, setStatus] = useState<TransferStatus>({ phase: "idle" });
   const operationSeq = useRef(0);
+  const inFlight = useRef<number | null>(null);
   const active = read !== undefined && write !== undefined;
   const maxBytes = options.maxBytes ?? SFTP_TRANSFER_MAX_BYTES;
   const limitMessage = useMemo(
@@ -39,11 +40,13 @@ export function useSftpTransfer(
   );
 
   const rejectTooLarge = useCallback(() => {
+    if (inFlight.current !== null) return;
     setStatus({ phase: "error", message: limitMessage(maxBytes) });
   }, [limitMessage, maxBytes]);
 
   useEffect(() => {
     operationSeq.current += 1;
+    inFlight.current = null;
     setStatus({ phase: "idle" });
     return () => {
       operationSeq.current += 1;
@@ -55,7 +58,7 @@ export function useSftpTransfer(
       path: string,
       downloadOptions: SftpDownloadOptions = {},
     ): Promise<number[] | undefined> => {
-      if (!read) return undefined;
+      if (!read || inFlight.current !== null) return undefined;
       if (
         downloadOptions.knownSizeBytes !== null &&
         downloadOptions.knownSizeBytes !== undefined &&
@@ -66,12 +69,13 @@ export function useSftpTransfer(
       }
       const requestSeq = operationSeq.current + 1;
       operationSeq.current = requestSeq;
+      inFlight.current = requestSeq;
       setStatus({ phase: "transferring" });
       try {
         const bytes = await read(path);
         if (operationSeq.current !== requestSeq) return undefined;
         if (bytes.length > maxBytes) {
-          rejectTooLarge();
+          setStatus({ phase: "error", message: limitMessage(maxBytes) });
           return undefined;
         }
         setStatus({ phase: "idle" });
@@ -83,20 +87,23 @@ export function useSftpTransfer(
           message: error instanceof Error ? error.message : String(error),
         });
         return undefined;
+      } finally {
+        if (inFlight.current === requestSeq) inFlight.current = null;
       }
     },
-    [maxBytes, read, rejectTooLarge],
+    [limitMessage, maxBytes, read, rejectTooLarge],
   );
 
   const upload = useCallback(
     async (path: string, data: number[]): Promise<boolean> => {
-      if (!write) return false;
+      if (!write || inFlight.current !== null) return false;
       if (data.length > maxBytes) {
         rejectTooLarge();
         return false;
       }
       const requestSeq = operationSeq.current + 1;
       operationSeq.current = requestSeq;
+      inFlight.current = requestSeq;
       setStatus({ phase: "transferring" });
       try {
         await write(path, data);
@@ -110,6 +117,8 @@ export function useSftpTransfer(
           message: error instanceof Error ? error.message : String(error),
         });
         return false;
+      } finally {
+        if (inFlight.current === requestSeq) inFlight.current = null;
       }
     },
     [maxBytes, rejectTooLarge, write],

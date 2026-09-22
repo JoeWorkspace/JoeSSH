@@ -23,6 +23,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 pub const SSH_EXEC_MAX_OUTPUT_BYTES: usize = 1024 * 1024;
 const SFTP_READ_CHUNK_BYTES: usize = 64 * 1024;
+const PTY_EXIT_STATUS_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
 const UNSAFE_SFTP_ENTRY_FORMAT_RANGES: &[(u32, u32)] = &[
     (0x00ad, 0x00ad),
     (0x061c, 0x061c),
@@ -528,13 +529,20 @@ pub struct PtyWriter {
 /// Read side of a PTY: await output events until the shell closes.
 pub struct PtyReader {
     read: russh::ChannelReadHalf,
+    completion_deadline: Option<tokio::time::Instant>,
 }
 
 impl PtySession {
     /// Split into independent write and read halves.
     pub fn split(self) -> (PtyWriter, PtyReader) {
         let (read, write) = self.channel.split();
-        (PtyWriter { write }, PtyReader { read })
+        (
+            PtyWriter { write },
+            PtyReader {
+                read,
+                completion_deadline: None,
+            },
+        )
     }
 
     /// Send bytes to the shell's stdin (single-half convenience for tests).
@@ -581,9 +589,20 @@ impl PtyWriter {
 }
 
 impl PtyReader {
-    /// Await the next output event, or `None` once the channel closes.
+    /// Await the next output event, or `None` once the channel closes or the
+    /// shell terminates by signal. EOF alone does not end the SSH channel: the
+    /// remote shell may report its exit status after finishing its output. Once
+    /// EOF arrives, wait at most five seconds for that status; active shells
+    /// without EOF may remain idle for any length of time.
     pub async fn next_output(&mut self) -> Option<PtyOutput> {
-        while let Some(msg) = self.read.wait().await {
+        loop {
+            let msg = match self.completion_deadline {
+                Some(deadline) => tokio::time::timeout_at(deadline, self.read.wait())
+                    .await
+                    .ok()
+                    .flatten()?,
+                None => self.read.wait().await?,
+            };
             match msg {
                 russh::ChannelMsg::Data { ref data } => {
                     return Some(PtyOutput::Data(data.to_vec()));
@@ -594,11 +613,15 @@ impl PtyReader {
                 russh::ChannelMsg::ExitStatus { exit_status } => {
                     return Some(PtyOutput::Exit(exit_status));
                 }
-                russh::ChannelMsg::Eof | russh::ChannelMsg::Close => return None,
+                russh::ChannelMsg::Eof => {
+                    self.completion_deadline.get_or_insert_with(|| {
+                        tokio::time::Instant::now() + PTY_EXIT_STATUS_TIMEOUT
+                    });
+                }
+                russh::ChannelMsg::ExitSignal { .. } | russh::ChannelMsg::Close => return None,
                 _ => {}
             }
         }
-        None
     }
 }
 
@@ -859,7 +882,7 @@ mod tests {
         }
     }
 
-    async fn exec_with_completion_fixture(command: &str) -> Result<(u32, Vec<u8>), SshError> {
+    async fn completion_fixture_client() -> (SshClient, tokio::task::JoinHandle<()>) {
         struct ExecServer;
 
         impl russh::server::Handler for ExecServer {
@@ -903,10 +926,29 @@ mod tests {
                         "",
                     )?,
                     b"no-status" => {}
+                    b"eof-only" => return Ok(()),
                     _ => panic!("unknown exec completion fixture"),
                 }
                 session.close(channel)?;
                 Ok(())
+            }
+
+            async fn shell_request(
+                &mut self,
+                channel: russh::ChannelId,
+                session: &mut russh::server::Session,
+            ) -> Result<(), Self::Error> {
+                session.channel_success(channel)?;
+                Ok(())
+            }
+
+            async fn data(
+                &mut self,
+                channel: russh::ChannelId,
+                data: &[u8],
+                session: &mut russh::server::Session,
+            ) -> Result<(), Self::Error> {
+                self.exec_request(channel, data, session).await
             }
         }
 
@@ -935,11 +977,77 @@ mod tests {
         .await
         .unwrap();
 
+        (client, server)
+    }
+
+    async fn exec_with_completion_fixture(command: &str) -> Result<(u32, Vec<u8>), SshError> {
+        let (client, server) = completion_fixture_client().await;
         let result = tokio::time::timeout(std::time::Duration::from_secs(5), client.exec(command))
             .await
             .expect("exec should finish after channel close");
         server.abort();
         result
+    }
+
+    async fn pty_with_completion_fixture(command: &str) -> Vec<PtyOutput> {
+        let (client, server) = completion_fixture_client().await;
+        let output = tokio::time::timeout(PTY_EXIT_STATUS_TIMEOUT * 2, async {
+            let (writer, mut reader) = client.open_shell(80, 24).await.unwrap().split();
+            writer.write(command.as_bytes()).await.unwrap();
+            let mut output = Vec::new();
+            while let Some(event) = reader.next_output().await {
+                output.push(event);
+            }
+            output
+        })
+        .await
+        .expect("PTY output should finish after channel close");
+        client.disconnect();
+        server.abort();
+        output
+    }
+
+    #[tokio::test]
+    async fn pty_reads_exit_status_sent_after_stdout_eof() {
+        assert_eq!(
+            pty_with_completion_fixture("status-after-eof").await,
+            vec![
+                PtyOutput::Data(b"command output".to_vec()),
+                PtyOutput::Exit(17)
+            ],
+            "stdout EOF must not discard the shell's later nonzero exit status"
+        );
+    }
+
+    #[tokio::test]
+    async fn pty_accepts_explicit_success_status_after_eof() {
+        assert_eq!(
+            pty_with_completion_fixture("success").await,
+            vec![
+                PtyOutput::Data(b"command output".to_vec()),
+                PtyOutput::Exit(0)
+            ]
+        );
+    }
+
+    #[tokio::test]
+    async fn pty_does_not_invent_exit_status_after_abrupt_close_or_signal() {
+        for command in ["no-status", "signal"] {
+            assert_eq!(
+                pty_with_completion_fixture(command).await,
+                vec![PtyOutput::Data(b"command output".to_vec())],
+                "{command} has no normal exit status"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn pty_eof_without_exit_status_has_a_bounded_completion_wait() {
+        assert_eq!(
+            pty_with_completion_fixture("eof-only").await,
+            vec![PtyOutput::Data(b"command output".to_vec())],
+            "an EOF-only peer must not keep a completed output stream alive forever"
+        );
     }
 
     #[tokio::test]

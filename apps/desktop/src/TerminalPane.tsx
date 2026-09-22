@@ -98,7 +98,6 @@ export const TerminalPane = memo(function TerminalPane({
   });
 
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const terminalRefActive = active || Boolean(searchOpen);
   const showRecordingButton = Boolean(onToggleRecording) || recordingDisabled;
 
   useEffect(() => {
@@ -169,7 +168,7 @@ export const TerminalPane = memo(function TerminalPane({
         dir="ltr"
         role="log"
         tabIndex={0}
-        ref={terminalRefActive ? terminalPreRef : undefined}
+        ref={terminalPreRef}
         onScroll={handleTerminalScroll}
         style={lines.length >= 200 ? { overflow: "auto" } : undefined}
       >

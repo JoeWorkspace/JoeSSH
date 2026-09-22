@@ -28,7 +28,7 @@ function setup(
 ) {
   const onClose = vi.fn();
   const onConnected = vi.fn();
-  const { container } = render(
+  const { container, unmount } = render(
     <ConnectModal
       onClose={onClose}
       onConnect={onConnect}
@@ -37,7 +37,7 @@ function setup(
       {...props}
     />,
   );
-  return { onClose, onConnected, container };
+  return { onClose, onConnected, container, unmount };
 }
 
 const q = (container: HTMLElement, selector: string) =>
@@ -294,6 +294,43 @@ describe("ConnectModal", () => {
     );
   });
 
+  it.each(["close", "escape", "backdrop", "unmount"])(
+    "does not authenticate after a pending host-key probe is cancelled by %s",
+    async (dismissal) => {
+      const probe = deferred<HostKeyProbeResultForTest>();
+      const onConnect = vi.fn().mockResolvedValue("unexpected-session");
+      const { container, onClose, onConnected, unmount } = setup(onConnect, {
+        defaultHost: "example.com",
+        defaultUsername: "tester",
+        onHostKeyProbe: () => probe.promise,
+      });
+      fireEvent.change(q(container, 'input[type="password"]'), {
+        target: { value: "test-password" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "desktop.connectAction" }));
+      expect(screen.getByRole("dialog").getAttribute("aria-busy")).toBe("true");
+
+      if (dismissal === "unmount") unmount();
+      else if (dismissal === "close") {
+        fireEvent.click(screen.getByRole("button", { name: "desktop.close" }));
+      } else if (dismissal === "escape") {
+        fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+      } else fireEvent.click(screen.getByRole("dialog"));
+
+      await act(async () => {
+        probe.resolve({
+          status: "match",
+          presented_fingerprint: "SHA256:stored",
+          stored_fingerprint: "SHA256:stored",
+        });
+        await probe.promise;
+      });
+      expect(onConnect).not.toHaveBeenCalled();
+      expect(onConnected).not.toHaveBeenCalled();
+      expect(onClose).toHaveBeenCalledTimes(dismissal === "unmount" ? 0 : 1);
+    },
+  );
+
   it("uses a default port when provided by Quick Connect parsing", async () => {
     const onConnect = vi.fn().mockResolvedValue("sess-port");
     const { onConnected, container } = setup(onConnect, {
@@ -319,6 +356,29 @@ describe("ConnectModal", () => {
         port: 2200,
       }),
     );
+  });
+
+  it.each([0, 99999])("rejects explicit invalid port %s instead of connecting to port 22", async (port) => {
+    const onConnect = vi.fn();
+    const onHostKeyProbe = vi.fn();
+    const { container } = setup(onConnect, {
+      defaultHost: "example.com",
+      defaultUsername: "tester",
+      defaultPort: port,
+      onHostKeyProbe,
+    });
+    fireEvent.change(q(container, 'input[type="password"]'), {
+      target: { value: "test-password" },
+    });
+    expect(q(container, 'input[type="number"]').value).toBe(String(port));
+    expect((screen.getByRole("button", { name: "desktop.connectAction" }) as HTMLButtonElement).disabled).toBe(true);
+    const form = container.querySelector("form");
+    if (!form) throw new Error("Expected connection form");
+    await act(async () => {
+      fireEvent.submit(form);
+    });
+    expect(onHostKeyProbe).not.toHaveBeenCalled();
+    expect(onConnect).not.toHaveBeenCalled();
   });
 
   it("switches to private-key fields and submits a key payload", async () => {

@@ -502,7 +502,7 @@ async fn pty_open(
     }
     let task_runtime = runtime.clone();
     let reader_task = tokio::spawn(async move {
-        let mut exit_code = 0;
+        let mut exit_code = None;
         let mut failed = false;
         'output: while let Some(output) = reader.next_output().await {
             match output {
@@ -526,16 +526,17 @@ async fn pty_open(
                     }
                 }
                 PtyOutput::Exit(code) => {
-                    exit_code = code;
+                    exit_code = Some(code);
                     break;
                 }
             }
         }
         task_runtime.finish().await;
-        let _ = on_event.send(if failed {
-            PtyEvent::Failed
-        } else {
-            PtyEvent::Exited { code: exit_code }
+        // A dropped transport or signal termination has no normal exit status.
+        // Only the server's explicit status may report a successful shell exit.
+        let _ = on_event.send(match exit_code {
+            Some(code) if !failed => PtyEvent::Exited { code },
+            _ => PtyEvent::Failed,
         });
         if let Some(state) = app.try_state::<AppState>() {
             state.ptys.lock().await.remove(&pty_id);
