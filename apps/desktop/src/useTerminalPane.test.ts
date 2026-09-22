@@ -498,6 +498,24 @@ describe("useTerminalPane", () => {
       expect(typeof result.current.handleTerminalScroll).toBe("function");
     });
 
+    it("preserves inactive transcript position while active panes follow output", () => {
+      const { result, rerender } = renderHook(
+        (props) => useTerminalPane(props),
+        { initialProps: { ...defaultProps, active: false } },
+      );
+      const transcript = document.createElement("pre");
+      transcript.scrollTop = 120;
+      Object.defineProperty(transcript, "scrollHeight", { value: 1000 });
+      (result.current.terminalPreRef as { current: HTMLPreElement | null }).current = transcript;
+
+      const updatedLines = makeLines(11);
+      rerender({ ...defaultProps, active: false, lines: updatedLines });
+      expect(transcript.scrollTop).toBe(120);
+
+      rerender({ ...defaultProps, active: true, lines: updatedLines });
+      expect(transcript.scrollTop).toBe(1000);
+    });
+
     it("handleTerminalScroll does nothing when ref is null", () => {
       const { result } = renderHook(() => useTerminalPane(defaultProps));
       // terminalPreRef.current is null in renderHook

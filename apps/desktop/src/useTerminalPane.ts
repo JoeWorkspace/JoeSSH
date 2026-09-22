@@ -159,10 +159,12 @@ export function useTerminalPane({
   const [containerHeight, setContainerHeight] = useState(600);
 
   useEffect(() => {
-    if (terminalPreRef.current) {
+    // Inactive transcripts retain their reading position. Their ref stays
+    // connected for manual scrolling, virtualization, and search navigation.
+    if (active && terminalPreRef.current) {
       terminalPreRef.current.scrollTop = terminalPreRef.current.scrollHeight;
     }
-  }, [lines]);
+  }, [active, lines]);
 
   const handleTerminalScroll = useCallback(() => {
     if (terminalPreRef.current) {

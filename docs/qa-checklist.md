@@ -116,7 +116,9 @@
 - Connection drag ordering persists validated per-connection order and survives reload without dropping newly added default connections.
 - Terminal command history supports repeated ArrowUp/ArrowDown traversal through prior accepted commands.
 - Transcript/preview terminal panes remain scrollable through virtualized logs
-  when inactive, and opening search observes the existing log container. Editing
+  when inactive, preserve their reading position on mount and log updates, and
+  opening search observes the existing log container. Automatic output following
+  applies only to active panes. Editing
   input after repeatedly reaching the oldest history entry exits history
   navigation, so ArrowDown cannot overwrite the edited draft. Native interactive
   SSH uses the separate Xterm surface.
