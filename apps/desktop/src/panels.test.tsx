@@ -814,7 +814,7 @@ describe("extracted desktop panels", () => {
   });
 
   it.each(["idle", "transferring"] as const)(
-    "binds file picking and overwrite confirmation to the original target while another target is %s",
+    "binds file picking and overwrite confirmation to the original SSH target while another target is %s",
     (otherPhase) => {
     const uploadA = vi.fn();
     const uploadB = vi.fn();
