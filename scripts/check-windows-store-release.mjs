@@ -58,7 +58,7 @@ const VERIFY_STEP_SHA256 = [
   "7bde7ba4c991c54953a0cdd03b47ec19062fb9e579abdad16e19a3e1562ace5d",
   "69d1f6cd03a69f78f2bea94d4d267fc9a930a880a03686d916b052eda43a69f9",
   "97493be7eae7f209f0f00db03ceac500112f6f250357a7f5f4ed4364e0b520a8",
-  "af879350dd1cb129c4deeac46079a5b92db75ac9f0205016150726ddbe4e1e7b",
+  "9d53673357ea8539b572bec5d47bc80bb0751d5ec9d4d12bae21931f35b1a465",
   "0e42f9d952b2540e6d759fbd5886d0eba8287dfbb687c22a9c653902f1e1c02b",
   "35a397cdaacf50e50ae3116587056bce92615b81c959222374e65ddf5b7a0fc5",
   "6083cc0b5c4c32cf6dffff667a1508db408b59f2bb6435c5d25e12391901a286",
@@ -920,7 +920,7 @@ export function checkWindowsStoreWorkflowSecurity(workflowText) {
         "$candidate.verification.bundledThirdPartyNotices.sha256 -cne $candidate.legalNotices.sha256",
         "pending-microsoft-store-signing",
         '$candidate.storeSubmission.status -cne "not-submitted"',
-        "joessh-release-surface-profile",
+        "node scripts/check-windows-store-surfaces.mjs --dist apps/desktop/dist",
         "hosted-workflow-evidence.json",
       ]) &&
       executablePowerShellIncludes(finalEvidenceRun, [

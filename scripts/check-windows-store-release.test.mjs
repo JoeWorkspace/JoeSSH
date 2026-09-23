@@ -725,6 +725,10 @@ test("workflow requires legal resources, exact SBOMs, Store surface, and pending
     "npm run qa:windows-store-surfaces:runtime",
     "Write-Output skipped-surface",
   );
+  const missingFinalSurface = workflow.replace(
+    "node scripts/check-windows-store-surfaces.mjs --dist apps/desktop/dist",
+    "Write-Output skipped-final-surface",
+  );
   const falseSigningClaim = workflow.replace(
     "pending-microsoft-store-signing",
     "store-signed",
@@ -734,6 +738,7 @@ test("workflow requires legal resources, exact SBOMs, Store surface, and pending
     missingLegal,
     missingSbom,
     missingSurface,
+    missingFinalSurface,
     falseSigningClaim,
   ]) {
     assertHasFailure(

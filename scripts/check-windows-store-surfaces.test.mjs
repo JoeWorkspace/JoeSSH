@@ -285,6 +285,21 @@ test("verifies the built Store profile marker when dist is supplied", (t) => {
   replace(
     fixture,
     "apps/desktop/dist/index.html",
+    'name="joessh-release-surface-profile" content="microsoft-store"',
+    'content="microsoft-store" name="joessh-release-surface-profile"',
+  );
+  const reordered = checkWindowsStoreSurfaces(fixture, {
+    distPath: "apps/desktop/dist",
+  });
+  assert.equal(
+    reordered.find((result) => result.label.startsWith("Built Desktop index"))
+      ?.passed,
+    true,
+  );
+
+  replace(
+    fixture,
+    "apps/desktop/dist/index.html",
     'content="microsoft-store"',
     'content="production"',
   );
