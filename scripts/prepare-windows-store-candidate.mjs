@@ -53,7 +53,10 @@ import {
   licenseArtifactPaths,
   verifyPublishedThirdPartyLicenseBundle,
 } from "./third-party-license-contract.mjs";
-import { validateWindowsStoreSourceReceipt } from "./verify-windows-store-source-artifacts.mjs";
+import {
+  validateWindowsStoreSourceReceipt,
+  validateWindowsStoreSourceReceiptMetadata,
+} from "./verify-windows-store-source-artifacts.mjs";
 
 const defaultRoot = resolve(import.meta.dirname, "..");
 const PE_EXTENSIONS = new Set([".cpl", ".dll", ".exe", ".ocx", ".scr", ".sys"]);
@@ -2191,7 +2194,7 @@ async function downloadWithoutRedirect(url, destination) {
   }
 }
 
-async function revalidateCandidateSource({
+export async function revalidateCandidateSource({
   artifactSnapshot,
   expectedSha256,
   source,
@@ -2226,9 +2229,13 @@ async function revalidateCandidateSource({
     });
   } else if (source.kind === "github-actions-artifact") {
     assertSnapshotUnchanged(source.provenanceSnapshot);
-    validateWindowsStoreSourceReceipt(source.provenance, {
+    validateWindowsStoreSourceReceiptMetadata(source.provenance, {
       artifactSourceSha: source.provenance.source.sha,
-      candidatePath: artifactSnapshot.path,
+      candidate: {
+        fileName: artifactSnapshot.fileName,
+        sha256: artifactSnapshot.sha256,
+        sizeBytes: artifactSnapshot.size,
+      },
       expectedSha256,
     });
     observations.push({
