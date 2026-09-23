@@ -1290,13 +1290,8 @@ jobs:
           }
 
           $surfaceIndex = "apps/desktop/dist/index.html"
-          $surfaceText = Get-Content -Raw -LiteralPath $surfaceIndex
-          if (
-            ([regex]::Matches(
-              $surfaceText,
-              'name="joessh-release-surface-profile"\s+content="microsoft-store"'
-            )).Count -ne 1
-          ) {
+          node scripts/check-windows-store-surfaces.mjs --dist apps/desktop/dist
+          if ($LASTEXITCODE -ne 0) {
             throw "Built frontend is not the exact Microsoft Store surface."
           }
           $isMsixFallback = $candidate.format -ceq "exe"
