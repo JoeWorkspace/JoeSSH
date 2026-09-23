@@ -378,6 +378,18 @@ GitHub API 不能从 workflow 内证明这个 fine-grained token 实际没有被
 仓库、只读权限、到期时间与审计记录；该人工记录是外部发布 blocker，不能把
 “脚本只发送 GET”误写成 token 权限已经由机器证明。
 
+若只读 token 暂时不可用，维护者可以对**一个精确候选 run** 明确批准使用当前
+`gh` 登录凭据作一次性操作例外。先核对凭据所属账号及权限、受保护 `main` 的
+精确 SHA、Stage-B 审批保护和环境 secret 原为空，并确认没有并行候选；把凭据
+仅经本机进程内的标准输入暂存到 Stage-B **环境** secret，不写入命令参数、文件
+或日志。设置自动到期删除的本机 watchdog 后才 dispatch 并批准该 run。`policy`
+job 一结束，无论成功或失败，都立即删除 secret，复查环境 secret 列表为空，
+然后停止 watchdog；若删除或复查失败，停止后续发布步骤并处理泄露窗口。
+`verify` job 仍不能接收该 secret，所有实时策略检查与签名、哈希、来源门禁
+照常 fail-closed。交接记录必须写明这不是只读凭据或独立审核，标出授权、run、
+暂存与删除结果；不能因此宣称上述最小权限外部 blocker 已永久关闭。下一次
+候选须重新确认例外或配置合规的 fine-grained token。
+
 工作流严格只有两个 GitHub-hosted Windows job：
 
 1. `policy`：可以挂载受保护的 `windows-release-stage-b`，但只有

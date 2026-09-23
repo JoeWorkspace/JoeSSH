@@ -672,6 +672,22 @@ export function buildOfflineGhEnvironment(
   if (typeof isolatedRoot !== "string" || !isAbsolute(isolatedRoot)) {
     throw new Error("The isolated GitHub CLI home must be absolute.");
   }
+  return {
+    ...buildWindowsToolEnvironment(environment),
+    ALL_PROXY: "http://127.0.0.1:9",
+    APPDATA: isolatedRoot,
+    GH_CONFIG_DIR: isolatedRoot,
+    GH_PROMPT_DISABLED: "1",
+    HOME: isolatedRoot,
+    HTTP_PROXY: "http://127.0.0.1:9",
+    HTTPS_PROXY: "http://127.0.0.1:9",
+    LOCALAPPDATA: isolatedRoot,
+    NO_PROXY: "",
+    USERPROFILE: isolatedRoot,
+  };
+}
+
+function buildWindowsToolEnvironment(environment) {
   const result = {};
   for (const name of [
     "ComSpec",
@@ -685,18 +701,19 @@ export function buildOfflineGhEnvironment(
       result[name] = environment[name];
     }
   }
+  return result;
+}
+
+export function buildAuthenticodeEnvironment(
+  environment = process.env,
+  ghExecutablePath,
+) {
+  if (typeof ghExecutablePath !== "string" || !isAbsolute(ghExecutablePath)) {
+    throw new Error("The Authenticode target must be explicit and absolute.");
+  }
   return {
-    ...result,
-    ALL_PROXY: "http://127.0.0.1:9",
-    APPDATA: isolatedRoot,
-    GH_CONFIG_DIR: isolatedRoot,
-    GH_PROMPT_DISABLED: "1",
-    HOME: isolatedRoot,
-    HTTP_PROXY: "http://127.0.0.1:9",
-    HTTPS_PROXY: "http://127.0.0.1:9",
-    LOCALAPPDATA: isolatedRoot,
-    NO_PROXY: "",
-    USERPROFILE: isolatedRoot,
+    ...buildWindowsToolEnvironment(environment),
+    JOESSH_GH_EXECUTABLE: ghExecutablePath,
   };
 }
 
@@ -1141,17 +1158,26 @@ function inspectGitHubCliAuthenticode(ghExecutablePath) {
     ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", script],
     {
       encoding: "utf8",
-      env: {
-        ...buildOfflineGhEnvironment(process.env, dirname(ghExecutablePath)),
-        JOESSH_GH_EXECUTABLE: ghExecutablePath,
-      },
+      // Windows may need revocation services when evaluating Authenticode.
+      // Only the separate Sigstore CLI child is forced fully offline.
+      env: buildAuthenticodeEnvironment(process.env, ghExecutablePath),
       stdio: ["ignore", "pipe", "pipe"],
-      timeout: 30_000,
+      timeout: 120_000,
       windowsHide: true,
     },
   );
   if (result.error || result.status !== 0 || result.stderr) {
-    throw new Error("Unable to verify the GitHub CLI Authenticode signature.");
+    const reason =
+      result.error?.code === "ETIMEDOUT"
+        ? "timed out"
+        : result.error
+          ? "could not start"
+          : result.status !== 0
+            ? `exited with status ${result.status}`
+            : "wrote to stderr";
+    throw new Error(
+      `Unable to verify the GitHub CLI Authenticode signature: ${reason}.`,
+    );
   }
   let signature;
   try {
