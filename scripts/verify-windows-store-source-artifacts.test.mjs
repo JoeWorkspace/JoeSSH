@@ -14,6 +14,7 @@ import test from "node:test";
 
 import {
   WINDOWS_STORE_SOURCE_POLICY,
+  buildAuthenticodeEnvironment,
   buildGhAttestationVerificationArgs,
   buildOfflineGhEnvironment,
   inspectApprovedGitHubCli,
@@ -585,6 +586,39 @@ test("offline gh child receives an allowlist without tokens and arguments bind t
   assert.equal(args[args.indexOf("--source-digest") + 1], SOURCE_SHA);
   assert.equal(args[args.indexOf("--signer-digest") + 1], SOURCE_SHA);
   assert.ok(args.includes("--deny-self-hosted-runners"));
+});
+
+test("Authenticode child can reach Windows trust services without inheriting credentials", () => {
+  const ghExecutablePath = resolve("fixtures", "gh.exe");
+  const environment = buildAuthenticodeEnvironment(
+    {
+      SystemRoot: "C:\\Windows",
+      TEMP: "C:\\Temp",
+      GH_TOKEN: "must-not-pass",
+      GITHUB_TOKEN: "must-not-pass",
+      ACTIONS_ID_TOKEN_REQUEST_TOKEN: "must-not-pass",
+      HTTPS_PROXY: "http://127.0.0.1:9",
+      HTTP_PROXY: "http://127.0.0.1:9",
+      ALL_PROXY: "http://127.0.0.1:9",
+    },
+    ghExecutablePath,
+  );
+  assert.equal(environment.JOESSH_GH_EXECUTABLE, ghExecutablePath);
+  assert.equal(environment.SystemRoot, "C:\\Windows");
+  for (const name of [
+    "GH_TOKEN",
+    "GITHUB_TOKEN",
+    "ACTIONS_ID_TOKEN_REQUEST_TOKEN",
+    "HTTPS_PROXY",
+    "HTTP_PROXY",
+    "ALL_PROXY",
+  ]) {
+    assert.equal(Object.hasOwn(environment, name), false);
+  }
+  assert.throws(
+    () => buildAuthenticodeEnvironment({}, "gh.exe"),
+    /explicit and absolute/,
+  );
 });
 
 test("recursive verifier cleanup remains limited to an owned direct temp directory", () => {
