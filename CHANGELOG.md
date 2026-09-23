@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Keep built-in sample hosts out of real connection onboarding and preserve a user's explicit Quick Connect target, including sample-address collisions.
+- Discard late host-key probe results after Connect closes and preserve invalid explicit ports for validation.
+- Serialize SFTP transfers per session, require a complete listing before overwrite checks, and keep file pickers bound to their original session and path.
+- Preserve PTY exit status reported after SSH EOF and treat transport loss, signal termination, or missing status as failure.
+- Keep inactive terminal transcripts scrollable and searchable without resetting their reading position.
 - Add Store release E2E coverage and exact Store-surface hash protection for these onboarding boundaries.
 
 ## [0.1.0-beta.27] - 2026-09-11
