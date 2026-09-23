@@ -13,6 +13,10 @@ import { basename, resolve } from "node:path";
 import test from "node:test";
 
 import {
+  capturePrivateSnapshot,
+  revalidateCandidateSource,
+} from "./prepare-windows-store-candidate.mjs";
+import {
   WINDOWS_STORE_SOURCE_POLICY,
   buildAuthenticodeEnvironment,
   buildGhAttestationVerificationArgs,
@@ -517,6 +521,47 @@ test("generic verifier resolves a full tuple from live API and both offline bund
       candidate,
       expectedSha256: candidate.sha256,
     });
+    const artifactSnapshot = capturePrivateSnapshot(
+      candidatePath,
+      "candidate artifact",
+      root,
+      "candidate-snapshot.msix",
+    );
+    const provenanceSnapshot = capturePrivateSnapshot(
+      outputPath,
+      "GitHub Actions provenance receipt",
+      root,
+      "source-receipt-snapshot.json",
+    );
+    const source = {
+      kind: "github-actions-artifact",
+      path: candidatePath,
+      provenance: receipt,
+      provenanceSnapshot,
+    };
+    const revalidated = await revalidateCandidateSource({
+      artifactSnapshot,
+      expectedSha256: candidate.sha256,
+      source,
+      temporaryRoot: root,
+    });
+    assert.equal(revalidated.status, "passed");
+    assert.equal(
+      revalidated.observations[1].point,
+      "offline-verified-github-actions-provenance",
+    );
+    await assert.rejects(
+      revalidateCandidateSource({
+        artifactSnapshot: {
+          ...artifactSnapshot,
+          fileName: "candidate-snapshot.msix",
+        },
+        expectedSha256: candidate.sha256,
+        source,
+        temporaryRoot: root,
+      }),
+      /provenance receipt is not canonical/,
+    );
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
