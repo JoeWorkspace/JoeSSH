@@ -1,8 +1,11 @@
 # September 2026 desktop maintenance release
 
-This is the current preparation entry point for `0.1.0-beta.28` / MSIX
-`1.1.28.0`. The earlier beta.26 documents and evidence describe a completed
-historical source build; they are not qualification evidence for this update.
+This is the current preparation entry point for `0.1.0-beta.29` / MSIX
+`1.1.29.0`. The earlier beta.28 package and evidence remain immutable; the
+Store rejected its corrected bytes because `1.1.28.0` is already used by the
+active Submission 8 draft. The earlier beta.26 documents and evidence describe
+a completed historical source build; they are not qualification evidence for
+this update.
 
 ## Baseline and scope
 
@@ -14,10 +17,13 @@ previous overview showed
 no flights. This establishes the current submission and source-build lineage;
 it does not substitute for hashing the Store-signed download.
 
-The baseline main SHA for this candidate is `803fcef25b7808bd8257fb589373791d75451f58`.
+The baseline published package remains `1.1.27.0`; Submission 8 currently
+retains its previously uploaded `1.1.28.0` package. The new candidate must use
+the same reviewed source behavior with the next deterministic package version.
+The baseline main SHA for the beta.28 behavior is `803fcef25b7808bd8257fb589373791d75451f58`.
 The complete maintenance difference is the reviewed PR against that SHA.
-See [candidate notes](release-notes/0.1.0-beta.28.md) for the included behavior
-and dependency changes. No unrelated intermediate main commits were present
+See [beta.29 candidate notes](release-notes/0.1.0-beta.29.md) for the package
+identity change and the carried-forward behavior. No unrelated intermediate main commits were present
 when this baseline was checked. Recheck main and Partner Center before release.
 
 ## Fixed completion sequence

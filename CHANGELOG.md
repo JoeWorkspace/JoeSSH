@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-beta.29] - 2026-09-24
+
+> Store reissue candidate for `1.1.29.0`. Microsoft Store rejects changed
+> bytes under the already used `1.1.28.0` package full name, so this candidate
+> advances the deterministic package version while preserving the beta.28
+> behavior and verification boundaries.
+
+### Changed
+
+- Advance every application and runtime version surface to
+  `0.1.0-beta.29`, mapped to MSIX `1.1.29.0`, so Submission 8 can accept the
+  corrected package as a new immutable package identity.
+
 ## [0.1.0-beta.28] - 2026-09-16
 
 > Corrective Microsoft Store maintenance candidate for `1.1.28.0`; Store submission and certification remain pending.
