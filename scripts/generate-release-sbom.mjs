@@ -1,17 +1,16 @@
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, readFileSync, rmSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import {
   buildCargoCycloneDx,
   canonicalizeNpmCycloneDx,
 } from "./release-sbom-contract.mjs";
+import {
+  assertArtifactPath,
+  ensureArtifactDirectory,
+  writeArtifactFile,
+} from "./release-artifact-paths.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const rootPackage = JSON.parse(
@@ -33,12 +32,29 @@ const fifteenMinutesMs = 15 * 60 * 1000;
 const outputBufferBytes = 64 * 1024 * 1024;
 const generatedFiles = [];
 
-mkdirSync(outputDir, { recursive: true });
+// Validate every destination before deleting legacy files or creating output.
+for (const path of [
+  ...[
+    "cargo-metadata.json",
+    "tauri-cargo-metadata.json",
+    "npm-desktop-sbom.cdx.json",
+    "npm-web-sbom.cdx.json",
+    "cargo-workspace-sbom.cdx.json",
+    "tauri-cargo-sbom.cdx.json",
+    "SBOM-SHA256SUMS.txt",
+  ].map((name) => resolve(outputDir, name)),
+  resolve(privateInputDir, "cargo-metadata.json"),
+  resolve(privateInputDir, "tauri-cargo-metadata.json"),
+]) {
+  assertArtifactPath(root, path);
+}
+ensureArtifactDirectory(root, outputDir);
 for (const legacyPublicPath of [
   resolve(outputDir, "cargo-metadata.json"),
   resolve(outputDir, "tauri-cargo-metadata.json"),
 ]) {
   if (existsSync(legacyPublicPath)) {
+    assertArtifactPath(root, legacyPublicPath);
     rmSync(legacyPublicPath);
   }
 }
@@ -164,8 +180,7 @@ function writeCommandOutput({
       process.exit(1);
     }
   }
-  mkdirSync(resolve(outputPath, ".."), { recursive: true });
-  writeFileSync(outputPath, output);
+  writeArtifactFile(root, outputPath, output);
   if (publicArtifact) {
     generatedFiles.push(outputPath);
   }
@@ -203,7 +218,7 @@ function writeCargoSbom({
     );
     process.exit(1);
   }
-  writeFileSync(outputPath, output);
+  writeArtifactFile(root, outputPath, output);
   generatedFiles.push(outputPath);
   console.log(
     `Wrote ${label} to ${relative(root, outputPath).replace(/\\/g, "/")}`,
@@ -217,7 +232,7 @@ function writeSbomChecksumManifest(files) {
     .map(
       (file) => `${sha256(file)}  ${relative(root, file).replace(/\\/g, "/")}`,
     );
-  writeFileSync(manifestPath, `${lines.join("\n")}\n`);
+  writeArtifactFile(root, manifestPath, `${lines.join("\n")}\n`);
   console.log(
     `Wrote SBOM checksums to ${relative(root, manifestPath).replace(/\\/g, "/")}`,
   );

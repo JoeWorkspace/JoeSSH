@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "reviewedAt": "2026-08-31",
+  "reviewedAt": "2026-10-24",
   "status": "operator-controlled-offline-release-tooling",
   "sourceRepositoryContainsMicrosoftToolchainBinaries": false,
   "windowsPowerShellVersion": "5.1",
@@ -18,7 +18,7 @@
     },
     {
       "path": "Invoke-SandboxVerification.ps1",
-      "sha256": "e06dc2fe16e35fbb5226edaaab854fd7edf1eb5205874d36c5b8e273f2eae4ee"
+      "sha256": "c07c5084d3c93742a996c222ea837a59773cf86bf4e952cd13136310fabae9ea"
     },
     {
       "path": "JoeSSH-NativeVerification.wsb.template",
@@ -38,17 +38,17 @@
     },
     {
       "path": "Test-Harness.ps1",
-      "sha256": "63bb338877e2fa18047a79f05e9dc017f80b8f3497701f9a2397c1aeb91694a4"
+      "sha256": "5a575be1306cbd1c296cac9403651ecd62002d154bee26e0cffe89e2bae067af"
     },
     {
       "path": "Verify-NativeEvidence.ps1",
-      "sha256": "519b67d934c9dd1b4dcc69acc1b85518d6ac482c3f0c93622f3b336571246ccc"
+      "sha256": "03a3f87c2d8924e8ffcaa069ce9045e29fdcb131036074c42f1a64188917bea4"
     }
   ],
   "selfTest": {
     "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File Test-Harness.ps1",
-    "passed": 36,
-    "total": 36,
-    "resultSha256": "dfead45140724fcb9798ad8707c202d206449541ece269487409025093eec3a6"
+    "passed": 48,
+    "total": 48,
+    "resultSha256": "42679828cab1d8bb1828b732a21728877381765bd29a3af1b148f4b7f1427411"
   }
 }

@@ -273,34 +273,40 @@ test.describe("JoeSSH desktop workbench", () => {
     baseURL,
   }) => {
     const zhContext = await browser.newContext({ baseURL, locale: "zh-CN" });
-    const zhPage = await zhContext.newPage();
-    await zhPage.goto("/");
-    await expect(zhPage.locator("html")).toHaveAttribute("lang", "zh-CN");
-    await expect(zhPage.getByText("JoeSSH", { exact: true })).toBeVisible();
-    await expect(
-      zhPage.getByPlaceholder(
-        oneOf(
-          "搜索主机、标签、用户",
-          "搜索主机、标签、成员",
-          "Search hosts, tags, users",
+    try {
+      const zhPage = await zhContext.newPage();
+      await zhPage.goto("/");
+      await expect(zhPage.locator("html")).toHaveAttribute("lang", "zh-CN");
+      await expect(zhPage.getByText("JoeSSH", { exact: true })).toBeVisible();
+      await expect(
+        zhPage.getByPlaceholder(
+          oneOf(
+            "搜索主机、标签、用户",
+            "搜索主机、标签、成员",
+            "Search hosts, tags, users",
+          ),
         ),
-      ),
-    ).toBeVisible();
-    await zhContext.close();
+      ).toBeVisible();
+    } finally {
+      await zhContext.close();
+    }
 
     const enContext = await browser.newContext({ baseURL, locale: "en-US" });
-    const enPage = await enContext.newPage();
-    await enPage.goto("/");
-    await expect(enPage.locator("html")).toHaveAttribute("lang", "en");
-    await expect(
-      enPage.getByRole("navigation", {
-        name: /Terminal tabs|Terminal sessions/i,
-      }),
-    ).toBeVisible();
-    await expect(
-      enPage.getByRole("button", { name: /Command palette/i }),
-    ).toBeVisible();
-    await enContext.close();
+    try {
+      const enPage = await enContext.newPage();
+      await enPage.goto("/");
+      await expect(enPage.locator("html")).toHaveAttribute("lang", "en");
+      await expect(
+        enPage.getByRole("navigation", {
+          name: /Terminal tabs|Terminal sessions/i,
+        }),
+      ).toBeVisible();
+      await expect(
+        enPage.getByRole("button", { name: /Command palette/i }),
+      ).toBeVisible();
+    } finally {
+      await enContext.close();
+    }
   });
 
   test("enforces strict core localization paths @i18n-strict", async ({
@@ -308,37 +314,46 @@ test.describe("JoeSSH desktop workbench", () => {
     baseURL,
   }) => {
     const zhContext = await browser.newContext({ baseURL, locale: "zh-CN" });
-    const zhPage = await zhContext.newPage();
-    await zhPage.goto("/");
-    await expect(zhPage.locator("html")).toHaveAttribute("lang", "zh-CN");
-    await expect(zhPage.locator("html")).toHaveAttribute("dir", "ltr");
-    await expect(zhPage.getByPlaceholder("搜索主机、标签、成员")).toBeVisible();
-    await expect(
-      zhPage.getByRole("button", { name: "命令面板" }),
-    ).toBeVisible();
-    await zhContext.close();
+    try {
+      const zhPage = await zhContext.newPage();
+      await zhPage.goto("/");
+      await expect(zhPage.locator("html")).toHaveAttribute("lang", "zh-CN");
+      await expect(zhPage.locator("html")).toHaveAttribute("dir", "ltr");
+      await expect(zhPage.getByPlaceholder("搜索主机、标签、成员")).toBeVisible();
+      await expect(
+        zhPage.getByRole("button", { name: "命令面板" }),
+      ).toBeVisible();
+    } finally {
+      await zhContext.close();
+    }
 
     const enContext = await browser.newContext({ baseURL, locale: "en-US" });
-    const enPage = await enContext.newPage();
-    await enPage.goto("/");
-    await expect(enPage.locator("html")).toHaveAttribute("lang", "en");
-    await expect(
-      enPage.getByRole("button", { name: "Command palette" }),
-    ).toBeVisible();
-    await expect(
-      enPage.getByPlaceholder("Search hosts, tags, users"),
-    ).toBeVisible();
-    await expect(enPage.getByText("搜索主机、标签、成员")).toHaveCount(0);
-    await enContext.close();
+    try {
+      const enPage = await enContext.newPage();
+      await enPage.goto("/");
+      await expect(enPage.locator("html")).toHaveAttribute("lang", "en");
+      await expect(
+        enPage.getByRole("button", { name: "Command palette" }),
+      ).toBeVisible();
+      await expect(
+        enPage.getByPlaceholder("Search hosts, tags, users"),
+      ).toBeVisible();
+      await expect(enPage.getByText("搜索主机、标签、成员")).toHaveCount(0);
+    } finally {
+      await enContext.close();
+    }
 
     const arContext = await browser.newContext({ baseURL, locale: "ar-SA" });
-    const arPage = await arContext.newPage();
-    await arPage.goto("/");
-    await expect(arPage.locator("html")).toHaveAttribute("lang", "ar");
-    await expect(arPage.locator("html")).toHaveAttribute("dir", "rtl");
-    await expect(arPage.locator("pre").first()).toHaveAttribute("dir", "ltr");
-    await expect(arPage.getByText("prod-edge-01").first()).toBeVisible();
-    await arContext.close();
+    try {
+      const arPage = await arContext.newPage();
+      await arPage.goto("/");
+      await expect(arPage.locator("html")).toHaveAttribute("lang", "ar");
+      await expect(arPage.locator("html")).toHaveAttribute("dir", "rtl");
+      await expect(arPage.locator("pre").first()).toHaveAttribute("dir", "ltr");
+      await expect(arPage.getByText("prod-edge-01").first()).toBeVisible();
+    } finally {
+      await arContext.close();
+    }
   });
 
   test("renders the workbench shell under common market locales", async ({
@@ -347,27 +362,29 @@ test.describe("JoeSSH desktop workbench", () => {
   }) => {
     for (const locale of commonMarketLocales) {
       const context = await browser.newContext({ baseURL, locale });
-      const localePage = await context.newPage();
-      await localePage.goto("/");
+      try {
+        const localePage = await context.newPage();
+        await localePage.goto("/");
 
-      await expect(
-        localePage.getByText("JoeSSH", { exact: true }),
-      ).toBeVisible();
-      await expect(localePage.locator("html")).toHaveAttribute(
-        "lang",
-        expectedAtlasLocaleByMarketLocale[locale],
-      );
-      await expect(localePage.locator("html")).toHaveAttribute(
-        "dir",
-        expectedTextDirectionByMarketLocale[locale],
-      );
-      await expect(localePage.locator("pre").first()).toHaveAttribute(
-        "dir",
-        "ltr",
-      );
-      await expect(localePage.getByText("prod-edge-01").first()).toBeVisible();
-
-      await context.close();
+        await expect(
+          localePage.getByText("JoeSSH", { exact: true }),
+        ).toBeVisible();
+        await expect(localePage.locator("html")).toHaveAttribute(
+          "lang",
+          expectedAtlasLocaleByMarketLocale[locale],
+        );
+        await expect(localePage.locator("html")).toHaveAttribute(
+          "dir",
+          expectedTextDirectionByMarketLocale[locale],
+        );
+        await expect(localePage.locator("pre").first()).toHaveAttribute(
+          "dir",
+          "ltr",
+        );
+        await expect(localePage.getByText("prod-edge-01").first()).toBeVisible();
+      } finally {
+        await context.close();
+      }
     }
   });
 

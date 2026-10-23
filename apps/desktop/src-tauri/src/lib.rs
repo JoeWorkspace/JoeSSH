@@ -23,6 +23,7 @@ use tokio::sync::Mutex;
 use uuid::Uuid;
 
 mod known_hosts_store;
+mod pty_input;
 mod pty_runtime;
 use known_hosts_store::with_store;
 use pty_runtime::PtyRuntime;
@@ -36,8 +37,6 @@ const SFTP_MAX_TRANSFER_BYTES: usize = 25 * 1024 * 1024;
 const SFTP_TRANSFER_LIMIT_EXCEEDED: &str = "sftp transfer exceeds the desktop safety limit";
 const SFTP_REMOTE_PATH_UNSAFE: &str = "sftp remote path is unsafe";
 const SSH_EXEC_COMMAND_BLOCKED: &str = "ssh exec command blocked by desktop safety policy";
-const PTY_COMMAND_BLOCKED: &str = "pty input blocked by desktop safety policy";
-const PTY_COMMAND_BUFFER_MAX_BYTES: usize = 16 * 1024;
 const THIRD_PARTY_NOTICES_RESOURCE: &str = "legal/THIRD-PARTY-NOTICES.txt";
 const THIRD_PARTY_NOTICES_MAX_BYTES: u64 = 8 * 1024 * 1024;
 const THIRD_PARTY_NOTICES_UNAVAILABLE: &str = "third-party license notices are unavailable";
@@ -1025,41 +1024,6 @@ fn ensure_safe_ssh_exec_command(command: &str) -> Result<(), String> {
     }
 }
 
-fn apply_pty_input_safety(buffer: &mut Vec<u8>, data: &[u8]) -> Result<(), String> {
-    for byte in data {
-        match *byte {
-            b'\r' | b'\n' => {
-                let command = String::from_utf8_lossy(buffer);
-                if let Some(detected) = detect_dangerous_command(&command) {
-                    if detected.action == DangerousCommandAction::Block {
-                        buffer.clear();
-                        return Err(format!("{PTY_COMMAND_BLOCKED}: {}", detected.pattern));
-                    }
-                }
-                buffer.clear();
-            }
-            0x03 | 0x15 => {
-                buffer.clear();
-            }
-            0x08 | 0x7f => {
-                buffer.pop();
-            }
-            byte if byte.is_ascii_control() && byte != b'\t' => {}
-            byte => {
-                buffer.push(byte);
-                if buffer.len() > PTY_COMMAND_BUFFER_MAX_BYTES {
-                    buffer.clear();
-                    return Err(format!(
-                        "{PTY_COMMAND_BLOCKED}: input line exceeds safety limit"
-                    ));
-                }
-            }
-        }
-    }
-
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1248,51 +1212,6 @@ mod tests {
     fn ssh_exec_native_safety_allows_normal_and_warn_commands() {
         assert!(ensure_safe_ssh_exec_command("whoami").is_ok());
         assert!(ensure_safe_ssh_exec_command("curl https://example.com/status").is_ok());
-    }
-
-    #[test]
-    fn pty_input_safety_blocks_destructive_line_across_chunks() {
-        let mut buffer = Vec::new();
-
-        apply_pty_input_safety(&mut buffer, b"sudo rm -r").unwrap();
-        let error = apply_pty_input_safety(&mut buffer, b"f /\n").unwrap_err();
-
-        assert!(error.starts_with(PTY_COMMAND_BLOCKED));
-        assert!(error.contains("rm -rf /"));
-        assert!(buffer.is_empty());
-    }
-
-    #[test]
-    fn pty_input_safety_allows_normal_lines_and_clears_on_submit() {
-        let mut buffer = Vec::new();
-
-        apply_pty_input_safety(&mut buffer, b"whoami\n").unwrap();
-
-        assert!(buffer.is_empty());
-    }
-
-    #[test]
-    fn pty_input_safety_tracks_basic_line_editing() {
-        let mut buffer = Vec::new();
-
-        apply_pty_input_safety(&mut buffer, b"sudo rm -rf /").unwrap();
-        apply_pty_input_safety(&mut buffer, &[0x15]).unwrap();
-        apply_pty_input_safety(&mut buffer, b"whoamix").unwrap();
-        apply_pty_input_safety(&mut buffer, &[0x7f]).unwrap();
-        apply_pty_input_safety(&mut buffer, b"\n").unwrap();
-
-        assert!(buffer.is_empty());
-    }
-
-    #[test]
-    fn pty_input_safety_rejects_unbounded_pending_line() {
-        let mut buffer = Vec::new();
-        let data = vec![b'a'; PTY_COMMAND_BUFFER_MAX_BYTES + 1];
-
-        let error = apply_pty_input_safety(&mut buffer, &data).unwrap_err();
-
-        assert!(error.contains("input line exceeds safety limit"));
-        assert!(buffer.is_empty());
     }
 
     #[test]

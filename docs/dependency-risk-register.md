@@ -1,10 +1,9 @@
 # Dependency Risk Register
 
-This register tracks known production dependency findings that do not block the
-Desktop + Web Admin + self-hosted Sync Service Public Beta because they are not
-on the first public runtime path or require a breaking platform upgrade.
-It also records non-production audit findings that affect local QA or release
-tooling so dependency maintenance work is visible before GA.
+This register tracks production and tooling dependency findings and their
+reviewed treatment. Recording a finding does not waive a release gate. A
+dependency outside the first public runtime path can still block release under
+the full-workspace policy below.
 
 The release gate fails closed for every high or critical finding in the full
 npm workspace, including development and mobile build tooling. There are no
@@ -90,14 +89,48 @@ any other high-severity findings blocks the audit gate.
 
 The August 8 audit refresh separately remediated
 https://github.com/advisories/GHSA-2v37-7h3g-55p8 by overriding `nanoid` to
-patched version `3.3.18` across the workspaces.
+patched version `3.3.18` across the workspaces. The October 23 refresh advances
+that override to `3.3.20`, which also satisfies the patched PostCSS dependency.
 
 ### Development And QA Toolchain Audit
 
 The July 29 dependency refresh removed the former `js-yaml`,
 `@opentelemetry/core`, and Windows development-server `esbuild` findings.
-There are currently no additional moderate-or-higher development-only findings
-in the full npm audit output.
+The October 23 refresh updates Vite to `8.2.4`, Vitest and its coverage provider
+to `4.1.12`, and compatible transitive packages including `shell-quote 1.12.0`,
+`brace-expansion 5.0.12`, `compression 1.8.2`, `source-map-js 1.2.2`, and
+`@expo/metro-file-map 57.0.4`. The root and Tauri Cargo lockfiles also advance
+`ctutils` to `0.4.4` for RUSTSEC-2026-0385. These updates add no audit waiver.
+
+### October 23 Audit And Backport Review
+
+The final full-workspace and production npm reports at 14:26 UTC both contain
+four high findings, with zero critical or moderate findings. These are the
+`node-forge`, `@expo/code-signing-certificates`, `@expo/cli`, and `expo` paths
+to one remaining advisory, not four independent bugs. Earlier reports had
+20 high entries before npm incorporated the braces advisory withdrawal.
+These counts describe the original-identity audit snapshot. The later Node-only
+backport below remediates the exact defect in installed source; raw npm
+findings remain visible and must be regenerated before any release decision.
+
+| Package            | Advisory and affected path                                                                                                                                                                                         | Decision and follow-up                                                                                                                                                                                                             |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `node-forge 1.4.0` | [GHSA-86w9-cpqp-85rv](https://github.com/advisories/GHSA-86w9-cpqp-85rv): malformed RSA PKCS#1 v1.5 DigestInfo verification, via Expo CLI and code-signing-certificates. | Remediated in installed Node-only source by a pinned, independently reviewed project backport of unmerged PR 1159. Original 1.4.0 identity remains audited; unknown findings, altered source and unpatched copies fail closed. Owner: release maintainer. See the backport contract below. |
+| `braces 3.0.3`     | [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) was withdrawn on October 23. npm still reported it at 14:12 UTC, but both final audit reports at 14:26 UTC omit it.                       | Closed by upstream withdrawal propagation, with no package fork, severity change or exception. Keep the initial and final reports as evidence.                                                                                     |
+
+The [Node-only backport contract](node-forge-backport.md) records the original
+archive, exact patch and full tree hashes, actual Expo/OpenSSL interoperability,
+original-identity live audit, four precisely checked propagated package paths,
+and removal requirements. This is a project-maintained fix; upstream has not
+published a fixed release. No generic high-severity exemption was added.
+
+The earlier npm remediation proposal downgraded Expo to `44.0.6` and React Native to
+`0.72.17`; it is not a compatible fix for this project's Expo 57 / React Native
+0.86 application. These downgrades have not been applied. The intended
+Microsoft Store MSIX path uses Microsoft signing after certification and does
+not require the operator's own Windows certificate or Apple credentials.
+The unresolved dependency gate and the Store candidate qualification remain
+required; see [the Store release process](windows-store-release.md).
 
 ## Rules
 

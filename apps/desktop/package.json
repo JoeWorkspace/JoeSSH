@@ -1,6 +1,6 @@
 {
   "name": "@atlasterm/desktop",
-  "version": "0.1.0-beta.29",
+  "version": "0.1.0-beta.30",
   "private": true,
   "type": "module",
   "scripts": {
@@ -29,7 +29,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
     "typescript": "^6.0.3",
-    "vite": "^8.1.0",
-    "vitest": "^4.1.11"
+    "vite": "8.2.4",
+    "vitest": "^4.1.12"
   }
 }

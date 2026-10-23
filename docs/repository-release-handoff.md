@@ -1,13 +1,44 @@
-> 2026-09-24: The current maintenance candidate is `0.1.0-beta.29` / MSIX
-> `1.1.29.0`; the verified current Store package is `1.1.27.0`, with the
-> `1.1.28.0` package retained in the active Submission 8 draft. Use the
-> [September maintenance release entry](desktop-maintenance-release-2026-09.md)
-> and its versioned notes. The beta.26-specific package, listing text, tag
-> commands, and qualification statements below are historical references.
-> The future source-only tag is `v0.1.0-beta.29`; create it only after the
-> current entry's exact-candidate qualification gates have passed.
+> 2026-10-24: The current maintenance candidate is `0.1.0-beta.30` / MSIX
+> `1.1.30.0`, based on protected-main beta.29 source plus the reviewed fixes.
+> Partner Center verified Submission 8 / `1.1.29.0` as currently published on
+> 2026-10-24; use that version as the new upgrade baseline. Use the
+> [maintenance release entry](desktop-maintenance-release-2026-09.md) and
+> [beta.30 notes](release-notes/0.1.0-beta.30.md). Earlier package, tag and
+> qualification statements below are historical references. A future source-only
+> tag is `v0.1.0-beta.30`; create it only after the exact-candidate gates pass.
 
 # Repository Release Handoff Playbook
+
+## Mainline integration recorded 2026-10-23
+
+The operator selected the latest canonical `main` as the integration baseline.
+The GitHub API confirmed `312811c070790e1bb04bf164214e1db97a3f8825`
+(`0.1.0-beta.29`) before creating `codex/main-remediation-20261023`.
+The historical recovered workspace and its `c9145db` review snapshot remain
+separate; do not merge that snapshot wholesale over newer terminal, SFTP, Store,
+vendor, or release behavior. Port only reviewed missing fixes and rerun the
+affected checks on the mainline dependency graph.
+
+The operator confirmed that the intended distribution is Microsoft Store MSIX.
+The protected source producer creates an unsigned Store-only candidate and
+Microsoft signs it after certification. A publisher code-signing certificate
+and Apple Developer ID/notarization credentials are not prerequisites for this
+Store path; their absence must not block its submission. They remain relevant
+only to separate direct-distribution or macOS channels. Follow
+[the Store signing boundary](windows-store-release.md) and preserve the honest
+`pending-microsoft-store-signing` state until Microsoft certification. Local
+source checks do not establish Store approval or publication. Keep existing
+tags, Store package identities, and channel-specific release gates intact.
+Select a distinct unused release version only when preparing a qualified
+release; this integration does not authorize a new version of an existing tag.
+
+Integration decisions, fresh checks, and unresolved blockers are recorded under
+`reports/main-integration-2026-10-23/` in the integration worktree. Rebuild
+SBOMs, licenses, checksums, and provenance against the selected source and lock
+files; generated evidence from the historical workspace cannot establish
+readiness for this branch.
+
+## Recovery scope
 
 This playbook is required whenever the current working directory cannot prove
 healthy Git checkout metadata. It exists to keep the Public Beta release path

@@ -43,7 +43,7 @@ export default defineConfig({
   },
   reporter: [['list'], ['html', { outputFolder: 'playwright-report', open: 'never' }]],
   use: {
-    trace: 'on-first-retry',
+    trace: 'retain-on-failure',
   },
   projects: [
     {

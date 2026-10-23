@@ -1,9 +1,11 @@
-> 2026-09-24: The current maintenance candidate is `0.1.0-beta.29` / MSIX
-> `1.1.29.0`; the verified current Store package is `1.1.27.0`, with the
-> `1.1.28.0` package retained in the active Submission 8 draft. Use the
-> [September maintenance release entry](desktop-maintenance-release-2026-09.md)
-> and its versioned notes. The beta.26-specific package, listing text, tag
-> commands, and qualification statements below are historical references.
+> 2026-10-24: The current maintenance candidate is `0.1.0-beta.30` / MSIX
+> `1.1.30.0`, based on protected-main beta.29 source plus the reviewed fixes.
+> Partner Center verified Submission 8 / `1.1.29.0` as currently published on
+> 2026-10-24; use that version as the new upgrade baseline. Use the
+> [maintenance release entry](desktop-maintenance-release-2026-09.md) and
+> [beta.30 notes](release-notes/0.1.0-beta.30.md). Earlier package, tag and
+> qualification statements below are historical references. A future source-only
+> tag is `v0.1.0-beta.30`; create it only after the exact-candidate gates pass.
 
 # JoeSSH 0.1.0-beta.26 Store 修复候选发布准备手册
 
@@ -93,7 +95,8 @@ CI 的 Ubuntu lint job 会从 Gitleaks 官方 `v8.30.1` release 下载
 泄露处理并轮换；历史改写会影响所有协作者和标签，必须另行评审，不能由扫描
 脚本自动执行。
 
-仓库仅忽略 9 个已人工复核的历史测试/演示 fixture，并以
+仓库仅忽略 9 个已人工复核的历史测试/演示 fixture，以及 2 个与官方归档逐字节
+核对的 node-forge 上游源码/文档误报（见 [backport 记录](node-forge-backport.md)），并以
 `commit:file:rule:line` 精确 fingerprint 绑定在 `.gitleaksignore`。检查脚本会
 拒绝任何额外 fingerprint，也会拒绝在 `.gitleaks.toml` 添加规则级 allowlist；
 因此未来提交中即使出现相同形态的值，也必须重新报警和评审。

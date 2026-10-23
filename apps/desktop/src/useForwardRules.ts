@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export type ForwardStartFn = (
   bindAddr: string,
@@ -25,18 +25,28 @@ export function useForwardRules(start?: ForwardStartFn, stop?: ForwardStopFn) {
   const operationCounter = useRef(0);
   const runtimeRef = useRef(runtime);
   const backendSeq = useRef(0);
+  const backend = useMemo(() => ({ start, stop, live: false }), [start, stop]);
   const active = start !== undefined && stop !== undefined;
 
-  useEffect(() => {
-    runtimeRef.current = runtime;
-  }, [runtime]);
+  // Native completions can precede React's next commit. Keep the owned ids
+  // current immediately so another callback or cleanup cannot lose a listener.
+  const updateRuntime = useCallback(
+    (update: (previous: Record<string, ForwardRuntime>) => Record<string, ForwardRuntime>) => {
+      runtimeRef.current = update(runtimeRef.current);
+      setRuntime(runtimeRef.current);
+    },
+    [],
+  );
 
   useEffect(() => {
+    backend.live = true;
     backendSeq.current += 1;
     const operations = inFlightRules.current;
     operations.clear();
-    setRuntime({});
+    runtimeRef.current = {};
+    setRuntime(runtimeRef.current);
     return () => {
+      backend.live = false;
       backendSeq.current += 1;
       operations.clear();
       if (!stop) return;
@@ -47,7 +57,7 @@ export function useForwardRules(start?: ForwardStartFn, stop?: ForwardStopFn) {
         void stop(forwardId).catch(() => {});
       }
     };
-  }, [start, stop]);
+  }, [backend, stop]);
 
   const startRule = useCallback(
     async (
@@ -56,16 +66,16 @@ export function useForwardRules(start?: ForwardStartFn, stop?: ForwardStopFn) {
       targetHost: string,
       targetPort: number,
     ) => {
-      if (inFlightRules.current.has(id)) return;
+      if (!backend.live || inFlightRules.current.has(id) || runtimeRef.current[id]?.active) return;
       if (!start) {
-        setRuntime((prev) => ({ ...prev, [id]: { active: true } }));
+        updateRuntime((prev) => ({ ...prev, [id]: { active: true } }));
         return;
       }
       const requestSeq = backendSeq.current;
       const operationId = operationCounter.current + 1;
       operationCounter.current = operationId;
       inFlightRules.current.set(id, operationId);
-      setRuntime((prev) => ({
+      updateRuntime((prev) => ({
         ...prev,
         [id]: { ...prev[id], active: false, pending: true, error: undefined },
       }));
@@ -81,13 +91,13 @@ export function useForwardRules(start?: ForwardStartFn, stop?: ForwardStopFn) {
           }
           return;
         }
-        setRuntime((prev) => ({
+        updateRuntime((prev) => ({
           ...prev,
           [id]: { active: true, forwardId: forward_id, boundAddr: bound_addr },
         }));
       } catch (error) {
         if (backendSeq.current !== requestSeq) return;
-        setRuntime((prev) => ({
+        updateRuntime((prev) => ({
           ...prev,
           [id]: {
             active: false,
@@ -100,18 +110,18 @@ export function useForwardRules(start?: ForwardStartFn, stop?: ForwardStopFn) {
         }
       }
     },
-    [start, stop],
+    [backend, start, stop, updateRuntime],
   );
 
   const stopRule = useCallback(
     async (id: string) => {
-      if (inFlightRules.current.has(id)) return;
+      if (!backend.live || inFlightRules.current.has(id)) return;
       const requestSeq = backendSeq.current;
-      const current = runtime[id];
+      const current = runtimeRef.current[id];
       const operationId = operationCounter.current + 1;
       operationCounter.current = operationId;
       inFlightRules.current.set(id, operationId);
-      setRuntime((prev) => ({
+      updateRuntime((prev) => ({
         ...prev,
         [id]: { ...prev[id], pending: true, error: undefined },
       }));
@@ -120,7 +130,7 @@ export function useForwardRules(start?: ForwardStartFn, stop?: ForwardStopFn) {
           await stop(current.forwardId);
         } catch (error) {
           if (backendSeq.current !== requestSeq) return;
-          setRuntime((prev) => ({
+          updateRuntime((prev) => ({
             ...prev,
             [id]: {
               ...current,
@@ -135,12 +145,12 @@ export function useForwardRules(start?: ForwardStartFn, stop?: ForwardStopFn) {
         }
       }
       if (backendSeq.current !== requestSeq) return;
-      setRuntime((prev) => ({ ...prev, [id]: { active: false } }));
+      updateRuntime((prev) => ({ ...prev, [id]: { active: false } }));
       if (inFlightRules.current.get(id) === operationId) {
         inFlightRules.current.delete(id);
       }
     },
-    [stop, runtime],
+    [backend, stop, updateRuntime],
   );
 
   return { runtime, active, startRule, stopRule };

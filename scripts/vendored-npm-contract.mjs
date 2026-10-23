@@ -1,7 +1,17 @@
 import { createHash } from "node:crypto";
-import { lstatSync, readFileSync, readdirSync, realpathSync } from "node:fs";
+import {
+  existsSync,
+  lstatSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+} from "node:fs";
 import { isDeepStrictEqual } from "node:util";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import {
+  NODE_FORGE_REGISTRATION,
+  verifyVendoredNodeForge,
+} from "./vendored-node-forge-contract.mjs";
 
 const metadataFile = "JOESSH-PATCH.json";
 const registrations = Object.freeze([
@@ -23,6 +33,7 @@ const registrations = Object.freeze([
     advisory: "https://github.com/advisories/GHSA-vcc3-ghjq-m6fr",
     license: "MIT",
   }),
+  NODE_FORGE_REGISTRATION,
 ]);
 
 export function registeredVendoredNpmDirectoryNames() {
@@ -56,6 +67,26 @@ export function verifyVendoredNpmPackages(root) {
   for (const registration of registrations) {
     const dependency = packageJson.dependencies?.[registration.name];
     if (dependency === undefined) {
+      const orphaned =
+        Object.hasOwn(packageJson.overrides ?? {}, registration.name) ||
+        ["devDependencies", "optionalDependencies", "peerDependencies"].some(
+          (key) => Object.hasOwn(packageJson[key] ?? {}, registration.name),
+        ) ||
+        packageLock.packages?.[""]?.dependencies?.[registration.name] !==
+          undefined ||
+        existsSync(resolve(rootPath, registration.path)) ||
+        Object.entries(packageLock.packages ?? {}).some(
+          ([path, entry]) =>
+            path === registration.path ||
+            path === `node_modules/${registration.name}` ||
+            path.endsWith(`/node_modules/${registration.name}`) ||
+            entry.name === registration.name,
+        );
+      if (orphaned) {
+        throw new Error(
+          `Orphaned vendored npm identity requires its reviewed direct dependency: ${registration.name}.`,
+        );
+      }
       continue;
     }
     if (dependency !== registration.dependencySpec) {
@@ -98,6 +129,16 @@ export function verifyVendoredNpmPackages(root) {
         `${registration.name} vendored package identity is not locked.`,
       );
     }
+    for (const [path, entry] of Object.entries(packageLock.packages ?? {})) {
+      if (
+        path !== registration.path &&
+        path !== `node_modules/${registration.name}` &&
+        (path.endsWith(`/node_modules/${registration.name}`) ||
+          entry.name === registration.name)
+      ) {
+        throw new Error(`Unexpected duplicate vendored npm identity: ${path}.`);
+      }
+    }
     records.push(verifyRegistration(rootPath, registration));
   }
 
@@ -105,6 +146,9 @@ export function verifyVendoredNpmPackages(root) {
 }
 
 function verifyRegistration(root, registration) {
+  if (registration.name === "node-forge") {
+    return verifyVendoredNodeForge(root);
+  }
   const rootPath = checkedRoot(root);
   const directory = checkedPath(rootPath, registration.path, "directory");
   const metadataPath = checkedPath(directory, metadataFile, "file");

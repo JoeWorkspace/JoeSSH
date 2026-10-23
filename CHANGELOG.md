@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-beta.30] - 2026-10-24
+
+> Microsoft Store maintenance candidate for `1.1.30.0`. Protected source build,
+> native qualification, certification and publication remain separate gates.
+
+### Fixed
+
+- Preserve terminal sizing and forwarding lifetimes across workspace changes,
+  reject duplicate starts, and bound editable PTY input before dispatch.
+- Validate release artifact paths, dependency audit reports and vendored source
+  identity before accepting release evidence.
+- Update the compatible Vite, Vitest, nanoid, ctutils and Tokio dependencies.
+  Backport the public node-forge RSA verification fix for Node build tooling,
+  retaining the original registry identity and strict checks for other findings.
+- Close manually created E2E browser contexts on failure and retain failure
+  traces without reducing assertions, timeouts or retry requirements.
+
+### Changed
+
+- Advance application metadata to `0.1.0-beta.30` / MSIX `1.1.30.0` for new
+  immutable package bytes. Earlier candidate artifacts and evidence stay historical.
+
 ## [0.1.0-beta.29] - 2026-09-24
 
 > Store reissue candidate for `1.1.29.0`. Microsoft Store rejects changed

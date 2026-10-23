@@ -100,7 +100,19 @@
 - Terminal session rendering uses structured line IDs so repeated command text does not collide or reorder in React.
 - Terminal command input accepts safe commands through the local safety preflight before they reach the session log.
 - One-shot `ssh_exec` command output is capped at 1 MiB in the core SSH read loop, and Tauri maps output-limit failures to a stable renderer-safe error instead of buffering unbounded stdout.
-- Dangerous terminal commands such as `sudo rm -rf /` are blocked with an accessible policy alert and are not appended to the session log; the native Tauri `ssh_exec` IPC boundary also runs the core command-safety blocklist before opening the session, and `pty_write` applies the same line-level blocklist before forwarding submitted PTY input, so direct renderer IPC cannot bypass the local preflight. Native `PTY_COMMAND_BLOCKED` rejections are surfaced in the xterm status bar as an assertive alert and the PTY remains open for the next safe command.
+- Dangerous transcript commands such as `sudo rm -rf /` are blocked with an
+  accessible policy alert and are not appended to the session log. The native
+  Tauri `ssh_exec` IPC boundary runs the core command-safety blocklist before
+  opening the session. Interactive `pty_write` uses a bounded, best-effort
+  preflight for explicit input, including common cursor edits, deletion,
+  bracketed paste, and chunk boundaries. Remote history, completion, shell
+  expansion, aliases, and full-screen programs are not reconstructable from
+  input bytes alone; this preflight is an accident-prevention aid, not remote
+  authorization or a guarantee of the command the shell executes. Native
+  `PTY_COMMAND_BLOCKED` rejections are surfaced in the xterm status bar as an
+  assertive alert and the PTY remains open for the next safe command. Per-session
+  serialization, input limits, I/O timeouts, output acknowledgement, and
+  cancellation remain enforced by the PTY runtime.
 - Command palette, SFTP, settings, team access, shared vault, and audit context flows remain keyboard and screen-reader reachable.
 - Automated Axe checks tagged for WCAG 2.2 AA run with the normally disabled `target-size` rule enabled; focusable controls retain at least a 24 CSS pixel target or equivalent spacing, and focused controls scroll fully into view without being obscured by a scroll-container edge.
 - `npm run qa:accessibility-readiness` validates the public assessment-in-progress notice, explicit no-formal-conformance-claim boundary, known limitations, safe accessibility feedback form, WCAG 2.2 E2E wiring, and focus scroll-padding contracts before release.

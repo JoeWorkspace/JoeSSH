@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { createElement, StrictMode, type ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { useForwardRules } from "./useForwardRules";
 
@@ -390,5 +391,125 @@ describe("useForwardRules", () => {
     });
 
     expect(result.current.runtime).toEqual({});
+  });
+
+  it("retains an active forward when start is repeated before React commits", async () => {
+    const start = vi.fn().mockResolvedValue({
+      forward_id: "owned-forward",
+      bound_addr: "127.0.0.1:9000",
+    });
+    const stop = vi.fn().mockResolvedValue(undefined);
+    const { result, unmount } = renderHook(() => useForwardRules(start, stop));
+    const startRule = result.current.startRule;
+
+    await act(async () => {
+      await startRule("db", "127.0.0.1:0", "db", 5432);
+      await startRule("db", "127.0.0.1:0", "db", 5432);
+    });
+
+    expect(start).toHaveBeenCalledTimes(1);
+    expect(result.current.runtime.db.forwardId).toBe("owned-forward");
+    unmount();
+    expect(stop).toHaveBeenCalledExactlyOnceWith("owned-forward");
+  });
+
+  it("ignores saved start and stop callbacks after disconnect", async () => {
+    const start = vi.fn().mockResolvedValue({
+      forward_id: "owned-forward",
+      bound_addr: "127.0.0.1:9000",
+    });
+    const stop = vi.fn().mockResolvedValue(undefined);
+    const { result, unmount } = renderHook(() => useForwardRules(start, stop));
+    await act(async () => {
+      await result.current.startRule("db", "127.0.0.1:0", "db", 5432);
+    });
+    const disconnected = result.current;
+    unmount();
+
+    await act(async () => {
+      await disconnected.startRule("db", "127.0.0.1:0", "db", 5432);
+      await disconnected.stopRule("db");
+    });
+
+    expect(start).toHaveBeenCalledTimes(1);
+    expect(stop).toHaveBeenCalledExactlyOnceWith("owned-forward");
+  });
+
+  it("rejects callbacks retained from a replaced backend", async () => {
+    const start = vi.fn().mockResolvedValue({
+      forward_id: "old-forward",
+      bound_addr: "127.0.0.1:9000",
+    });
+    const stop = vi.fn().mockResolvedValue(undefined);
+    const nextStart = vi.fn().mockResolvedValue({
+      forward_id: "new-forward",
+      bound_addr: "127.0.0.1:9001",
+    });
+    const nextStop = vi.fn().mockResolvedValue(undefined);
+    const { result, rerender } = renderHook(
+      ({ startFn, stopFn }) => useForwardRules(startFn, stopFn),
+      { initialProps: { startFn: start, stopFn: stop } },
+    );
+    await act(async () => {
+      await result.current.startRule("db", "127.0.0.1:0", "db", 5432);
+    });
+    const replaced = result.current;
+    rerender({ startFn: nextStart, stopFn: nextStop });
+
+    await act(async () => {
+      await result.current.startRule("db", "127.0.0.1:0", "db", 5432);
+      await replaced.startRule("db", "127.0.0.1:0", "db", 5432);
+      await replaced.stopRule("db");
+    });
+
+    expect(start).toHaveBeenCalledTimes(1);
+    expect(stop).toHaveBeenCalledExactlyOnceWith("old-forward");
+    expect(nextStart).toHaveBeenCalledTimes(1);
+    expect(nextStop).not.toHaveBeenCalled();
+    expect(result.current.runtime.db.forwardId).toBe("new-forward");
+  });
+
+  it("lets a current stop callback release a just-completed start before React commits", async () => {
+    const start = vi.fn().mockResolvedValue({
+      forward_id: "owned-forward",
+      bound_addr: "127.0.0.1:9000",
+    });
+    const stop = vi.fn().mockResolvedValue(undefined);
+    const { result, unmount } = renderHook(() => useForwardRules(start, stop));
+    const controls = result.current;
+
+    await act(async () => {
+      await controls.startRule("db", "127.0.0.1:0", "db", 5432);
+      await controls.stopRule("db");
+    });
+
+    expect(stop).toHaveBeenCalledExactlyOnceWith("owned-forward");
+    expect(result.current.runtime.db).toEqual({ active: false });
+    unmount();
+    expect(stop).toHaveBeenCalledTimes(1);
+  });
+
+  it("closes a late start after a StrictMode session is disconnected", async () => {
+    let finishStart: (result: { forward_id: string; bound_addr: string }) => void = () => {};
+    const start = vi.fn(() => new Promise<{ forward_id: string; bound_addr: string }>((resolve) => {
+      finishStart = resolve;
+    }));
+    const stop = vi.fn().mockResolvedValue(undefined);
+    const { result, unmount } = renderHook(() => useForwardRules(start, stop), {
+      wrapper: ({ children }: { children: ReactNode }) => createElement(StrictMode, null, children),
+    });
+    let pending: Promise<void> = Promise.resolve();
+    act(() => {
+      pending = result.current.startRule("db", "127.0.0.1:0", "db", 5432);
+    });
+    expect(start).toHaveBeenCalledTimes(1);
+    unmount();
+
+    await act(async () => {
+      finishStart({ forward_id: "late-forward", bound_addr: "127.0.0.1:9000" });
+      await pending;
+    });
+
+    expect(stop).toHaveBeenCalledExactlyOnceWith("late-forward");
   });
 });

@@ -3,10 +3,13 @@ import { createHash } from "node:crypto";
 import {
   chmodSync,
   cpSync,
+  existsSync,
+  linkSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -397,17 +400,87 @@ function sha256File(root, relativePath) {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
 
-function runChecker(root) {
+function runChecker(root, script = CHECKER_PATH, args = ["--root", root]) {
   const env = { ...process.env };
   const pathKey =
     Object.keys(env).find((key) => key.toLowerCase() === "path") ?? "PATH";
   env[pathKey] = `${join(root, ".test-bin")}${delimiter}${env[pathKey] ?? ""}`;
   env.JOESSH_SBOM_TEST_ROOT = root;
-  return spawnSync(process.execPath, [CHECKER_PATH, "--root", root], {
+  return spawnSync(process.execPath, [script, ...args], {
     encoding: "utf8",
     env,
   });
 }
+
+function stageGenerator(root) {
+  const scripts = join(root, "scripts");
+  mkdirSync(scripts, { recursive: true });
+  for (const file of [
+    "generate-release-sbom.mjs",
+    "release-artifact-paths.mjs",
+    "release-sbom-contract.mjs",
+    "vendored-rust-contract.mjs",
+    "vendored-npm-contract.mjs",
+    "vendored-node-forge-contract.mjs",
+  ]) {
+    cpSync(new URL(`./${file}`, import.meta.url), join(scripts, file));
+  }
+  return join(scripts, "generate-release-sbom.mjs");
+}
+
+test("SBOM generation supports safe repeated output using locked source fixtures", (t) => {
+  const root = createFixture(t);
+  const generator = stageGenerator(root);
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const result = runChecker(root, generator, []);
+    assert.equal(result.status, 0, result.stderr);
+    const verified = runChecker(root);
+    assert.equal(verified.status, 0, verified.stderr);
+  }
+});
+
+for (const redirected of ["reports", "reports/release", "reports/internal"]) {
+  test(`SBOM generation rejects ${redirected} junction before cleanup or writes`, (t) => {
+    const root = createFixture(t);
+    const generator = stageGenerator(root);
+    const outside = mkdtempSync(join(tmpdir(), "sbom-output-sentinel-"));
+    t.after(() => rmSync(outside, { recursive: true, force: true }));
+    const sentinel = join(outside, "cargo-metadata.json");
+    writeFileSync(sentinel, "external sentinel");
+    const legacy = join(root, "reports", "release", "cargo-metadata.json");
+    writeFileSync(legacy, "legacy sentinel");
+    const redirectedPath = join(root, redirected);
+    rmSync(redirectedPath, { recursive: true });
+    symlinkSync(outside, redirectedPath, "junction");
+    const result = runChecker(root, generator, []);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /symbolic link or junction/);
+    assert.equal(readFileSync(sentinel, "utf8"), "external sentinel");
+    assert.equal(existsSync(join(outside, "npm-desktop-sbom.cdx.json")), false);
+    if (redirected === "reports/internal") {
+      assert.equal(readFileSync(legacy, "utf8"), "legacy sentinel");
+    }
+  });
+}
+
+test("SBOM generation rejects a hard-linked later output before deleting legacy files", (t) => {
+  const root = createFixture(t);
+  const generator = stageGenerator(root);
+  const outside = mkdtempSync(join(tmpdir(), "sbom-output-sentinel-"));
+  t.after(() => rmSync(outside, { recursive: true, force: true }));
+  const sentinel = join(outside, "sentinel.txt");
+  writeFileSync(sentinel, "external sentinel");
+  const output = join(root, "reports", "release", "SBOM-SHA256SUMS.txt");
+  rmSync(output);
+  linkSync(sentinel, output);
+  const legacy = join(root, "reports", "release", "cargo-metadata.json");
+  writeFileSync(legacy, "legacy sentinel");
+  const result = runChecker(root, generator, []);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /hard links/);
+  assert.equal(readFileSync(sentinel, "utf8"), "external sentinel");
+  assert.equal(readFileSync(legacy, "utf8"), "legacy sentinel");
+});
 
 test("accepts complete release SBOM files and checksums", (t) => {
   const result = runChecker(createFixture(t));

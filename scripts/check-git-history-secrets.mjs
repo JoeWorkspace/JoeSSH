@@ -11,7 +11,7 @@ const EXPECTED_GITLEAKS_ASSET_URL =
 const EXPECTED_GITLEAKS_CONFIG_SHA256 =
   "17692ae221e51b1fe8fa4cd7862e02258d23a8873fc75ebd12251a0372fa2dfe";
 const EXPECTED_GITLEAKS_IGNORE_SHA256 =
-  "a60c709073214edf6582b7cb911364b184743516b30a4970493195d04ee47ccf";
+  "69553a897cbe0a4b20a17df5f944dbb1e73398836270be345a5d4ecf88a36377";
 
 const options = parseArgs(process.argv.slice(2));
 const root = resolve(options.root ?? resolve(import.meta.dirname, ".."));
@@ -180,6 +180,8 @@ function assertReviewedConfiguration(reviewedConfigPath, reviewedIgnorePath) {
     "5e5f1eded2d1f1959193d2d76c4136fd14a81063:crates/core/src/ssh.rs:private-key:751",
     "5e5f1eded2d1f1959193d2d76c4136fd14a81063:apps/desktop/src/main.tsx:generic-api-key:140",
     "5e5f1eded2d1f1959193d2d76c4136fd14a81063:services/sync/src/config.rs:generic-api-key:351",
+    "27ba8c3e6bd08361267b3765a4cc439e98174622:vendor/node-forge-1.4.0/lib/pkcs12.js:generic-api-key:1078",
+    "27ba8c3e6bd08361267b3765a4cc439e98174622:vendor/node-forge-1.4.0/README.md:generic-api-key:877",
   ];
   if (
     actualFingerprints.length !== expectedFingerprints.length ||
@@ -188,7 +190,7 @@ function assertReviewedConfiguration(reviewedConfigPath, reviewedIgnorePath) {
     )
   ) {
     console.error(
-      "The Gitleaks ignore file must contain only the nine reviewed historical fixture fingerprints.",
+      "The Gitleaks ignore file must contain only the eleven reviewed historical fixture and upstream false-positive fingerprints.",
     );
     process.exit(1);
   }

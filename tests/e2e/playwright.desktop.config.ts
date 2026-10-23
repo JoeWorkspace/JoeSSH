@@ -12,6 +12,7 @@ export default defineConfig({
   timeout: testTimeout,
   expect: { timeout: 5_000 },
   reporter: [["list"]],
+  use: { trace: "retain-on-failure" },
   projects: [
     {
       name: "desktop-workbench",
