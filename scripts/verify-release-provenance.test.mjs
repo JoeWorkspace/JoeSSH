@@ -1,3 +1,4 @@
+import { writeReleaseSbomFixture } from "./release-sbom-test-fixtures.mjs";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -67,40 +68,6 @@ function createFixture(t) {
   ]);
 
   return root;
-}
-
-function writeReleaseSbomFixture(root) {
-  const sbomFiles = [
-    ["reports/release/npm-desktop-sbom.cdx.json", cyclonedxFixture("desktop")],
-    ["reports/release/npm-web-sbom.cdx.json", cyclonedxFixture("web")],
-    ["reports/release/cargo-metadata.json", cargoMetadataFixture("atlasterm-sync")],
-    ["reports/release/tauri-cargo-metadata.json", cargoMetadataFixture("atlasterm-desktop-shell")],
-  ];
-  for (const [path, content] of sbomFiles) {
-    writeFile(root, path, content);
-  }
-  writeManifest(
-    root,
-    "reports/release/SBOM-SHA256SUMS.txt",
-    sbomFiles.map(([path, content]) => [content, path]),
-  );
-}
-
-function cyclonedxFixture(name) {
-  return JSON.stringify({
-    bomFormat: "CycloneDX",
-    specVersion: "1.5",
-    metadata: { component: { name } },
-    components: [{ name: `${name}-dependency`, version: "1.0.0" }],
-  });
-}
-
-function cargoMetadataFixture(name) {
-  return JSON.stringify({
-    packages: [{ name, version: "0.1.0-beta.1" }],
-    workspace_members: [`path+file:///${name}`],
-    version: 1,
-  });
 }
 
 function createFakeCommands(root, options = {}) {

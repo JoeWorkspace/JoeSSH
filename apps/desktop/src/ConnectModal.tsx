@@ -113,7 +113,13 @@ export const ConnectModal = memo(function ConnectModal({
       aria-modal="true"
       aria-label={t("desktop.connectTitle")}
       onClick={onClose}
-      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          e.stopPropagation();
+          onClose();
+        }
+      }}
     >
       <div className="modal connect-modal" ref={focusTrapRef} onClick={(e) => e.stopPropagation()}>
         <header className="modal-header">
@@ -123,17 +129,17 @@ export const ConnectModal = memo(function ConnectModal({
         <form className="connect-form" onSubmit={handleSubmit}>
           <label className="connect-field connect-field--host">
             <span>{t("desktop.host")}</span>
-            <input type="text" value={fields.host} autoFocus
+            <input type="text" required spellCheck={false} value={fields.host} data-autofocus
               onChange={(e) => updateField("host", e.target.value)} />
           </label>
           <label className="connect-field connect-field--port">
             <span>{t("desktop.port")}</span>
-            <input type="number" min={1} max={65535} value={fields.port}
+            <input type="number" required min={1} max={65535} inputMode="numeric" value={fields.port}
               onChange={(e) => updateField("port", e.target.value)} />
           </label>
           <label className="connect-field">
             <span>{t("desktop.user")}</span>
-            <input type="text" value={fields.username}
+            <input type="text" required autoComplete="username" spellCheck={false} value={fields.username}
               onChange={(e) => updateField("username", e.target.value)} />
           </label>
           <label className="connect-field">
@@ -146,14 +152,14 @@ export const ConnectModal = memo(function ConnectModal({
           {fields.authKind === "password" ? (
             <label className="connect-field">
               <span>{t("desktop.authPassword")}</span>
-              <input type="password" value={fields.password}
+              <input type="password" required autoComplete="current-password" value={fields.password}
                 onChange={(e) => updateField("password", e.target.value)} />
             </label>
           ) : (
             <>
               <label className="connect-field">
                   <span>{t("desktop.authPrivateKey")}</span>
-                  <textarea rows={4} value={fields.pem}
+                  <textarea required rows={4} spellCheck={false} value={fields.pem}
                     onChange={(e) => updateField("pem", e.target.value)} />
               </label>
               <label className="connect-field">

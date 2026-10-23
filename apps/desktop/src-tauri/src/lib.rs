@@ -8,31 +8,33 @@
 //! `atlasterm-core` unit/integration tests it delegates to.
 
 use std::collections::HashMap;
+use std::fs::OpenOptions;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use atlasterm_core::security::{detect_dangerous_command, DangerousCommandAction};
 use atlasterm_core::{
     probe_host_key, probe_tcp, validate_local_bind_addr, HostKeyPolicy, ProbeOutcome, PtyOutput,
     PtyWriter, SftpEntry, SshAuth, SshClient, SshConfig, TcpForwardHandle,
 };
-use atlasterm_core::security::{detect_dangerous_command, DangerousCommandAction};
 use serde::{Deserialize, Serialize};
 use tauri::{Emitter, Manager};
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
+mod pty_input;
+use pty_input::{apply_pty_input_safety, PtyInputState};
+
 const KNOWN_HOSTS_FILE: &str = "known-hosts.json";
 const KNOWN_HOSTS_FILE_VERSION: u8 = 1;
 const HOST_KEY_VERIFICATION_FAILED: &str = "host key verification failed";
-const HOST_KEY_CONFIRMATION_REQUIRED: &str =
-    "host key confirmation required before authentication";
+const HOST_KEY_CONFIRMATION_REQUIRED: &str = "host key confirmation required before authentication";
 const HOST_KEY_STORAGE_UNAVAILABLE: &str = "known-host storage unavailable";
 const SFTP_MAX_TRANSFER_BYTES: usize = 25 * 1024 * 1024;
 const SFTP_TRANSFER_LIMIT_EXCEEDED: &str = "sftp transfer exceeds the desktop safety limit";
 const SSH_EXEC_COMMAND_BLOCKED: &str = "ssh exec command blocked by desktop safety policy";
-const PTY_COMMAND_BLOCKED: &str = "pty input blocked by desktop safety policy";
-const PTY_COMMAND_BUFFER_MAX_BYTES: usize = 16 * 1024;
 const FORWARD_BIND_ADDR_UNSAFE: &str =
     "port forward bind address must use a loopback host such as 127.0.0.1, localhost, or [::1]";
 
@@ -43,7 +45,7 @@ struct AppState {
     sessions: Mutex<HashMap<Uuid, Arc<SshClient>>>,
     forwards: Mutex<HashMap<Uuid, SessionResource<TcpForwardHandle>>>,
     ptys: Mutex<HashMap<Uuid, SessionResource<PtyWriter>>>,
-    pty_input_buffers: Mutex<HashMap<Uuid, Vec<u8>>>,
+    pty_input_buffers: Mutex<HashMap<Uuid, PtyInputState>>,
     known_hosts: Mutex<()>,
 }
 
@@ -167,13 +169,14 @@ async fn ssh_connect(
     state: tauri::State<'_, AppState>,
     input: ConnectInput,
 ) -> Result<ConnectOutput, String> {
-    let _known_hosts_guard = state.known_hosts.lock().await;
     let known_hosts_path = known_hosts_path(&app)?;
     let host_key = known_host_key(&input.host, input.port);
-    let known_hosts = read_known_hosts_file(&known_hosts_path)?;
-    let stored_fingerprint = known_hosts
-        .get(&host_key)
-        .map(|record| record.fingerprint.clone());
+    let stored_fingerprint = {
+        let _known_hosts_guard = state.known_hosts.lock().await;
+        read_known_hosts_file(&known_hosts_path)?
+            .get(&host_key)
+            .map(|record| record.fingerprint.clone())
+    };
     let manual_fingerprint = normalize_manual_fingerprint(input.pinned_fingerprint);
     let host_key_policy = host_key_policy_for(stored_fingerprint.clone(), manual_fingerprint)?;
 
@@ -190,14 +193,15 @@ async fn ssh_connect(
         .map_err(sanitize_ssh_error)?;
     let fingerprint = client.server_fingerprint().map(|s| s.to_string());
 
-    if stored_fingerprint.is_none() {
-        let fingerprint = fingerprint
-            .as_deref()
-            .ok_or_else(|| HOST_KEY_VERIFICATION_FAILED.to_string())?;
+    let verified_fingerprint = fingerprint
+        .as_deref()
+        .ok_or_else(|| HOST_KEY_VERIFICATION_FAILED.to_string())?;
+    {
+        let _known_hosts_guard = state.known_hosts.lock().await;
         persist_known_host_if_first_use(
             &known_hosts_path,
             &host_key,
-            fingerprint,
+            verified_fingerprint,
             KnownHostSource::Confirmed,
         )?;
     }
@@ -472,7 +476,11 @@ async fn pty_open(
         }
         return Err("session not found".to_string());
     }
-    state.pty_input_buffers.lock().await.insert(pty_id, Vec::new());
+    state
+        .pty_input_buffers
+        .lock()
+        .await
+        .insert(pty_id, PtyInputState::default());
 
     let output_event = format!("pty://output/{pty_id}");
     let exit_event = format!("pty://exit/{pty_id}");
@@ -508,23 +516,16 @@ async fn pty_write(
     data: Vec<u8>,
 ) -> Result<(), String> {
     let id = parse_id(&pty_id)?;
-    {
-        let ptys = state.ptys.lock().await;
-        if !ptys.contains_key(&id) {
-            return Err("pty not found".to_string());
-        }
-    }
+    // Serialize preflight and forwarding together so overlapping IPC writes
+    // cannot inspect bytes in one order and deliver them in another order.
+    let ptys = state.ptys.lock().await;
+    let writer = ptys.get(&id).ok_or_else(|| "pty not found".to_string())?;
 
     if let Err(error) = ensure_safe_pty_write(&state, id, &data).await {
-        let ptys = state.ptys.lock().await;
-        if let Some(writer) = ptys.get(&id) {
-            let _ = writer.value.write(&[0x03]).await;
-        }
+        let _ = writer.value.write(&[0x03]).await;
         return Err(error);
     }
 
-    let ptys = state.ptys.lock().await;
-    let writer = ptys.get(&id).ok_or_else(|| "pty not found".to_string())?;
     writer.value.write(&data).await.map_err(sanitize_ssh_error)
 }
 
@@ -760,9 +761,49 @@ fn write_known_hosts_file(
     };
     let json = serde_json::to_string_pretty(&file)
         .map_err(|_| HOST_KEY_STORAGE_UNAVAILABLE.to_string())?;
-    std::fs::write(path, format!("{json}\n"))
-        .map_err(|_| HOST_KEY_STORAGE_UNAVAILABLE.to_string())?;
-    harden_known_hosts_file_permissions(path)
+    let file_name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or_else(|| HOST_KEY_STORAGE_UNAVAILABLE.to_string())?;
+    let temp_path = parent.join(format!(".{file_name}.{}.tmp", Uuid::new_v4()));
+    let result = (|| {
+        let mut temp_file = OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(&temp_path)
+            .map_err(|_| HOST_KEY_STORAGE_UNAVAILABLE.to_string())?;
+        temp_file
+            .write_all(format!("{json}\n").as_bytes())
+            .map_err(|_| HOST_KEY_STORAGE_UNAVAILABLE.to_string())?;
+        temp_file
+            .sync_all()
+            .map_err(|_| HOST_KEY_STORAGE_UNAVAILABLE.to_string())?;
+        harden_known_hosts_file_permissions(&temp_path)?;
+        drop(temp_file);
+        std::fs::rename(&temp_path, path).map_err(|_| HOST_KEY_STORAGE_UNAVAILABLE.to_string())?;
+        sync_known_hosts_parent(parent)
+    })();
+
+    if result.is_err() {
+        let _ = std::fs::remove_file(&temp_path);
+    }
+    result
+}
+
+fn sync_known_hosts_parent(parent: &Path) -> Result<(), String> {
+    #[cfg(unix)]
+    {
+        std::fs::File::open(parent)
+            .and_then(|directory| directory.sync_all())
+            .map_err(|_| HOST_KEY_STORAGE_UNAVAILABLE.to_string())?;
+    }
+
+    #[cfg(not(unix))]
+    {
+        let _ = parent;
+    }
+
+    Ok(())
 }
 
 fn harden_known_hosts_file_permissions(path: &Path) -> Result<(), String> {
@@ -807,8 +848,8 @@ fn persist_known_host_if_first_use(
 }
 
 fn parse_known_hosts_file(text: &str) -> Result<HashMap<String, KnownHostRecord>, String> {
-    let value =
-        serde_json::from_str::<serde_json::Value>(text).map_err(|_| HOST_KEY_STORAGE_UNAVAILABLE.to_string())?;
+    let value = serde_json::from_str::<serde_json::Value>(text)
+        .map_err(|_| HOST_KEY_STORAGE_UNAVAILABLE.to_string())?;
 
     if value.get("hosts").is_some() {
         let file = serde_json::from_value::<KnownHostsFile>(value)
@@ -917,10 +958,9 @@ fn ensure_safe_ssh_exec_command(command: &str) -> Result<(), String> {
 
     match detected.action {
         DangerousCommandAction::Warn => Ok(()),
-        DangerousCommandAction::Block => Err(format!(
-            "{SSH_EXEC_COMMAND_BLOCKED}: {}",
-            detected.pattern
-        )),
+        DangerousCommandAction::Block => {
+            Err(format!("{SSH_EXEC_COMMAND_BLOCKED}: {}", detected.pattern))
+        }
     }
 }
 
@@ -930,43 +970,8 @@ async fn ensure_safe_pty_write(
     data: &[u8],
 ) -> Result<(), String> {
     let mut buffers = state.pty_input_buffers.lock().await;
-    let buffer = buffers.entry(pty_id).or_default();
-    apply_pty_input_safety(buffer, data)
-}
-
-fn apply_pty_input_safety(buffer: &mut Vec<u8>, data: &[u8]) -> Result<(), String> {
-    for byte in data {
-        match *byte {
-            b'\r' | b'\n' => {
-                let command = String::from_utf8_lossy(buffer);
-                if let Some(detected) = detect_dangerous_command(&command) {
-                    if detected.action == DangerousCommandAction::Block {
-                        buffer.clear();
-                        return Err(format!("{PTY_COMMAND_BLOCKED}: {}", detected.pattern));
-                    }
-                }
-                buffer.clear();
-            }
-            0x03 | 0x15 => {
-                buffer.clear();
-            }
-            0x08 | 0x7f => {
-                buffer.pop();
-            }
-            byte if byte.is_ascii_control() && byte != b'\t' => {}
-            byte => {
-                buffer.push(byte);
-                if buffer.len() > PTY_COMMAND_BUFFER_MAX_BYTES {
-                    buffer.clear();
-                    return Err(format!(
-                        "{PTY_COMMAND_BLOCKED}: input line exceeds safety limit"
-                    ));
-                }
-            }
-        }
-    }
-
-    Ok(())
+    let input_state = buffers.entry(pty_id).or_default();
+    apply_pty_input_safety(input_state, data)
 }
 
 #[cfg(test)]
@@ -1045,7 +1050,10 @@ mod tests {
 
     #[test]
     fn host_key_probe_status_classifies_unknown_match_and_changed() {
-        assert_eq!(host_key_probe_status(None, "SHA256:new"), HostKeyProbeStatus::Unknown);
+        assert_eq!(
+            host_key_probe_status(None, "SHA256:new"),
+            HostKeyProbeStatus::Unknown
+        );
         assert_eq!(
             host_key_probe_status(Some("SHA256:pinned"), "SHA256:pinned"),
             HostKeyProbeStatus::Match
@@ -1090,51 +1098,6 @@ mod tests {
     }
 
     #[test]
-    fn pty_input_safety_blocks_destructive_line_across_chunks() {
-        let mut buffer = Vec::new();
-
-        apply_pty_input_safety(&mut buffer, b"sudo rm -r").unwrap();
-        let error = apply_pty_input_safety(&mut buffer, b"f /\n").unwrap_err();
-
-        assert!(error.starts_with(PTY_COMMAND_BLOCKED));
-        assert!(error.contains("rm -rf /"));
-        assert!(buffer.is_empty());
-    }
-
-    #[test]
-    fn pty_input_safety_allows_normal_lines_and_clears_on_submit() {
-        let mut buffer = Vec::new();
-
-        apply_pty_input_safety(&mut buffer, b"whoami\n").unwrap();
-
-        assert!(buffer.is_empty());
-    }
-
-    #[test]
-    fn pty_input_safety_tracks_basic_line_editing() {
-        let mut buffer = Vec::new();
-
-        apply_pty_input_safety(&mut buffer, b"sudo rm -rf /").unwrap();
-        apply_pty_input_safety(&mut buffer, &[0x15]).unwrap();
-        apply_pty_input_safety(&mut buffer, b"whoamix").unwrap();
-        apply_pty_input_safety(&mut buffer, &[0x7f]).unwrap();
-        apply_pty_input_safety(&mut buffer, b"\n").unwrap();
-
-        assert!(buffer.is_empty());
-    }
-
-    #[test]
-    fn pty_input_safety_rejects_unbounded_pending_line() {
-        let mut buffer = Vec::new();
-        let data = vec![b'a'; PTY_COMMAND_BUFFER_MAX_BYTES + 1];
-
-        let error = apply_pty_input_safety(&mut buffer, &data).unwrap_err();
-
-        assert!(error.contains("input line exceeds safety limit"));
-        assert!(buffer.is_empty());
-    }
-
-    #[test]
     fn forward_bind_addr_guard_allows_loopback_only() {
         assert!(ensure_forward_bind_addr("127.0.0.1:0").is_ok());
         assert!(ensure_forward_bind_addr("localhost:5432").is_ok());
@@ -1156,7 +1119,12 @@ mod tests {
         let mut known_hosts = HashMap::new();
         known_hosts.insert(
             "example.com:22".to_string(),
-            known_host_record("example.com:22", "SHA256:abc", 1_700_000_000_000, KnownHostSource::Confirmed),
+            known_host_record(
+                "example.com:22",
+                "SHA256:abc",
+                1_700_000_000_000,
+                KnownHostSource::Confirmed,
+            ),
         );
 
         write_known_hosts_file(&path, &known_hosts).unwrap();

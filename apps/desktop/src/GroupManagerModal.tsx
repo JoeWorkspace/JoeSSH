@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useEffect, useRef } from "react";
 import { Boxes, ClipboardCheck, Folder, Plus, Settings, Trash2, X } from "lucide-react";
 import { Badge, Button, IconButton } from "@atlasterm/ui";
 import type { Translator } from "@atlasterm/i18n";
@@ -43,8 +43,37 @@ export const GroupManagerModal = memo(function GroupManagerModal({
   t,
 }: GroupManagerModalProps) {
   const focusTrapRef = useFocusTrap<HTMLDivElement>(true);
+  const focusAfterEditRef = useRef<string | null>(null);
+  const renameButtonRefs = useRef(new Map<string, HTMLButtonElement>());
+
+  useEffect(() => {
+    if (editingGroup !== null || !focusAfterEditRef.current) return;
+
+    const groupName = focusAfterEditRef.current;
+    focusAfterEditRef.current = null;
+    renameButtonRefs.current.get(groupName)?.focus();
+  }, [allGroupNames, editingGroup]);
+
+  const finishEditing = (focusGroupName: string) => {
+    focusAfterEditRef.current = focusGroupName;
+    onSetEditingGroup(null);
+  };
+
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={t("desktop.manageGroups")} onClick={onClose} onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}>
+    <div
+      className="modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-label={t("desktop.manageGroups")}
+      onClick={onClose}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          e.stopPropagation();
+          onClose();
+        }
+      }}
+    >
       <div className="modal group-manager" ref={focusTrapRef} onClick={(e) => e.stopPropagation()}>
         <header className="modal-header">
           <h2><Boxes size={18} aria-hidden="true" /> {t("desktop.manageGroups")}</h2>
@@ -54,6 +83,7 @@ export const GroupManagerModal = memo(function GroupManagerModal({
           <div className="group-manager-create">
             <input
               type="text"
+              data-autofocus
               placeholder={t("desktop.newGroupName")}
               aria-label={t("desktop.newGroupName")}
               value={newGroupName}
@@ -89,21 +119,46 @@ export const GroupManagerModal = memo(function GroupManagerModal({
                         onChange={(e) => onSetEditingGroupName(e.target.value)}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" && editingGroupName.trim() && editingGroupName.trim() !== groupName && isGroupValid(editingGroupName)) {
-                            onRenameGroup(groupName, editingGroupName.trim());
+                            const nextGroupName = editingGroupName.trim();
+                            onRenameGroup(groupName, nextGroupName);
+                            finishEditing(nextGroupName);
                           }
-                          if (e.key === "Escape") onSetEditingGroup(null);
+                          if (e.key === "Escape") {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            finishEditing(groupName);
+                          }
                         }}
                         className="group-manager-input"
                         autoFocus
                         maxLength={32}
                       />
-                      <button className="icon-btn" type="button" aria-label={t("desktop.confirmRename")} onClick={() => {
-                        if (editingGroupName.trim() && editingGroupName.trim() !== groupName && isGroupValid(editingGroupName)) {
-                          onRenameGroup(groupName, editingGroupName.trim());
-                        }
-                        onSetEditingGroup(null);
-                      }}><ClipboardCheck size={14} aria-hidden="true" /></button>
-                      <button className="icon-btn" type="button" aria-label={t("desktop.cancelRename")} onClick={() => onSetEditingGroup(null)}><X size={14} aria-hidden="true" /></button>
+                      <button
+                        className="ui-button ui-button--ghost ui-button--icon"
+                        type="button"
+                        aria-label={t("desktop.confirmRename")}
+                        title={t("desktop.confirmRename")}
+                        onClick={() => {
+                          if (editingGroupName.trim() && editingGroupName.trim() !== groupName && isGroupValid(editingGroupName)) {
+                            const nextGroupName = editingGroupName.trim();
+                            onRenameGroup(groupName, nextGroupName);
+                            finishEditing(nextGroupName);
+                            return;
+                          }
+                          finishEditing(groupName);
+                        }}
+                      >
+                        <ClipboardCheck size={14} aria-hidden="true" />
+                      </button>
+                      <button
+                        className="ui-button ui-button--ghost ui-button--icon"
+                        type="button"
+                        aria-label={t("desktop.cancelRename")}
+                        title={t("desktop.cancelRename")}
+                        onClick={() => finishEditing(groupName)}
+                      >
+                        <X size={14} aria-hidden="true" />
+                      </button>
                     </div>
                   ) : (
                     <>
@@ -112,10 +167,29 @@ export const GroupManagerModal = memo(function GroupManagerModal({
                       <Badge tone="neutral">{connCount}</Badge>
                       {isCustom ? (
                         <div className="group-manager-actions">
-                          <button className="icon-btn" type="button" aria-label={t("desktop.renameGroup")} onClick={() => onStartEditGroup(groupName, groupName)}>
+                          <button
+                            className="ui-button ui-button--ghost ui-button--icon"
+                            type="button"
+                            aria-label={t("desktop.renameGroup")}
+                            title={t("desktop.renameGroup")}
+                            ref={(element) => {
+                              if (element) {
+                                renameButtonRefs.current.set(groupName, element);
+                              } else {
+                                renameButtonRefs.current.delete(groupName);
+                              }
+                            }}
+                            onClick={() => onStartEditGroup(groupName, groupName)}
+                          >
                             <Settings size={13} aria-hidden="true" />
                           </button>
-                          <button className="icon-btn icon-btn--danger" type="button" aria-label={t("desktop.deleteGroup")} onClick={() => onDeleteGroup(groupName)}>
+                          <button
+                            className="ui-button ui-button--danger ui-button--icon"
+                            type="button"
+                            aria-label={t("desktop.deleteGroup")}
+                            title={t("desktop.deleteGroup")}
+                            onClick={() => onDeleteGroup(groupName)}
+                          >
                             <Trash2 size={13} aria-hidden="true" />
                           </button>
                         </div>

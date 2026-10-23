@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">JoeSSH application icon</title>
+  <desc id="desc">A terminal prompt and cursor with a connection status light.</desc>
+  <rect width="1024" height="1024" rx="208" fill="#101820" />
+  <circle cx="220" cy="224" r="52" fill="#ff6b5f" />
+  <path d="M286 392 454 512 286 632" fill="none" stroke="#f7f8f2" stroke-linecap="round" stroke-linejoin="round" stroke-width="96" />
+  <path d="M502 650h244" fill="none" stroke="#40d98b" stroke-linecap="round" stroke-width="96" />
+</svg>

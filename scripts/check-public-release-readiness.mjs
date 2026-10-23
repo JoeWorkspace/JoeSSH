@@ -6,8 +6,14 @@ const root = resolve(
   readCliValue("--root") ?? resolve(import.meta.dirname, ".."),
 );
 const expectedVersion = "0.1.0-beta.1";
+const expectedWindowsMsiVersion = "0.1.0.1";
+const expectedWindowsWixUpgradeCode = "c2a51a19-3ad8-5494-8c3e-6eb5d2e3e748";
 const allowUnhealthyGit = process.argv.includes("--allow-unhealthy-git");
 const checks = [];
+const requiredRustAuditCommands = [
+  "cargo audit --deny warnings",
+  "cargo audit --file apps/desktop/src-tauri/Cargo.lock --deny warnings",
+];
 
 checkGitHealth();
 checkVersions();
@@ -24,6 +30,7 @@ checkDesktopPtyRuntimeSurface();
 checkDesktopSftpSafetySurface();
 checkDesktopForwardingRuntimeSurface();
 checkReleaseDocs();
+checkDependencyRiskPolicy();
 checkPublicFacingBranding();
 checkSyncDistributionFiles();
 checkPrivacyPolicy();
@@ -56,7 +63,18 @@ function checkGitHealth() {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
     }).trim();
-    passIf(output === "true", "Git checkout metadata is healthy");
+    if (output !== "true") {
+      fail("Git checkout metadata is healthy", "Expected a Git working tree");
+      return;
+    }
+    for (const args of [["rev-parse", "--verify", "HEAD^{commit}"], ["fsck", "--strict"]]) {
+      execFileSync("git", args, {
+        cwd: root,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+    }
+    pass("Git checkout metadata is healthy");
   } catch (error) {
     fail("Git checkout metadata is healthy", errorMessage(error));
   }
@@ -116,6 +134,7 @@ function checkPackageScripts() {
     "qa:release:public",
     "qa:release:public:local",
     "qa:prod-audit",
+    "test:dependency-risk-register",
     "qa:lighthouse",
     "test:lighthouse-audit",
     "qa:lighthouse-audit",
@@ -136,6 +155,8 @@ function checkPackageScripts() {
     "qa:desktop-release-package",
     "test:desktop-release-evidence",
     "qa:desktop-release-evidence",
+    "test:desktop-candidate-stage",
+    "qa:desktop-candidate-stage",
     "test:web-release",
     "qa:web-release",
     "test:release-sbom",
@@ -160,6 +181,7 @@ function checkPackageScripts() {
     "release:desktop:package",
     "release:desktop:checksums",
     "release:desktop:verify-evidence",
+    "release:desktop:verify-candidate",
     "release:desktop:draft",
     "release:publish-preflight",
     "release:provenance",
@@ -180,6 +202,8 @@ function checkPackageScripts() {
     packageJson.scripts?.["release:desktop:checksums"] ?? "";
   const desktopPackageScript =
     packageJson.scripts?.["release:desktop:package"] ?? "";
+  const desktopCandidateVerifyScript =
+    packageJson.scripts?.["release:desktop:verify-candidate"] ?? "";
   passIf(
     desktopPackageScript.includes("--require-platforms") &&
       desktopPackageScript.includes("windows,macos,linux"),
@@ -197,6 +221,11 @@ function checkPackageScripts() {
       !desktopChecksumsScript.includes("target/release/bundle"),
     "Desktop checksum script does not bypass Desktop release evidence",
     desktopChecksumsScript,
+  );
+  passIf(
+    desktopCandidateVerifyScript.includes("verify-desktop-candidate.mjs"),
+    "Desktop candidate verification script uses the candidate verifier",
+    desktopCandidateVerifyScript,
   );
 
   const releaseVerifyChecksumsScript =
@@ -221,6 +250,33 @@ function checkPackageScripts() {
     releaseProvenanceVerifyScript.includes("verify-release-provenance.mjs"),
     "Release provenance verify script verifies release provenance",
     releaseProvenanceVerifyScript,
+  );
+
+  const rustAdvisoryScript = packageJson.scripts?.["qa:rust-advisory"] ?? "";
+  const rustAuditCommands = rustAdvisoryScript
+    .split("&&")
+    .map((command) => command.trim().replace(/\s+/g, " "));
+  // Keep this security gate explicit: shell fallbacks, ignored advisories, and
+  // an audit of only one of the independent lockfiles must not satisfy it.
+  passIf(
+    rustAuditCommands.length === requiredRustAuditCommands.length &&
+      requiredRustAuditCommands.every(
+        (command, index) => rustAuditCommands[index] === command,
+      ),
+    "Rust advisory QA audits root and native lockfiles with warnings denied and no bypasses",
+    rustAdvisoryScript,
+  );
+  const npmAuditScript = packageJson.scripts?.["qa:prod-audit"] ?? "";
+  passIf(
+    npmAuditScript.trim().replace(/\s+/g, " ") ===
+      "npm audit --audit-level=high && node scripts/check-dependency-risk-register.mjs",
+    "Dependency QA runs the full npm high-severity gate before live risk-register validation",
+    npmAuditScript,
+  );
+  passIf(
+    packageJson.scripts?.["test:dependency-risk-register"]?.trim().replace(/\s+/g, " ") ===
+      "node --test scripts/check-dependency-risk-register.test.mjs",
+    "Dependency risk-register regression script runs the owning test file",
   );
 
   const publicReleaseScript = packageJson.scripts?.["qa:release:public"] ?? "";
@@ -307,6 +363,7 @@ function checkCiPublicReleaseWiring() {
     "npm run qa:artifact-checksums",
     "npm run qa:desktop-release-package",
     "npm run qa:desktop-release-evidence",
+    "npm run qa:desktop-candidate-stage",
     "npm run qa:sync-release-package",
     "npm run qa:sync-release-evidence",
     "npm run qa:web-release",
@@ -325,7 +382,6 @@ function checkCiPublicReleaseWiring() {
     "npm run qa:mobile:native-preflight",
     "npm run qa:mobile-public-env",
     "cargo install cargo-audit --locked",
-    "cargo audit --deny warnings",
     "npm run release:sbom",
     "npm run release:sbom:verify",
     "npm run qa:web-admin-proxy-smoke",
@@ -344,6 +400,28 @@ function checkCiPublicReleaseWiring() {
     passIf(ci.includes(snippet), `CI public release gate runs '${snippet}'`);
   }
   passIf(
+    /^ {6}- run: npm run test:dependency-risk-register\s*$/m.test(ci),
+    "CI executes dependency risk-register regressions",
+  );
+  const rustJob =
+    ci.match(/^ {2}rust:\r?\n([\s\S]*?)(?=^ {2}[\w-]+:|(?![\s\S]))/m)?.[1] ?? "";
+  const rustAuditSteps = Array.from(
+    rustJob.matchAll(/^ {6}- run: (cargo audit[^\r\n]*)$/gm),
+    (match) => match[1].trim().replace(/\s+/g, " "),
+  );
+  for (const command of requiredRustAuditCommands) {
+    passIf(
+      rustAuditSteps.includes(command),
+      `CI Rust job runs '${command}' as an audit step`,
+    );
+  }
+  passIf(
+    rustAuditSteps.length === requiredRustAuditCommands.length &&
+      rustAuditSteps.every((command) => requiredRustAuditCommands.includes(command)) &&
+      !/^\s+(?:continue-on-error|working-directory|shell|if):/m.test(rustJob),
+    "CI Rust audits deny warnings without ignores, skipped execution, or failure bypasses",
+  );
+  passIf(
     !/\bnpm run qa:e2e(?:\s|$)/.test(ci),
     "CI E2E job avoids non-fresh E2E server reuse",
   );
@@ -352,7 +430,15 @@ function checkCiPublicReleaseWiring() {
 function checkReleaseToolingFiles() {
   for (const relativePath of [
     "scripts/package-desktop-release.mjs",
+    "scripts/check-dependency-risk-register.mjs",
+    "scripts/check-dependency-risk-register.test.mjs",
     "scripts/package-desktop-release.test.mjs",
+    "scripts/stage-desktop-candidate.mjs",
+    "scripts/stage-desktop-candidate.test.mjs",
+    "scripts/verify-desktop-candidate.mjs",
+    "scripts/verify-desktop-candidate.test.mjs",
+    "scripts/desktop-candidate-workflow.test.mjs",
+    ".github/workflows/desktop-candidates.yml",
     "scripts/package-sync-release.mjs",
     "scripts/package-sync-release.test.mjs",
     "scripts/verify-sync-release-evidence.mjs",
@@ -394,6 +480,40 @@ function checkReleaseToolingFiles() {
     desktopPackager.includes("artifactSha256") &&
       desktopPackager.includes("sha256: artifactSha256"),
     "Desktop release packager records artifact SHA256 in release evidence",
+  );
+
+  const desktopCandidateStager =
+    readTextIfExists("scripts/stage-desktop-candidate.mjs") ?? "";
+  passIf(
+    desktopCandidateStager.includes("--source-commit") &&
+      desktopCandidateStager.includes("cannot overlap") &&
+      desktopCandidateStager.includes("Desktop bundle directory"),
+    "Desktop candidate stager binds source commits and contains input/output paths",
+  );
+
+  const desktopCandidateVerifier =
+    readTextIfExists("scripts/verify-desktop-candidate.mjs") ?? "";
+  passIf(
+    desktopCandidateVerifier.includes("releaseEligible") &&
+      desktopCandidateVerifier.includes("signingStatus") &&
+      desktopCandidateVerifier.includes("sourceCommit") &&
+      desktopCandidateVerifier.includes("--standalone") &&
+      desktopCandidateVerifier.includes("SHA256SUMS.txt") &&
+      desktopCandidateVerifier.includes(
+        "candidate metadata does not list file",
+      ),
+    "Desktop candidate verifier binds non-release metadata, source, files, and checksums",
+  );
+
+  const desktopCandidateWorkflow =
+    readTextIfExists(".github/workflows/desktop-candidates.yml") ?? "";
+  passIf(
+    desktopCandidateWorkflow.includes("git rev-parse HEAD") &&
+      desktopCandidateWorkflow.includes("--source-commit") &&
+      desktopCandidateWorkflow.includes("release:desktop:verify-candidate") &&
+      desktopCandidateWorkflow.indexOf("release:desktop:verify-candidate") <
+        desktopCandidateWorkflow.indexOf("actions/upload-artifact"),
+    "Desktop candidate workflow verifies the checked-out commit before upload",
   );
 
   const desktopEvidenceVerifier =
@@ -624,6 +744,34 @@ function checkTauriDistributionMetadata() {
   passIf(
     Array.isArray(tauri.bundle?.icon) && tauri.bundle.icon.length > 0,
     "Tauri bundle icon is configured",
+  );
+  const requiredBundleIcons = [
+    "icons/icon.png",
+    "icons/icon.ico",
+    "icons/icon.icns",
+  ];
+  passIf(
+    Array.isArray(tauri.bundle?.icon) &&
+      requiredBundleIcons.every((icon) => tauri.bundle.icon.includes(icon)),
+    "Tauri bundle icon config covers Windows, macOS, and PNG targets",
+    `expected ${requiredBundleIcons.join(", ")}`,
+  );
+  passIf(
+    requiredBundleIcons.every((icon) =>
+      existsSync(resolve(root, "apps/desktop/src-tauri", icon)),
+    ),
+    "Tauri platform bundle icon files exist",
+    `expected ${requiredBundleIcons.join(", ")}`,
+  );
+  passIf(
+    tauri.bundle?.windows?.wix?.version === expectedWindowsMsiVersion,
+    `Tauri WiX version maps ${expectedVersion} to MSI-compatible ${expectedWindowsMsiVersion}`,
+    `found ${String(tauri.bundle?.windows?.wix?.version)}`,
+  );
+  passIf(
+    tauri.bundle?.windows?.wix?.upgradeCode === expectedWindowsWixUpgradeCode,
+    "Tauri WiX upgrade code is stable for JoeSSH",
+    `found ${String(tauri.bundle?.windows?.wix?.upgradeCode)}`,
   );
 }
 
@@ -903,6 +1051,7 @@ function checkDesktopHostKeyTrustSurface() {
 }
 
 function checkDesktopPtyRuntimeSurface() {
+  checkDesktopNativePtyInputBoundary();
   const requiredSnippetsByFile = [
     [
       "Desktop SSH exec output resource limit",
@@ -928,17 +1077,6 @@ function checkDesktopPtyRuntimeSurface() {
         "detect_dangerous_command(command)",
         "DangerousCommandAction::Block",
         "ssh_exec_native_safety_blocks_destructive_commands",
-      ],
-    ],
-    [
-      "Desktop native PTY command safety guard",
-      "apps/desktop/src-tauri/src/lib.rs",
-      [
-        "PTY_COMMAND_BLOCKED",
-        "pty_input_buffers",
-        "ensure_safe_pty_write(&state, id, &data)",
-        "apply_pty_input_safety",
-        "pty_input_safety_blocks_destructive_line_across_chunks",
       ],
     ],
     [
@@ -1008,6 +1146,94 @@ function checkDesktopPtyRuntimeSurface() {
       passIf(text.includes(snippet), `${label} includes '${snippet}'`);
     }
   }
+}
+
+function checkDesktopNativePtyInputBoundary() {
+  const modulePath = "apps/desktop/src-tauri/src/pty_input.rs";
+  const moduleSource = readTextIfExists(modulePath);
+  passIf(moduleSource !== null, "Desktop native PTY input module exists", modulePath);
+  const shell = stripRustComments(readText("apps/desktop/src-tauri/src/lib.rs"));
+  const moduleCode = stripRustComments(moduleSource ?? "");
+  const runtimeCode = moduleCode.split(/#\s*\[\s*cfg\s*\(\s*test\s*\)\s*\]/)[0];
+  const writeBody = rustFunctionBody(shell, "pty_write");
+  const delegateBody = rustFunctionBody(shell, "ensure_safe_pty_write");
+  const inputBody = rustFunctionBody(runtimeCode, "apply_pty_input_safety");
+
+  passIf(
+    /\bmod\s+pty_input\s*;/.test(shell) &&
+      /\buse\s+pty_input\s*::\s*\{[^}]*\bapply_pty_input_safety\b[^}]*\bPtyInputState\b[^}]*\}/.test(shell),
+    "Desktop native PTY imports the input state and preflight implementation",
+  );
+
+  const lockIndex = writeBody.indexOf("state.ptys.lock().await");
+  const guard = writeBody.match(/if\s+let\s+Err\(error\)\s*=\s*ensure_safe_pty_write\(&state,\s*id,\s*&data\)\.await\s*\{[\s\S]*?return\s+Err\(error\);\s*\}/);
+  const forwardIndex = writeBody.search(/\.write\(\s*&data\s*\)/);
+  passIf(
+    guard !== null && lockIndex >= 0 && lockIndex < guard.index &&
+      forwardIndex > guard.index + guard[0].length,
+    "Desktop native PTY serializes preflight before forwarding submitted bytes",
+  );
+  passIf(
+    /state\.pty_input_buffers\.lock\(\)\.await/.test(delegateBody) &&
+      /buffers\.entry\(pty_id\)\.or_default\(\)/.test(delegateBody) &&
+      /apply_pty_input_safety\(input_state,\s*data\)/.test(delegateBody),
+    "Desktop native PTY delegates each write to its persistent input state",
+  );
+  passIf(
+    /detect_dangerous_command\(&command\)\s*\.filter\(\|detected\|\s*detected\.action\s*==\s*DangerousCommandAction::Block\)/.test(inputBody) &&
+      /if\s+let\s+Some\(detected\)\s*=\s*blocked\s*\{\s*return\s+Err\(format!\("\{PTY_COMMAND_BLOCKED\}:/.test(inputBody),
+    "Desktop native PTY module rejects explicitly destructive submitted text",
+  );
+  const lineLimit = inputBody.match(/if\s+input\.command\.len\(\)\s*(?:==|>=)\s*PTY_COMMAND_BUFFER_MAX_BYTES\s*\{\s*input\.clear_line\(\);\s*return\s+Err\(/);
+  passIf(
+    /const\s+PTY_COMMAND_BUFFER_MAX_BYTES\s*:\s*usize\s*=\s*16\s*\*\s*1024\s*;/.test(runtimeCode) &&
+      lineLimit !== null && inputBody.indexOf("input.command.insert(") > lineLimit.index,
+    "Desktop native PTY module bounds input state before inserting bytes",
+  );
+  passIf(
+    /const\s+ESCAPE_SEQUENCE_MAX_BYTES\s*:\s*usize\s*=\s*16\s*;/.test(runtimeCode) &&
+      /if\s+input\.escape_sequence\.len\(\)\s*>=\s*ESCAPE_SEQUENCE_MAX_BYTES\s*\{\s*input\.escape_sequence\.clear\(\);/.test(inputBody),
+    "Desktop native PTY module bounds partial escape sequences",
+  );
+  for (const testName of [
+    "explicit_destructive_input_stays_blocked_across_chunks",
+    "unknown_controls_do_not_bypass_explicit_command_preflight",
+    "input_and_escape_state_stay_bounded_and_recover_after_rejection",
+  ]) {
+    const body = rustFunctionBody(moduleCode, testName);
+    passIf(
+      body.includes("apply_pty_input_safety(") && /\.unwrap_err\(\)|\.is_err\(\)/.test(body),
+      `Desktop native PTY module has rejection regression '${testName}'`,
+    );
+  }
+}
+
+function rustFunctionBody(source, name) {
+  const definition = new RegExp(`\\bfn\\s+${name}\\s*\\(`).exec(source);
+  if (!definition) return "";
+  return bracedBody(source, source.indexOf("{", definition.index));
+}
+
+function callbackBody(source, name) {
+  const definition = new RegExp(`\\bconst\\s+${name}\\s*=\\s*useCallback\\s*\\(`).exec(source);
+  if (!definition) return "";
+  const arrow = source.indexOf("=>", definition.index);
+  const start = source.indexOf("{", arrow);
+  if (arrow === -1 || source.slice(arrow + 2, start).trim() !== "") return "";
+  return bracedBody(source, start);
+}
+
+function bracedBody(source, start) {
+  if (start === -1) return "";
+  // Ignore braces in string/character literals while locating the body.
+  const structure = source.replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])'/g, (literal) => " ".repeat(literal.length));
+  let depth = 1;
+  for (let index = start + 1; index < structure.length; index += 1) {
+    if (structure[index] === "{") depth += 1;
+    if (structure[index] === "}") depth -= 1;
+    if (depth === 0) return source.slice(start + 1, index);
+  }
+  return "";
 }
 
 function checkDesktopSftpSafetySurface() {
@@ -1127,17 +1353,12 @@ function checkDesktopSftpSafetySurface() {
 }
 
 function checkDesktopForwardingRuntimeSurface() {
+  checkDesktopForwardingSessionOwnership();
   const requiredSnippetsByFile = [
     [
       "Desktop forwarding single-flight runtime hook",
       "apps/desktop/src/useForwardRules.ts",
-      [
-        "pending?: boolean",
-        "inFlightRules",
-        "inFlightRules.current.has(id)",
-        "inFlightRules.current.add(id)",
-        "inFlightRules.current.delete(id)",
-      ],
+      ["pending?: boolean"],
     ],
     [
       "Desktop forwarding single-flight tests",
@@ -1146,6 +1367,10 @@ function checkDesktopForwardingRuntimeSurface() {
         "ignores duplicate start calls while a forward is pending",
         "ignores duplicate stop calls while a forward stop is pending",
         "toHaveBeenCalledTimes(1)",
+        "preserves forwards across tab changes and stops the original forward after returning",
+        "keeps a pending start's result in its owning session while another tab is active",
+        "cleans a removed session and ignores its late pending forward",
+        "disposes live and late forwards when the workspace unmounts",
       ],
     ],
     [
@@ -1176,6 +1401,57 @@ function checkDesktopForwardingRuntimeSurface() {
       passIf(text.includes(snippet), `${label} includes '${snippet}'`);
     }
   }
+}
+
+function checkDesktopForwardingSessionOwnership() {
+  const source = stripRustComments(readTextIfExists("apps/desktop/src/useForwardRules.ts") ?? "");
+  const start = callbackBody(source, "startRule");
+  const stop = callbackBody(source, "stopRule");
+  const update = callbackBody(source, "update");
+  const getSession = callbackBody(source, "getSession");
+  const compact = (text) => text.replace(/\s+/g, "");
+  const compactSource = compact(source);
+
+  passIf(
+    /constsessionsRef=useRef\(newMap<string,ForwardSession>\(\)\)/.test(compactSource) &&
+      /if\(!mountedRef\.current\|\|!liveIdsRef\.current\.has\(sessionId\)\)returnundefined;/.test(compact(getSession)) &&
+      /session=\{runtime:\{\},inFlight:newSet\(\),stop\}/.test(compact(getSession)) &&
+      /sessionsRef\.current\.set\(sessionId,session\)/.test(compact(getSession)),
+    "Desktop forwarding owns runtime and in-flight work per live session",
+  );
+  passIf(
+    /constisCurrent=useCallback\(\(session:ForwardSession\)=>mountedRef\.current&&liveIdsRef\.current\.has\(sessionId\)&&sessionsRef\.current\.get\(sessionId\)===session,/.test(compactSource) &&
+      /^if\(!isCurrent\(session\)\)return;session\.runtime=/.test(compact(update)),
+    "Desktop forwarding rejects state updates from expired session identities",
+  );
+  for (const [label, body, operation] of [
+    ["start", start, "await start("],
+    ["stop", stop, "await stop("],
+  ]) {
+    const guard = body.match(/if\s*\(!session\s*\|\|\s*session\.inFlight\.has\(id\)[^)]*\)\s*return;/);
+    const reserve = body.indexOf("session.inFlight.add(id)");
+    const operationIndex = body.indexOf(operation);
+    passIf(
+      guard !== null && reserve > guard.index && operationIndex > reserve &&
+        body.lastIndexOf("session.inFlight.delete(id)") > operationIndex,
+      `Desktop forwarding serializes ${label} operations within their owning session`,
+    );
+  }
+  const lateResult = start.match(/if\s*\(!isCurrent\(session\)\)\s*\{\s*if\s*\(stop\)\s*await\s+stop\(forward_id\)\.catch\(\(\)\s*=>\s*undefined\);\s*return;\s*\}/);
+  passIf(
+    lateResult !== null && lateResult.index > start.indexOf("await start(") &&
+      start.indexOf("update(session, id, { active: true, forwardId:") > lateResult.index + lateResult[0].length,
+    "Desktop forwarding stops late listeners before publishing active state",
+  );
+  passIf(
+    /if\(!liveIdsRef\.current\.has\(id\)\)\{sessionsRef\.current\.delete\(id\);disposeSession\(session\);\}/.test(compactSource) &&
+      /if\(rule\.forwardId&&session\.stop\)\{voidsession\.stop\(rule\.forwardId\)\.catch\(\(\)=>undefined\);\}/.test(compactSource),
+    "Desktop forwarding invalidates removed sessions and stops their listeners",
+  );
+  passIf(
+    /return\(\)=>\{mountedRef\.current=false;for\(constsessionofsessions\.values\(\)\)disposeSession\(session\);sessions\.clear\(\);\}/.test(compactSource),
+    "Desktop forwarding disposes all listeners and session identities on unmount",
+  );
 }
 
 function checkReleaseDocs() {
@@ -1306,18 +1582,6 @@ function checkReleaseDocs() {
       ],
     ],
     [
-      "Dependency risk register",
-      "docs/dependency-risk-register.md",
-      [
-        "js-yaml",
-        "GHSA-h67p-54hq-rp68",
-        "@opentelemetry/core",
-        "GHSA-8988-4f7v-96qf",
-        "esbuild",
-        "GHSA-g7r4-m6w7-qqqr",
-      ],
-    ],
-    [
       "Public Beta privacy note",
       "docs/privacy-public-beta.md",
       ["opt-in", "SSH host", "token", "runtime", "install cleanup"],
@@ -1333,6 +1597,58 @@ function checkReleaseDocs() {
       }
     }
   }
+}
+
+function checkDependencyRiskPolicy() {
+  const register = readTextIfExists("docs/dependency-risk-register.md") ?? "";
+  const policy = register.replace(/[`*_]/g, "").replace(/\s+/g, " ");
+  passIf(
+    /High or critical findings in the full npm audit block release\./i.test(policy),
+    "Dependency risk policy blocks release on full npm high or critical findings",
+  );
+  passIf(
+    /Both Rust lockfiles must pass cargo audit --deny warnings\./i.test(policy),
+    "Dependency risk policy requires both Rust lockfiles to deny warnings",
+  );
+  const npmSection =
+    register.match(/^## Unresolved npm findings\r?\n([\s\S]*?)(?=^## |(?![\s\S]))/m)?.[1] ?? "";
+  const rustSection =
+    register.match(/^## RustSec\r?\n([\s\S]*?)(?=^## |(?![\s\S]))/m)?.[1] ?? "";
+  passIf(
+    (/\bNo unresolved npm findings\./.test(npmSection) && !/^\s*\|/m.test(npmSection)) ||
+      riskTableHasFields(npmSection, [
+        /^Origin$/i,
+        /^Advisory$/i,
+        /^Impact and decision$/i,
+        /^Owner and next action$/i,
+      ]),
+    "Unresolved npm risk rows include advisory links, impact, decisions, owners, and next actions",
+  );
+  passIf(
+    (/\bNo unresolved RustSec findings\./.test(rustSection) && !/^\s*\|/m.test(rustSection)) ||
+      riskTableHasFields(rustSection, [
+        /^Package$/i,
+        /^Advisory$/i,
+        /^Decision and follow-up$/i,
+      ]),
+    "Unresolved Rust risk rows include advisory links, decisions, and follow-up",
+  );
+}
+
+function riskTableHasFields(section, headers) {
+  const rows = section.split(/\r?\n/)
+    .filter((line) => line.trim().startsWith("|"))
+    .map((line) => line.trim().split("|").slice(1, -1).map((cell) => cell.trim()));
+  if (rows.length < 3 || rows[0].length !== headers.length || rows[1].length !== headers.length ||
+      !headers.every((header, index) => header.test(rows[0][index])) ||
+      !rows[1].every((cell) => /^:?-{3,}:?$/.test(cell))) {
+    return false;
+  }
+  return rows.slice(2).every((row) =>
+    row.length === headers.length && row.every(Boolean) &&
+    /https:\/\/(?:github\.com\/advisories\/GHSA-[a-z0-9-]+|rustsec\.org\/advisories\/RUSTSEC-\d{4}-\d{4}\.html)\b/i.test(row[1]) &&
+    (headers.length !== 4 || /^[^:]+:\s*\S/.test(row[3])),
+  );
 }
 
 function checkPublicFacingBranding() {
@@ -1695,9 +2011,9 @@ function checkWebAdminDataMode() {
     "Web Admin UI surfaces snapshot health and refresh metadata",
   );
   passIf(
-    localization.includes("'web.snapshot.status'") &&
-      localization.includes("'web.snapshot.health.ready'") &&
-      localization.includes("'web.snapshot.health.error'") &&
+    includesQuotedText(localization, "web.snapshot.status") &&
+      includesQuotedText(localization, "web.snapshot.health.ready") &&
+      includesQuotedText(localization, "web.snapshot.health.error") &&
       localization.includes(
         "localMessages[locale][key] ?? commonMessages[key]",
       ),
@@ -2108,6 +2424,10 @@ function readText(relativePath) {
 function readTextIfExists(relativePath) {
   const fullPath = resolve(root, relativePath);
   return existsSync(fullPath) ? readFileSync(fullPath, "utf8") : null;
+}
+
+function includesQuotedText(source, text) {
+  return source.includes(`'${text}'`) || source.includes(`"${text}"`);
 }
 
 function pass(label, detail) {

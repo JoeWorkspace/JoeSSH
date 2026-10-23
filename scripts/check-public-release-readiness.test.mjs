@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,11 +9,24 @@ import test from "node:test";
 const CHECKER_PATH = fileURLToPath(
   new URL("./check-public-release-readiness.mjs", import.meta.url),
 );
+const ptyInputFixture = readFileSync(
+  new URL("../apps/desktop/src-tauri/src/pty_input.rs", import.meta.url),
+  "utf8",
+);
+const forwardingFixture = readFileSync(
+  new URL("../apps/desktop/src/useForwardRules.ts", import.meta.url),
+  "utf8",
+);
+const forwardingTestsFixture = readFileSync(
+  new URL("../apps/desktop/src/useForwardRules.test.ts", import.meta.url),
+  "utf8",
+);
 const releaseScriptNames = [
   "qa",
   "qa:release:public",
   "qa:release:public:local",
   "qa:prod-audit",
+  "test:dependency-risk-register",
   "qa:lighthouse",
   "test:lighthouse-audit",
   "qa:lighthouse-audit",
@@ -34,6 +47,8 @@ const releaseScriptNames = [
   "qa:desktop-release-package",
   "test:desktop-release-evidence",
   "qa:desktop-release-evidence",
+  "test:desktop-candidate-stage",
+  "qa:desktop-candidate-stage",
   "test:web-release",
   "qa:web-release",
   "test:release-sbom",
@@ -58,6 +73,7 @@ const releaseScriptNames = [
   "release:desktop:package",
   "release:desktop:checksums",
   "release:desktop:verify-evidence",
+  "release:desktop:verify-candidate",
   "release:desktop:draft",
   "release:publish-preflight",
   "release:provenance",
@@ -79,6 +95,15 @@ function fixtureScriptValue(name, overrides = {}) {
   if (name === "qa:mobile-public-env") {
     return "npm run test:mobile-public-env && node scripts/check-mobile-public-env.mjs";
   }
+  if (name === "qa:rust-advisory") {
+    return "cargo audit --deny warnings && cargo audit --file apps/desktop/src-tauri/Cargo.lock --deny warnings";
+  }
+  if (name === "qa:prod-audit") {
+    return "npm audit --audit-level=high && node scripts/check-dependency-risk-register.mjs";
+  }
+  if (name === "test:dependency-risk-register") {
+    return "node --test scripts/check-dependency-risk-register.test.mjs";
+  }
   if (name === "qa") {
     return "npm run lint && npm run qa:lighthouse-audit && npm run qa:e2e:fresh";
   }
@@ -87,6 +112,9 @@ function fixtureScriptValue(name, overrides = {}) {
   }
   if (name === "release:desktop:package") {
     return "node scripts/package-desktop-release.mjs --require-platforms windows,macos,linux";
+  }
+  if (name === "release:desktop:verify-candidate") {
+    return "node scripts/verify-desktop-candidate.mjs";
   }
   if (name === "release:verify-checksums") {
     return "node scripts/verify-artifact-checksums.mjs --all-release";
@@ -129,10 +157,25 @@ function createFixture(t, overrides = {}) {
       productName: "JoeSSH",
       version: "0.1.0-beta.1",
       identifier: "dev.atlasterm.joessh",
-      bundle: { active: true, targets: "all", icon: ["icons/icon.png"] },
+      bundle: {
+        active: true,
+        targets: "all",
+        icon: ["icons/icon.png", "icons/icon.ico", "icons/icon.icns"],
+        windows: {
+          wix: {
+            version: "0.1.0.1",
+            upgradeCode: "c2a51a19-3ad8-5494-8c3e-6eb5d2e3e748",
+          },
+        },
+      },
       app: { windows: [{ label: "main" }] },
     }),
+    "apps/desktop/src-tauri/icons/icon.png": "png icon fixture",
+    "apps/desktop/src-tauri/icons/icon.ico": "ico icon fixture",
+    "apps/desktop/src-tauri/icons/icon.icns": "icns icon fixture",
     ".github/workflows/ci.yml": ciFixture(),
+    ".github/workflows/desktop-candidates.yml":
+      "git rev-parse HEAD\nstage-desktop-candidate.mjs --source-commit\nrelease:desktop:verify-candidate --source-commit\nactions/upload-artifact\n",
     ".github/workflows/dependabot-auto-merge.yml":
       "dependency-type\ndirect:development\n",
     "scripts/verify-desktop-release-evidence.mjs":
@@ -140,7 +183,16 @@ function createFixture(t, overrides = {}) {
     "scripts/verify-desktop-release-evidence.test.mjs": "",
     "scripts/package-desktop-release.mjs":
       "artifactSha256 sha256: artifactSha256\n",
+    "scripts/check-dependency-risk-register.mjs": "",
+    "scripts/check-dependency-risk-register.test.mjs": "",
     "scripts/package-desktop-release.test.mjs": "",
+    "scripts/stage-desktop-candidate.mjs":
+      "--source-commit cannot overlap Desktop bundle directory\n",
+    "scripts/stage-desktop-candidate.test.mjs": "",
+    "scripts/verify-desktop-candidate.mjs":
+      "releaseEligible signingStatus sourceCommit --standalone SHA256SUMS.txt candidate metadata does not list file\n",
+    "scripts/verify-desktop-candidate.test.mjs": "",
+    "scripts/desktop-candidate-workflow.test.mjs": "",
     "scripts/package-sync-release.mjs":
       "removeStaleSyncReleaseBinaries isSyncReleaseBinaryName SHA256SUMS.txt\n",
     "scripts/package-sync-release.test.mjs": "",
@@ -195,8 +247,9 @@ function createFixture(t, overrides = {}) {
       "// SFTP_MAX_TRANSFER_BYTES SFTP_TRANSFER_LIMIT_EXCEEDED download_limited(&path, SFTP_MAX_TRANSFER_BYTES) sanitize_sftp_transfer_error ensure_sftp_transfer_size(data.len()) sftp_transfer_errors_use_sftp_limit_copy sftp_transfer_size_guard_rejects_oversized_payloads",
       "// OutputLimitExceeded command output exceeded desktop safety limit",
       "// SSH_EXEC_COMMAND_BLOCKED ensure_safe_ssh_exec_command(&command) detect_dangerous_command(command) DangerousCommandAction::Block ssh_exec_native_safety_blocks_destructive_commands",
-      "// PTY_COMMAND_BLOCKED pty_input_buffers ensure_safe_pty_write(&state, id, &data) apply_pty_input_safety pty_input_safety_blocks_destructive_line_across_chunks",
+      nativePtyShellFixture(),
     ].join("\n"),
+    "apps/desktop/src-tauri/src/pty_input.rs": ptyInputFixture,
     "crates/core/src/ssh.rs":
       'pub async fn probe_host_key() { let policy = HostKeyPolicy::AcceptAny; handle.disconnect(russh::Disconnect::ByApplication, "", ""); }\nSSH_EXEC_MAX_OUTPUT_BYTES\nOutputLimitExceeded\nexec_output_would_exceed_limit\nexec_output_limit_allows_boundary_and_rejects_growth\nis_safe_sftp_entry_name\nUNSAFE_SFTP_ENTRY_FORMAT_RANGES\nfilter_map(|entry|\nsftp_entry_name_guard_rejects_paths_and_control_characters\nsafe\\u{202e}cod.exe\n',
     "crates/core/tests/core_tests.rs":
@@ -215,10 +268,8 @@ function createFixture(t, overrides = {}) {
       "SFTP_TRANSFER_MAX_BYTES\nknownSizeBytes\nrejectTooLarge\ndata.length > maxBytes\n",
     "apps/desktop/src/useSftpTransfer.test.ts":
       "rejects downloads with known sizes over the transfer limit before reading\nrejects downloaded payloads over the transfer limit\nrejects upload payloads over the transfer limit before writing\n",
-    "apps/desktop/src/useForwardRules.ts":
-      "pending?: boolean\ninFlightRules\ninFlightRules.current.has(id)\ninFlightRules.current.add(id)\ninFlightRules.current.delete(id)\n",
-    "apps/desktop/src/useForwardRules.test.ts":
-      "ignores duplicate start calls while a forward is pending\nignores duplicate stop calls while a forward stop is pending\ntoHaveBeenCalledTimes(1)\n",
+    "apps/desktop/src/useForwardRules.ts": forwardingFixture,
+    "apps/desktop/src/useForwardRules.test.ts": forwardingTestsFixture,
     "apps/desktop/src/panels.tsx":
       "knownHosts.entries knownHosts.onRemove desktop.knownHostFirstSeen desktop.knownHostLastSeen desktop.removeKnownHost desktop.confirmKnownHostRemove desktop.confirmKnownHostsClear pendingKnownHostAction\npendingUploadFile desktop.sftpOverwriteTitle desktop.sftpOverwriteDetail desktop.sftpOverwriteConfirm desktop.sftpOverwriteCancel transfer?.onUpload(pendingUploadFile)\nconst isPending = Boolean(rt?.pending)\ndisabled={!forwards || isPending}\n",
     "apps/desktop/src/panels.test.tsx":
@@ -257,8 +308,7 @@ function createFixture(t, overrides = {}) {
       "The public root path defaults to live Web Admin. _headers CSP VITE_ATLASTERM_ADMIN_SNAPSHOT_URL joessh-web-admin verify-web-release-package.mjs .well-known/security.txt node-admin-snapshot-proxy.mjs ATLASTERM_WEB_ADMIN_PROXY_ALLOW_PUBLIC_BIND ATLASTERM_WEB_ADMIN_PROXY_OPERATOR_TOKEN ATLASTERM_ADMIN_SNAPSHOT_PROXY_MAX_BYTES upstream_snapshot_too_large 1 MiB qa:web-admin-proxy-smoke qa:lighthouse qa:web-admin-sync-topology-smoke qa:web-admin-sync-topology-release-smoke ?adminSnapshot=fixture\n",
     "docs/self-hosting-sync.md":
       "ATLASTERM_SYNC_AUTH_TOKEN ATLASTERM_SYNC_METRICS_TOKEN ATLASTERM_SYNC_ALLOW_EPHEMERAL_STORAGE 32 characters /readyz /metrics schema_version: 1 qa:sync:config-guard-smoke ledger.lock joessh_sync_storage_write_failures_total qa:sync:backup-restore-smoke RPO RTO systemd Docker HEALTHCHECK Authorization: Bearer ${ATLASTERM_SYNC_METRICS_TOKEN} qa:sync-release-package qa:sync:release-smoke\n",
-    "docs/dependency-risk-register.md":
-      "js-yaml GHSA-h67p-54hq-rp68 @opentelemetry/core GHSA-8988-4f7v-96qf esbuild GHSA-g7r4-m6w7-qqqr\n",
+    "docs/dependency-risk-register.md": dependencyRiskFixture(),
     "docs/privacy-public-beta.md": privacyFixture(),
     "deploy/web-admin/node-admin-snapshot-proxy.mjs":
       "ATLASTERM_WEB_ADMIN_PROXY_ALLOW_PUBLIC_BIND ATLASTERM_WEB_ADMIN_PROXY_OPERATOR_TOKEN isAuthorizedBearer timingSafeEqual isLoopbackHost ATLASTERM_ADMIN_SNAPSHOT_PROXY_MAX_BYTES readUpstreamTextWithLimit content-length upstream_snapshot_too_large UpstreamSnapshotTooLargeError\n",
@@ -290,7 +340,7 @@ function createFixture(t, overrides = {}) {
     "apps/web/src/adminData.test.ts":
       "getAdminSnapshotSourceDescriptor('?adminSnapshot=fixture')\ngetAdminSnapshotSourceDescriptor('?adminSnapshot=live')\noversized admin snapshot content-length\noversized streaming admin snapshot bodies\nAdmin snapshot response was too large.\n",
     "apps/web/src/localization.ts":
-      "const commonMessages = { 'web.snapshot.status': 'Snapshot status', 'web.snapshot.health.ready': 'Healthy', 'web.snapshot.health.error': 'Unhealthy' };\nreturn localMessages[locale][key] ?? commonMessages[key];\n",
+      'const commonMessages = { "web.snapshot.status": "Snapshot status", "web.snapshot.health.ready": "Healthy", "web.snapshot.health.error": "Unhealthy" };\nreturn localMessages[locale][key] ?? commonMessages[key];\n',
     "apps/web/src/localization.test.ts":
       "web.snapshot.lastRefreshed\nweb.snapshot.health.ready\n",
     ...overrides,
@@ -309,10 +359,10 @@ function writeFile(root, relativePath, content) {
   writeFileSync(path, content, "utf8");
 }
 
-function runChecker(root) {
+function runChecker(root, allowUnhealthyGit = true) {
   return spawnSync(
     process.execPath,
-    [CHECKER_PATH, "--root", root, "--allow-unhealthy-git"],
+    [CHECKER_PATH, "--root", root, ...(allowUnhealthyGit ? ["--allow-unhealthy-git"] : [])],
     {
       encoding: "utf8",
     },
@@ -324,6 +374,7 @@ function ciFixture() {
     "npm run qa:artifact-checksums",
     "npm run qa:desktop-release-package",
     "npm run qa:desktop-release-evidence",
+    "npm run qa:desktop-candidate-stage",
     "npm run qa:sync-release-package",
     "npm run qa:sync-release-evidence",
     "npm run qa:web-release",
@@ -336,12 +387,12 @@ function ciFixture() {
     "npm run qa:e2e:web-real-sync:fresh",
     "npm run qa:e2e:visual:fresh",
     "npm run qa:prod-audit",
+    "      - run: npm run test:dependency-risk-register",
     "npm run qa:lighthouse",
     "npm run qa:tauri",
     "npm run qa:mobile:native-preflight",
     "npm run qa:mobile-public-env",
     "cargo install cargo-audit --locked",
-    "cargo audit --deny warnings",
     "npm run release:sbom",
     "npm run release:sbom:verify",
     "npm run qa:e2e:fresh",
@@ -355,6 +406,26 @@ function ciFixture() {
     "npm run qa:sync:backup-restore-smoke",
     "node scripts/verify-sync-release-evidence.mjs",
     "node scripts/check-public-release-readiness.mjs",
+    "  rust:",
+    "    steps:",
+    "      - run: cargo audit --deny warnings",
+    "      - run: cargo audit --file apps/desktop/src-tauri/Cargo.lock --deny warnings",
+  ].join("\n");
+}
+
+function dependencyRiskFixture() {
+  return [
+    "# Dependency Risk Register",
+    "High or critical findings in the full npm audit block release.",
+    "Both Rust lockfiles must pass `cargo audit --deny warnings`.",
+    "## Unresolved npm findings",
+    "| Origin | Advisory | Impact and decision | Owner and next action |",
+    "| --- | --- | --- | --- |",
+    "| example-dependency | https://github.com/advisories/GHSA-aaaa-bbbb-cccc | Resource exhaustion; release blocked. | Release maintainers: adopt a supported fix. |",
+    "## RustSec",
+    "| Package | Advisory | Decision and follow-up |",
+    "| --- | --- | --- |",
+    "| example-crate | https://rustsec.org/advisories/RUSTSEC-2099-0001.html | Release maintainers must adopt a supported fix before release. |",
   ].join("\n");
 }
 
@@ -408,6 +479,30 @@ export function createErrorMonitor() {
 `;
 }
 
+function nativePtyShellFixture() {
+  return `
+mod pty_input;
+use pty_input::{apply_pty_input_safety, PtyInputState};
+
+async fn pty_write(state: tauri::State<'_, AppState>, pty_id: String, data: Vec<u8>) -> Result<(), String> {
+    let id = parse_id(&pty_id)?;
+    let ptys = state.ptys.lock().await;
+    let writer = ptys.get(&id).ok_or_else(|| "pty not found".to_string())?;
+    if let Err(error) = ensure_safe_pty_write(&state, id, &data).await {
+        let _ = writer.value.write(&[0x03]).await;
+        return Err(error);
+    }
+    writer.value.write(&data).await.map_err(sanitize_ssh_error)
+}
+
+async fn ensure_safe_pty_write(state: &tauri::State<'_, AppState>, pty_id: Uuid, data: &[u8]) -> Result<(), String> {
+    let mut buffers = state.pty_input_buffers.lock().await;
+    let input_state = buffers.entry(pty_id).or_default();
+    apply_pty_input_safety(input_state, data)
+}
+`;
+}
+
 function appShellFixture(name) {
   return `
 import { createErrorMonitor, createNoopErrorMonitor } from "@atlasterm/error-monitor";
@@ -442,6 +537,48 @@ test("accepts release readiness when runtime telemetry control evidence is prese
 
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.match(result.stdout, /Public Beta release readiness checks passed/);
+});
+
+function runFixtureGit(root, args) {
+  const result = spawnSync("git", args, { cwd: root, encoding: "utf8" });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  return result.stdout.trim();
+}
+
+function commitFixture(root) {
+  runFixtureGit(root, ["init", "--quiet"]);
+  runFixtureGit(root, ["add", "package.json"]);
+  runFixtureGit(root, [
+    "-c", "user.name=Readiness fixture", "-c", "user.email=fixture@example.invalid",
+    "-c", "core.hooksPath=.fixture-no-hooks", "-c", "commit.gpgsign=false",
+    "commit", "--quiet", "-m", "Fixture baseline",
+  ]);
+}
+
+test("release readiness rejects an empty Git repository", (t) => {
+  const root = createFixture(t);
+  runFixtureGit(root, ["init", "--quiet"]);
+  const result = runChecker(root, false);
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.match(result.stdout, /FAIL Git checkout metadata is healthy/);
+});
+
+test("release readiness accepts complete Git objects", (t) => {
+  const root = createFixture(t);
+  commitFixture(root);
+  const result = runChecker(root, false);
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /PASS Git checkout metadata is healthy/);
+});
+
+test("release readiness rejects a missing tracked Git object", (t) => {
+  const root = createFixture(t);
+  commitFixture(root);
+  const blob = runFixtureGit(root, ["rev-parse", "HEAD:package.json"]);
+  rmSync(join(root, ".git", "objects", blob.slice(0, 2), blob.slice(2)));
+  const result = runChecker(root, false);
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.match(result.stdout, /FAIL Git checkout metadata is healthy/);
 });
 
 test("rejects missing error-monitor runtime telemetry disable implementation evidence", (t) => {
@@ -613,6 +750,105 @@ test("rejects Desktop release metadata that drifts from Tauri config", (t) => {
   assert.match(
     result.stdout,
     /FAIL Desktop release metadata documents signing evidence environment variables/,
+  );
+});
+
+test("rejects Windows MSI metadata that cannot package the current beta", (t) => {
+  const result = runChecker(
+    createFixture(t, {
+      "apps/desktop/src-tauri/tauri.conf.json": JSON.stringify({
+        productName: "JoeSSH",
+        version: "0.1.0-beta.1",
+        identifier: "dev.atlasterm.joessh",
+        bundle: {
+          active: true,
+          targets: "all",
+          icon: ["icons/icon.png", "icons/icon.ico", "icons/icon.icns"],
+          windows: {
+            wix: {
+              version: "0.1.0-beta.1",
+              upgradeCode: "changed-upgrade-code",
+            },
+          },
+        },
+        app: { windows: [{ label: "main" }] },
+      }),
+    }),
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stdout,
+    /FAIL Tauri WiX version maps 0\.1\.0-beta\.1 to MSI-compatible 0\.1\.0\.1/,
+  );
+  assert.match(
+    result.stdout,
+    /FAIL Tauri WiX upgrade code is stable for JoeSSH/,
+  );
+});
+
+test("rejects Desktop bundle config without platform-native icons", (t) => {
+  const result = runChecker(
+    createFixture(t, {
+      "apps/desktop/src-tauri/tauri.conf.json": JSON.stringify({
+        productName: "JoeSSH",
+        version: "0.1.0-beta.1",
+        identifier: "dev.atlasterm.joessh",
+        bundle: {
+          active: true,
+          targets: "all",
+          icon: ["icons/icon.png"],
+          windows: {
+            wix: {
+              version: "0.1.0.1",
+              upgradeCode: "c2a51a19-3ad8-5494-8c3e-6eb5d2e3e748",
+            },
+          },
+        },
+        app: { windows: [{ label: "main" }] },
+      }),
+    }),
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stdout,
+    /FAIL Tauri bundle icon config covers Windows, macOS, and PNG targets/,
+  );
+});
+
+test("rejects Desktop candidate tooling that can upload without verification", (t) => {
+  const result = runChecker(
+    createFixture(t, {
+      "package.json": JSON.stringify({
+        version: "0.1.0-beta.1",
+        scripts: Object.fromEntries(
+          releaseScriptNames.map((name) => [
+            name,
+            fixtureScriptValue(name, {
+              "release:desktop:verify-candidate": "echo skipped",
+            }),
+          ]),
+        ),
+      }),
+      "scripts/verify-desktop-candidate.mjs": "console.log('unchecked');\n",
+      ".github/workflows/desktop-candidates.yml":
+        "git rev-parse HEAD\n--source-commit\nactions/upload-artifact\nrelease:desktop:verify-candidate\n",
+    }),
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stdout,
+    /FAIL Desktop candidate verification script uses the candidate verifier/,
+  );
+  assert.match(
+    result.stdout,
+    /FAIL Desktop candidate verifier binds non-release metadata, source, files, and checksums/,
+  );
+  assert.match(
+    result.stdout,
+    /FAIL Desktop candidate workflow verifies the checked-out commit before upload/,
   );
 });
 
@@ -835,6 +1071,225 @@ test("rejects publish preflight scripts without release provenance verification"
     /FAIL Publish preflight verifies release provenance/,
   );
 });
+
+for (const [name, from, to, failure] of [
+  [
+    "full npm blocking policy",
+    "High or critical findings in the full npm audit block release.",
+    "High or critical findings are documented.",
+    "Dependency risk policy blocks release on full npm high or critical findings",
+  ],
+  [
+    "both Rust locks policy",
+    "Both Rust lockfiles must pass `cargo audit --deny warnings`.",
+    "The root Rust lockfile must pass cargo audit.",
+    "Dependency risk policy requires both Rust lockfiles to deny warnings",
+  ],
+  [
+    "npm advisory link",
+    "https://github.com/advisories/GHSA-aaaa-bbbb-cccc",
+    "GHSA-aaaa-bbbb-cccc",
+    "Unresolved npm risk rows include advisory links",
+  ],
+  [
+    "Rust advisory link",
+    "https://rustsec.org/advisories/RUSTSEC-2099-0001.html",
+    "RUSTSEC-2099-0001",
+    "Unresolved Rust risk rows include advisory links",
+  ],
+  [
+    "npm impact and decision",
+    "Resource exhaustion; release blocked.",
+    "",
+    "Unresolved npm risk rows include advisory links",
+  ],
+  [
+    "npm owner",
+    "Release maintainers: adopt a supported fix.",
+    ": adopt a supported fix.",
+    "Unresolved npm risk rows include advisory links",
+  ],
+  [
+    "npm next action",
+    "Release maintainers: adopt a supported fix.",
+    "Release maintainers:",
+    "Unresolved npm risk rows include advisory links",
+  ],
+]) {
+  test(`rejects dependency register without ${name}`, (t) => {
+    const result = runChecker(createFixture(t, {
+      "docs/dependency-risk-register.md": dependencyRiskFixture().replace(from, to),
+    }));
+
+    assert.equal(result.status, 1);
+    assert.ok(result.stdout.includes(`FAIL ${failure}`), result.stdout);
+  });
+}
+
+test("accepts documented resolved dependency sections without stale advisory names", (t) => {
+  const result = runChecker(createFixture(t, {
+    "docs/dependency-risk-register.md": [
+      "High or critical findings in the full npm audit block release.",
+      "Both Rust lockfiles must pass `cargo audit --deny warnings`.",
+      "## Unresolved npm findings",
+      "No unresolved npm findings.",
+      "## RustSec",
+      "No unresolved RustSec findings.",
+    ].join("\n"),
+  }));
+
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+});
+
+for (const script of [
+  "npm audit --omit=dev --audit-level=high && node scripts/check-dependency-risk-register.mjs",
+  "npm audit --audit-level=high",
+  "npm audit --audit-level=high || node scripts/check-dependency-risk-register.mjs",
+]) {
+  test(`rejects dependency QA bypass: ${script}`, (t) => {
+    const root = createFixture(t);
+    const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+    packageJson.scripts["qa:prod-audit"] = script;
+    writeFile(root, "package.json", JSON.stringify(packageJson));
+
+    const result = runChecker(root);
+
+    assert.equal(result.status, 1);
+    assert.match(result.stdout, /FAIL Dependency QA runs the full npm high-severity gate before live risk-register validation/);
+  });
+}
+
+test("rejects a no-op dependency risk-register regression script", (t) => {
+  const root = createFixture(t);
+  const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+  packageJson.scripts["test:dependency-risk-register"] = "echo ok";
+  writeFile(root, "package.json", JSON.stringify(packageJson));
+
+  const result = runChecker(root);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /FAIL Dependency risk-register regression script runs the owning test file/);
+});
+
+test("rejects CI with dependency risk-register regressions commented out", (t) => {
+  const result = runChecker(createFixture(t, {
+    ".github/workflows/ci.yml": ciFixture().replace(
+      "      - run: npm run test:dependency-risk-register",
+      "      # - run: npm run test:dependency-risk-register",
+    ),
+  }));
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /FAIL CI executes dependency risk-register regressions/);
+});
+
+for (const [name, script] of [
+  ["missing native lockfile", "cargo audit --deny warnings"],
+  [
+    "missing root lockfile",
+    "cargo audit --file apps/desktop/src-tauri/Cargo.lock --deny warnings",
+  ],
+  [
+    "root warnings allowed",
+    "cargo audit && cargo audit --file apps/desktop/src-tauri/Cargo.lock --deny warnings",
+  ],
+  [
+    "native warnings allowed",
+    "cargo audit --deny warnings && cargo audit --file apps/desktop/src-tauri/Cargo.lock",
+  ],
+  [
+    "ignored root advisory",
+    "cargo audit --deny warnings --ignore RUSTSEC-2024-0388 && cargo audit --file apps/desktop/src-tauri/Cargo.lock --deny warnings",
+  ],
+  [
+    "ignored native advisory",
+    "cargo audit --deny warnings && cargo audit --file apps/desktop/src-tauri/Cargo.lock --deny warnings --ignore RUSTSEC-2024-0388",
+  ],
+  [
+    "native audit failure swallowed",
+    "cargo audit --deny warnings && cargo audit --file apps/desktop/src-tauri/Cargo.lock --deny warnings || true",
+  ],
+  [
+    "native audit only echoed",
+    "cargo audit --deny warnings && echo cargo audit --file apps/desktop/src-tauri/Cargo.lock --deny warnings",
+  ],
+]) {
+  test(`rejects Rust advisory script with ${name}`, (t) => {
+    const root = createFixture(t);
+    const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+    packageJson.scripts["qa:rust-advisory"] = script;
+    writeFile(root, "package.json", JSON.stringify(packageJson));
+
+    const result = runChecker(root);
+
+    assert.equal(result.status, 1);
+    assert.match(
+      result.stdout,
+      /FAIL Rust advisory QA audits root and native lockfiles with warnings denied and no bypasses/,
+    );
+  });
+}
+
+for (const [name, mutate] of [
+  [
+    "native audit commented out",
+    (ci) => ci.replace(
+      "      - run: cargo audit --file",
+      "      # - run: cargo audit --file",
+    ),
+  ],
+  [
+    "root audit commented out",
+    (ci) => ci.replace(
+      "      - run: cargo audit --deny warnings",
+      "      # - run: cargo audit --deny warnings",
+    ),
+  ],
+  [
+    "native warnings allowed",
+    (ci) => ci.replace(
+      "Cargo.lock --deny warnings",
+      "Cargo.lock",
+    ),
+  ],
+  [
+    "native advisory ignored",
+    (ci) => ci.replace(
+      "Cargo.lock --deny warnings",
+      "Cargo.lock --deny warnings --ignore RUSTSEC-2024-0388",
+    ),
+  ],
+  [
+    "native audit failure swallowed",
+    (ci) => ci.replace(
+      "Cargo.lock --deny warnings",
+      "Cargo.lock --deny warnings || true",
+    ),
+  ],
+  [
+    "native audit failure allowed",
+    (ci) => `${ci}\n        continue-on-error: true`,
+  ],
+  [
+    "native audit outside Rust job",
+    (ci) => ci.replace(
+      "      - run: cargo audit --file",
+      "  optional-native-audit:\n    if: false\n    steps:\n      - run: cargo audit --file",
+    ),
+  ],
+]) {
+  test(`rejects CI Rust gate with ${name}`, (t) => {
+    const result = runChecker(createFixture(t, {
+      ".github/workflows/ci.yml": mutate(ciFixture()),
+    }));
+
+    assert.equal(result.status, 1);
+    assert.match(
+      result.stdout,
+      /FAIL CI Rust (?:job runs 'cargo audit|audits deny warnings without ignores, skipped execution, or failure bypasses)/,
+    );
+  });
+}
 
 test("rejects public release scripts without Lighthouse release-machine gate", (t) => {
   const result = runChecker(
@@ -1350,6 +1805,70 @@ test("rejects missing Desktop PTY resize and reconnect runtime surface", (t) => 
   );
 });
 
+test("rejects a missing native PTY input module", (t) => {
+  const root = createFixture(t);
+  rmSync(join(root, "apps/desktop/src-tauri/src/pty_input.rs"));
+  const result = runChecker(root);
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /FAIL Desktop native PTY input module exists/);
+});
+
+for (const mutation of [
+  {
+    name: "native write preflight bypass even when its call remains in a comment",
+    path: "lib.rs",
+    find: "ensure_safe_pty_write(&state, id, &data).await",
+    replacement: "Ok(()) /* ensure_safe_pty_write(&state, id, &data).await */",
+    failure: "Desktop native PTY serializes preflight before forwarding submitted bytes",
+  },
+  {
+    name: "native input state delegation bypass",
+    path: "lib.rs",
+    find: "apply_pty_input_safety(input_state, data)",
+    replacement: "Ok(()) /* apply_pty_input_safety(input_state, data) */",
+    failure: "Desktop native PTY delegates each write to its persistent input state",
+  },
+  {
+    name: "native destructive command detection removed from the input module",
+    path: "pty_input.rs",
+    find: "detect_dangerous_command(&command)",
+    replacement: "None /* detect_dangerous_command(&command) */",
+    failure: "Desktop native PTY module rejects explicitly destructive submitted text",
+  },
+  {
+    name: "native input limit disabled while the constant and tests remain",
+    path: "pty_input.rs",
+    find: "input.command.len() == PTY_COMMAND_BUFFER_MAX_BYTES",
+    replacement: "false /* input.command.len() == PTY_COMMAND_BUFFER_MAX_BYTES */",
+    failure: "Desktop native PTY module bounds input state before inserting bytes",
+  },
+  {
+    name: "native escape sequence limit disabled while the constant and tests remain",
+    path: "pty_input.rs",
+    find: "input.escape_sequence.len() >= ESCAPE_SEQUENCE_MAX_BYTES",
+    replacement: "false /* input.escape_sequence.len() >= ESCAPE_SEQUENCE_MAX_BYTES */",
+    failure: "Desktop native PTY module bounds partial escape sequences",
+  },
+  {
+    name: "native PTY rejection changed to success",
+    path: "pty_input.rs",
+    find: 'return Err(format!("{PTY_COMMAND_BLOCKED}: {}", detected.pattern));',
+    replacement: 'return Ok(()); /* return Err(format!("{PTY_COMMAND_BLOCKED}: {}", detected.pattern)); */',
+    failure: "Desktop native PTY module rejects explicitly destructive submitted text",
+  },
+]) {
+  test(`rejects ${mutation.name}`, (t) => {
+    const root = createFixture(t);
+    const path = join(root, "apps/desktop/src-tauri/src", mutation.path);
+    const source = readFileSync(path, "utf8");
+    assert.ok(source.includes(mutation.find), "mutation must change the runtime fixture");
+    writeFileSync(path, source.replace(mutation.find, mutation.replacement));
+    const result = runChecker(root);
+    assert.equal(result.status, 1);
+    assert.ok(result.stdout.includes(`FAIL ${mutation.failure}`), result.stdout);
+  });
+}
+
 test("rejects missing Desktop SFTP overwrite and path safety surface", (t) => {
   const result = runChecker(
     createFixture(t, {
@@ -1399,10 +1918,66 @@ test("rejects missing Desktop forwarding single-flight runtime surface", (t) => 
   assert.equal(result.status, 1);
   assert.match(
     result.stdout,
-    /FAIL Desktop forwarding single-flight runtime hook includes 'inFlightRules'/,
+    /FAIL Desktop forwarding owns runtime and in-flight work per live session/,
   );
   assert.match(
     result.stdout,
     /FAIL Desktop forwarding pending action UX includes 'disabled=\{!forwards \|\| isPending\}'/,
   );
 });
+
+for (const mutation of [
+  {
+    name: "forwarding duplicate start guard removal",
+    find: "if (!session || session.inFlight.has(id) || session.runtime[id]?.active) return;",
+    replacement: "if (!session || session.runtime[id]?.active) return;",
+    failure: "Desktop forwarding serializes start operations within their owning session",
+  },
+  {
+    name: "forwarding duplicate stop guard removal",
+    find: "if (!session || session.inFlight.has(id)) return;",
+    replacement: "if (!session) return;",
+    failure: "Desktop forwarding serializes stop operations within their owning session",
+  },
+  {
+    name: "forwarding session identity comparison removal",
+    find: "sessionsRef.current.get(sessionId) === session",
+    replacement: "true",
+    failure: "Desktop forwarding rejects state updates from expired session identities",
+  },
+  {
+    name: "forwarding state update invalidation removal",
+    find: "if (!isCurrent(session)) return;",
+    replacement: "",
+    failure: "Desktop forwarding rejects state updates from expired session identities",
+  },
+  {
+    name: "forwarding late listener cleanup removal",
+    find: "if (stop) await stop(forward_id).catch(() => undefined);",
+    replacement: "",
+    failure: "Desktop forwarding stops late listeners before publishing active state",
+  },
+  {
+    name: "forwarding removed session cleanup removal",
+    find: "disposeSession(session);",
+    replacement: "",
+    failure: "Desktop forwarding invalidates removed sessions and stops their listeners",
+  },
+  {
+    name: "forwarding unmount identity disposal removal",
+    find: "sessions.clear();",
+    replacement: "",
+    failure: "Desktop forwarding disposes all listeners and session identities on unmount",
+  },
+]) {
+  test(`rejects ${mutation.name} even if retained in comments`, (t) => {
+    const root = createFixture(t);
+    const path = join(root, "apps/desktop/src/useForwardRules.ts");
+    const source = readFileSync(path, "utf8");
+    assert.ok(source.includes(mutation.find), "mutation must change the runtime fixture");
+    writeFileSync(path, source.replace(mutation.find, `${mutation.replacement} /* ${mutation.find} */`));
+    const result = runChecker(root);
+    assert.equal(result.status, 1);
+    assert.ok(result.stdout.includes(`FAIL ${mutation.failure}`), result.stdout);
+  });
+}

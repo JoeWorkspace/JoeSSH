@@ -16,7 +16,9 @@ describe("design-system primitives", () => {
 
   it("renders Button with ghost variant", () => {
     render(<Button variant="ghost">Ghost</Button>);
-    expect(screen.getByText("Ghost")).toBeTruthy();
+    const button = screen.getByRole("button", { name: "Ghost" });
+    expect(button.classList.contains("ui-button--ghost")).toBe(true);
+    expect(button.classList.contains("ui-button--default")).toBe(false);
   });
 
   it("renders Button with danger variant", () => {

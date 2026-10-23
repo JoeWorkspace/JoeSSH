@@ -1,7 +1,9 @@
 // @vitest-environment happy-dom
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { XtermTerminal } from "./XtermTerminal";
+import { DesktopTerminalSessions, type TerminalSessionBackend } from "./DesktopTerminalSessions";
 import type { PtyDeps } from "./usePtySession";
 
 type MockTerminalInstance = {
@@ -95,6 +97,74 @@ afterEach(() => {
 });
 
 describe("XtermTerminal", () => {
+  it("cleans StrictMode's discarded PTY without closing the retained session on tab changes", async () => {
+    const first = makeDeps("first");
+    const backend: TerminalSessionBackend = {
+      ...first.deps,
+      open: vi.fn().mockResolvedValueOnce("discarded-pty").mockResolvedValueOnce("retained-pty"),
+    };
+    const shared = {
+      backend,
+      sessionIds: ["first"],
+      label: "Session terminal",
+      fallback: "Loading",
+      statusLabels: { opening: "Opening", open: "Connected", blocked: "Blocked", closed: "Exited", error: "Error", reconnect: "Reconnect" },
+    };
+    const { rerender, unmount } = render(<StrictMode><DesktopTerminalSessions {...shared} activeSessionId="first" /></StrictMode>);
+    await waitFor(() => expect(first.deps.subscribe).toHaveBeenCalledWith("retained-pty", expect.any(Function), expect.any(Function)));
+    expect(first.deps.close).toHaveBeenCalledWith("discarded-pty");
+    expect(first.deps.close).not.toHaveBeenCalledWith("retained-pty");
+    rerender(<StrictMode><DesktopTerminalSessions {...shared} activeSessionId={undefined} /></StrictMode>);
+    rerender(<StrictMode><DesktopTerminalSessions {...shared} activeSessionId="first" /></StrictMode>);
+    expect(backend.open).toHaveBeenCalledTimes(2);
+    expect(first.deps.close).not.toHaveBeenCalledWith("retained-pty");
+    unmount();
+    expect(first.deps.close).toHaveBeenCalledWith("retained-pty");
+  });
+
+  it("retains each live session's terminal across tab switches and disposes only disconnected sessions", async () => {
+    const first = makeDeps("first");
+    const second = makeDeps("second");
+    const owner = (ptyId: string) => ptyId === "first-pty" ? first.deps : second.deps;
+    const backend: TerminalSessionBackend = {
+      open: (sessionId, cols, rows) => (sessionId === "first" ? first.deps : second.deps).open(cols, rows),
+      write: (ptyId, data) => owner(ptyId).write(ptyId, data),
+      resize: (ptyId, cols, rows) => owner(ptyId).resize(ptyId, cols, rows),
+      close: (ptyId) => owner(ptyId).close(ptyId),
+      subscribe: (ptyId, onData, onExit) => owner(ptyId).subscribe(ptyId, onData, onExit),
+    };
+    const shared = {
+      backend,
+      label: "Session terminal",
+      fallback: "Loading",
+      statusLabels: { opening: "Opening", open: "Connected", blocked: "Blocked", closed: "Exited", error: "Error", reconnect: "Reconnect" },
+    };
+    const { rerender } = render(<DesktopTerminalSessions {...shared} sessionIds={["first"]} activeSessionId="first" />);
+    await waitFor(() => expect(first.deps.subscribe).toHaveBeenCalledTimes(1));
+    const firstTerminal = terminalMock.instances[0];
+
+    rerender(<DesktopTerminalSessions {...shared} sessionIds={["first", "second"]} activeSessionId="second" />);
+    await waitFor(() => expect(second.deps.subscribe).toHaveBeenCalledTimes(1));
+    expect(first.deps.close).not.toHaveBeenCalled();
+    expect(firstTerminal.dispose).not.toHaveBeenCalled();
+    act(() => first.emitData([104, 105]));
+    expect(firstTerminal.write).toHaveBeenCalledWith("hi");
+    expect(screen.getAllByRole("status")).toHaveLength(1);
+
+    rerender(<DesktopTerminalSessions {...shared} sessionIds={["first", "second"]} activeSessionId={undefined} />);
+    expect(screen.queryByRole("status")).toBeNull();
+    rerender(<DesktopTerminalSessions {...shared} sessionIds={["first", "second"]} activeSessionId="first" />);
+    expect(first.deps.open).toHaveBeenCalledTimes(1);
+    expect(second.deps.open).toHaveBeenCalledTimes(1);
+    expect(terminalMock.instances).toHaveLength(2);
+
+    rerender(<DesktopTerminalSessions {...shared} sessionIds={["second"]} activeSessionId="second" />);
+    expect(first.deps.close).toHaveBeenCalledWith("first-pty");
+    expect(firstTerminal.dispose).toHaveBeenCalledTimes(1);
+    expect(second.deps.close).not.toHaveBeenCalled();
+    expect(second.deps.open).toHaveBeenCalledTimes(1);
+  });
+
   it("uses the localized terminal label", () => {
     const first = makeDeps("first");
 
@@ -188,6 +258,12 @@ describe("XtermTerminal", () => {
     expect(first.deps.open).toHaveBeenCalledTimes(1);
     expect(first.deps.close).not.toHaveBeenCalled();
     expect(terminalMock.instances).toHaveLength(1);
+
+    act(() => {
+      terminalMock.resizeObservers[0]?.trigger(host, 0, 0);
+    });
+    expect(first.deps.resize).toHaveBeenCalledTimes(1);
+    expect(terminal?.resize).toHaveBeenLastCalledWith(123, 28);
   });
 
   it("shows exit status and reconnects the PTY without rebuilding xterm", async () => {

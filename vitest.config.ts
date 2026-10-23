@@ -2,8 +2,14 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
+    // Discover only the owned source trees; local maintenance copies and
+    // diagnostic fixtures must not join the root coverage run.
+    include: [
+      'apps/{desktop,web}/src/**/*.{test,spec}.?(c|m)[jt]s?(x)',
+      'packages/*/src/**/*.{test,spec}.?(c|m)[jt]s?(x)',
+    ],
     // Exclude E2E tests (run via Playwright) and mobile tests (run via
-    // workspace-specific vitest 4.0.13 to avoid react-native Flow parse issues).
+    // their workspace configuration to avoid react-native Flow parse issues).
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
@@ -14,7 +20,6 @@ export default defineConfig({
     ],
     coverage: {
       provider: 'v8',
-      all: true,
       include: [
         'apps/desktop/src/**/*.{ts,tsx}',
         'apps/web/src/**/*.{ts,tsx}',

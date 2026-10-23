@@ -1,8 +1,12 @@
-import http from 'node:http';
+import http from "node:http";
 
-const host = process.env.ATLASTERM_E2E_MOBILE_SYNC_HOST ?? '127.0.0.1';
-const port = Number.parseInt(process.env.ATLASTERM_E2E_MOBILE_SYNC_PORT ?? '4111', 10);
-const expectedToken = process.env.ATLASTERM_E2E_MOBILE_SYNC_AUTH_TOKEN ?? 'e2e-mobile-sync-token';
+const host = process.env.ATLASTERM_E2E_MOBILE_SYNC_HOST ?? "127.0.0.1";
+const port = Number.parseInt(
+  process.env.ATLASTERM_E2E_MOBILE_SYNC_PORT ?? "4111",
+  10,
+);
+const expectedToken =
+  process.env.ATLASTERM_E2E_MOBILE_SYNC_AUTH_TOKEN ?? "e2e-mobile-sync-token";
 
 let pushCount = 0;
 let pullCount = 0;
@@ -11,67 +15,91 @@ const server = http.createServer(async (request, response) => {
   const origin = request.headers.origin;
 
   if (origin) {
-    response.setHeader('Access-Control-Allow-Origin', origin);
-    response.setHeader('Vary', 'Origin');
+    response.setHeader("Access-Control-Allow-Origin", origin);
+    response.setHeader("Vary", "Origin");
   }
 
-  if (request.method === 'OPTIONS') {
+  if (request.method === "OPTIONS") {
     response.writeHead(204, {
-      'Access-Control-Allow-Headers': 'accept, authorization, content-type',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Max-Age': '60',
+      "Access-Control-Allow-Headers": "accept, authorization, content-type",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Max-Age": "60",
     });
     response.end();
     return;
   }
 
-  if (request.url === '/healthz') {
-    sendJson(response, 200, { ok: true, service: 'atlasterm-mobile-sync-e2e' });
+  if (request.url === "/healthz") {
+    sendJson(response, 200, { ok: true, service: "atlasterm-mobile-sync-e2e" });
     return;
   }
 
-  if (!request.url?.startsWith('/v1/')) {
-    sendJson(response, 404, { error: 'not_found' });
+  if (!request.url?.startsWith("/v1/")) {
+    sendJson(response, 404, { error: "not_found" });
     return;
   }
 
   if (request.headers.authorization !== `Bearer ${expectedToken}`) {
-    sendJson(response, 401, { code: 'invalid_authorization' });
+    sendJson(response, 401, { code: "invalid_authorization" });
     return;
   }
 
-  if (request.method === 'POST' && request.url === '/v1/devices/register') {
+  if (request.method === "POST" && request.url === "/v1/devices/register") {
     await readJsonBody(request);
     sendJson(response, 200, {
-      device_id: '0af7b567-8c34-4318-8c6b-31cddfc36e6f',
-      server_time: '2026-05-25T00:00:00Z',
-      sync_cursor: '0',
+      device_id: "0af7b567-8c34-4318-8c6b-31cddfc36e6f",
+      server_time: "2026-05-25T00:00:00Z",
+      sync_cursor: "0",
     });
     return;
   }
 
-  if (request.method === 'POST' && request.url === '/v1/sync/push') {
+  if (request.method === "POST" && request.url === "/v1/sync/push") {
     await readJsonBody(request);
     pushCount += 1;
     sendJson(response, 202, {
       accepted: 1,
       conflicts: [],
-      sync_cursor: pushCount === 1 ? 'server-41' : 'server-43',
+      sync_cursor: pushCount === 1 ? "server-41" : "server-43",
     });
     return;
   }
 
-  if (request.method === 'GET' && request.url.startsWith('/v1/sync/pull?')) {
+  if (request.method === "GET" && request.url.startsWith("/v1/sync/pull?")) {
     pullCount += 1;
+    const nextCursor = pullCount === 1 ? "server-42" : "server-43";
     sendJson(response, 200, {
-      changes: [{ id: 'profile-change' }, { id: 'session-change' }, { id: 'audit-change' }],
-      device_id: '0af7b567-8c34-4318-8c6b-31cddfc36e6f',
-      next_cursor: pullCount === 1 ? 'server-42' : 'server-43',
+      changes: [
+        syncChange(
+          "profile-change",
+          "profile",
+          "prod-edge-01",
+          "create",
+          nextCursor,
+        ),
+        syncChange(
+          "session-change",
+          "session",
+          "session-01",
+          "create",
+          nextCursor,
+        ),
+        syncChange(
+          "audit-change",
+          "sync-api",
+          "C:\\Tools\\agenttool",
+          "update",
+          nextCursor,
+        ),
+      ],
+      device_id: "0af7b567-8c34-4318-8c6b-31cddfc36e6f",
+      has_more: false,
+      next_cursor: nextCursor,
     });
     return;
   }
 
-  sendJson(response, 404, { error: 'not_found' });
+  sendJson(response, 404, { error: "not_found" });
 });
 
 server.listen(port, host, () => {
@@ -80,21 +108,21 @@ server.listen(port, host, () => {
 
 function sendJson(response, status, body) {
   response.writeHead(status, {
-    'Cache-Control': 'no-store',
-    'Content-Type': 'application/json',
+    "Cache-Control": "no-store",
+    "Content-Type": "application/json",
   });
   response.end(JSON.stringify(body));
 }
 
 function readJsonBody(request) {
   return new Promise((resolve, reject) => {
-    let raw = '';
+    let raw = "";
 
-    request.setEncoding('utf8');
-    request.on('data', (chunk) => {
+    request.setEncoding("utf8");
+    request.on("data", (chunk) => {
       raw += chunk;
     });
-    request.on('end', () => {
+    request.on("end", () => {
       if (!raw) {
         resolve(undefined);
         return;
@@ -106,8 +134,20 @@ function readJsonBody(request) {
         reject(error);
       }
     });
-    request.on('error', reject);
+    request.on("error", reject);
   });
+}
+
+function syncChange(id, entityType, entityId, operation, cursor) {
+  return {
+    entity_id: entityId,
+    entity_type: entityType,
+    id,
+    operation,
+    payload: {},
+    server_time: "2026-05-25T00:00:00Z",
+    sync_cursor: cursor,
+  };
 }
 
 function close() {
@@ -116,5 +156,5 @@ function close() {
   });
 }
 
-process.on('SIGINT', close);
-process.on('SIGTERM', close);
+process.on("SIGINT", close);
+process.on("SIGTERM", close);

@@ -16,6 +16,8 @@ function createRecordingTranslator() {
 describe("desktop terminal sessions", () => {
   it("formats copied SSH commands from the host", () => {
     expect(formatSshCommand({ host: "10.48.12.11" })).toBe("ssh 10.48.12.11");
+    expect(formatSshCommand({ host: "atlas@prod-edge-01:2200" })).toBe("ssh -p 2200 atlas@prod-edge-01");
+    expect(formatSshCommand({ host: "prod-edge-01", port: 2222, username: "release" })).toBe("ssh -p 2222 release@prod-edge-01");
   });
 
   it("builds translated bootstrap output for non-primary connections", () => {

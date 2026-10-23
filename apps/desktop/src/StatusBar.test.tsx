@@ -28,7 +28,7 @@ describe("StatusBar", () => {
     );
     expect(screen.getByText("desktop.sessions")).toBeTruthy();
     expect(screen.getByText("desktop.syncHealthy")).toBeTruthy();
-    expect(screen.getByText("team.summary", { exact: false })).toBeTruthy();
+    expect(screen.getByText("desktop.sampleDataShort")).toBeTruthy();
   });
 
   it("shows no-session copy instead of live fleet status when disconnected", () => {
@@ -216,7 +216,7 @@ describe("StatusBar", () => {
     expect(onPanelChange).toHaveBeenCalledWith("team");
   });
 
-  it("renders team summary with formatted numbers", () => {
+  it("labels static team summary values as sample data", () => {
     render(
       <StatusBar
         activeConnection={{ latencyMs: 10 }}
@@ -226,6 +226,6 @@ describe("StatusBar", () => {
         teamAccess={{ activeJitMembers: 5, pendingAccessRequests: 1, pendingVaults: 2, recordedEvents: 4 }}
       />,
     );
-    expect(screen.getByText("team.summary", { exact: false })).toBeTruthy();
+    expect(screen.getByText("desktop.sampleDataShort")).toBeTruthy();
   });
 });

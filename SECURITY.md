@@ -65,6 +65,21 @@ JoeSSH implements the following security measures:
 
 HTML security metadata and static deployment `_headers` are verified in CI via the `qa:security-headers` script.
 
+### SSH Command Preflight
+
+Host-key verification and SSH authentication remain required before remote
+access. Remote account permissions are the authorization boundary; local
+command checks do not replace them.
+
+The native `ssh_exec` command checks its complete command against the dangerous
+command policy before execution. Interactive `pty_write` checks observable
+explicit input and bounds its input state, including commands split across IPC
+chunks and pasted lines. Normal terminal editing, history recall and completion
+must remain usable. The final command produced by remote shell history,
+completion, aliases, expansion or a TUI cannot be verified from client keystrokes
+alone, so PTY preflight is an accidental-operation safeguard, not a shell sandbox
+or an authorization guarantee. These checks never log terminal input or output.
+
 ### Server-Side (Sync Service)
 
 - **Bearer Token Authentication** - Constant-time comparison
@@ -87,7 +102,9 @@ We appreciate the security research community and will credit reporters (with pe
 
 ## Public Beta Dependency Policy
 
-- High and critical production dependency findings block release.
+- High and critical findings in the full npm workspace audit block release,
+  including development and QA tooling. Both Rust lockfiles must pass
+  `cargo audit --deny warnings`; documenting a finding does not waive a gate.
 - Moderate production dependency findings must be documented in
   `docs/dependency-risk-register.md` with advisory URL, affected path, runtime
   impact, Public Beta decision, and follow-up.

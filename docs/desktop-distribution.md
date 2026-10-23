@@ -1,5 +1,12 @@
 # Desktop Distribution
 
+Contributor guidance is in [AGENTS.md](../AGENTS.md). The
+[unsigned-candidate workflow](../.github/workflows/desktop-candidates.yml) resolves
+the requested source ref once in its source gate, then checks out that exact
+commit in every platform job. Moving a branch during a build cannot substitute
+untested source. Candidate artifacts remain unsigned and are not release proof;
+the release evidence and signing requirements below still apply.
+
 JoeSSH Desktop Public Beta uses Tauri 2 with the public app identifier
 `dev.atlasterm.joessh`. The release scripts are intentionally split so CI can
 validate the shell without requiring signing credentials, while release machines
@@ -20,6 +27,44 @@ npm run release:desktop:package
 npm run release:desktop:verify-evidence
 ```
 
+For unsigned cross-platform installation candidates, manually run the
+`Desktop Unsigned Candidates` GitHub Actions workflow. It builds Windows,
+macOS, and Linux bundles, stages each platform under
+`reports/candidates/desktop/<platform>-unsigned/`, and uploads artifacts named
+`joessh-<platform>-unsigned-candidate`. Candidate metadata always records
+`releaseEligible: false` and `signingStatus: "unverified"`. These artifacts are
+for installation QA only and must never be attached to a public release. The
+workflow captures `git rev-parse HEAD`, records that exact checkout in the
+metadata, and runs the candidate verifier before upload.
+
+Local staging with `scripts/stage-desktop-candidate.mjs --platform <platform>`
+uses the same default output directory. A custom `--output-dir` must be a
+strict child of `reports/candidates/desktop`, such as
+`reports/candidates/desktop/windows-preview`. Bundle and output paths must remain
+inside the repository after path resolution; symbolic links and junctions in
+their path components are rejected. The stager accepts an absent or empty output
+directory, or replaces files from an existing candidate only after its metadata,
+complete file set, sizes, and checksums verify. Extra files, modified artifacts,
+or an unrelated directory cause staging to stop without deleting their contents.
+Preserve or move those contents before retrying. Staging never recursively
+deletes the output directory, and rejects duplicate input filenames before
+replacing any existing candidate files.
+
+After downloading and extracting a candidate, verify its self-contained
+metadata, complete file set, sizes, and SHA-256 hashes from any directory. Pass
+the commit shown by the workflow run to bind the files to the expected source:
+
+```bash
+npm run release:desktop:verify-candidate -- \
+  --standalone \
+  --candidate-dir path/to/joessh-windows-unsigned-candidate \
+  --platform windows \
+  --source-commit 0123456789abcdef0123456789abcdef01234567
+```
+
+Omit `--standalone` on a build machine so the verifier also requires the
+candidate version to match the checked-out root package and Tauri metadata.
+
 `qa:tauri` compiles the Tauri shell with `cargo build --release`. It does not
 produce installers. `release:desktop:build` runs `tauri build` from the desktop
 workspace and expects platform signing configuration to be available on the
@@ -37,6 +82,25 @@ readiness also checks
 `apps/desktop/src-tauri/capabilities/*.json` and
 `apps/desktop/src-tauri/permissions/*.toml` so missing, wildcard, remote-source,
 or stale IPC command permissions block the release.
+
+Windows MSI metadata uses `bundle.windows.wix.version: 0.1.0.1` for the public
+beta because WiX/MSI cannot encode the semantic prerelease label in
+`0.1.0-beta.1`. Increment the fourth MSI field with the beta sequence while
+keeping the application version and public artifact version semantic. The WiX
+upgrade code is pinned in `tauri.conf.json`; it must stay unchanged across
+updates so Windows upgrades the existing JoeSSH installation instead of
+creating a second product.
+
+The editable JoeSSH app-icon source is
+`apps/desktop/src-tauri/icons/joessh-icon-source.svg`. Regenerate the complete
+Tauri platform icon set after changing it with:
+
+```bash
+npm exec --workspace @atlasterm/desktop tauri icon -- apps/desktop/src-tauri/icons/joessh-icon-source.svg --output apps/desktop/src-tauri/icons
+```
+
+The bundle config must continue to name `icon.png`, `icon.ico`, and `icon.icns`;
+public readiness checks both the configuration and the files on disk.
 
 ## Signing And Platform Rules
 
@@ -69,6 +133,27 @@ or stale IPC command permissions block the release.
   `--macos-signature-verification` for macOS signing evidence, and
   `ATLASTERM_DESKTOP_MACOS_NOTARIZATION_VERIFICATION` or
   `--macos-notarization-verification` for macOS notarization evidence.
+
+### Cost-Aware Signing Decision
+
+- For a fully open-source Windows community build, apply to SignPath Foundation
+  first. Its service is free for accepted OSS projects, but its terms disallow
+  proprietary components and commercial dual licensing in the signed project.
+- Do not treat self-signed Windows certificates as public distribution signing;
+  they do not establish trust on user machines or remove normal SmartScreen
+  warnings.
+- Microsoft Artifact Signing is a paid managed option, but its Public Trust
+  identity validation is currently region-limited. A China-based release owner
+  is not currently listed as eligible by Microsoft's FAQ.
+- A free Apple account is suitable only for development/testing. Public macOS
+  downloads need Developer ID signing and notarization, which requires the paid
+  Apple Developer Program.
+- Use Sigstore/GitHub attestations for Linux and supply-chain provenance, while
+  retaining platform-native Windows and macOS signatures.
+
+See [commercialization-and-signing.md](commercialization-and-signing.md) for the
+dated vendor findings, official sources, and the recommended community/paid
+product boundary.
 
 ## Security Review Items
 

@@ -19,14 +19,18 @@ JoeSSH is a local-first remote connection workbench for SSH, local terminals, SF
 - `packages/error-monitor`: Shared browser error reporting with beacon/fetch transport.
 - `packages/i18n`: Shared locale catalogs and translation completeness gate.
 - `packages/ui`: Shared design tokens and UI primitives.
-- `tests/e2e`: Playwright acceptance skeleton.
+- `tests/e2e`: Playwright acceptance, accessibility, localization, scaling, and visual regression coverage.
 
 > **Verification note:** the TCP port-forwarder is covered end-to-end by loopback integration tests. The SSH/PTY/SFTP/`direct-tcpip` paths are exercised by unit tests for their deterministic logic (host-key policy, fingerprinting) and verified to compile against the real `russh` API; a live handshake requires a reachable SSH server, and the Tauri GUI requires a desktop WebView2 runtime. Building `apps/desktop/src-tauri` requires NASM on `PATH` (the `russh` `ring` crypto backend assembles primitives at build time).
 
 ## Quick Start
 
+Use Node.js 22.22.1 or newer and the declared npm 10.9.7 toolchain. The commit
+hook requires Git 2.32 or newer; lint-staged and Prettier are installed from the
+workspace lockfile.
+
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
@@ -176,6 +180,8 @@ GitHub Actions runs on push, PR, and weekday schedule:
 - [docs/release-checklist.md](docs/release-checklist.md) - Public Beta release checklist
 - [docs/repository-release-handoff.md](docs/repository-release-handoff.md) - Healthy checkout recovery and release handoff
 - [docs/desktop-distribution.md](docs/desktop-distribution.md) - Desktop signing and distribution
+- [docs/commercialization-and-signing.md](docs/commercialization-and-signing.md) - Signing options and open-source commercialization strategy
+- [docs/product-review-2026-07-14.md](docs/product-review-2026-07-14.md) - Prioritized product, code, and release review
 - [docs/web-admin-deployment.md](docs/web-admin-deployment.md) - Web Admin static deployment
 - [docs/self-hosting-sync.md](docs/self-hosting-sync.md) - Self-hosted Sync Service deployment
 - [docs/privacy-public-beta.md](docs/privacy-public-beta.md) - Opt-in telemetry and privacy rules

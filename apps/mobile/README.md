@@ -32,16 +32,18 @@ pulls preview state from `GET /v1/sync/pull`. The presence push uses the current
 device cursor as `base_cursor`, and the preview pull uses that same current
 cursor as `since` so remote changes between the old cursor and the push response
 are not skipped. After a successful pull, the returned `next_cursor` is retained
-for the next refresh from the same device. If Expo does not expose a UUID-shaped
-install id, the mobile client reuses the server-assigned `device_id` for later
-registrations in the same app runtime so refreshes stay tied to one registered
-device identity. Presence checkpoint conflicts are treated as non-blocking
+for the next refresh from the same device. The mobile client stores the
+server-assigned `device_id` in AsyncStorage and reuses it for later registrations,
+including after a cold start; Expo's session-scoped identifier is used only for
+an offline fallback identity. Paginated pulls continue with `next_cursor` until
+`has_more` is false before the preview is marked ready. Presence checkpoint
+conflicts are treated as non-blocking
 status-signal conflicts; the app still pulls the preview from the last successful
 cursor so a stale presence update cannot hide remote workspace changes.
 
-Service tests cover endpoint selection, optional bearer auth, UUID reuse,
-server-assigned device id reuse, presence checkpoint push, retained-cursor
-preview pulls, malformed successful register/push/pull responses, offline
+Service tests cover endpoint selection, optional bearer auth, persisted
+server-assigned device id reuse, presence checkpoint push, paginated
+retained-cursor preview pulls, malformed successful register/push/pull responses, offline
 fallback, timeout/unauthorized classification, and emergency-channel preview
 data.
 Home screen tests cover the idle, registering, ready, offline fallback, and

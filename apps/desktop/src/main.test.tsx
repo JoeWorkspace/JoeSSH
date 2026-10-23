@@ -47,6 +47,19 @@ describe('main entry point', () => {
     expect(content).not.toContain('statusLabel={t("desktop.live")}');
   });
 
+  it('derives profile status from native sessions and renders stateful terminal tabs', async () => {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const mainPath = path.resolve(__dirname, './main.tsx');
+    const content = fs.readFileSync(mainPath, 'utf-8');
+
+    expect(content).toContain('getConnectionPresence(desktopSessionsRef.current[connection.name])');
+    expect(content).toContain('openTerminalTabs.map((tab)');
+    expect(content).toContain('openConnectionTab(connection.name)');
+    expect(content).not.toContain('status: "online",\n        color: "neutral"');
+    expect(content).not.toContain('index === activeTab ? <X');
+  });
+
   it('keeps the SFTP panel tab label localized', async () => {
     const fs = await import('node:fs');
     const path = await import('node:path');
@@ -106,10 +119,28 @@ describe('main entry point', () => {
     const content = fs.readFileSync(mainPath, 'utf-8');
 
     expect(content).toContain('connectTargetOverride');
-    expect(content).toContain('setConnectTargetOverride(splitConnectionTarget(item.sub ?? paletteState.input))');
+    expect(content).toContain('const target = splitConnectionTarget(item.sub ?? paletteState.input)');
+    expect(content).toContain('setConnectTargetOverride(target)');
     expect(content).toContain('setConnectOpen(true)');
     expect(content).toContain('defaultPort={connectDefaults.port}');
     expect(content).toContain('setConnectTargetOverride(null)');
+    expect(content).toContain('setConnectProfileName(connectionName)');
+    expect(content).toContain('desktopSessionsRef.current[connectionName] = sessionId');
+    expect(content).toContain('port: connection.port');
+    expect(content).toContain('username: connection.username');
+  });
+
+  it('closes the onboarding-to-connection gap without changing regular creation', async () => {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const mainPath = path.resolve(__dirname, './main.tsx');
+    const content = fs.readFileSync(mainPath, 'utf-8');
+
+    expect(content).toContain('connectAfterNewConnection');
+    expect(content).toContain('setConnectAfterNewConnection(true)');
+    expect(content).toContain('setConnectTargetOverride(getConnectionTarget(connection))');
+    expect(content).toContain('setConnectOpen(true)');
+    expect(content).toContain('setConnectAfterNewConnection(false)');
   });
 
   it('joins SFTP transfer paths through safe listing entry names', async () => {

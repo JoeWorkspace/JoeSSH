@@ -6,6 +6,16 @@ import { isSafeSftpEntryName, joinSftpRemoteEntryPath, joinSftpRemotePath, norma
 
 const entry = (name: string, is_dir = false) => ({ name, is_dir, size: is_dir ? null : 10 });
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
 describe("useSftpDirectory", () => {
   it("stays idle and inactive when no list function is provided", () => {
     const { result } = renderHook(() => useSftpDirectory(undefined));
@@ -77,6 +87,47 @@ describe("useSftpDirectory", () => {
     act(() => result.current.open("/srv//logs/./archive/"));
     await waitFor(() => expect(result.current.path).toBe("/srv/logs/archive"));
     expect(list).toHaveBeenLastCalledWith("/srv/logs/archive");
+  });
+
+  it("ignores a slower directory response after navigating elsewhere", async () => {
+    const initial = deferred<ReturnType<typeof entry>[]>();
+    const next = deferred<ReturnType<typeof entry>[]>();
+    const list = vi.fn((path: string) => path === "/srv" ? initial.promise : next.promise);
+    const { result } = renderHook(() => useSftpDirectory(list, "/srv"));
+
+    await waitFor(() => expect(list).toHaveBeenCalledWith("/srv"));
+    act(() => result.current.open("/srv/logs"));
+    await waitFor(() => expect(list).toHaveBeenCalledWith("/srv/logs"));
+
+    await act(async () => {
+      initial.resolve([entry("stale.txt")]);
+      await initial.promise;
+    });
+    expect(result.current.status).toEqual({ phase: "loading" });
+
+    await act(async () => {
+      next.resolve([entry("current.txt")]);
+      await next.promise;
+    });
+    await waitFor(() => expect(result.current.status).toEqual({ phase: "ready", entries: [entry("current.txt")] }));
+  });
+
+  it("resets to idle and ignores an in-flight response when the session disconnects", async () => {
+    const pending = deferred<ReturnType<typeof entry>[]>();
+    const list = vi.fn(() => pending.promise);
+    const { result, rerender } = renderHook(({ loader }) => useSftpDirectory(loader, "/srv"), {
+      initialProps: { loader: list as typeof list | undefined },
+    });
+
+    await waitFor(() => expect(list).toHaveBeenCalledWith("/srv"));
+    rerender({ loader: undefined });
+    await waitFor(() => expect(result.current.status).toEqual({ phase: "idle" }));
+
+    await act(async () => {
+      pending.resolve([entry("stale.txt")]);
+      await pending.promise;
+    });
+    expect(result.current.status).toEqual({ phase: "idle" });
   });
 
   it("refresh re-lists the current path", async () => {

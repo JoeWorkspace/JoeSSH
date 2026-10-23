@@ -136,6 +136,13 @@ impl SshClient {
     /// Open a TCP connection, run the SSH handshake (verifying the host key via
     /// `config.host_key_policy`), and authenticate.
     pub async fn connect(config: SshConfig) -> Result<Self, SshError> {
+        let timeout = std::time::Duration::from_millis(config.connect_timeout_ms);
+        tokio::time::timeout(timeout, Self::connect_with_config(config))
+            .await
+            .map_err(|_| SshError::TimedOut)?
+    }
+
+    async fn connect_with_config(config: SshConfig) -> Result<Self, SshError> {
         let russh_config = Arc::new(client::Config::default());
         let captured_fingerprint = Arc::new(std::sync::Mutex::new(None));
         let handler = ClientHandler {
@@ -143,20 +150,17 @@ impl SshClient {
             captured_fingerprint: Arc::clone(&captured_fingerprint),
         };
 
-        let mut handle = tokio::time::timeout(
-            std::time::Duration::from_millis(config.connect_timeout_ms),
-            client::connect(russh_config, (config.host.as_str(), config.port), handler),
-        )
-        .await
-        .map_err(|_| SshError::TimedOut)?
-        .map_err(|e| match e {
-            // The handler returns Ok(false) for a rejected key, which russh
-            // surfaces as an unknown-key error during the handshake.
-            russh::Error::UnknownKey => {
-                SshError::HostKeyRejected("server host key did not match policy".into())
-            }
-            other => SshError::Connect(other.to_string()),
-        })?;
+        let mut handle =
+            client::connect(russh_config, (config.host.as_str(), config.port), handler)
+                .await
+                .map_err(|e| match e {
+                    // The handler returns Ok(false) for a rejected key, which russh
+                    // surfaces as an unknown-key error during the handshake.
+                    russh::Error::UnknownKey => {
+                        SshError::HostKeyRejected("server host key did not match policy".into())
+                    }
+                    other => SshError::Connect(other.to_string()),
+                })?;
 
         let authenticated = match &config.auth {
             SshAuth::Password(password) => handle

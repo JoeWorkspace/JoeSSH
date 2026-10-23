@@ -120,7 +120,10 @@ function groupReducer(state: GroupState, action: GroupAction): GroupState {
   }
 }
 
-export function useGroupManager(builtinGroupNames: string[], connectionNames: string[]) {
+export function useGroupManager(
+  builtinGroupNames: readonly string[],
+  connectionNames: readonly string[],
+) {
   const [state, dispatch] = useReducer(groupReducer, {
     collapsedGroups: new Set<string>(),
     customGroups: readStoredStringList(GROUPS_STORAGE_KEY),
@@ -144,13 +147,22 @@ export function useGroupManager(builtinGroupNames: string[], connectionNames: st
   useEffect(() => {
     const overrides: Record<string, string> = {};
     for (const [connectionName, groupName] of Object.entries(state.connectionGroups)) {
-      if (builtinGroupNames.includes(groupName) || state.customGroups.includes(groupName)) {
+      if (
+        connectionNames.includes(connectionName) &&
+        (builtinGroupNames.includes(groupName) ||
+          state.customGroups.includes(groupName))
+      ) {
         // Only persist non-default overrides
         overrides[connectionName] = groupName;
       }
     }
     writeStorageJson(CONNECTION_GROUPS_STORAGE_KEY, overrides);
-  }, [state.connectionGroups, builtinGroupNames, state.customGroups]);
+  }, [
+    state.connectionGroups,
+    builtinGroupNames,
+    connectionNames,
+    state.customGroups,
+  ]);
 
   const allGroupNames = useMemo(() => {
     return [...builtinGroupNames, ...state.customGroups].sort();

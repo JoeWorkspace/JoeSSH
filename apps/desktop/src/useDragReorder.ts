@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer } from "react";
+import { useCallback, useEffect, useReducer, useRef } from "react";
 import {
   CONNECTION_ORDER_STORAGE_KEY,
   readStoredConnectionOrder,
@@ -18,7 +18,24 @@ export type DragAction =
   | { type: "DRAG_END" }
   | { type: "MOVE_BEFORE"; name: string; targetName: string }
   | { type: "MOVE_AFTER"; name: string; targetName: string }
+  | { type: "SYNC_CONNECTIONS"; connectionNames: readonly string[] }
   | { type: "SET_ORDER"; order: string[] };
+
+function reconcileConnectionOrder(
+  order: readonly string[],
+  connectionNames: readonly string[],
+): string[] {
+  const allowedNames = new Set(connectionNames);
+  const next = order.filter((name) => allowedNames.has(name));
+  const presentNames = new Set(next);
+  for (const name of connectionNames) {
+    if (!presentNames.has(name)) {
+      next.push(name);
+      presentNames.add(name);
+    }
+  }
+  return next;
+}
 
 function moveConnection(order: string[], name: string, targetName: string, placement: "before" | "after") {
   if (name === targetName) return order;
@@ -64,6 +81,20 @@ function dragReducer(state: DragState, action: DragAction): DragState {
     case "MOVE_AFTER":
       return { ...state, order: moveConnection(state.order, action.name, action.targetName, "after") };
 
+    case "SYNC_CONNECTIONS": {
+      const order = reconcileConnectionOrder(
+        state.order,
+        action.connectionNames,
+      );
+      if (
+        order.length === state.order.length &&
+        order.every((name, index) => name === state.order[index])
+      ) {
+        return state;
+      }
+      return { ...state, order };
+    }
+
     case "SET_ORDER":
       return { ...state, order: action.order };
 
@@ -72,7 +103,10 @@ function dragReducer(state: DragState, action: DragAction): DragState {
   }
 }
 
-export function useDragReorder(defaultOrder: string[]) {
+export function useDragReorder(defaultOrder: readonly string[]) {
+  const defaultOrderRef = useRef(defaultOrder);
+  defaultOrderRef.current = defaultOrder;
+  const defaultOrderKey = JSON.stringify(defaultOrder);
   const [state, dispatch] = useReducer(dragReducer, {
     dragging: null,
     dragOver: null,
@@ -83,6 +117,13 @@ export function useDragReorder(defaultOrder: string[]) {
   useEffect(() => {
     writeStorageJson(CONNECTION_ORDER_STORAGE_KEY, state.order);
   }, [state.order]);
+
+  useEffect(() => {
+    dispatch({
+      type: "SYNC_CONNECTIONS",
+      connectionNames: defaultOrderRef.current,
+    });
+  }, [defaultOrderKey]);
 
   const startDrag = useCallback((name: string) => {
     dispatch({ type: "START_DRAG", name });

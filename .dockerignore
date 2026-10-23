@@ -13,3 +13,7 @@ coverage
 .env
 .env.*
 npm-debug.log*
+*_token.txt
+*.pem
+*.key
+credentials.json

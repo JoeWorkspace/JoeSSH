@@ -14,8 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Web Admin proxy public-bind operator authentication guard so non-loopback
   proxy deployments fail closed unless a distinct inbound operator token is
   configured and verified before the upstream admin token is injected.
+- First-run Desktop onboarding now carries a newly created connection into the
+  authentication flow, so users can move from guidance to a real SSH session
+  without having to discover the separate Connect action.
 
 ### Changed
+- Desktop SFTP directory loading now ignores stale responses when users navigate
+  quickly or disconnect/switch sessions, keeping the visible listing aligned with
+  the current connection and path.
 - Public release readiness now requires the repository handoff playbook and
   blocks stale fixed test-count or absolute coverage claims in the changelog.
 - Desktop known-host Settings actions now require confirmation before removing

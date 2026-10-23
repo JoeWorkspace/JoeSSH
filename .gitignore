@@ -7,16 +7,22 @@ build/
 .turbo/
 coverage/
 artifacts/
+reports/candidates/
+reports/release/
 playwright-report/
 test-results/
 **/playwright-report/
 **/test-results/
 target/
+target-security/
 *.log
-github_token.txt
-lighthouse-*.json
-tsconfig.tsbuildinfo
 .env
 .env.*
 !.env.example
 src-tauri/target/
+
+# Local credentials and ad-hoc operator secrets must never enter source control.
+*_token.txt
+*.pem
+*.key
+credentials.json

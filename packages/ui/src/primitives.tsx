@@ -10,7 +10,12 @@ export const Button = memo(function Button({
   variant?: "default" | "ghost" | "quiet" | "danger";
   size?: "default" | "sm" | "icon";
 }) {
-  return <button className={clsx("ui-button", `ui-button--${variant}`, `ui-button--${size}`, className)} {...props} />;
+  return (
+    <button
+      className={clsx("ui-button", `ui-button--${variant}`, size !== "default" && `ui-button--${size}`, className)}
+      {...props}
+    />
+  );
 });
 
 export const IconButton = memo(function IconButton({

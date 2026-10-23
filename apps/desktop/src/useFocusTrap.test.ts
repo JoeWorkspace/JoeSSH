@@ -65,6 +65,26 @@ describe("useFocusTrap", () => {
     expect(focusSpy).toHaveBeenCalled();
   });
 
+  it("prefers an explicitly marked initial focus target", () => {
+    const firstButton = document.createElement("button");
+    const preferredInput = document.createElement("input");
+    preferredInput.setAttribute("data-autofocus", "");
+    container.appendChild(firstButton);
+    container.appendChild(preferredInput);
+
+    const firstFocusSpy = vi.spyOn(firstButton, "focus");
+    const preferredFocusSpy = vi.spyOn(preferredInput, "focus");
+
+    renderHook(() => {
+      const ref = useFocusTrap<HTMLDivElement>(true);
+      (ref as React.MutableRefObject<HTMLDivElement | null>).current = container;
+      return ref;
+    });
+
+    expect(preferredFocusSpy).toHaveBeenCalledOnce();
+    expect(firstFocusSpy).not.toHaveBeenCalled();
+  });
+
   it("restores focus to previous element on cleanup", () => {
     const previousElement = document.createElement("button");
     document.body.appendChild(previousElement);
@@ -72,6 +92,7 @@ describe("useFocusTrap", () => {
     const button = document.createElement("button");
     container.appendChild(button);
 
+    const focusSpy = vi.spyOn(previousElement, "focus");
     mockGetActiveElement.mockReturnValue(previousElement);
 
     const { unmount } = renderHook(() => {
@@ -82,6 +103,7 @@ describe("useFocusTrap", () => {
 
     unmount();
 
+    expect(focusSpy).toHaveBeenCalledOnce();
     document.body.removeChild(previousElement);
   });
 
@@ -194,6 +216,19 @@ describe("useFocusTrap", () => {
         return ref;
       });
     }).not.toThrow();
+  });
+
+  it("focuses a focusable dialog container when it has no controls", () => {
+    container.tabIndex = -1;
+    const focusSpy = vi.spyOn(container, "focus");
+
+    renderHook(() => {
+      const ref = useFocusTrap<HTMLDivElement>(true);
+      (ref as React.MutableRefObject<HTMLDivElement | null>).current = container;
+      return ref;
+    });
+
+    expect(focusSpy).toHaveBeenCalledOnce();
   });
 
   it("does not prevent Tab when container has no focusable elements", () => {

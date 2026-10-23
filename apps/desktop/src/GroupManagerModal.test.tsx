@@ -25,8 +25,8 @@ function setup(overrides: Partial<React.ComponentProps<typeof GroupManagerModal>
     t,
     ...overrides,
   };
-  render(<GroupManagerModal {...props} />);
-  return props;
+  const { rerender } = render(<GroupManagerModal {...props} />);
+  return { ...props, rerender };
 }
 
 afterEach(() => {
@@ -34,6 +34,13 @@ afterEach(() => {
 });
 
 describe("GroupManagerModal", () => {
+  it("places initial focus on the new group field", () => {
+    setup();
+    expect(document.activeElement).toBe(
+      screen.getByLabelText("desktop.newGroupName"),
+    );
+  });
+
   it("renders builtin and custom groups with counts", () => {
     setup();
     expect(screen.getByText("desktop.groupProduction")).toBeTruthy();
@@ -73,6 +80,19 @@ describe("GroupManagerModal", () => {
     expect(props.onStartEditGroup).toHaveBeenCalledWith("My Group", "My Group");
   });
 
+  it("uses the shared UI button system for row actions", () => {
+    setup();
+    const renameButton = screen.getByLabelText("desktop.renameGroup");
+    const deleteButton = screen.getByLabelText("desktop.deleteGroup");
+
+    expect(renameButton.classList.contains("ui-button")).toBe(true);
+    expect(renameButton.classList.contains("ui-button--ghost")).toBe(true);
+    expect(renameButton.classList.contains("ui-button--icon")).toBe(true);
+    expect(deleteButton.classList.contains("ui-button")).toBe(true);
+    expect(deleteButton.classList.contains("ui-button--danger")).toBe(true);
+    expect(deleteButton.classList.contains("ui-button--icon")).toBe(true);
+  });
+
   it("deletes a custom group", () => {
     const props = setup();
     fireEvent.click(screen.getByLabelText("desktop.deleteGroup"));
@@ -81,18 +101,48 @@ describe("GroupManagerModal", () => {
 
   it("confirms a rename in edit mode", () => {
     const props = setup({ editingGroup: "My Group", editingGroupName: "Renamed" });
-    fireEvent.click(screen.getByLabelText("desktop.confirmRename"));
+    const confirmButton = screen.getByLabelText("desktop.confirmRename");
+    const cancelButton = screen.getByLabelText("desktop.cancelRename");
+    expect(confirmButton.classList.contains("ui-button--ghost")).toBe(true);
+    expect(cancelButton.classList.contains("ui-button--ghost")).toBe(true);
+    fireEvent.click(confirmButton);
     expect(props.onRenameGroup).toHaveBeenCalledWith("My Group", "Renamed");
     expect(props.onSetEditingGroup).toHaveBeenCalledWith(null);
   });
 
-  it("renames via Enter and cancels via Escape in edit mode", () => {
-    const props = setup({ editingGroup: "My Group", editingGroupName: "Renamed" });
+  it("renames via Enter, exits edit mode, and restores focus to the renamed row", () => {
+    const { rerender, ...props } = setup({
+      editingGroup: "My Group",
+      editingGroupName: "Renamed",
+    });
     const input = screen.getByLabelText("desktop.renameGroup");
     fireEvent.keyDown(input, { key: "Enter" });
     expect(props.onRenameGroup).toHaveBeenCalledWith("My Group", "Renamed");
+    expect(props.onSetEditingGroup).toHaveBeenCalledWith(null);
+
+    rerender(
+      <GroupManagerModal
+        {...props}
+        allGroupNames={["Production", "Renamed"]}
+        connectionCounts={{ Production: 3, Renamed: 1 }}
+        customGroups={["Renamed"]}
+        editingGroup={null}
+      />,
+    );
+    expect(document.activeElement).toBe(
+      screen.getByLabelText("desktop.renameGroup"),
+    );
+  });
+
+  it("cancels via Escape without closing the group manager", () => {
+    const props = setup({
+      editingGroup: "My Group",
+      editingGroupName: "Renamed",
+    });
+    const input = screen.getByLabelText("desktop.renameGroup");
     fireEvent.keyDown(input, { key: "Escape" });
     expect(props.onSetEditingGroup).toHaveBeenCalledWith(null);
+    expect(props.onClose).not.toHaveBeenCalled();
   });
 
   it("cancels rename via the cancel button", () => {
@@ -120,9 +170,13 @@ describe("GroupManagerModal", () => {
 
   it("closes via backdrop and Escape", () => {
     const props = setup();
+    const bubbledKeyDown = vi.fn();
+    window.addEventListener("keydown", bubbledKeyDown);
     const backdrop = screen.getByRole("dialog");
     fireEvent.click(backdrop);
     fireEvent.keyDown(backdrop, { key: "Escape" });
     expect(props.onClose).toHaveBeenCalledTimes(2);
+    expect(bubbledKeyDown).not.toHaveBeenCalled();
+    window.removeEventListener("keydown", bubbledKeyDown);
   });
 });

@@ -2,13 +2,15 @@ import { useEffect, useRef } from "react";
 import { getActiveElement } from "./dom-utils";
 
 const FOCUSABLE_SELECTORS = [
-  "a[href]",
-  "button:not([disabled])",
-  "input:not([disabled])",
-  "select:not([disabled])",
-  "textarea:not([disabled])",
+  'a[href]:not([tabindex="-1"])',
+  'button:not([disabled]):not([tabindex="-1"])',
+  'input:not([disabled]):not([tabindex="-1"])',
+  'select:not([disabled]):not([tabindex="-1"])',
+  'textarea:not([disabled]):not([tabindex="-1"])',
   "[tabindex]:not([tabindex=\"-1\"])",
 ].join(", ");
+
+const PREFERRED_FOCUS_SELECTOR = "[data-autofocus]:not([disabled])";
 
 /**
  * Traps keyboard focus within the referenced element while active.
@@ -27,10 +29,18 @@ export function useFocusTrap<T extends HTMLElement>(active: boolean) {
       return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTORS));
     }
 
-    // Focus the first focusable element on mount
+    // Capture the opener before moving focus. Consumers use data-autofocus
+    // instead of React's autoFocus so this still points at the invoking control.
     const focusable = getFocusableElements();
-    if (focusable.length > 0) {
+    const preferred = container.querySelector<HTMLElement>(
+      PREFERRED_FOCUS_SELECTOR,
+    );
+    if (preferred) {
+      preferred.focus();
+    } else if (focusable.length > 0) {
       focusable[0].focus();
+    } else if (container.hasAttribute("tabindex")) {
+      container.focus();
     }
 
     function handleKeyDown(event: KeyboardEvent) {
@@ -61,7 +71,11 @@ export function useFocusTrap<T extends HTMLElement>(active: boolean) {
     return () => {
       container.removeEventListener("keydown", handleKeyDown);
       // Restore focus to the previously active element
-      if (previousActiveElement && typeof previousActiveElement.focus === "function") {
+      if (
+        previousActiveElement &&
+        previousActiveElement.isConnected &&
+        typeof previousActiveElement.focus === "function"
+      ) {
         previousActiveElement.focus();
       }
     };

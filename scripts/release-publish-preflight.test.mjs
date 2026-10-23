@@ -1,3 +1,4 @@
+import { writeReleaseSbomFixture } from "./release-sbom-test-fixtures.mjs";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
@@ -143,47 +144,6 @@ function runWebPackager(root) {
     encoding: "utf8",
   });
   assert.equal(result.status, 0, result.stdout + result.stderr);
-}
-
-function writeReleaseSbomFixture(root) {
-  const sbomFiles = [
-    ["reports/release/npm-desktop-sbom.cdx.json", cyclonedxFixture("desktop")],
-    ["reports/release/npm-web-sbom.cdx.json", cyclonedxFixture("web")],
-    ["reports/release/cargo-metadata.json", cargoMetadataFixture("atlasterm-sync")],
-    ["reports/release/tauri-cargo-metadata.json", cargoMetadataFixture("atlasterm-desktop-shell")],
-  ];
-  for (const [path, content] of sbomFiles) {
-    writeFile(root, path, content);
-  }
-  writeManifest(
-    root,
-    "reports/release/SBOM-SHA256SUMS.txt",
-    sbomFiles.map(([path, content]) => [content, path]),
-  );
-}
-
-function cyclonedxFixture(name) {
-  return JSON.stringify({
-    bomFormat: "CycloneDX",
-    specVersion: "1.5",
-    metadata: { component: { name } },
-    components: [{ name: `${name}-dependency`, version: "1.0.0" }],
-  });
-}
-
-function cargoMetadataFixture(name) {
-  const packages =
-    name === "atlasterm-desktop-shell"
-      ? ["atlasterm-desktop-shell", "atlasterm-core", "russh", "russh-sftp", "serde", "tauri", "tokio", "uuid"]
-      : ["atlasterm-core", "atlasterm-sync", "axum", "russh", "russh-sftp", "serde", "tokio", "uuid"];
-  const workspaceMembers =
-    name === "atlasterm-desktop-shell" ? ["atlasterm-desktop-shell"] : ["atlasterm-core", "atlasterm-sync"];
-
-  return JSON.stringify({
-    packages: packages.map((packageName) => ({ name: packageName, version: "0.1.0-beta.1" })),
-    workspace_members: workspaceMembers.map((packageName) => `path+file:///${packageName}`),
-    version: 1,
-  });
 }
 
 function writeFile(root, relativePath, content) {
