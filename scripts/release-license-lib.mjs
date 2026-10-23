@@ -316,6 +316,26 @@ function platformLicenseParent(name) {
   return undefined;
 }
 
+export function validateOfficialLicenseReference(component, lockedChecksum, texts) {
+  const source = component.licenseSource;
+  const reference = referencedCargoLicenseSources.find((entry) => entry.component === component.id && entry.archiveSha256 === source.archiveSha256);
+  if (!reference || source.archiveSha256 !== lockedChecksum || source.noticeFileSha256 !== reference.noticeFileSha256 || source.url !== reference.licenseTextUrl || source.sha256 !== reference.licenseTextSha256 || !component.texts.some((text) => text.source === reference.licenseTextFile && text.sha256 === reference.licenseTextSha256) || !component.texts.some((text) => text.source === `${reference.noticeFile}.license-notice` && text.sha256 === reference.noticeSha256 && typeof texts[text.sha256] === "string" && hash(texts[text.sha256]) === reference.noticeSha256)) throw new Error("invalid original license reference");
+}
+
+export function validateRequiredLicenseSource(component, lockedChecksum) {
+  const reviewed = reviewedCargoLicenseSources.find((entry) => entry.component === component.id && entry.archiveSha256 === lockedChecksum);
+  const reference = referencedCargoLicenseSources.find((entry) => entry.component === component.id && entry.archiveSha256 === lockedChecksum);
+  if ((reviewed && component.licenseSource?.kind !== "upstream-commit") || (reference && component.licenseSource?.kind !== "official-license-reference")) throw new Error("required original license source is missing");
+}
+
+export function validateReviewedCargoAssociation(component) {
+  const source = component.licenseSource;
+  const reviewed = reviewedCargoLicenseSources.find((entry) => entry.component === component.id && entry.archiveSha256 === source.archiveSha256);
+  if (reviewed || source.reviewedAssociation) {
+    if (!reviewed || reviewed.repository !== source.repository || reviewed.commit !== source.commit || reviewed.pathInVcs !== source.packagePath || reviewed.associationKind !== source.reviewedAssociation || component.texts.length !== reviewed.materials.length || reviewed.materials.some((entry) => !component.texts.some((text) => entry.path === text.source && entry.sha256 === text.sha256))) throw new Error("invalid reviewed upstream license association");
+  }
+}
+
 export function validateLicenseInventory(root, outputDir, documents) {
   const file = assertReportOutput(root, resolve(outputDir, licenseInventoryName));
   const inventory = JSON.parse(readFileSync(file, "utf8"));
@@ -329,24 +349,23 @@ export function validateLicenseInventory(root, outputDir, documents) {
   const covered = new Set();
   const coveredTexts = new Set();
   const npmPackages = [...npmWorkspaceInventory(root, "desktop"), ...npmWorkspaceInventory(root, "web")];
+  const cargoPackages = ["Cargo.lock", "apps/desktop/src-tauri/Cargo.lock"].flatMap((file) => cargoLockInventory(root, file));
   for (const component of inventory.components) {
     const original = expected.get(component.id);
     if (!original || covered.has(component.id) || ["name", "version", "ecosystem"].some((key) => component[key] !== original[key])) throw new Error("unexpected or duplicate license component");
     covered.add(component.id);
     validateLicenseExpression(component.license);
     if (original.license && original.license !== component.license) throw new Error(`license declaration mismatch for ${component.id}`);
+    const lockedCargo = cargoPackages.find((entry) => entry.name === component.name && entry.version === component.version);
+    validateRequiredLicenseSource(component, lockedCargo?.checksum);
     if (component.licenseSource?.kind === "official-license-reference") {
-      const source = component.licenseSource;
-      const reference = referencedCargoLicenseSources.find((entry) => entry.component === component.id && entry.archiveSha256 === source.archiveSha256);
-      if (!reference || source.noticeFileSha256 !== reference.noticeFileSha256 || source.url !== reference.licenseTextUrl || source.sha256 !== reference.licenseTextSha256 || !component.texts.some((text) => text.source === reference.licenseTextFile && text.sha256 === reference.licenseTextSha256) || !component.texts.some((text) => text.source === `${reference.noticeFile}.license-notice` && texts[text.sha256]?.includes("https://mozilla.org/MPL/2.0/"))) throw new Error("invalid original license reference");
+      const locked = ["Cargo.lock", "apps/desktop/src-tauri/Cargo.lock"].flatMap((file) => cargoLockInventory(root, file)).find((entry) => entry.name === component.name && entry.version === component.version);
+      validateOfficialLicenseReference(component, locked?.checksum, texts);
     } else if (component.licenseSource?.kind === "upstream-commit") {
       const source = component.licenseSource;
       const locked = ["Cargo.lock", "apps/desktop/src-tauri/Cargo.lock"].flatMap((file) => cargoLockInventory(root, file)).find((entry) => entry.name === component.name && entry.version === component.version);
       if (component.ecosystem !== "cargo" || !/^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(source.repository) || !/^[a-f0-9]{40}$/.test(source.commit) || source.archiveSha256 !== locked?.checksum || typeof source.packagePath !== "string" || isAbsolute(source.packagePath) || source.packagePath.split(/[\\/]/).includes("..")) throw new Error("invalid immutable upstream license source");
-      if (source.reviewedAssociation) {
-        const reviewed = reviewedCargoLicenseSources.find((entry) => entry.component === component.id && entry.archiveSha256 === source.archiveSha256);
-        if (!reviewed || reviewed.repository !== source.repository || reviewed.commit !== source.commit || reviewed.pathInVcs !== source.packagePath || reviewed.associationKind !== source.reviewedAssociation || component.texts.some((text) => !reviewed.materials.some((entry) => entry.path === text.source && entry.sha256 === text.sha256))) throw new Error("invalid reviewed upstream license association");
-      }
+      validateReviewedCargoAssociation(component);
     } else if (component.licenseSource) {
       const parentName = platformLicenseParent(component.name);
       const parent = npmPackages.find((entry) => entry.name === parentName && entry.version === component.version);
