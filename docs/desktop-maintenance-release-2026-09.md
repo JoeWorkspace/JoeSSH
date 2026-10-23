@@ -1,7 +1,14 @@
 # September 2026 desktop maintenance release
 
-This is the current preparation entry point for `0.1.0-beta.29` / MSIX
-`1.1.29.0`. The earlier beta.28 package and evidence remain immutable; the
+This is the current preparation entry point for `0.1.0-beta.30` / MSIX
+`1.1.30.0`. The beta.29 source baseline is
+`312811c070790e1bb04bf164214e1db97a3f8825`; this candidate integrates the
+terminal, forwarding, dependency and release checks described in the
+[beta.30 candidate notes](release-notes/0.1.0-beta.30.md). The earlier beta.29
+build and its qualification evidence remain historical. Partner Center's
+current submission must be checked again before uploading the new bytes.
+
+The earlier beta.28 package and evidence remain immutable; the
 Store rejected its corrected bytes because `1.1.28.0` is already used by the
 active Submission 8 draft. The earlier beta.26 documents and evidence describe
 a completed historical source build; they are not qualification evidence for
@@ -9,17 +16,18 @@ this update.
 
 ## Baseline and scope
 
-The verified current Store package is `1.1.27.0` x64, Submission 7. The package
+The last verified Store package at the September inspection was `1.1.27.0`
+x64, Submission 7. The package
 filename is `JoeSSH_1.1.27.0_x64_803fcef25b78_34593035494_1.msix`. The earlier
 2026-09-11 catalog check showed `1.1.26.0` / Submission 6 and is historical. The
 previous overview showed
 “Start update”, with no pending update, and the package-flight section showed
-no flights. This establishes the current submission and source-build lineage;
+no flights. This records the historical submission and source-build lineage;
 it does not substitute for hashing the Store-signed download.
 
-The baseline published package remains `1.1.27.0`; Submission 8 currently
-retains its previously uploaded `1.1.28.0` package. The new candidate must use
-the same reviewed source behavior with the next deterministic package version.
+At the September inspection, the baseline published package was `1.1.27.0`;
+Submission 8 retained its previously uploaded `1.1.28.0` package. The historical
+beta.29 reissue used the same reviewed behavior with the next package version.
 The baseline main SHA for the beta.28 behavior is `803fcef25b7808bd8257fb589373791d75451f58`.
 The complete maintenance difference is the reviewed PR against that SHA.
 See [beta.29 candidate notes](release-notes/0.1.0-beta.29.md) for the package

@@ -849,64 +849,81 @@ test.describe('JoeSSH web admin', () => {
 
   test('keeps the Chinese default path and English regional path testable', async ({ browser, baseURL }) => {
     const zhContext = await browser.newContext({ baseURL, locale: 'zh-CN' });
-    const zhPage = await zhContext.newPage();
-    await zhPage.goto('/?adminSnapshot=fixture');
-    await expect(zhPage.locator('html')).toHaveAttribute('lang', 'zh-CN');
-    await expect(zhPage.getByRole('heading', { exact: true, name: '\u56e2\u961f\u8fd0\u8425' })).toBeVisible();
-    await expect(zhPage.getByRole('link').first()).toBeVisible();
-    await zhContext.close();
+    try {
+      const zhPage = await zhContext.newPage();
+      await zhPage.goto('/?adminSnapshot=fixture');
+      await expect(zhPage.locator('html')).toHaveAttribute('lang', 'zh-CN');
+      await expect(zhPage.getByRole('heading', { exact: true, name: '\u56e2\u961f\u8fd0\u8425' })).toBeVisible();
+      await expect(zhPage.getByRole('link').first()).toBeVisible();
+    } finally {
+      await zhContext.close();
+    }
 
     const enContext = await browser.newContext({ baseURL, locale: 'en-US' });
-    const enPage = await enContext.newPage();
-    await enPage.goto('/?adminSnapshot=fixture');
-    await expect(enPage.locator('html')).toHaveAttribute('lang', 'en');
-    await expect(enPage.getByRole('heading', { exact: true, name: 'Team operations' })).toBeVisible();
-    await expect(enPage.getByRole('link', { name: /Sync/i })).toBeVisible();
-    await enContext.close();
+    try {
+      const enPage = await enContext.newPage();
+      await enPage.goto('/?adminSnapshot=fixture');
+      await expect(enPage.locator('html')).toHaveAttribute('lang', 'en');
+      await expect(enPage.getByRole('heading', { exact: true, name: 'Team operations' })).toBeVisible();
+      await expect(enPage.getByRole('link', { name: /Sync/i })).toBeVisible();
+    } finally {
+      await enContext.close();
+    }
   });
 
   test('enforces strict core localization paths @i18n-strict', async ({ browser, baseURL }) => {
     const zhContext = await browser.newContext({ baseURL, locale: 'zh-CN' });
-    const zhPage = await zhContext.newPage();
-    await zhPage.goto('/?adminSnapshot=fixture');
-    await expect(zhPage.locator('html')).toHaveAttribute('lang', 'zh-CN');
-    await expect(zhPage.locator('html')).toHaveAttribute('dir', 'ltr');
-    await expect(zhPage.getByText('Team operations')).toHaveCount(0);
-    await expect(zhPage.getByText('Fixture fallback')).toHaveCount(0);
-    await expect(zhPage.getByRole('link', { name: '\u540c\u6b65' })).toHaveAttribute('aria-current', 'location');
-    await expect(zhPage.getByRole('cell', { name: /Current/ })).toHaveCount(0);
-    await expect(zhPage.getByText('Current')).toHaveCount(2);
-    await zhContext.close();
+    try {
+      const zhPage = await zhContext.newPage();
+      await zhPage.goto('/?adminSnapshot=fixture');
+      await expect(zhPage.locator('html')).toHaveAttribute('lang', 'zh-CN');
+      await expect(zhPage.locator('html')).toHaveAttribute('dir', 'ltr');
+      await expect(zhPage.getByText('Team operations')).toHaveCount(0);
+      await expect(zhPage.getByText('Fixture fallback')).toHaveCount(0);
+      await expect(zhPage.getByRole('link', { name: '\u540c\u6b65' })).toHaveAttribute('aria-current', 'location');
+      await expect(zhPage.getByRole('cell', { name: /Current/ })).toHaveCount(0);
+      await expect(zhPage.getByText('Current')).toHaveCount(2);
+    } finally {
+      await zhContext.close();
+    }
 
     const enContext = await browser.newContext({ baseURL, locale: 'en-US' });
-    const enPage = await enContext.newPage();
-    await enPage.goto('/');
-    await expect(enPage.locator('html')).toHaveAttribute('lang', 'en');
-    await expect(enPage.getByRole('heading', { exact: true, name: 'Team operations' })).toBeVisible();
-    await expect(enPage.getByRole('link', { name: 'Sync' })).toBeVisible();
-    await enContext.close();
+    try {
+      const enPage = await enContext.newPage();
+      await enPage.goto('/');
+      await expect(enPage.locator('html')).toHaveAttribute('lang', 'en');
+      await expect(enPage.getByRole('heading', { exact: true, name: 'Team operations' })).toBeVisible();
+      await expect(enPage.getByRole('link', { name: 'Sync' })).toBeVisible();
+    } finally {
+      await enContext.close();
+    }
 
     const arContext = await browser.newContext({ baseURL, locale: 'ar-SA' });
-    const arPage = await arContext.newPage();
-    await arPage.goto('/?adminSnapshot=fixture');
-    await expect(arPage.locator('html')).toHaveAttribute('lang', 'ar');
-    await expect(arPage.locator('html')).toHaveAttribute('dir', 'rtl');
-    await expect(arPage.getByRole('table').first()).toBeVisible();
-    await arContext.close();
+    try {
+      const arPage = await arContext.newPage();
+      await arPage.goto('/?adminSnapshot=fixture');
+      await expect(arPage.locator('html')).toHaveAttribute('lang', 'ar');
+      await expect(arPage.locator('html')).toHaveAttribute('dir', 'rtl');
+      await expect(arPage.getByRole('table').first()).toBeVisible();
+    } finally {
+      await arContext.close();
+    }
   });
 
   test('renders the admin shell under common market locales', async ({ browser, baseURL }) => {
     for (const locale of commonMarketLocales) {
       const context = await browser.newContext({ baseURL, locale });
-      const localePage = await context.newPage();
-      await localePage.goto('/?adminSnapshot=fixture');
+      try {
+        const localePage = await context.newPage();
+        await localePage.goto('/?adminSnapshot=fixture');
 
-      await expect(localePage.getByText('JoeSSH', { exact: true })).toBeVisible();
-      await expect(localePage.locator('html')).toHaveAttribute('lang', expectedAtlasLocaleByMarketLocale[locale]);
-      await expect(localePage.locator('html')).toHaveAttribute('dir', expectedTextDirectionByMarketLocale[locale]);
-      await expect(localePage.getByRole('table').first()).toBeVisible();
-
-      await context.close();
+        await expect(localePage.getByText('JoeSSH', { exact: true })).toBeVisible();
+        await expect(localePage.locator('html')).toHaveAttribute('lang', expectedAtlasLocaleByMarketLocale[locale]);
+        await expect(localePage.locator('html')).toHaveAttribute('dir', expectedTextDirectionByMarketLocale[locale]);
+        await expect(localePage.getByRole('table').first()).toBeVisible();
+      } finally {
+        await context.close();
+      }
     }
   });
 });

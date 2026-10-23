@@ -1,7 +1,22 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { basename, dirname, join, resolve } from "node:path";
+import { tmpdir } from "node:os";
+import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
+import { verifyVendoredNpmPackages } from "./vendored-npm-contract.mjs";
+import {
+  assessNodeForgeRegistryAudit,
+  isVerifiedNodeForgeFinding,
+  nodeForgeRegistryAuditInputs,
+} from "./vendored-node-forge-audit.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const severityRank = { info: 0, low: 1, moderate: 2, high: 3, critical: 4 };
@@ -23,7 +38,12 @@ function checkDependencyRiskRegister() {
   const fullReport = auditJsonPath
     ? readAuditFixture(auditJsonPath)
     : readAuditReport(
-        ["audit", "--audit-level=high", "--json"],
+        [
+          "audit",
+          "--audit-level=high",
+          "--registry=https://registry.npmjs.org",
+          "--json",
+        ],
         "full workspace",
         "high",
       );
@@ -32,22 +52,47 @@ function checkDependencyRiskRegister() {
     : auditJsonPath
       ? fullReport
       : readAuditReport(
-          ["audit", "--omit=dev", "--audit-level=moderate", "--json"],
+          [
+            "audit",
+            "--omit=dev",
+            "--audit-level=moderate",
+            "--registry=https://registry.npmjs.org",
+            "--json",
+          ],
           "production",
           "moderate",
         );
   validateAuditReport(fullReport, "full workspace");
   validateAuditReport(productionReport, "production");
+  const vendors = verifyVendoredNpmPackages(root);
+  let verifiedForge;
+  // Fixture reports remain diagnostic inputs. The release entry point runs
+  // without fixture flags and always audits the original registry identity.
+  if (!auditJsonPath && !productionAuditJsonPath) {
+    const forge = vendors.find((record) => record.name === "node-forge");
+    if (forge) {
+      verifyOriginalNodeForgeAudit(forge);
+      verifiedForge = forge;
+    }
+  }
 
   // Inspect both scopes independently: a lower-severity copy of a package in one
   // report must never overwrite a blocking finding in the other report.
   const blocking = [];
+  const patchedPaths = [];
   for (const [scope, report] of [
     ["full workspace", fullReport],
     ["production", productionReport],
   ]) {
     for (const vulnerability of Object.values(report.vulnerabilities)) {
       if (severityRank[vulnerability.severity] >= severityRank.high) {
+        if (
+          verifiedForge &&
+          isVerifiedNodeForgeFinding(report, vulnerability.name, verifiedForge)
+        ) {
+          patchedPaths.push(`${scope}: ${vulnerability.name}`);
+          continue;
+        }
         const advisories = collectDirectAdvisoryUrls(vulnerability);
         blocking.push(
           `${scope}: ${vulnerability.name} (${vulnerability.severity})${
@@ -91,7 +136,11 @@ function checkDependencyRiskRegister() {
     );
   }
 
-  if (moderateFindings.length === 0) {
+  if (patchedPaths.length > 0) {
+    console.log(
+      `Dependency audit passed with the source-verified Node-only backport for ${patchedPaths.length} full/production package paths; upstream reports are retained and all unremediated high-or-critical findings remain blocking.`,
+    );
+  } else if (moderateFindings.length === 0) {
     console.log(
       "Dependency audit has no high-or-critical workspace findings and no moderate-or-higher production findings.",
     );
@@ -114,9 +163,82 @@ function readAuditReport(args, label, auditLevel) {
     cwd: root,
     encoding: "utf8",
     shell: process.platform === "win32",
+    timeout: 180_000,
+    maxBuffer: 16 * 1024 * 1024,
   });
 
   return parseAuditResult(audit, label, auditLevel);
+}
+
+function verifyOriginalNodeForgeAudit(verified) {
+  const expectedEntry = realpathSync(
+    resolve(verified.directory, "lib/index.js"),
+  );
+  for (const manifestPath of [
+    "package.json",
+    "node_modules/@expo/cli/package.json",
+    "node_modules/@expo/code-signing-certificates/package.json",
+  ]) {
+    const manifest = resolve(root, manifestPath);
+    if (
+      !existsSync(manifest) ||
+      realpathSync(createRequire(manifest).resolve("node-forge")) !==
+        expectedEntry
+    ) {
+      throw new Error(
+        "Installed Expo/root node-forge must resolve to the verified backport.",
+      );
+    }
+  }
+  const inputs = nodeForgeRegistryAuditInputs(verified);
+  const temporaryRoot = realpathSync(tmpdir());
+  const directory = mkdtempSync(
+    join(temporaryRoot, "joessh-forge-registry-audit-"),
+  );
+  if (
+    dirname(directory) !== temporaryRoot ||
+    !basename(directory).startsWith("joessh-forge-registry-audit-")
+  ) {
+    throw new Error("Refusing to use an unexpected audit directory.");
+  }
+  try {
+    writeFileSync(
+      join(directory, "package.json"),
+      JSON.stringify(inputs.manifest),
+    );
+    writeFileSync(
+      join(directory, "package-lock.json"),
+      JSON.stringify(inputs.lock),
+    );
+    const audit = spawnSync(
+      "npm",
+      [
+        "audit",
+        "--audit-level=high",
+        "--registry=https://registry.npmjs.org",
+        "--json",
+      ],
+      {
+        cwd: directory,
+        encoding: "utf8",
+        shell: process.platform === "win32",
+        timeout: 180_000,
+        maxBuffer: 16 * 1024 * 1024,
+      },
+    );
+    const report = parseAuditResult(
+      audit,
+      "original node-forge registry identity",
+      "high",
+    );
+    const assessment = assessNodeForgeRegistryAudit(report, verified);
+    console.log(
+      `VERIFIED BACKPORT ${assessment.verifiedBackport}: original node-forge@1.4.0 remains reported; installed Node-only source is pinned and patched. No upstream fixed release is claimed.`,
+    );
+  } finally {
+    // Delete only this call's private, canonical temporary audit directory.
+    rmSync(directory, { recursive: true, force: true });
+  }
 }
 
 // npm returns 1 for findings at the requested audit threshold. Treat transport,

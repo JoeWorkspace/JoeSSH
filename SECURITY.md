@@ -4,7 +4,9 @@
 
 | Version       | Supported              |
 | ------------- | ---------------------- |
-| 0.1.0-beta.28 | Maintenance candidate  |
+| 0.1.0-beta.30 | Maintenance candidate  |
+| 0.1.0-beta.29 | Superseded candidate   |
+| 0.1.0-beta.28 | Superseded candidate   |
 | 0.1.0-beta.27 | Current Store package  |
 | 0.1.0-beta.25 | Superseded candidate   |
 | 0.1.0-beta.24 | Superseded candidate   |
@@ -101,6 +103,11 @@ We appreciate the security research community and will credit reporters (with pe
 - High and critical npm dependency findings block release across the full
   workspace, including development and mobile build tooling. No high-severity
   exceptions are active.
+- A content-verified security backport must retain and audit its original
+  registry identity. Only the exact source-remediated defect can be recognized;
+  unknown or changed findings and any source/lock mismatch remain blocking.
+  See the [Node-only forge backport](docs/node-forge-backport.md) for its pins,
+  independent review, actual-consumer tests and retirement requirements.
 - Moderate production dependency findings must be documented in
   `docs/dependency-risk-register.md` with advisory URL, affected path, runtime
   impact, Public Beta decision, and follow-up.

@@ -1,0 +1,79 @@
+# Node-only node-forge backport
+
+JoeSSH uses a project-maintained backport for the Expo build tools' RSA
+verification path. It retains the published identity `node-forge@1.4.0`.
+Upstream [PR 1159](https://github.com/digitalbazaar/forge/pull/1159) at
+`db05494352dd3c9a5a07c5270333dcc78866cad2` was open and unmerged at review;
+this is not an upstream `1.4.1` release.
+
+## Source and behavior
+
+The original archive is bound by npm SHA-512 integrity, SHA-1 and SHA-256.
+Only `lib/rsa.js` receives the pinned upstream change. The verifier compares
+the recovered DigestInfo with its canonical DER encoding, rejecting extra
+elements, payload-bearing NULL parameters, non-minimal lengths and trailing
+data in the default strict verification path. This follows the DER encoding
+and comparison requirements in [RFC 8017](https://www.rfc-editor.org/rfc/rfc8017#section-9.2).
+Valid SHA parameter forms and unrelated PSS/NONE behavior remain covered.
+
+The package is deliberately Node-only. Old prebuilt `dist` JavaScript, source
+maps and Flash files are absent, and conditional exports reject those paths.
+Other runtime source and the original dual-license text remain byte-identical.
+Package-development scripts and dependencies are omitted. Original metadata
+is preserved in `package.original.json`; source, patch, removed files and every
+retained file hash are recorded in `JOESSH-PATCH.json`.
+
+Unsupported `_parseAllDigestBytes=false` and `_skipPaddingChecks` options are
+upstream testing escape hatches, not safe product verification settings. Expo's
+real consumers use the default strict path. Do not enable those options in
+product or release tooling.
+
+## Required verification
+
+`npm run qa:prod-audit` verifies the complete vendor tree, the independently
+pinned metadata digest, root dependency/override and lock binding, absence of
+duplicate package identities, and actual installed resolution from root and
+Expo. A missing direct declaration cannot disable verification when a vendor
+directory, override, alternate declaration or locked identity remains.
+
+It then performs three fresh audits against the official npm registry: full
+workspace, production scope, and an isolated lock containing the original
+published `node-forge@1.4.0` identity and archive integrity. Transport failures,
+invalid JSON/counts/status, changed upstream findings and unknown advisories
+block the gate.
+
+npm still reports the original advisory and propagates it to three Expo parent
+packages. The checker retains these reports and recognizes the exact
+[GHSA-86w9-cpqp-85rv](https://github.com/advisories/GHSA-86w9-cpqp-85rv)
+finding only after the installed patched source and original-identity audit
+have passed. Its exact four dependency paths, nodes and advisory structure are
+checked. An additional advisory, different source/severity, unpatched nested
+copy or altered tree remains blocking. This is verification of the source
+remediation, not permission to ship an unpatched high finding.
+
+Fixture audit flags are diagnostic inputs and do not perform the original
+registry network audit. They cannot satisfy release acceptance; CI uses the
+normal `qa:prod-audit` entry point without fixture flags.
+
+The registered tests cover malformed DER, exponent 3 and 65537, Node/OpenSSL
+signing and verification, optional SHA parameters, PSS/NONE, and real Expo
+certificate, CSR and manifest signing consumers. They resolve the actual
+installed package without require interception. All keys and certificates are
+temporary synthetic fixtures. Full upstream release approval and a private-key-
+free exploit demonstration are not claimed.
+
+## Evidence and retirement
+
+Review evidence is under `reports/store-publish-2026-10-23/`: the dependency
+lane preserves the original archive and negative control; the independent
+release review records 203 synthetic cryptographic and source checks. The
+recorded candidate has 54 files, metadata SHA-256
+`db8de1ffc50b39e856eb1839c90fad00e71eef6928e61a99991f1ff8af3162f8`,
+and patched RSA source SHA-256
+`c7b72e7ef41f4fc0e5228dce3e37851e9ca064c789365d5e392c25d1c5f6e710`.
+Fresh CI results and current SBOM/license evidence remain required for release.
+
+When upstream publishes a reviewed fixed version, replace the backport,
+remove the override and registration together, rerun these interoperability
+tests and the full release gates, and regenerate SBOMs and license materials.
+Do not change the recorded identity to make the registry advisory disappear.

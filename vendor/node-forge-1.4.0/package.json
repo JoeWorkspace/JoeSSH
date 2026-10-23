@@ -1,0 +1,79 @@
+{
+  "name": "node-forge",
+  "version": "1.4.0",
+  "description": "JavaScript implementations of network transports, cryptography, ciphers, PKI, message digests, and various utilities.",
+  "homepage": "https://github.com/digitalbazaar/forge",
+  "author": {
+    "name": "Digital Bazaar, Inc.",
+    "email": "support@digitalbazaar.com",
+    "url": "http://digitalbazaar.com/"
+  },
+  "contributors": [
+    "Dave Longley <dlongley@digitalbazaar.com>",
+    "David I. Lehn <dlehn@digitalbazaar.com>",
+    "Stefan Siegl <stesie@brokenpipe.de>",
+    "Christoph Dorn <christoph@christophdorn.com>"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/digitalbazaar/forge"
+  },
+  "bugs": {
+    "url": "https://github.com/digitalbazaar/forge/issues",
+    "email": "support@digitalbazaar.com"
+  },
+  "license": "(BSD-3-Clause OR GPL-2.0)",
+  "main": "lib/index.js",
+  "files": [
+    "lib/*.js",
+    "LICENSE",
+    "package.original.json",
+    "JOESSH-PATCH.json"
+  ],
+  "engines": {
+    "node": ">= 6.13.0"
+  },
+  "keywords": [
+    "aes",
+    "asn",
+    "asn.1",
+    "cbc",
+    "crypto",
+    "cryptography",
+    "csr",
+    "des",
+    "gcm",
+    "hmac",
+    "http",
+    "https",
+    "md5",
+    "network",
+    "pkcs",
+    "pki",
+    "prng",
+    "rc2",
+    "rsa",
+    "sha1",
+    "sha256",
+    "sha384",
+    "sha512",
+    "ssh",
+    "tls",
+    "x.509",
+    "x509"
+  ],
+  "browser": {
+    "buffer": false,
+    "crypto": false,
+    "process": false
+  },
+  "exports": {
+    ".": {
+      "node": "./lib/index.js"
+    },
+    "./package.json": "./package.json",
+    "./lib/*": {
+      "node": "./lib/*"
+    }
+  }
+}

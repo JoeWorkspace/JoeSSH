@@ -44,19 +44,21 @@ test.describe('JoeSSH mobile companion web smoke', () => {
       locale: 'ar-SA',
       viewport: { width: 320, height: 700 },
     });
-    const page = await context.newPage();
+    try {
+      const page = await context.newPage();
 
-    await page.goto('/');
+      await page.goto('/');
 
-    await expect(page.getByText('JoeSSH Mobile', { exact: true })).toBeVisible();
-    await expect
-      .poll(async () => page.evaluate(() => /[\u0600-\u06ff]/.test(document.body.textContent ?? '')))
-      .toBe(true);
-    await expect(page.getByTestId('sync-status-panel')).toBeVisible();
-    await expect(page.getByTestId('sync-primary-action')).toBeVisible();
-    await expectNoDocumentOverflow(page);
-
-    await context.close();
+      await expect(page.getByText('JoeSSH Mobile', { exact: true })).toBeVisible();
+      await expect
+        .poll(async () => page.evaluate(() => /[\u0600-\u06ff]/.test(document.body.textContent ?? '')))
+        .toBe(true);
+      await expect(page.getByTestId('sync-status-panel')).toBeVisible();
+      await expect(page.getByTestId('sync-primary-action')).toBeVisible();
+      await expectNoDocumentOverflow(page);
+    } finally {
+      await context.close();
+    }
   });
 
   test('applies the dark OS theme to the mobile status surface', async ({ browser, baseURL }) => {
@@ -66,20 +68,22 @@ test.describe('JoeSSH mobile companion web smoke', () => {
       locale: 'en-US',
       viewport: { width: 320, height: 700 },
     });
-    const page = await context.newPage();
+    try {
+      const page = await context.newPage();
 
-    await page.goto('/');
+      await page.goto('/');
 
-    await expect(page.getByTestId('sync-status-panel')).toContainText('Ready to connect');
-    await expectComputedStyle(page, '[data-testid="mobile-home-root"]', 'backgroundColor', 'rgb(8, 13, 18)');
-    await expectComputedStyle(page, '[data-testid="sync-status-panel"]', 'backgroundColor', 'rgb(17, 25, 35)');
-    await expect(page.getByText('Start by registering this phone and pulling a safe preview from JoeSSH sync.')).toHaveCSS(
-      'color',
-      'rgb(162, 177, 186)',
-    );
-    await expectNoDocumentOverflow(page);
-
-    await context.close();
+      await expect(page.getByTestId('sync-status-panel')).toContainText('Ready to connect');
+      await expectComputedStyle(page, '[data-testid="mobile-home-root"]', 'backgroundColor', 'rgb(8, 13, 18)');
+      await expectComputedStyle(page, '[data-testid="sync-status-panel"]', 'backgroundColor', 'rgb(17, 25, 35)');
+      await expect(page.getByText('Start by registering this phone and pulling a safe preview from JoeSSH sync.')).toHaveCSS(
+        'color',
+        'rgb(162, 177, 186)',
+      );
+      await expectNoDocumentOverflow(page);
+    } finally {
+      await context.close();
+    }
   });
 });
 

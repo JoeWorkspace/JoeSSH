@@ -18,7 +18,9 @@ const packageLock = readJson(resolve(root, "package-lock.json"));
 const require = createRequire(import.meta.url);
 
 test("pins every vendored decoder file to the reviewed npm release and compatibility patch", () => {
-  const records = verifyVendoredNpmPackages(root);
+  const records = verifyVendoredNpmPackages(root).filter(
+    (record) => record.name === "decode-uri-component",
+  );
   assert.equal(records.length, 1);
   assert.equal(records[0].name, "decode-uri-component");
   assert.equal(records[0].version, "0.5.0");

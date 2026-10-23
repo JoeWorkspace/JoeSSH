@@ -8,7 +8,7 @@ export default defineConfig({
       '**/node_modules/**',
       '**/dist/**',
       '**/tests/e2e/**',
-      '**/scripts/**/*.test.mjs',
+      '**/scripts/**/*.test.{mjs,cjs}',
       '**/.expo/**',
       'apps/mobile/**',
     ],
