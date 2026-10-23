@@ -1,7 +1,7 @@
 > 2026-10-24: The current maintenance candidate is `0.1.0-beta.30` / MSIX
 > `1.1.30.0`, based on protected-main beta.29 source plus the reviewed fixes.
-> The last verified Store package was `1.1.27.0`, with `1.1.28.0` retained in
-> Submission 8 on 2026-09-24; recheck the live Portal before upload. Use the
+> Partner Center verified Submission 8 / `1.1.29.0` as currently published on
+> 2026-10-24; use that version as the new upgrade baseline. Use the
 > [maintenance release entry](desktop-maintenance-release-2026-09.md) and
 > [beta.30 notes](release-notes/0.1.0-beta.30.md). Earlier package, tag and
 > qualification statements below are historical references. A future source-only

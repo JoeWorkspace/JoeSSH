@@ -16,6 +16,15 @@ this update.
 
 ## Baseline and scope
 
+On 2026-10-24, the live Partner Center overview showed Submission 8 as
+published and its read-only Packages page showed `1.1.29.0` x64:
+`JoeSSH_1.1.29.0_x64_312811c07079_35947067042_1.msix`, Windows.Desktop
+minimum `10.0.17763.0`. The next candidate is `1.1.30.0`; qualify its upgrade
+from this current baseline. The Portal record identifies the uploaded package;
+it does not replace hashing a Store-signed download or an actual upgrade pilot.
+
+The following September observations are historical:
+
 The last verified Store package at the September inspection was `1.1.27.0`
 x64, Submission 7. The package
 filename is `JoeSSH_1.1.27.0_x64_803fcef25b78_34593035494_1.msix`. The earlier
@@ -52,7 +61,7 @@ when this baseline was checked. Recheck main and Partner Center before release.
    [native harness](windows-store-native-verification.md) for this candidate.
    Its tracked bundle is pinned to earlier evidence and must not silently qualify
    this release. Keep old evidence unchanged; review and bind the new candidate,
-   `1.1.27.0` baseline, SDK/toolchain, and harness hashes.
+   `1.1.29.0` baseline, SDK/toolchain, and harness hashes.
 5. Require WACK and clean-install/upgrade/uninstall checks in an isolated
    Windows environment. Exercise 2 and 8 real SSH sessions, hidden output,
    input targeting, SFTP selection/confirmation across switches, forwarding,
