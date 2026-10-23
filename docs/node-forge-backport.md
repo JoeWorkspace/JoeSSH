@@ -18,7 +18,8 @@ Valid SHA parameter forms and unrelated PSS/NONE behavior remain covered.
 
 The package is deliberately Node-only. Old prebuilt `dist` JavaScript, source
 maps and Flash files are absent, and conditional exports reject those paths.
-Other runtime source and the original dual-license text remain byte-identical.
+Apart from the RSA fix and the exact PKCS#12 alias spelling adjustment below,
+runtime source and the original dual-license text remain byte-identical.
 Package-development scripts and dependencies are omitted. Original metadata
 is preserved in `package.original.json`; source, patch, removed files and every
 retained file hash are recorded in `JOESSH-PATCH.json`.
@@ -68,7 +69,7 @@ Review evidence is under `reports/store-publish-2026-10-23/`: the dependency
 lane preserves the original archive and negative control; the independent
 release review records 203 synthetic cryptographic and source checks. The
 recorded candidate has 54 files, metadata SHA-256
-`db8de1ffc50b39e856eb1839c90fad00e71eef6928e61a99991f1ff8af3162f8`,
+`fe2b1bf06499efd7b3a970a122dcd64ee8d17ec8586454aa15892b5e33b4b127`,
 and patched RSA source SHA-256
 `c7b72e7ef41f4fc0e5228dce3e37851e9ca064c789365d5e392c25d1c5f6e710`.
 Fresh CI results and current SBOM/license evidence remain required for release.
@@ -81,6 +82,18 @@ registry archive and contain no JoeSSH credential. Only their exact
 are recorded in `.gitleaksignore`; no vendor path or detector is excluded.
 The updated ignore bytes are pinned in the CI and release checks. Future
 changes still require scanning and review.
+
+The protected branch requires linear history. To keep a squash merge from
+reintroducing those non-secret matches under a new commit ID, the distribution
+uses bracket-property notation for the same PKCS#12 function alias and removes
+the duplicate password-derived ED25519 seed example, retaining the secure random
+32-byte seed example. These two files have independently pinned original and
+adjusted hashes in `sourceAdjustments`; no other source change is permitted.
+Normalized AST, export names and function identity match, and 96 PKCS#12
+derivation cases produce the same bytes. The 54-file distribution scans without
+findings under the unchanged default rules. The older exact historical
+fingerprints remain for the already introduced commits. Use a squash merge;
+rebasing the earlier commits would create new historical matches.
 
 When upstream publishes a reviewed fixed version, replace the backport,
 remove the override and registration together, rerun these interoperability

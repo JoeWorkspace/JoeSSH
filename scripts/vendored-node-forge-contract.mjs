@@ -13,7 +13,7 @@ export const NODE_FORGE_REGISTRATION = deepFreeze({
   path: "vendor/node-forge-1.4.0",
   dependencySpec: "file:vendor/node-forge-1.4.0",
   metadataSha256:
-    "db8de1ffc50b39e856eb1839c90fad00e71eef6928e61a99991f1ff8af3162f8",
+    "fe2b1bf06499efd7b3a970a122dcd64ee8d17ec8586454aa15892b5e33b4b127",
   archive: "https://registry.npmjs.org/node-forge/-/node-forge-1.4.0.tgz",
   integrity:
     "sha512-LarFH0+6VfriEhqMMcLX2F7SwSXeWwnEAJEsYm5QKWchiVYVvJyV9v7UDvUv+w5HO23ZpQTXDv/GxdDdMyOuoQ==",
@@ -34,6 +34,24 @@ export const NODE_FORGE_REGISTRATION = deepFreeze({
   license: "(BSD-3-Clause OR GPL-2.0)",
   licenseSha256:
     "f63ff0e4e239244aa79280da2dd4811a0469e5e201caf5cbc0d97c3a1dff8e82",
+  sourceAdjustments: {
+    "lib/pkcs12.js": {
+      originalSha256:
+        "d0f9693ff8b6e755031566139f0e23a762c9a7af6a1b08a27d522810019906d3",
+      sha256:
+        "a3f5e45ff46e94979de8a78d1031d61d5941982263f52e9a5b3e2c5d2c26cc83",
+      reason:
+        "Equivalent bracket-property alias assignment avoids a non-secret false positive after linear-history merges.",
+    },
+    "README.md": {
+      originalSha256:
+        "4ea0e2db410fd5d87c3c9b21912b9ed3fe6c57b3107fa92e2c90b1e618121a49",
+      sha256:
+        "19fe5303e915a3f81e59cb25e2ea0d425bbef52854ccc2d4a8630b2694f68d95",
+      reason:
+        "Remove a duplicate password-derived seed example while retaining the original secure random 32-byte seed example.",
+    },
+  },
   patchedAdvisories: ["GHSA-86w9-cpqp-85rv"],
   removedFiles: [
     "dist/forge.all.min.js",
@@ -187,6 +205,10 @@ function assertMetadata(metadata) {
       metadata.distribution?.removedFiles,
       NODE_FORGE_REGISTRATION.removedFiles,
     ) ||
+    !isDeepStrictEqual(
+      metadata.distribution?.sourceAdjustments,
+      NODE_FORGE_REGISTRATION.sourceAdjustments,
+    ) ||
     !isDeepStrictEqual(metadata.license, {
       expression: NODE_FORGE_REGISTRATION.license,
       file: "LICENSE",
@@ -234,9 +256,23 @@ function assertMetadata(metadata) {
     if (record.originalSha256 !== originalHash) {
       throw new Error("node-forge original source identity mismatch: " + name);
     }
+    const adjustment = Object.hasOwn(
+      NODE_FORGE_REGISTRATION.sourceAdjustments,
+      name,
+    )
+      ? NODE_FORGE_REGISTRATION.sourceAdjustments[name]
+      : null;
+    if (
+      adjustment &&
+      (originalHash !== adjustment.originalSha256 ||
+        record.sha256 !== adjustment.sha256)
+    ) {
+      throw new Error("Unapproved node-forge source adjustment: " + name);
+    }
     if (
       name !== "package.json" &&
       name !== "lib/rsa.js" &&
+      !adjustment &&
       record.sha256 !== originalHash
     ) {
       throw new Error("Unapproved node-forge source modification: " + name);

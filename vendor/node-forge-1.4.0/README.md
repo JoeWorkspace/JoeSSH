@@ -873,10 +873,6 @@ var keypair = ed25519.generateKeyPair();
 var seed = forge.random.getBytesSync(32);
 var keypair = ed25519.generateKeyPair({seed: seed});
 
-// generate a random ED25519 keypair based on a "password" 32-byte seed
-var password = 'Mai9ohgh6ahxee0jutheew0pungoozil';
-var seed = new forge.util.ByteBuffer(password, 'utf8');
-var keypair = ed25519.generateKeyPair({seed: seed});
 
 // sign a UTF-8 message
 var signature = ED25519.sign({

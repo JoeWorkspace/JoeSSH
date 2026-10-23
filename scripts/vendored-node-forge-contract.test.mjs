@@ -74,6 +74,8 @@ test("verifies complete reviewed tree and preserves registry identity", (t) => {
 for (const name of [
   "lib/rsa.js",
   "lib/asn1.js",
+  "lib/pkcs12.js",
+  "README.md",
   "LICENSE",
   "package.original.json",
 ]) {

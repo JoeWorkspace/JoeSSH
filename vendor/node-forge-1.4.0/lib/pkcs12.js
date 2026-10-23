@@ -1075,4 +1075,4 @@ p12.toPkcs12Asn1 = function(key, cert, password, options) {
  *
  * @return a ByteBuffer with the bytes derived from the password.
  */
-p12.generateKey = forge.pbe.generatePkcs12Key;
+p12['generateKey'] = forge.pbe.generatePkcs12Key;

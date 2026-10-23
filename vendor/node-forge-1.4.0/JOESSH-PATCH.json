@@ -42,7 +42,19 @@
       "remove development scripts/dependencies and nyc/jspm",
       "files limits Node sources",
       "conditional exports allows Node main/lib only; dist absent"
-    ]
+    ],
+    "sourceAdjustments": {
+      "lib/pkcs12.js": {
+        "originalSha256": "d0f9693ff8b6e755031566139f0e23a762c9a7af6a1b08a27d522810019906d3",
+        "sha256": "a3f5e45ff46e94979de8a78d1031d61d5941982263f52e9a5b3e2c5d2c26cc83",
+        "reason": "Equivalent bracket-property alias assignment avoids a non-secret false positive after linear-history merges."
+      },
+      "README.md": {
+        "originalSha256": "4ea0e2db410fd5d87c3c9b21912b9ed3fe6c57b3107fa92e2c90b1e618121a49",
+        "sha256": "19fe5303e915a3f81e59cb25e2ea0d425bbef52854ccc2d4a8630b2694f68d95",
+        "reason": "Remove a duplicate password-derived seed example while retaining the original secure random 32-byte seed example."
+      }
+    }
   },
   "license": {
     "expression": "(BSD-3-Clause OR GPL-2.0)",
@@ -236,7 +248,7 @@
     },
     "README.md": {
       "role": "original-upstream-file",
-      "sha256": "4ea0e2db410fd5d87c3c9b21912b9ed3fe6c57b3107fa92e2c90b1e618121a49",
+      "sha256": "19fe5303e915a3f81e59cb25e2ea0d425bbef52854ccc2d4a8630b2694f68d95",
       "originalSha256": "4ea0e2db410fd5d87c3c9b21912b9ed3fe6c57b3107fa92e2c90b1e618121a49"
     },
     "lib/aes.js": {
@@ -381,7 +393,7 @@
     },
     "lib/pkcs12.js": {
       "role": "original-upstream-file",
-      "sha256": "d0f9693ff8b6e755031566139f0e23a762c9a7af6a1b08a27d522810019906d3",
+      "sha256": "a3f5e45ff46e94979de8a78d1031d61d5941982263f52e9a5b3e2c5d2c26cc83",
       "originalSha256": "d0f9693ff8b6e755031566139f0e23a762c9a7af6a1b08a27d522810019906d3"
     },
     "lib/pkcs7.js": {
