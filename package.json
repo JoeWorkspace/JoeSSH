@@ -279,7 +279,7 @@
     "lighthouse": "^13.4.0",
     "lint-staged": "^17.0.8",
     "prettier": "^3.8.4",
-    "puppeteer": "^25.1.0",
+    "puppeteer": "^25.16.0",
     "sax": "1.6.1",
     "size-limit": "^12.1.0",
     "typescript-eslint": "^8.65.0",
