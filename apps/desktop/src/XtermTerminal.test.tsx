@@ -220,6 +220,41 @@ describe("XtermTerminal", () => {
     expect(screen.getByLabelText("Localized terminal")).toBeTruthy();
   });
 
+  it("retains the last valid dimensions during a zero-size window resize fallback", async () => {
+    vi.stubGlobal("ResizeObserver", undefined);
+    const session = makeDeps("window-resize");
+    const view = (active: boolean) => (
+      <XtermTerminal active={active} deps={session.deps} label="Window resize terminal" />
+    );
+    const { rerender } = render(view(true));
+    await screen.findByText("Terminal connected");
+    const host = screen.getByLabelText("Window resize terminal");
+    const setSize = (width: number, height: number) => {
+      Object.defineProperties(host, {
+        clientWidth: { configurable: true, value: width },
+        clientHeight: { configurable: true, value: height },
+      });
+    };
+
+    setSize(816, 526);
+    fireEvent(window, new Event("resize"));
+    expect(session.deps.resize).toHaveBeenCalledExactlyOnceWith("window-resize-pty", 100, 30);
+    setSize(0, 0);
+    fireEvent(window, new Event("resize"));
+    expect(session.deps.resize).toHaveBeenCalledTimes(1);
+    expect(terminalMock.instances[0].resize).toHaveBeenCalledExactlyOnceWith(100, 30);
+
+    rerender(view(false));
+    setSize(1616, 696);
+    fireEvent(window, new Event("resize"));
+    expect(session.deps.resize).toHaveBeenCalledTimes(1);
+    rerender(view(true));
+    expect(session.deps.resize).toHaveBeenLastCalledWith("window-resize-pty", 200, 40);
+    expect(session.deps.open).toHaveBeenCalledTimes(1);
+    expect(session.deps.close).not.toHaveBeenCalled();
+    expect(terminalMock.instances).toHaveLength(1);
+  });
+
   it("opens xterm and the PTY with the requested dimensions", async () => {
     const first = makeDeps("first");
 

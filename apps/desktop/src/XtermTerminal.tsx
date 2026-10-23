@@ -256,7 +256,7 @@ export function XtermTerminal({
         applyDimensions(
           measureTerminalDimensions(
             target instanceof HTMLElement ? target : container,
-            fallbackDimensions,
+            dimensionsRef.current,
           ),
         );
       });
@@ -265,7 +265,7 @@ export function XtermTerminal({
     } else {
       const handleWindowResize = () => {
         applyDimensions(
-          measureTerminalDimensions(container, fallbackDimensions),
+          measureTerminalDimensions(container, dimensionsRef.current),
         );
       };
       window.addEventListener("resize", handleWindowResize);

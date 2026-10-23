@@ -3,10 +3,13 @@ import { createHash } from "node:crypto";
 import {
   appendFileSync,
   cpSync,
+  existsSync,
+  linkSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -30,6 +33,50 @@ const verifier = resolve(
   "scripts",
   "verify-third-party-licenses.mjs",
 );
+
+for (const redirected of ["reports", "reports/release/third-party-licenses"]) {
+  test(`license generation rejects ${redirected} junction without changing external files`, (t) => {
+    const root = createFixture(t);
+    const outside = mkdtempSync(join(tmpdir(), "license-output-sentinel-"));
+    t.after(() => rmSync(outside, { recursive: true, force: true }));
+    const sentinel = join(outside, "manifest.json");
+    writeFileSync(sentinel, "external sentinel");
+    const redirectedPath = join(root, redirected);
+    if (existsSync(redirectedPath)) rmSync(redirectedPath, { recursive: true });
+    symlinkSync(outside, redirectedPath, "junction");
+    const result = run(generator, root);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /symbolic link or junction/);
+    assert.equal(readFileSync(sentinel, "utf8"), "external sentinel");
+    assert.equal(existsSync(join(outside, "THIRD-PARTY-NOTICES.txt")), false);
+  });
+}
+
+test("license generation validates all outputs before changing an existing bundle", (t) => {
+  const root = createFixture(t);
+  const first = run(generator, root);
+  assert.equal(first.status, 0, first.stderr);
+  const manifest = join(
+    root,
+    "reports/release/third-party-licenses/manifest.json",
+  );
+  writeFileSync(manifest, "existing bundle sentinel");
+  const outside = mkdtempSync(join(tmpdir(), "license-output-sentinel-"));
+  t.after(() => rmSync(outside, { recursive: true, force: true }));
+  const sentinel = join(outside, "sentinel.txt");
+  writeFileSync(sentinel, "external sentinel");
+  const notices = join(
+    root,
+    "reports/release/third-party-licenses/THIRD-PARTY-NOTICES.txt",
+  );
+  rmSync(notices);
+  linkSync(sentinel, notices);
+  const result = run(generator, root);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /hard links/);
+  assert.equal(readFileSync(sentinel, "utf8"), "external sentinel");
+  assert.equal(readFileSync(manifest, "utf8"), "existing bundle sentinel");
+});
 
 test("every Tauri release build prepares the exact bundled legal resource first", () => {
   const rootPackage = JSON.parse(

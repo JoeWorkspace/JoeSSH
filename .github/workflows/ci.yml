@@ -114,6 +114,7 @@ jobs:
       - run: npm run qa:third-party-licenses
       - run: npm run qa:release-draft
       - run: npm run qa:release-publish-preflight
+      - run: npm run qa:release-readiness
       - run: npm run qa:release-preparation
         env:
           JOESSH_GITLEAKS_COMMAND: ${{ runner.temp }}/gitleaks-bin/gitleaks

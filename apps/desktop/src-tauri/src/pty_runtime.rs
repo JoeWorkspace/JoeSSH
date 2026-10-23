@@ -1,4 +1,5 @@
 //! A PTY owns its input serialization and cancellation; registry locks never do I/O.
+use super::pty_input::{apply_pty_input_safety, PtyInputState};
 use atlasterm_core::PtyWriter;
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex as StdMutex};
@@ -56,7 +57,7 @@ const IO_TIMEOUT: Duration = Duration::from_secs(5);
 
 pub(super) struct PtyRuntime {
     writer: PtyWriter,
-    input: Mutex<Vec<u8>>,
+    input: Mutex<PtyInputState>,
     budget: Arc<Semaphore>,
     closed: watch::Sender<bool>,
     reader: StdMutex<Option<AbortHandle>>,
@@ -67,7 +68,7 @@ impl PtyRuntime {
     pub fn new(writer: PtyWriter) -> Self {
         Self {
             writer,
-            input: Mutex::new(Vec::new()),
+            input: Mutex::new(PtyInputState::default()),
             budget: Arc::new(Semaphore::new(MAX_PENDING_INPUT)),
             closed: watch::channel(false).0,
             reader: StdMutex::new(None),
@@ -109,7 +110,7 @@ impl PtyRuntime {
             .map_err(|_| "pty input queue is full or closed".to_string())?;
         self.run(async {
             let mut input = self.input.lock().await;
-            if let Err(error) = super::apply_pty_input_safety(&mut input, data) {
+            if let Err(error) = apply_pty_input_safety(&mut input, data) {
                 self.writer
                     .write(&[0x03])
                     .await

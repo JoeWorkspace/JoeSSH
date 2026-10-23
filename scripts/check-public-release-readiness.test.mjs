@@ -496,10 +496,12 @@ JOESSH_GITHUB_RELEASE_CONTROLS_GH_ARGS;
       "// SFTP_MAX_TRANSFER_BYTES SFTP_TRANSFER_LIMIT_EXCEEDED SFTP_REMOTE_PATH_UNSAFE normalize_sftp_remote_path(&path)? download_limited(&path, SFTP_MAX_TRANSFER_BYTES) sanitize_sftp_transfer_error ensure_sftp_transfer_size(data.len()) sftp_remote_path_guard_rejects_unsafe_paths sftp_transfer_errors_use_sftp_limit_copy sftp_transfer_size_guard_rejects_oversized_payloads",
       "// OutputLimitExceeded command output exceeded desktop safety limit",
       "// SSH_EXEC_COMMAND_BLOCKED ensure_safe_ssh_exec_command(&command) detect_dangerous_command(command) DangerousCommandAction::Block ssh_exec_native_safety_blocks_destructive_commands",
-      "// PTY_COMMAND_BLOCKED pty_runtime(&state, &pty_id).await?.write(&data).await apply_pty_input_safety pty_input_safety_blocks_destructive_line_across_chunks",
+      "// mod pty_input; pty_runtime(&state, &pty_id).await?.write(&data).await",
     ].join("\n"),
+    "apps/desktop/src-tauri/src/pty_input.rs":
+      "PTY_COMMAND_BLOCKED\nPTY_COMMAND_BUFFER_MAX_BYTES\nESCAPE_SEQUENCE_MAX_BYTES\npub(super) struct PtyInputState\napply_pty_input_safety\nnot a remote authorization boundary\nexplicit_destructive_input_stays_blocked_across_chunks\nknown_cursor_edits_cannot_hide_an_explicit_destructive_line\nclearing_a_dangerous_draft_from_home_allows_a_safe_replacement\nunknown_controls_do_not_bypass_explicit_command_preflight\ninput_and_escape_state_stay_bounded_and_recover_after_rejection\n",
     "apps/desktop/src-tauri/src/pty_runtime.rs":
-      "input: Mutex<Vec<u8>>\nlet mut input = self.input.lock().await\nsuper::apply_pty_input_safety(&mut input, data)\n.write(&[0x03])\nreturn Err(error)\nMAX_PENDING_INPUT\nstalled_real_pty_is_isolated_bounded_and_can_be_closed\n",
+      "input: Mutex<PtyInputState>\nlet mut input = self.input.lock().await\napply_pty_input_safety(&mut input, data)\n.write(&[0x03])\nreturn Err(error)\nMAX_PENDING_INPUT\nstalled_real_pty_is_isolated_bounded_and_can_be_closed\n",
     "crates/core/src/ssh.rs":
       'pub async fn probe_host_key() { let policy = HostKeyPolicy::AcceptAny; handle.disconnect(russh::Disconnect::ByApplication, "", ""); }\nSSH_EXEC_MAX_OUTPUT_BYTES\nOutputLimitExceeded\nexec_output_would_exceed_limit\nexec_output_limit_allows_boundary_and_rejects_growth\nis_safe_sftp_entry_name\nUNSAFE_SFTP_ENTRY_FORMAT_RANGES\nfilter_map(|entry|\nsftp_entry_name_guard_rejects_paths_and_control_characters\nsafe\\u{202e}cod.exe\n',
     "crates/core/tests/core_tests.rs":
@@ -2247,12 +2249,22 @@ for (const [label, path, snippet] of [
   [
     "Desktop serialized PTY command safety runtime",
     "apps/desktop/src-tauri/src/pty_runtime.rs",
-    "super::apply_pty_input_safety(&mut input, data)",
+    "apply_pty_input_safety(&mut input, data)",
   ],
   [
     "Desktop serialized PTY command safety runtime",
     "apps/desktop/src-tauri/src/pty_runtime.rs",
     "let mut input = self.input.lock().await",
+  ],
+  [
+    "Desktop editable PTY input preflight",
+    "apps/desktop/src-tauri/src/pty_input.rs",
+    "known_cursor_edits_cannot_hide_an_explicit_destructive_line",
+  ],
+  [
+    "Desktop editable PTY input preflight",
+    "apps/desktop/src-tauri/src/pty_input.rs",
+    "input_and_escape_state_stay_bounded_and_recover_after_rejection",
   ],
   [
     "Desktop SFTP overwrite confirmation UX",

@@ -1,5 +1,8 @@
-import { mkdirSync, writeFileSync } from "node:fs";
-import { basename, dirname, relative, resolve } from "node:path";
+import { basename, relative, resolve } from "node:path";
+import {
+  assertArtifactPath,
+  writeArtifactFile,
+} from "./release-artifact-paths.mjs";
 import {
   buildThirdPartyLicenseBundle,
   formatContractError,
@@ -10,6 +13,9 @@ const defaultRoot = resolve(import.meta.dirname, "..");
 const root = parseArgs(process.argv.slice(2));
 
 try {
+  for (const path of Object.values(licenseArtifactPaths)) {
+    assertArtifactPath(root, resolve(root, path));
+  }
   const bundle = buildThirdPartyLicenseBundle(root);
   writeArtifact(licenseArtifactPaths.manifest, bundle.manifestText);
   writeArtifact(licenseArtifactPaths.notices, bundle.noticesText);
@@ -23,8 +29,7 @@ try {
 
 function writeArtifact(path, content) {
   const fullPath = resolve(root, path);
-  mkdirSync(dirname(fullPath), { recursive: true });
-  writeFileSync(fullPath, content, { encoding: "utf8", flag: "w" });
+  writeArtifactFile(root, fullPath, content, { encoding: "utf8", flag: "w" });
   console.log(relative(root, fullPath).replace(/\\/g, "/"));
 }
 

@@ -30,6 +30,11 @@ import { Readable } from "node:stream";
 import { fileURLToPath } from "node:url";
 import { WINDOWS_AUTHENTICODE_SETUP } from "./windows-powershell.mjs";
 import {
+  assertArtifactPath,
+  ensureArtifactDirectory,
+  writeArtifactFile,
+} from "./release-artifact-paths.mjs";
+import {
   WINDOWS_STORE_FORMATS,
   assertCertificateSubjectMatchesLegalPublisher,
   assertExpectedSha256,
@@ -161,6 +166,7 @@ export async function prepareWindowsStoreCandidate(
       identity,
       legalNotices,
       outputDir,
+      root,
       reviewedSha,
       source,
       sourceIntegrity,
@@ -1127,18 +1133,20 @@ export function assertBundledThirdPartyNoticesMatch(
   };
 }
 
-function writeCandidateEvidence({
+export function writeCandidateEvidence({
   artifactSnapshot,
   artifactSourceCommit,
   executionIdentity,
   identity,
   legalNotices,
   outputDir,
+  root,
   reviewedSha,
   source,
   sourceIntegrity,
   verification,
 }) {
+  assertArtifactPath(root, outputDir, "directory");
   const verifiedBundledNotices = assertBundledThirdPartyNoticesMatch(
     verification,
     legalNotices,
@@ -1146,8 +1154,9 @@ function writeCandidateEvidence({
   if (existsSync(outputDir)) {
     throw new Error(`Refusing to overwrite candidate evidence: ${outputDir}`);
   }
-  mkdirSync(outputDir, { recursive: true });
+  ensureArtifactDirectory(root, outputDir);
   const artifactPath = resolve(outputDir, artifactSnapshot.fileName);
+  assertArtifactPath(root, artifactPath);
   copyFileSync(artifactSnapshot.path, artifactPath, constants.COPYFILE_EXCL);
   if (sha256File(artifactPath) !== artifactSnapshot.sha256) {
     throw new Error("Staged candidate artifact changed during copy.");
@@ -1157,6 +1166,7 @@ function writeCandidateEvidence({
     outputDir,
     basename(legalNotices.sourcePath),
   );
+  assertArtifactPath(root, legalNoticesPath);
   copyFileSync(
     legalNotices.absolutePath,
     legalNoticesPath,
@@ -1172,6 +1182,7 @@ function writeCandidateEvidence({
     assertSnapshotUnchanged(source.provenanceSnapshot);
     const provenanceFileName = "github-actions-source-provenance.json";
     const provenancePath = resolve(outputDir, provenanceFileName);
+    assertArtifactPath(root, provenancePath);
     copyFileSync(
       source.provenanceSnapshot.path,
       provenancePath,
@@ -1377,12 +1388,14 @@ function writeCandidateEvidence({
       "This file proves only local candidate checks. It is not Partner Center submission, certification, Store signing, listing, or publication evidence.",
   };
   const candidatePath = resolve(outputDir, "candidate.json");
-  writeFileSync(
+  writeArtifactFile(
+    root,
     candidatePath,
     `${JSON.stringify(candidate, null, 2)}\n`,
     "utf8",
   );
-  writeFileSync(
+  writeArtifactFile(
+    root,
     resolve(outputDir, "SHA256SUMS.txt"),
     [
       `${sha256File(artifactPath)}  ${basename(artifactPath)}`,
@@ -2439,12 +2452,19 @@ function sameFileState(left, right) {
   );
 }
 
-function resolveOutputDir({ format, outputDir, reviewedSha, root, version }) {
+export function resolveOutputDir({
+  format,
+  outputDir,
+  reviewedSha,
+  root,
+  version,
+}) {
   const releaseRoot = resolve(root, "reports/release/windows-store");
   const resolved = outputDir
     ? resolve(root, outputDir)
     : resolve(releaseRoot, `${version}-${reviewedSha.slice(0, 12)}-${format}`);
   assertInside(releaseRoot, resolved, "candidate output");
+  assertArtifactPath(root, resolved, "directory");
   return resolved;
 }
 

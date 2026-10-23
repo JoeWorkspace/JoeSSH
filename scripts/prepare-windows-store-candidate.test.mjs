@@ -24,6 +24,7 @@ import {
   combineVerificationErrors,
   collectBundledThirdPartyNoticesEvidence,
   parseArgs,
+  resolveOutputDir,
   validateExpectedSigner,
   validateHostedRetentionAttestation,
   validateHttpsArtifactUrl,
@@ -31,6 +32,7 @@ import {
   verifyMsixCandidate,
   verifyUnpackedThirdPartyNotices,
   verifyAuthenticode,
+  writeCandidateEvidence,
 } from "./prepare-windows-store-candidate.mjs";
 import {
   existsSync,
@@ -69,6 +71,104 @@ const RELEASE_ENVIRONMENT = {
 };
 const MANIFEST_LANGUAGES =
   readWindowsStoreManifestLanguageContract().manifestLanguages;
+
+test("Store candidate output accepts its default and nested custom release directories", (t) => {
+  const root = mkdtempSync(join(tmpdir(), "joessh-store-output-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const options = {
+    root,
+    format: "msix",
+    reviewedSha: COMMIT,
+    version: "1.2.3",
+  };
+  assert.equal(
+    resolveOutputDir(options),
+    join(
+      root,
+      "reports/release/windows-store",
+      `1.2.3-${COMMIT.slice(0, 12)}-msix`,
+    ),
+  );
+  assert.equal(
+    resolveOutputDir({
+      ...options,
+      outputDir: "reports/release/windows-store/custom/nested",
+    }),
+    join(root, "reports/release/windows-store/custom/nested"),
+  );
+  assert.equal(existsSync(join(root, "reports")), false);
+  assert.throws(
+    () => resolveOutputDir({ ...options, outputDir: "docs" }),
+    /candidate output must stay inside/,
+  );
+});
+
+for (const redirected of ["reports", "reports/release/windows-store"]) {
+  test(`Store candidate rejects ${redirected} junction before output creation`, (t) => {
+    const base = mkdtempSync(join(tmpdir(), "joessh-store-output-"));
+    t.after(() => rmSync(base, { recursive: true, force: true }));
+    const root = join(base, "root");
+    const outside = join(base, "outside");
+    mkdirSync(root);
+    mkdirSync(outside);
+    writeFileSync(join(outside, "sentinel.txt"), "unchanged");
+    const path = join(root, redirected);
+    mkdirSync(dirname(path), { recursive: true });
+    symlinkSync(outside, path, "junction");
+    assert.throws(
+      () =>
+        resolveOutputDir({
+          root,
+          format: "msix",
+          outputDir: "reports/release/windows-store/new",
+          reviewedSha: COMMIT,
+          version: "1.2.3",
+        }),
+      /symbolic link or junction/,
+    );
+    assert.throws(
+      () => writeCandidateEvidence({ root, outputDir: join(path, "new") }),
+      /symbolic link or junction/,
+    );
+    assert.equal(
+      readFileSync(join(outside, "sentinel.txt"), "utf8"),
+      "unchanged",
+    );
+    assert.equal(existsSync(join(outside, "new")), false);
+  });
+}
+
+test("Store evidence writing still refuses an existing candidate directory", (t) => {
+  const root = mkdtempSync(join(tmpdir(), "joessh-store-output-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const outputDir = join(root, "reports/release/windows-store/existing");
+  mkdirSync(outputDir, { recursive: true });
+  const sentinel = join(outputDir, "sentinel.txt");
+  writeFileSync(sentinel, "unchanged");
+  const legalNotices = {
+    bundleResourcePath: "legal/THIRD-PARTY-NOTICES.txt",
+    sha256: SHA256,
+    sizeBytes: 1,
+  };
+  assert.throws(
+    () =>
+      writeCandidateEvidence({
+        root,
+        outputDir,
+        legalNotices,
+        verification: {
+          bundledThirdPartyNotices: {
+            path: legalNotices.bundleResourcePath,
+            sha256: SHA256,
+            sizeBytes: 1,
+            status: "exact-match",
+          },
+        },
+      }),
+    /Refusing to overwrite candidate evidence/,
+  );
+  assert.equal(readFileSync(sentinel, "utf8"), "unchanged");
+});
 
 test("Store evidence binds the verified notices mapped into the installed app", () => {
   const root = mkdtempSync(join(tmpdir(), "joessh-store-legal-"));
