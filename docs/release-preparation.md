@@ -95,7 +95,8 @@ CI 的 Ubuntu lint job 会从 Gitleaks 官方 `v8.30.1` release 下载
 泄露处理并轮换；历史改写会影响所有协作者和标签，必须另行评审，不能由扫描
 脚本自动执行。
 
-仓库仅忽略 9 个已人工复核的历史测试/演示 fixture，并以
+仓库仅忽略 9 个已人工复核的历史测试/演示 fixture，以及 2 个与官方归档逐字节
+核对的 node-forge 上游源码/文档误报（见 [backport 记录](node-forge-backport.md)），并以
 `commit:file:rule:line` 精确 fingerprint 绑定在 `.gitleaksignore`。检查脚本会
 拒绝任何额外 fingerprint，也会拒绝在 `.gitleaks.toml` 添加规则级 allowlist；
 因此未来提交中即使出现相同形态的值，也必须重新报警和评审。

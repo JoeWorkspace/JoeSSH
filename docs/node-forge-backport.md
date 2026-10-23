@@ -73,6 +73,15 @@ and patched RSA source SHA-256
 `c7b72e7ef41f4fc0e5228dce3e37851e9ca064c789365d5e392c25d1c5f6e710`.
 Fresh CI results and current SBOM/license evidence remain required for release.
 
+The full-history secret scan identified two false positives in byte-preserved
+upstream files: a function-reference assignment in `lib/pkcs12.js:1078` and a
+documented seed example in `README.md:877`. Both match the integrity-verified
+registry archive and contain no JoeSSH credential. Only their exact
+`27ba8c3e6bd08361267b3765a4cc439e98174622` commit/file/rule/line fingerprints
+are recorded in `.gitleaksignore`; no vendor path or detector is excluded.
+The updated ignore bytes are pinned in the CI and release checks. Future
+changes still require scanning and review.
+
 When upstream publishes a reviewed fixed version, replace the backport,
 remove the override and registration together, rerun these interoperability
 tests and the full release gates, and regenerate SBOMs and license materials.

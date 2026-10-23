@@ -68,7 +68,7 @@ jobs:
         env:
           GITLEAKS_VERSION: "8.30.1"
           GITLEAKS_CONFIG_SHA256: "17692ae221e51b1fe8fa4cd7862e02258d23a8873fc75ebd12251a0372fa2dfe"
-          GITLEAKS_IGNORE_SHA256: "a60c709073214edf6582b7cb911364b184743516b30a4970493195d04ee47ccf"
+          GITLEAKS_IGNORE_SHA256: "69553a897cbe0a4b20a17df5f944dbb1e73398836270be345a5d4ecf88a36377"
         run: |
           set -euo pipefail
           readonly gitleaks_bin="${RUNNER_TEMP}/gitleaks-bin/gitleaks"

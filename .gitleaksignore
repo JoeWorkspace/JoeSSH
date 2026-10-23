@@ -7,3 +7,5 @@ d0ee222062acc5427680464e558913dcc1922428:apps/desktop/src/main.tsx:generic-api-k
 5e5f1eded2d1f1959193d2d76c4136fd14a81063:crates/core/src/ssh.rs:private-key:751
 5e5f1eded2d1f1959193d2d76c4136fd14a81063:apps/desktop/src/main.tsx:generic-api-key:140
 5e5f1eded2d1f1959193d2d76c4136fd14a81063:services/sync/src/config.rs:generic-api-key:351
+27ba8c3e6bd08361267b3765a4cc439e98174622:vendor/node-forge-1.4.0/lib/pkcs12.js:generic-api-key:1078
+27ba8c3e6bd08361267b3765a4cc439e98174622:vendor/node-forge-1.4.0/README.md:generic-api-key:877

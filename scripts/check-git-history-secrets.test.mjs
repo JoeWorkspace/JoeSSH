@@ -148,7 +148,7 @@ test("rejects any broadened history ignore entry before invoking Gitleaks", (t) 
   );
   const result = run(fixture);
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /only the nine reviewed historical fixture/);
+  assert.match(result.stderr, /only the eleven reviewed historical fixture and upstream false-positive/);
   assert.equal(
     existsSync(fixture.logPath),
     false,
@@ -264,7 +264,7 @@ test("rejects CI drift in the pinned download, checksum, preinstall scan, or abs
     ],
     [
       "reviewed ignore checksum",
-      "a60c709073214edf6582b7cb911364b184743516b30a4970493195d04ee47ccf",
+      "69553a897cbe0a4b20a17df5f944dbb1e73398836270be345a5d4ecf88a36377",
       "060c709073214edf6582b7cb911364b184743516b30a4970493195d04ee47ccf",
     ],
     [

@@ -595,7 +595,7 @@ function checkCiPublicReleaseWiring() {
     'if [[ "${actual_version}" != "${GITLEAKS_VERSION}" ]]; then',
     "Scan full Git history before dependency installation",
     "17692ae221e51b1fe8fa4cd7862e02258d23a8873fc75ebd12251a0372fa2dfe",
-    "a60c709073214edf6582b7cb911364b184743516b30a4970493195d04ee47ccf",
+    "69553a897cbe0a4b20a17df5f944dbb1e73398836270be345a5d4ecf88a36377",
     '"${gitleaks_bin}" git',
     "JOESSH_GITLEAKS_COMMAND: ${{ runner.temp }}/gitleaks-bin/gitleaks",
   ];
