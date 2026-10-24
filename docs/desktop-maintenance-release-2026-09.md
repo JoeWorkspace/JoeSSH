@@ -51,9 +51,11 @@ when this baseline was checked. Recheck main and Partner Center before release.
 2. Merge through the protected-main PR process and require the merged SHA's
    complete CI. Dispatch `Windows Store Source Build` with that exact
    `reviewed_sha` and the existing public Partner Center identity JSON.
-   The repository owner must perform the actual `windows-release-stage-b`
-   environment review. The agent must not simulate this review or change the
-   environment protection.
+   Complete the actual `windows-release-stage-b` environment review under the
+   repository owner's authorization. The owner has explicitly delegated the
+   approval action for this release to the agent. Record the actual approving
+   actor and delegation; do not describe an agent API approval as a physical
+   owner click, simulate a review, or change the environment protection.
 3. Record the new MSIX, SHA-256, source SHA, run, artifact IDs, and provenance.
    Run the hosted candidate verifier with those inputs. Generate fresh SBOMs
    and notices from this source; reuse no earlier build attestation.

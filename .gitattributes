@@ -36,6 +36,9 @@ vendor/decode-uri-component-0.5.0/** -text whitespace=-blank-at-eol,-blank-at-eo
 # Preserve the reviewed Node-only RSA backport and its original license bytes.
 vendor/node-forge-1.4.0/** -text whitespace=-blank-at-eol,-blank-at-eof
 
+# Preserve the reviewed Zod v3 security backport and its upstream license bytes.
+vendor/zod-3.25.76/** -text whitespace=-blank-at-eol,-blank-at-eof
+
 # Never run line-ending conversion or textual merge drivers over artifacts.
 docs/assets/microsoft-store/*.csv binary
 *.png binary

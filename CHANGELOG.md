@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   saved connection profiles or host-key trust; retain browser offline support.
 - Update both Rust lockfiles to `crypto-bigint 0.7.6` for
   RUSTSEC-2026-0387's constant-time arithmetic fixes.
+- Patch Happy DOM and Puppeteer/Zod v4 tooling dependencies; backport Zod's
+  oversized-collection early rejection to Expo CLI's v3 API with pinned source,
+  original-identity audits and separate exact advisory verification.
 - Preserve terminal sizing and forwarding lifetimes across workspace changes,
   reject duplicate starts, and bound editable PTY input before dispatch.
 - Validate release artifact paths, dependency audit reports and vendored source

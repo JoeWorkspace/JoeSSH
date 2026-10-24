@@ -19,6 +19,8 @@ export default tseslint.config(
       "**/*.config.{js,mjs}",
       "**/metro.config.js",
       "**/sw.js",
+      // This dependency is byte-pinned and verified by its source contract.
+      "vendor/zod-3.25.76/**",
     ],
   },
   {
