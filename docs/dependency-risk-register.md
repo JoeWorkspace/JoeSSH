@@ -39,6 +39,18 @@ scoped Tauri maintenance notices and review deadline are recorded in the
 [Rust maintenance risk register](rust-maintenance-risk-register.md); they do not
 permit vulnerabilities or unverified vendor changes.
 
+The October 24 release CI detected
+[RUSTSEC-2026-0387](https://github.com/RustSec/advisory-db/blob/main/crates/crypto-bigint/RUSTSEC-2026-0387.md)
+in `crypto-bigint 0.7.5` in both Rust lockfiles. The affected arithmetic can
+vary with secret inputs; downstream exploitability depends on the algorithm,
+compiler, CPU and observable side channel. This candidate resolves both
+graphs to the official `0.7.6` patch with the
+[upstream constant-time fixes](https://github.com/RustCrypto/crypto-bigint/pull/1365).
+Its required `ctutils` dependency advances from `0.4.4` to `0.4.5`; the
+manifests and the rest of the resolved package graph are unchanged.
+Keep the original failed CI and require complete online audits and locked
+compilation/tests of the updated graphs. No advisory is ignored or downgraded.
+
 ### Remediated Production Runtime Findings
 
 | Package                                                 | Severity | Advisory                                          | Runtime Impact                                                                                                                                                                                                                                                            | Public Beta Decision                                                                                                                                               | Follow-up                                                                                                                                            |
