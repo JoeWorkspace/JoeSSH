@@ -12,6 +12,10 @@ import {
   NODE_FORGE_REGISTRATION,
   verifyVendoredNodeForge,
 } from "./vendored-node-forge-contract.mjs";
+import {
+  ZOD_REGISTRATION,
+  verifyVendoredZodSource,
+} from "./vendored-zod-contract.mjs";
 
 const metadataFile = "JOESSH-PATCH.json";
 const registrations = Object.freeze([
@@ -34,6 +38,7 @@ const registrations = Object.freeze([
     license: "MIT",
   }),
   NODE_FORGE_REGISTRATION,
+  ZOD_REGISTRATION,
 ]);
 
 export function registeredVendoredNpmDirectoryNames() {
@@ -65,6 +70,13 @@ export function verifyVendoredNpmPackages(root) {
   const records = [];
 
   for (const registration of registrations) {
+    // Zod 3 is scoped to Expo CLI. Other consumers retain registry Zod 4;
+    // its verifier owns that exact binding instead of a global override.
+    if (registration.name === "zod") {
+      const zod = verifyVendoredZodSource(rootPath);
+      if (zod) records.push(zod);
+      continue;
+    }
     const dependency = packageJson.dependencies?.[registration.name];
     if (dependency === undefined) {
       const orphaned =
@@ -146,6 +158,11 @@ export function verifyVendoredNpmPackages(root) {
 }
 
 function verifyRegistration(root, registration) {
+  if (registration.name === "zod") {
+    const zod = verifyVendoredZodSource(root);
+    if (!zod) throw new Error("Missing registered Zod backport.");
+    return zod;
+  }
   if (registration.name === "node-forge") {
     return verifyVendoredNodeForge(root);
   }

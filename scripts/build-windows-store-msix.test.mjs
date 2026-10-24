@@ -25,6 +25,7 @@ import {
   assertNoStoreProcessLaunchApiImports,
   assertNoStoreProcessLaunchApiReferences,
   assertPngDimensions,
+  assertStoreSourceBindingsUnchanged,
   createStoreManifest,
   decodePartnerIdentity,
   fileEvidence,
@@ -33,6 +34,7 @@ import {
   nativeBuildEnvironment,
   packAndVerifyMsix,
   readRawWindowsApplicationManifest,
+  readStoreSourceBindings,
   run,
   treeEvidence,
   validateBuildContext,
@@ -158,6 +160,55 @@ test("Store source evidence binds and validates the native Windows manifest", ()
   assert.equal(values.dpiAware?.trim(), "true");
   assert.equal(values.dpiAwareness?.trim(), "PerMonitorV2");
   assert.equal(commonControlsVersion, "6.0.0.0");
+});
+
+const nativeStartupInputs = [
+  "apps/desktop/src-tauri/src/native-cache-recovery.js",
+  "apps/desktop/src-tauri/src/lib.rs",
+  "apps/desktop/src/sw-register.ts",
+];
+
+test("Store source evidence binds the native startup recovery and both entry points", () => {
+  const bindings = readStoreSourceBindings(root);
+  for (const path of nativeStartupInputs) {
+    assert.ok(STORE_SOURCE_BINDINGS.includes(path), path);
+    const bytes = readFileSync(resolve(root, path));
+    assert.deepEqual(bindings.find((binding) => binding.path === path), {
+      path,
+      sha256: createHash("sha256").update(bytes).digest("hex"),
+      sizeBytes: bytes.length,
+    });
+  }
+  assert.match(readFileSync(resolve(root, nativeStartupInputs[1]), "utf8"), /include_str!\("native-cache-recovery\.js"\)/);
+});
+
+test("Store build rejects changed or missing reviewed native startup inputs", (t) => {
+  const fixture = temporary(t);
+  for (const path of STORE_SOURCE_BINDINGS) {
+    mkdirSync(dirname(resolve(fixture, path)), { recursive: true });
+    copyFileSync(resolve(root, path), resolve(fixture, path));
+  }
+  const reviewedBindings = readStoreSourceBindings(fixture);
+  assert.doesNotThrow(() => assertStoreSourceBindingsUnchanged(fixture, reviewedBindings));
+  for (const path of nativeStartupInputs) {
+    const target = resolve(fixture, path);
+    const original = readFileSync(target);
+    const sameSizeChange = Buffer.from(original);
+    sameSizeChange[0] ^= 1;
+    writeFileSync(target, sameSizeChange);
+    const changedBinding = readStoreSourceBindings(fixture).find((binding) => binding.path === path);
+    const reviewedBinding = reviewedBindings.find((binding) => binding.path === path);
+    assert.equal(changedBinding.sizeBytes, reviewedBinding.sizeBytes);
+    assert.notEqual(changedBinding.sha256, reviewedBinding.sha256);
+    assert.throws(() => assertStoreSourceBindingsUnchanged(fixture, reviewedBindings), /Reviewed source inputs changed/);
+    writeFileSync(target, Buffer.concat([original, Buffer.from("\n// synthetic unreviewed change\n")]));
+    assert.throws(() => assertStoreSourceBindingsUnchanged(fixture, reviewedBindings), /Reviewed source inputs changed/);
+    writeFileSync(target, original);
+    rmSync(target);
+    assert.throws(() => assertStoreSourceBindingsUnchanged(fixture, reviewedBindings), /ENOENT/);
+    writeFileSync(target, original);
+    assert.doesNotThrow(() => assertStoreSourceBindingsUnchanged(fixture, reviewedBindings));
+  }
 });
 
 test("native Windows manifest rejects noncanonical definition identity variants", () => {

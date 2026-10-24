@@ -74,7 +74,10 @@ JoeSSH implements the following security measures:
 - **X-Frame-Options** - Deployment `DENY`
 - **X-Content-Type-Options** - `nosniff`
 - **Referrer-Policy** - `strict-origin-when-cross-origin`
-- **Service Workers** - Static asset caching only, API bypassed
+- **Service Workers** - Browser PWA static asset caching only, API bypassed.
+  The native shell uses embedded assets and recovers its own legacy startup
+  worker/cache before frontend modules load; saved connections and host-key
+  trust are outside that cleanup.
 
 HTML security metadata and static deployment `_headers` are verified in CI via the `qa:security-headers` script.
 
@@ -108,6 +111,9 @@ We appreciate the security research community and will credit reporters (with pe
   unknown or changed findings and any source/lock mismatch remain blocking.
   See the [Node-only forge backport](docs/node-forge-backport.md) for its pins,
   independent review, actual-consumer tests and retirement requirements.
+  The scoped [Expo CLI Zod v3 backport](docs/zod-v3-backport.md) follows the same
+  source and original-identity requirements, with separate exact advisory
+  verification before recognizing either repaired leaf in a shared parent.
 - Moderate production dependency findings must be documented in
   `docs/dependency-risk-register.md` with advisory URL, affected path, runtime
   impact, Public Beta decision, and follow-up.

@@ -14,9 +14,14 @@ import { pathToFileURL } from "node:url";
 import { verifyVendoredNpmPackages } from "./vendored-npm-contract.mjs";
 import {
   assessNodeForgeRegistryAudit,
-  isVerifiedNodeForgeFinding,
   nodeForgeRegistryAuditInputs,
 } from "./vendored-node-forge-audit.mjs";
+import {
+  assessZodRegistryAudit,
+  zodRegistryAuditInputs,
+} from "./vendored-zod-audit.mjs";
+import { isVerifiedNpmBackportFinding } from "./vendored-npm-audit.mjs";
+import { verifyVendoredZod } from "./vendored-zod-contract.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const severityRank = { info: 0, low: 1, moderate: 2, high: 3, critical: 4 };
@@ -66,6 +71,7 @@ function checkDependencyRiskRegister() {
   validateAuditReport(productionReport, "production");
   const vendors = verifyVendoredNpmPackages(root);
   let verifiedForge;
+  let verifiedZod;
   // Fixture reports remain diagnostic inputs. The release entry point runs
   // without fixture flags and always audits the original registry identity.
   if (!auditJsonPath && !productionAuditJsonPath) {
@@ -73,6 +79,19 @@ function checkDependencyRiskRegister() {
     if (forge) {
       verifyOriginalNodeForgeAudit(forge);
       verifiedForge = forge;
+    }
+    const zodSource = vendors.find((record) => record.name === "zod");
+    if (zodSource) {
+      // Source-only consumers (Rust/legal tooling) must not need npm installed.
+      // Advisory recognition separately requires the actual installed consumer.
+      const zod = verifyVendoredZod(root);
+      verifyOriginalRegistryAudit(
+        zodRegistryAuditInputs(zod),
+        zod,
+        "zod",
+        assessZodRegistryAudit,
+      );
+      verifiedZod = zod;
     }
   }
 
@@ -87,8 +106,10 @@ function checkDependencyRiskRegister() {
     for (const vulnerability of Object.values(report.vulnerabilities)) {
       if (severityRank[vulnerability.severity] >= severityRank.high) {
         if (
-          verifiedForge &&
-          isVerifiedNodeForgeFinding(report, vulnerability.name, verifiedForge)
+          isVerifiedNpmBackportFinding(report, vulnerability.name, {
+            forge: verifiedForge,
+            zod: verifiedZod,
+          })
         ) {
           patchedPaths.push(`${scope}: ${vulnerability.name}`);
           continue;
@@ -138,7 +159,7 @@ function checkDependencyRiskRegister() {
 
   if (patchedPaths.length > 0) {
     console.log(
-      `Dependency audit passed with the source-verified Node-only backport for ${patchedPaths.length} full/production package paths; upstream reports are retained and all unremediated high-or-critical findings remain blocking.`,
+      `Dependency audit passed with source-verified backports for ${patchedPaths.length} full/production package paths; upstream reports are retained and all unremediated high-or-critical findings remain blocking.`,
     );
   } else if (moderateFindings.length === 0) {
     console.log(
@@ -190,14 +211,22 @@ function verifyOriginalNodeForgeAudit(verified) {
       );
     }
   }
-  const inputs = nodeForgeRegistryAuditInputs(verified);
+  verifyOriginalRegistryAudit(
+    nodeForgeRegistryAuditInputs(verified),
+    verified,
+    "node-forge",
+    assessNodeForgeRegistryAudit,
+  );
+}
+
+function verifyOriginalRegistryAudit(inputs, verified, name, assess) {
   const temporaryRoot = realpathSync(tmpdir());
   const directory = mkdtempSync(
-    join(temporaryRoot, "joessh-forge-registry-audit-"),
+    join(temporaryRoot, "joessh-vendored-registry-audit-"),
   );
   if (
     dirname(directory) !== temporaryRoot ||
-    !basename(directory).startsWith("joessh-forge-registry-audit-")
+    !basename(directory).startsWith("joessh-vendored-registry-audit-")
   ) {
     throw new Error("Refusing to use an unexpected audit directory.");
   }
@@ -228,12 +257,12 @@ function verifyOriginalNodeForgeAudit(verified) {
     );
     const report = parseAuditResult(
       audit,
-      "original node-forge registry identity",
+      `original ${name} registry identity`,
       "high",
     );
-    const assessment = assessNodeForgeRegistryAudit(report, verified);
+    const assessment = assess(report, verified);
     console.log(
-      `VERIFIED BACKPORT ${assessment.verifiedBackport}: original node-forge@1.4.0 remains reported; installed Node-only source is pinned and patched. No upstream fixed release is claimed.`,
+      `VERIFIED BACKPORT ${assessment.verifiedBackport}: original ${name}@${verified.version} remains audited; installed source is pinned and patched. No upstream fixed release is claimed.`,
     );
   } finally {
     // Delete only this call's private, canonical temporary audit directory.

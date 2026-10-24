@@ -52,6 +52,13 @@ checked. An additional advisory, different source/severity, unpatched nested
 copy or altered tree remains blocking. This is verification of the source
 remediation, not permission to ship an unpatched high finding.
 
+The later [Zod v3 backport](zod-v3-backport.md) repairs a separate Expo CLI
+dependency. The Forge matcher still rejects that additional edge. A separate
+composition step may remove exactly one independently source-verified Zod
+edge from a copy of the CLI report before applying the unchanged Forge graph
+check. Both original-identity online audits must pass first. This does not
+expand the Forge advisory allowance or alter the retained raw reports.
+
 Fixture audit flags are diagnostic inputs and do not perform the original
 registry network audit. They cannot satisfy release acceptance; CI uses the
 normal `qa:prod-audit` entry point without fixture flags.

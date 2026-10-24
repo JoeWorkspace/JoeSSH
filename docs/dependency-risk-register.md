@@ -39,6 +39,18 @@ scoped Tauri maintenance notices and review deadline are recorded in the
 [Rust maintenance risk register](rust-maintenance-risk-register.md); they do not
 permit vulnerabilities or unverified vendor changes.
 
+The October 24 release CI detected
+[RUSTSEC-2026-0387](https://github.com/RustSec/advisory-db/blob/main/crates/crypto-bigint/RUSTSEC-2026-0387.md)
+in `crypto-bigint 0.7.5` in both Rust lockfiles. The affected arithmetic can
+vary with secret inputs; downstream exploitability depends on the algorithm,
+compiler, CPU and observable side channel. This candidate resolves both
+graphs to the official `0.7.6` patch with the
+[upstream constant-time fixes](https://github.com/RustCrypto/crypto-bigint/pull/1365).
+Its required `ctutils` dependency advances from `0.4.4` to `0.4.5`; the
+manifests and the rest of the resolved package graph are unchanged.
+Keep the original failed CI and require complete online audits and locked
+compilation/tests of the updated graphs. No advisory is ignored or downgraded.
+
 ### Remediated Production Runtime Findings
 
 | Package                                                 | Severity | Advisory                                          | Runtime Impact                                                                                                                                                                                                                                                            | Public Beta Decision                                                                                                                                               | Follow-up                                                                                                                                            |
@@ -102,6 +114,28 @@ to `4.1.12`, and compatible transitive packages including `shell-quote 1.12.0`,
 `@expo/metro-file-map 57.0.4`. The root and Tauri Cargo lockfiles also advance
 `ctutils` to `0.4.4` for RUSTSEC-2026-0385. These updates add no audit waiver.
 
+The next release CI found two newly updated npm advisories. Happy DOM's
+[import-alias code injection](https://github.com/advisories/GHSA-834v-8h66-3h79)
+is fixed by the official `21.0.4` release. This required a major update from
+`20.11.1`; Node 22 remains supported. Its safer defaults for external CSS and
+iframe loading remain enabled. All 1,188 workspace unit tests pass with those
+defaults, and lint passes.
+
+[Zod collection-validation resource exhaustion](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5)
+is fixed in the official v4 line from `4.6.6`. The compatible graph now resolves
+Zod v4 to `4.6.7`. Puppeteer advances within major 25 to `25.13.0`, whose
+Chromium BiDi dependency supports that fixed v4 line; actual CDP and BiDi
+launch/page/close smoke checks pass. Expo CLI still requires Zod `3.25.76`.
+Updating the outer Zod package to v4 does not fix its byte-preserved v3
+subpath, and substituting the v4 API is not a compatible repair. That remaining
+v3 finding is repaired by the project-maintained
+[Expo CLI Zod v3 backport](zod-v3-backport.md), retaining the original identity.
+Normal online audits verify its exact source and original registry report;
+the separate composition checker requires both repaired leaves before
+recognizing the shared Expo parent. Raw reports still contain five high paths
+for these two repaired defects. Retain the failed CI and original reports;
+fresh protected CI and candidate qualification remain required for release.
+
 ### October 23 Audit And Backport Review
 
 The final full-workspace and production npm reports at 14:26 UTC both contain
@@ -113,10 +147,10 @@ These counts describe the original-identity audit snapshot. The later Node-only
 backport below remediates the exact defect in installed source; raw npm
 findings remain visible and must be regenerated before any release decision.
 
-| Package            | Advisory and affected path                                                                                                                                                                                         | Decision and follow-up                                                                                                                                                                                                             |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `node-forge 1.4.0` | [GHSA-86w9-cpqp-85rv](https://github.com/advisories/GHSA-86w9-cpqp-85rv): malformed RSA PKCS#1 v1.5 DigestInfo verification, via Expo CLI and code-signing-certificates. | Remediated in installed Node-only source by a pinned, independently reviewed project backport of unmerged PR 1159. Original 1.4.0 identity remains audited; unknown findings, altered source and unpatched copies fail closed. Owner: release maintainer. See the backport contract below. |
-| `braces 3.0.3`     | [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) was withdrawn on October 23. npm still reported it at 14:12 UTC, but both final audit reports at 14:26 UTC omit it.                       | Closed by upstream withdrawal propagation, with no package fork, severity change or exception. Keep the initial and final reports as evidence.                                                                                     |
+| Package            | Advisory and affected path                                                                                                                                                                   | Decision and follow-up                                                                                                                                                                                                                                                                     |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `node-forge 1.4.0` | [GHSA-86w9-cpqp-85rv](https://github.com/advisories/GHSA-86w9-cpqp-85rv): malformed RSA PKCS#1 v1.5 DigestInfo verification, via Expo CLI and code-signing-certificates.                     | Remediated in installed Node-only source by a pinned, independently reviewed project backport of unmerged PR 1159. Original 1.4.0 identity remains audited; unknown findings, altered source and unpatched copies fail closed. Owner: release maintainer. See the backport contract below. |
+| `braces 3.0.3`     | [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) was withdrawn on October 23. npm still reported it at 14:12 UTC, but both final audit reports at 14:26 UTC omit it. | Closed by upstream withdrawal propagation, with no package fork, severity change or exception. Keep the initial and final reports as evidence.                                                                                                                                             |
 
 The [Node-only backport contract](node-forge-backport.md) records the original
 archive, exact patch and full tree hashes, actual Expo/OpenSSL interoperability,

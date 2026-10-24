@@ -21,7 +21,10 @@ published and its read-only Packages page showed `1.1.29.0` x64:
 `JoeSSH_1.1.29.0_x64_312811c07079_35947067042_1.msix`, Windows.Desktop
 minimum `10.0.17763.0`. The next candidate is `1.1.30.0`; qualify its upgrade
 from this current baseline. The Portal record identifies the uploaded package;
-it does not replace hashing a Store-signed download or an actual upgrade pilot.
+it does not replace baseline verification and an actual upgrade pilot. Prefer
+a hashed Store-signed download. If that original transport archive is unavailable,
+use only the installed Store baseline route below; never describe an installed
+payload digest or a repackaged directory as the original MSIX archive hash.
 
 The following September observations are historical:
 
@@ -43,6 +46,44 @@ See [beta.29 candidate notes](release-notes/0.1.0-beta.29.md) for the package
 identity change and the carried-forward behavior. No unrelated intermediate main commits were present
 when this baseline was checked. Recheck main and Partner Center before release.
 
+## Installed Store baseline route
+
+This route verifies the actual installation that will receive the private
+Store update. It does not supply a missing transport archive or qualify an
+unsigned sideload as Store delivery. Require all of the following:
+
+- A successful official Store installation receipt and fresh exact package
+  identity, version, architecture, publisher and family matching the published
+  Partner Center baseline; `SignatureKind` must be `Store`.
+- Fresh Windows `VerifyContentIntegrityAsync()` returning `true` and a usable
+  package status with no tampered, modified, remediation, partial-staging or
+  deployment-in-progress flags. Status alone is a snapshot, and content
+  verification alone does not establish origin; require both with Store identity.
+- A complete bounded payload index and every uncompressed block-map hash,
+  including any whole-file hash extension, matched to installed bytes. Preserve
+  separate hashes of the manifest, block map, signature and code-integrity
+  catalog. Require the catalog's valid signature and explicit executable
+  membership verification, and bind that executable to the reviewed baseline
+  source artifact. This does not claim standalone verification of a raw P7X
+  signature or a raw archive.
+- Independently reviewed, immutable receipts rechecked immediately before the
+  update, plus protected private backups and the same registered installation,
+  account and user data throughout the real Store upgrade. After delivery,
+  require the target's `SignatureKind=Store` and fresh usable status; verify
+  its active content integrity, signing/catalog evidence and exact source-built
+  executable, then complete the acceptance matrix before allowing public submission.
+
+The October 25 installed-baseline observations and independent review are under
+`reports/store-publish-2026-10-24/release/store-installed-baseline/`. They are
+baseline evidence only; they do not assert an upgrade, native candidate
+acceptance or publication. Keep the missing-archive fact explicit. The new
+candidate still requires its original source-built MSIX hash and provenance.
+
+These checks follow Microsoft's
+[package trust and integrity chain](https://devblogs.microsoft.com/insidemsix/msix-chain-of-trust/),
+[Store signature classification](https://learn.microsoft.com/en-us/uwp/api/windows.applicationmodel.packagesignaturekind)
+and [content-integrity API](https://learn.microsoft.com/en-us/uwp/api/windows.applicationmodel.package.verifycontentintegrityasync).
+
 ## Fixed completion sequence
 
 1. Finish the reviewed maintenance commit and all 14 CI jobs, including the
@@ -51,9 +92,11 @@ when this baseline was checked. Recheck main and Partner Center before release.
 2. Merge through the protected-main PR process and require the merged SHA's
    complete CI. Dispatch `Windows Store Source Build` with that exact
    `reviewed_sha` and the existing public Partner Center identity JSON.
-   The repository owner must perform the actual `windows-release-stage-b`
-   environment review. The agent must not simulate this review or change the
-   environment protection.
+   Complete the actual `windows-release-stage-b` environment review under the
+   repository owner's authorization. The owner has explicitly delegated the
+   approval action for this release to the agent. Record the actual approving
+   actor and delegation; do not describe an agent API approval as a physical
+   owner click, simulate a review, or change the environment protection.
 3. Record the new MSIX, SHA-256, source SHA, run, artifact IDs, and provenance.
    Run the hosted candidate verifier with those inputs. Generate fresh SBOMs
    and notices from this source; reuse no earlier build attestation.

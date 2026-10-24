@@ -422,6 +422,7 @@ function stageGenerator(root) {
     "vendored-rust-contract.mjs",
     "vendored-npm-contract.mjs",
     "vendored-node-forge-contract.mjs",
+    "vendored-zod-contract.mjs",
   ]) {
     cpSync(new URL(`./${file}`, import.meta.url), join(scripts, file));
   }
