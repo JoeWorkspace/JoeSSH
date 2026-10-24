@@ -14,7 +14,7 @@ import {
 } from "./vendored-node-forge-contract.mjs";
 import {
   ZOD_REGISTRATION,
-  verifyVendoredZod,
+  verifyVendoredZodSource,
 } from "./vendored-zod-contract.mjs";
 
 const metadataFile = "JOESSH-PATCH.json";
@@ -73,7 +73,7 @@ export function verifyVendoredNpmPackages(root) {
     // Zod 3 is scoped to Expo CLI. Other consumers retain registry Zod 4;
     // its verifier owns that exact binding instead of a global override.
     if (registration.name === "zod") {
-      const zod = verifyVendoredZod(rootPath);
+      const zod = verifyVendoredZodSource(rootPath);
       if (zod) records.push(zod);
       continue;
     }
@@ -159,7 +159,7 @@ export function verifyVendoredNpmPackages(root) {
 
 function verifyRegistration(root, registration) {
   if (registration.name === "zod") {
-    const zod = verifyVendoredZod(root);
+    const zod = verifyVendoredZodSource(root);
     if (!zod) throw new Error("Missing registered Zod backport.");
     return zod;
   }

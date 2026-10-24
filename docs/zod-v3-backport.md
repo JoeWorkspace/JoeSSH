@@ -43,6 +43,11 @@ different-directory `npm ci` round trip check this relative-path behavior.
 Missing or orphaned declarations, alternate v3 copies, changed source, unsafe
 paths, incorrect installed resolution and reachable removed exports fail closed.
 
+Rust and legal tooling can verify the source and lock binding without an npm
+installation. Those source-only records cannot authorize advisory recognition.
+The normal dependency gate separately requires a strictly verified installed
+Expo CLI consumer before auditing or recognizing the repaired defect.
+
 ## Audits and acceptance
 
 Normal `npm run qa:prod-audit` performs fresh full-workspace and production

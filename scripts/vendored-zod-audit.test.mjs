@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import test from "node:test";
-import { verifyVendoredZod } from "./vendored-zod-contract.mjs";
+import {
+  verifyVendoredZod,
+  verifyVendoredZodSource,
+} from "./vendored-zod-contract.mjs";
+import { verifyVendoredNodeForge } from "./vendored-node-forge-contract.mjs";
+import { isVerifiedNpmBackportFinding } from "./vendored-npm-audit.mjs";
 import {
   assessZodRegistryAudit,
   isVerifiedZodFinding,
@@ -213,4 +218,31 @@ test("audit functions reject forged frozen verification records", () => {
     () => isVerifiedZodFinding(workspace, "zod", forged),
     /source-verified/,
   );
+});
+
+test("source-only proof cannot authorize original-identity audit, direct matching, or parent composition", () => {
+  const sourceProof = verifyVendoredZodSource(
+    resolve(import.meta.dirname, ".."),
+  );
+  const forge = verifyVendoredNodeForge(resolve(import.meta.dirname, ".."));
+  assert.equal(sourceProof.installation.verified, false);
+  assert.throws(() => zodRegistryAuditInputs(sourceProof), /source-verified/);
+  assert.throws(
+    () => assessZodRegistryAudit(registry, sourceProof),
+    /source-verified/,
+  );
+  assert.throws(
+    () => isVerifiedZodFinding(workspace, "zod", sourceProof),
+    /source-verified/,
+  );
+  for (const name of ["zod", "@expo/cli", "expo"]) {
+    assert.throws(
+      () =>
+        isVerifiedNpmBackportFinding(workspace, name, {
+          forge,
+          zod: sourceProof,
+        }),
+      /source-verified/,
+    );
+  }
 });
