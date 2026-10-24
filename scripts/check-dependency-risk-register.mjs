@@ -21,6 +21,7 @@ import {
   zodRegistryAuditInputs,
 } from "./vendored-zod-audit.mjs";
 import { isVerifiedNpmBackportFinding } from "./vendored-npm-audit.mjs";
+import { verifyVendoredZod } from "./vendored-zod-contract.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const severityRank = { info: 0, low: 1, moderate: 2, high: 3, critical: 4 };
@@ -79,8 +80,11 @@ function checkDependencyRiskRegister() {
       verifyOriginalNodeForgeAudit(forge);
       verifiedForge = forge;
     }
-    const zod = vendors.find((record) => record.name === "zod");
-    if (zod) {
+    const zodSource = vendors.find((record) => record.name === "zod");
+    if (zodSource) {
+      // Source-only consumers (Rust/legal tooling) must not need npm installed.
+      // Advisory recognition separately requires the actual installed consumer.
+      const zod = verifyVendoredZod(root);
       verifyOriginalRegistryAudit(
         zodRegistryAuditInputs(zod),
         zod,

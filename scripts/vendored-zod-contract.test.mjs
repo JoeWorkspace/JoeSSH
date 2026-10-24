@@ -19,6 +19,7 @@ import {
   ZOD_REGISTRATION,
   assertVerifiedZod,
   verifyVendoredZod,
+  verifyVendoredZodSource,
 } from "./vendored-zod-contract.mjs";
 
 const root = resolve(import.meta.dirname, "..");
@@ -41,7 +42,7 @@ function temporary(t) {
 function writeJson(file, value) {
   writeFileSync(file, JSON.stringify(value, null, 2) + "\n");
 }
-function fixture(t) {
+function fixture(t, { installed = true } = {}) {
   const directory = temporary(t),
     vendor = join(directory, ZOD_REGISTRATION.path);
   mkdirSync(dirname(vendor), { recursive: true });
@@ -64,23 +65,26 @@ function fixture(t) {
   };
   writeJson(join(directory, "package.json"), manifest);
   writeJson(join(directory, "package-lock.json"), lock);
-  const cli = join(directory, ZOD_REGISTRATION.consumerPath);
-  mkdirSync(join(cli, "node_modules"), { recursive: true });
-  writeJson(join(cli, "package.json"), {
-    name: "@expo/cli",
-    version: "57.0.11",
-  });
-  symlinkSync(
-    vendor,
-    join(directory, ZOD_REGISTRATION.installedPath),
-    process.platform === "win32" ? "junction" : "dir",
-  );
+  if (installed) {
+    const cli = join(directory, ZOD_REGISTRATION.consumerPath);
+    mkdirSync(join(cli, "node_modules"), { recursive: true });
+    writeJson(join(cli, "package.json"), {
+      name: "@expo/cli",
+      version: "57.0.11",
+    });
+    symlinkSync(
+      vendor,
+      join(directory, ZOD_REGISTRATION.installedPath),
+      process.platform === "win32" ? "junction" : "dir",
+    );
+  }
   return { root: directory, vendor, manifest, lock };
 }
 
 test("verifies the complete reviewed v3-only tree and the actual scoped CLI resolution", (t) => {
   const f = fixture(t),
     verified = verifyVendoredZod(f.root);
+  assert.equal(verified.installation.verified, true);
   assert.equal(verified.name, "zod");
   assert.equal(verified.version, "3.25.76");
   assert.equal(verified.declaredLicense, "MIT");
@@ -103,9 +107,50 @@ test("verifies the complete reviewed v3-only tree and the actual scoped CLI reso
   );
 });
 
+test("source proof verifies all pinned inputs without an npm installation and grants no runtime capability", (t) => {
+  const f = fixture(t, { installed: false });
+  const verified = verifyVendoredZodSource(f.root);
+  assert.equal(verified.installation.verified, false);
+  assert.equal(Object.keys(verified.fileHashes).length, 146);
+  assert.equal(verified.metadataSha256, ZOD_REGISTRATION.metadataSha256);
+  assert(Object.isFrozen(verified));
+  assert(Object.isFrozen(verified.installation));
+  assert.throws(() => assertVerifiedZod(verified), /source-verified/);
+  assert.throws(() => verifyVendoredZod(f.root), /ENOENT/);
+  // The strict API has no public skip flag, including leftover caller options.
+  assert.throws(
+    () => verifyVendoredZod(f.root, { sourceOnly: true }),
+    /ENOENT/,
+  );
+});
+
+test("source proof cannot gain runtime recognition even when actual installation checks could pass", (t) => {
+  const f = fixture(t);
+  const sourceProof = verifyVendoredZodSource(f.root);
+  const installedProof = verifyVendoredZod(f.root);
+  assert.equal(sourceProof.installation.verified, false);
+  assert.equal(installedProof.installation.verified, true);
+  assert.equal(sourceProof.treeSha256, installedProof.treeSha256);
+  assert.throws(() => assertVerifiedZod(sourceProof), /source-verified/);
+  assert.doesNotThrow(() => assertVerifiedZod(installedProof));
+});
+
+test("source proof still rejects source tampering and broken logical lock bindings without node_modules", (t) => {
+  const f = fixture(t, { installed: false });
+  const runtime = join(f.vendor, "v3/types.cjs");
+  appendFileSync(runtime, "\nsynthetic tampering\n");
+  assert.throws(() => verifyVendoredZodSource(f.root), /SHA-256/);
+  cpSync(join(source, "v3/types.cjs"), runtime);
+  f.lock.packages[ZOD_REGISTRATION.installedPath].resolved =
+    "unreviewed/source";
+  writeJson(join(f.root, "package-lock.json"), f.lock);
+  assert.throws(() => verifyVendoredZodSource(f.root), /exact CLI link/);
+});
+
 test("a legacy fixture with no Zod v3 backport trace returns undefined", (t) => {
   const directory = temporary(t);
   assert.equal(verifyVendoredZod(directory), undefined);
+  assert.equal(verifyVendoredZodSource(directory), undefined);
   writeJson(join(directory, "package.json"), {
     name: "legacy",
     overrides: { unrelated: "1.0.0" },
@@ -139,6 +184,7 @@ for (const file of [
     const f = fixture(t);
     appendFileSync(join(f.vendor, file), "\nsynthetic tampering\n");
     assert.throws(() => verifyVendoredZod(f.root), /SHA-256/);
+    assert.throws(() => verifyVendoredZodSource(f.root), /SHA-256/);
   });
 }
 

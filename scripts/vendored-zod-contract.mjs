@@ -37,8 +37,21 @@ export const ZOD_REGISTRATION = deepFreeze({
   patchedAdvisories: ["GHSA-mrhx-c7xc-m3w5"],
 });
 
-// No backport in a legacy fixture is optional. Any partial integration is not.
+// Source checks are also used by Rust/SBOM jobs that intentionally do not install npm.
+// They must not mint the capability accepted by runtime audit recognition.
+export function verifyVendoredZodSource(root) {
+  return verifyZod(root, true);
+}
+
 export function verifyVendoredZod(root) {
+  return verifyZod(root, false);
+}
+
+// No backport in a legacy fixture is optional. Any partial integration is not.
+function verifyZod(root, sourceOnly) {
+  if (typeof sourceOnly !== "boolean") {
+    throw new Error("Zod verifier mode must be an explicit boolean.");
+  }
   const rootPath = checkedDirectory(resolve(root));
   const manifest = existsSync(join(rootPath, "package.json"))
     ? json(readRegularFile(rootPath, "package.json"))
@@ -208,32 +221,34 @@ export function verifyVendoredZod(root) {
   )
     throw new Error("Zod package has unreviewed v3-only export changes.");
 
-  checkedRelativeDirectory(rootPath, ZOD_REGISTRATION.consumerPath);
-  const installed = join(rootPath, ZOD_REGISTRATION.installedPath);
-  if (normalize(realpathSync(installed)) !== normalize(directory))
-    throw new Error("Installed CLI Zod v3 link has a different target.");
-  const cliRequire = createRequire(
-    join(rootPath, ZOD_REGISTRATION.consumerPath, "package.json"),
-  );
-  for (const [specifier, file] of [
-    ["zod", "index.cjs"],
-    ["zod/v3", "v3/index.cjs"],
-  ]) {
-    if (
-      normalize(realpathSync(cliRequire.resolve(specifier))) !==
-      normalize(join(directory, file))
-    )
-      throw new Error("CLI silently resolved a different Zod runtime.");
-  }
-  for (const specifier of metadata.distribution.removedExports) {
-    let rejected = false;
-    try {
-      cliRequire.resolve("zod" + specifier.slice(1));
-    } catch (error) {
-      rejected = error.code === "ERR_PACKAGE_PATH_NOT_EXPORTED";
+  if (!sourceOnly) {
+    checkedRelativeDirectory(rootPath, ZOD_REGISTRATION.consumerPath);
+    const installed = join(rootPath, ZOD_REGISTRATION.installedPath);
+    if (normalize(realpathSync(installed)) !== normalize(directory))
+      throw new Error("Installed CLI Zod v3 link has a different target.");
+    const cliRequire = createRequire(
+      join(rootPath, ZOD_REGISTRATION.consumerPath, "package.json"),
+    );
+    for (const [specifier, file] of [
+      ["zod", "index.cjs"],
+      ["zod/v3", "v3/index.cjs"],
+    ]) {
+      if (
+        normalize(realpathSync(cliRequire.resolve(specifier))) !==
+        normalize(join(directory, file))
+      )
+        throw new Error("CLI silently resolved a different Zod runtime.");
     }
-    if (!rejected)
-      throw new Error("An unsupported old Zod v4 export remains reachable.");
+    for (const specifier of metadata.distribution.removedExports) {
+      let rejected = false;
+      try {
+        cliRequire.resolve("zod" + specifier.slice(1));
+      } catch (error) {
+        rejected = error.code === "ERR_PACKAGE_PATH_NOT_EXPORTED";
+      }
+      if (!rejected)
+        throw new Error("An unsupported old Zod v4 export remains reachable.");
+    }
   }
   const record = deepFreeze({
     name: "zod",
@@ -259,11 +274,12 @@ export function verifyVendoredZod(root) {
     },
     patchedAdvisories: [...ZOD_REGISTRATION.patchedAdvisories],
     installation: {
+      verified: !sourceOnly,
       consumer: "@expo/cli",
       path: ZOD_REGISTRATION.installedPath,
     },
   });
-  verifiedRecords.add(record);
+  if (!sourceOnly) verifiedRecords.add(record);
   return record;
 }
 
