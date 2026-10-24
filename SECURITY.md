@@ -111,6 +111,9 @@ We appreciate the security research community and will credit reporters (with pe
   unknown or changed findings and any source/lock mismatch remain blocking.
   See the [Node-only forge backport](docs/node-forge-backport.md) for its pins,
   independent review, actual-consumer tests and retirement requirements.
+  The scoped [Expo CLI Zod v3 backport](docs/zod-v3-backport.md) follows the same
+  source and original-identity requirements, with separate exact advisory
+  verification before recognizing either repaired leaf in a shared parent.
 - Moderate production dependency findings must be documented in
   `docs/dependency-risk-register.md` with advisory URL, affected path, runtime
   impact, Public Beta decision, and follow-up.
