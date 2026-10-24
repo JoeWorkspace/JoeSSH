@@ -20,7 +20,9 @@ const STORE_RUNTIME_FILE_HASHES = Object.freeze({
   "tests/e2e/scripts/run-playwright-with-fresh-ports.mjs":
     "c4f7d68a7d757cb953fe62893b4b4c126d4ae89e122d6baabcb8f61a0f08fafa",
   "tests/e2e/playwright.desktop-store.config.ts":
-    "b7420f628fa35a1d09d84398597d2c1108df925aa44c56975551d2c2c007dce8",
+    "cfe27deb1d9c50f3ea0223e12231cc7037ca49f87fe3e2d58213bb1e4df0031c",
+  "tests/e2e/specs/desktop-native-cache-recovery.spec.ts":
+    "5a81d61c0752566d5085bbe46deda9d53813a611aef00e52b5086a031d6f8813",
   "tests/e2e/specs/desktop-store-release.spec.ts":
     "08fef6b9145d3d5273383284964de9aea1d479d04bb2c4038f9065f1dba4b8d7",
 });

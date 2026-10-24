@@ -49,6 +49,27 @@ export const WINDOWS_STORE_SOURCE_POLICY = Object.freeze({
   protectedEnvironment: "windows-release-stage-b",
   expectedCiJobCount: 14,
   expectedEvidenceFileCount: 14,
+  // Independent consumer inventory: tests require exact agreement with the producer.
+  sourceBindingPaths: Object.freeze([
+    "package.json",
+    "package-lock.json",
+    "Cargo.lock",
+    "rust-toolchain.toml",
+    "apps/desktop/package.json",
+    "apps/desktop/src/sw-register.ts",
+    "apps/desktop/src-tauri/build.rs",
+    "apps/desktop/src-tauri/Cargo.toml",
+    "apps/desktop/src-tauri/Cargo.lock",
+    "apps/desktop/src-tauri/src/lib.rs",
+    "apps/desktop/src-tauri/src/native-cache-recovery.js",
+    "apps/desktop/src-tauri/tauri.conf.json",
+    "apps/desktop/src-tauri/tauri.microsoftstore.conf.json",
+    "apps/desktop/src-tauri/windows-app-manifest.xml",
+    "apps/desktop/src-tauri/icons/joessh-icon-master-1024.png",
+    "packages/i18n/src/windows-store-manifest-languages.json",
+    ".github/workflows/windows-store-build.yml",
+    "scripts/build-windows-store-msix.mjs",
+  ]),
   trustedRoot: Object.freeze({
     path: TRUSTED_ROOT_RELATIVE_PATH,
     sha256: "65ca537f6ed8a47fd0e560c421baa1f6c1efb8b25fc200d8c5c02c0e92eb2b9c",
@@ -1004,6 +1025,29 @@ function verifyEvidenceTree(directory) {
   };
 }
 
+function validateSourceBindings(bindings) {
+  const expected = new Set(WINDOWS_STORE_SOURCE_POLICY.sourceBindingPaths);
+  if (
+    !Array.isArray(bindings) ||
+    bindings.length !== expected.size ||
+    bindings.some((binding) =>
+      !binding ||
+      typeof binding !== "object" ||
+      Array.isArray(binding) ||
+      Object.keys(binding).sort().join("\0") !== "path\0sha256\0sizeBytes" ||
+      !expected.delete(binding.path) ||
+      typeof binding.sha256 !== "string" ||
+      binding.sha256.length !== 64 ||
+      !/^[a-f0-9]{64}$/u.test(binding.sha256) ||
+      !Number.isSafeInteger(binding.sizeBytes) ||
+      binding.sizeBytes <= 0
+    ) ||
+    expected.size !== 0
+  ) {
+    throw new Error("Signed source build predicate source bindings do not match the exact reviewed inventory.");
+  }
+}
+
 export function validateBindingsPredicate(predicate, context) {
   const policy = WINDOWS_STORE_SOURCE_POLICY;
   if (
@@ -1042,6 +1086,7 @@ export function validateBindingsPredicate(predicate, context) {
       "Signed source build predicate is outside the approved boundary.",
     );
   }
+  validateSourceBindings(predicate.sourceBindings);
 }
 
 function verifyAttestationTree(directory) {

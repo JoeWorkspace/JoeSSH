@@ -74,7 +74,10 @@ JoeSSH implements the following security measures:
 - **X-Frame-Options** - Deployment `DENY`
 - **X-Content-Type-Options** - `nosniff`
 - **Referrer-Policy** - `strict-origin-when-cross-origin`
-- **Service Workers** - Static asset caching only, API bypassed
+- **Service Workers** - Browser PWA static asset caching only, API bypassed.
+  The native shell uses embedded assets and recovers its own legacy startup
+  worker/cache before frontend modules load; saved connections and host-key
+  trust are outside that cleanup.
 
 HTML security metadata and static deployment `_headers` are verified in CI via the `qa:security-headers` script.
 
