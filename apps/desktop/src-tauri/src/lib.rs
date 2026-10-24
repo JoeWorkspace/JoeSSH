@@ -738,6 +738,7 @@ fn read_bundled_third_party_notices(resource_dir: &Path) -> Result<String, Strin
 /// Build and run the Tauri application.
 pub fn run() {
     tauri::Builder::default()
+        .append_invoke_initialization_script(include_str!("native-cache-recovery.js"))
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![
             ssh_connect,

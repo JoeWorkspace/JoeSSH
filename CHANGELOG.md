@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Recover native startup from a stale PWA Service Worker cache without clearing
+  saved connection profiles or host-key trust; retain browser offline support.
 - Preserve terminal sizing and forwarding lifetimes across workspace changes,
   reject duplicate starts, and bound editable PTY input before dispatch.
 - Validate release artifact paths, dependency audit reports and vendored source

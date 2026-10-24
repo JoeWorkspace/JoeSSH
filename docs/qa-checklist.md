@@ -84,6 +84,15 @@
 
 ## Desktop Workbench
 
+- Native document-start recovery runs before a stale cached frontend entry can
+  prevent startup. It removes only JoeSSH's root `/sw.js` registration and known
+  static caches on the native application origin, prevents native registration,
+  bounds recovery/reload, and leaves connection storage and host-key trust intact.
+  Real browser regression coverage must begin with an active legacy worker and
+  an unavailable old entry, verify recovery and preserved state, and retain PWA
+  offline behavior. The installed Store upgrade pilot must separately verify a
+  saved synthetic profile after a cold launch; see the
+  [native acceptance requirements](windows-store-native-verification.md#startup-cache-upgrade-acceptance).
 - Closing the Connect dialog by its close button, Escape, backdrop, or owner
   unmount invalidates any pending host-key probe; a late probe result must never
   start authentication. Explicit invalid ports such as `0` and `99999` remain

@@ -88,3 +88,33 @@ only in a separate signed review record that cites Microsoft's optional-test
 classification and the code-level cause; it does not change the original XML or
 host-verifier result. Partner Center validation and certification remain
 separate gates.
+
+## Startup cache upgrade acceptance
+
+The native shell must load embedded application assets independently of a
+legacy PWA worker. Its document-start initialization runs before frontend
+modules, handles only the production native `tauri.localhost` origin's root
+`/sw.js` registration and the known `joessh-v1`, `joessh-v2`, `joessh-v3` static
+caches, and prevents those registrations in native pages. Recovery has a
+deadline and a single-reload guard; failure must remain visible. Browser PWA
+offline support is a separate behavior and must remain enabled.
+
+Regression testing must use a real controlling legacy worker and a stale or
+missing frontend entry, with the exact native initialization concatenation
+order. Check successful cold startup, no reload loop, scoped failure behavior,
+and retained localStorage/IndexedDB data and unrelated cache/worker state.
+Browser tests with an injected native bridge remain regression evidence; they
+do not establish installed MSIX or Store upgrade acceptance.
+
+Before a real Store upgrade, back up existing application data privately and
+save a clearly synthetic profile without credentials in the installed Store
+baseline. After the update through the same Store account and package identity,
+cold-launch the new version and verify the profile and trust-data compatibility.
+Do not replace the profile with a fresh data directory to claim upgrade success.
+Do not put real host names, terminal output, credentials or cache contents in
+routine release evidence. A manual, reversible cache quarantine can diagnose
+an existing installation but cannot qualify automatic recovery in new bytes.
+
+Any source correction requires new reviewed source/build/provenance and exact
+candidate/native evidence. Preserve earlier package hashes and reports rather
+than applying their PASS results to changed code under the same version.

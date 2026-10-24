@@ -1,4 +1,7 @@
-if ("serviceWorker" in navigator) {
+// Native assets are embedded in the executable. A web cache must never replace
+// them across Store updates; the shell removes legacy native registrations
+// before loading this entry point. Browser/PWA offline support stays enabled.
+if (!("__TAURI_INTERNALS__" in window) && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker
       .register("/sw.js")

@@ -27,7 +27,7 @@ export default defineConfig({
   projects: [
     {
       name: "desktop-store-release",
-      testMatch: /desktop-store-release\.spec\.ts/,
+      testMatch: /desktop-(?:store-release|native-cache-recovery)\.spec\.ts/,
       use: {
         ...devices["Desktop Chrome"],
         baseURL: desktopUrl,
