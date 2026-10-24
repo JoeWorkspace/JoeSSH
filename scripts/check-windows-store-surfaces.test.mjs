@@ -35,6 +35,7 @@ const contractFiles = [
   "tests/e2e/playwright.desktop-store.config.ts",
   "tests/e2e/scripts/run-playwright-with-fresh-ports.mjs",
   "tests/e2e/specs/desktop-store-release.spec.ts",
+  "tests/e2e/specs/desktop-native-cache-recovery.spec.ts",
 ];
 
 test("current Store surface contract passes", () => {
@@ -181,6 +182,23 @@ test("fails when the Store release spec is replaced by an empty passing test", (
     )?.passed,
     false,
   );
+});
+
+test("fails when the native recovery runtime spec becomes an empty passing test", (t) => {
+  const fixture = createFixture(t);
+  const relativePath = "tests/e2e/specs/desktop-native-cache-recovery.spec.ts";
+  write(fixture, relativePath, 'import { test } from "@playwright/test";\ntest("noop", () => {});\n');
+
+  assert.equal(
+    checkWindowsStoreSurfaces(fixture).find((result) => result.label.includes(relativePath))?.passed,
+    false,
+  );
+});
+
+test("fails when the native recovery runtime spec is missing", (t) => {
+  const fixture = createFixture(t);
+  rmSync(resolve(fixture, "tests/e2e/specs/desktop-native-cache-recovery.spec.ts"));
+  assert.throws(() => checkWindowsStoreSurfaces(fixture), /ENOENT/);
 });
 
 test("fails when CI moves the Store runtime off the formal Windows runner", (t) => {

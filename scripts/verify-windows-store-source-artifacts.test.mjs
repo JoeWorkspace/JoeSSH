@@ -33,6 +33,8 @@ import {
   verifyWindowsStoreSourceArtifacts,
 } from "./verify-windows-store-source-artifacts.mjs";
 
+import { STORE_SOURCE_BINDINGS } from "./build-windows-store-msix.mjs";
+
 const policy = WINDOWS_STORE_SOURCE_POLICY;
 const REPOSITORY_ROOT = resolve(import.meta.dirname, "..");
 const SOURCE_SHA = "a".repeat(40);
@@ -153,6 +155,10 @@ function buildBindings(candidate) {
       sha256: candidate.sha256,
       sizeBytes: candidate.sizeBytes,
     },
+    sourceBindings: STORE_SOURCE_BINDINGS.map((path) => {
+      const bytes = readFileSync(resolve(REPOSITORY_ROOT, path));
+      return { path, sha256: sha256(bytes), sizeBytes: bytes.length };
+    }),
     ci: {
       sourceSha: SOURCE_SHA,
       producerRunId: RUN_ID,
@@ -202,6 +208,40 @@ test("signed source predicate requires every executable safety gate", () => {
         /outside the approved boundary/,
       );
     }
+  }
+});
+
+test("source consumer inventory exactly matches all producer bindings", () => {
+  assert.equal(STORE_SOURCE_BINDINGS.length, 18);
+  assert.deepEqual(policy.sourceBindingPaths, STORE_SOURCE_BINDINGS);
+});
+
+test("signed source predicate rejects incomplete, substituted, or malformed source bindings", () => {
+  const candidate = { fileName: "candidate.msix", sha256: "d".repeat(64), sizeBytes: 123 };
+  const valid = buildBindings(candidate);
+  const recoveryPath = "apps/desktop/src-tauri/src/native-cache-recovery.js";
+  const mutateBinding = (predicate, mutate) => mutate(predicate.sourceBindings.find((binding) => binding.path === recoveryPath));
+  for (const mutate of [
+    (p) => delete p.sourceBindings,
+    (p) => { p.sourceBindings = {}; },
+    (p) => { p.sourceBindings = p.sourceBindings.filter((binding) => ![recoveryPath, "apps/desktop/src-tauri/src/lib.rs", "apps/desktop/src/sw-register.ts"].includes(binding.path)); },
+    (p) => { p.sourceBindings = p.sourceBindings.filter((binding) => binding.path !== recoveryPath); },
+    (p) => p.sourceBindings.push({ path: "unexpected.js", sha256: "a".repeat(64), sizeBytes: 1 }),
+    (p) => { p.sourceBindings[0] = structuredClone(p.sourceBindings[1]); },
+    (p) => mutateBinding(p, (b) => { b.path = b.path.toUpperCase(); }),
+    (p) => mutateBinding(p, (b) => { b.path = b.path.replaceAll("/", "\\"); }),
+    (p) => mutateBinding(p, (b) => { b.extra = true; }),
+    (p) => mutateBinding(p, (b) => { delete b.sha256; }),
+    (p) => mutateBinding(p, (b) => { b.sha256 = "A".repeat(64); }),
+    (p) => mutateBinding(p, (b) => { b.sha256 = "a".repeat(63); }),
+    (p) => mutateBinding(p, (b) => { b.sha256 = "g".repeat(64); }),
+    (p) => mutateBinding(p, (b) => { b.sha256 = "a".repeat(64) + "\n"; }),
+    (p) => mutateBinding(p, (b) => { b.sha256 = 123; }),
+    ...[0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1, "1", null, undefined].map((size) => (p) => mutateBinding(p, (b) => { b.sizeBytes = size; })),
+  ]) {
+    const changed = structuredClone(valid);
+    mutate(changed);
+    assert.throws(() => validateBindingsPredicate(changed, context(candidate)), /source bindings.*exact reviewed inventory/);
   }
 });
 
@@ -443,6 +483,7 @@ test("generic verifier resolves a full tuple from live API and both offline bund
       sizeBytes: candidateBytes.length,
     };
     const bindings = buildBindings(candidate);
+    const signedBindings = structuredClone(bindings);
     writeEvidenceTree(evidenceDirectory, bindings);
     writeFileSync(resolve(attestationsDirectory, "slsa.sigstore.json"), "slsa bundle\n");
     writeFileSync(resolve(attestationsDirectory, "bindings.sigstore.json"), "bindings bundle\n");
@@ -478,7 +519,7 @@ test("generic verifier resolves a full tuple from live API and both offline bund
         }),
       ],
     ]);
-    const receipt = await verifyWindowsStoreSourceArtifacts(
+    const verify = (output = outputPath) => verifyWindowsStoreSourceArtifacts(
       {
         root: REPOSITORY_ROOT,
         reviewedSha: SOURCE_SHA,
@@ -493,7 +534,7 @@ test("generic verifier resolves a full tuple from live API and both offline bund
         attestationsDirectory,
         expectedSha256: candidate.sha256,
         ghExecutablePath: ghPath,
-        outputPath,
+        outputPath: output,
         githubToken: "fixture-token-not-used",
       },
       {
@@ -506,9 +547,10 @@ test("generic verifier resolves a full tuple from live API and both offline bund
         runGh: ({ predicateType }) =>
           predicateType === "https://slsa.dev/provenance/v1"
             ? attestationResult(candidate, predicateType, slsaPredicate())
-            : attestationResult(candidate, predicateType, bindings),
+            : attestationResult(candidate, predicateType, signedBindings),
       },
     );
+    const receipt = await verify();
     assert.equal(receipt.source.sha, SOURCE_SHA);
     assert.equal(receipt.producer.runId, RUN_ID);
     assert.equal(receipt.candidate.artifactId, ARTIFACT_IDS.candidate);
@@ -562,6 +604,11 @@ test("generic verifier resolves a full tuple from live API and both offline bund
       }),
       /provenance receipt is not canonical/,
     );
+    // A syntactically valid hash still needs the authenticated predicate.
+    bindings.sourceBindings.find((binding) => binding.path.endsWith("native-cache-recovery.js")).sha256 = "0".repeat(64);
+    assert.doesNotThrow(() => validateBindingsPredicate(bindings, context(candidate)));
+    writeEvidenceTree(evidenceDirectory, bindings);
+    await assert.rejects(verify(resolve(root, "tampered-receipt.json")), /Signed build bindings do not exactly match/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

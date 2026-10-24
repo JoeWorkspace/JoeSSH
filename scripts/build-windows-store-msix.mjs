@@ -94,9 +94,12 @@ export const STORE_SOURCE_BINDINGS = Object.freeze([
   "Cargo.lock",
   "rust-toolchain.toml",
   "apps/desktop/package.json",
+  "apps/desktop/src/sw-register.ts",
   "apps/desktop/src-tauri/build.rs",
   "apps/desktop/src-tauri/Cargo.toml",
   "apps/desktop/src-tauri/Cargo.lock",
+  "apps/desktop/src-tauri/src/lib.rs",
+  "apps/desktop/src-tauri/src/native-cache-recovery.js",
   "apps/desktop/src-tauri/tauri.conf.json",
   "apps/desktop/src-tauri/tauri.microsoftstore.conf.json",
   "apps/desktop/src-tauri/windows-app-manifest.xml",
@@ -193,6 +196,15 @@ export function fileEvidence(root, path, { requireSingleLink = true } = {}) {
     sha256: sha256(bytes),
     sizeBytes: bytes.length,
   };
+}
+export function readStoreSourceBindings(root) {
+  return STORE_SOURCE_BINDINGS.map((path) => fileEvidence(root, path));
+}
+export function assertStoreSourceBindingsUnchanged(root, reviewedBindings) {
+  requireThat(
+    isDeepStrictEqual(reviewedBindings, readStoreSourceBindings(root)),
+    "Reviewed source inputs changed during build.",
+  );
 }
 export function treeEvidence(root) {
   const files = [];
@@ -1250,9 +1262,7 @@ export function buildWindowsStoreMsix(env = process.env, root = ROOT) {
     languageContract.manifestLanguages.length === 15,
     "Expected the complete 15-locale contract.",
   );
-  const sourceBindings = STORE_SOURCE_BINDINGS.map((path) =>
-    fileEvidence(root, path),
-  );
+  const sourceBindings = readStoreSourceBindings(root);
   const schemaSnapshots = SCHEMAS.map((path) => ({
     path,
     bytes: readFileSync(resolve(root, path)),
@@ -1560,13 +1570,7 @@ export function buildWindowsStoreMsix(env = process.env, root = ROOT) {
       writeFileSync(resolve(root, snapshot.path), snapshot.bytes);
     }
     cleanSource(root, context.sha);
-    requireThat(
-      isDeepStrictEqual(
-        sourceBindings,
-        STORE_SOURCE_BINDINGS.map((path) => fileEvidence(root, path)),
-      ),
-      "Reviewed source inputs changed during build.",
-    );
+    assertStoreSourceBindingsUnchanged(root, sourceBindings);
     const artifact = fileEvidence(work, fileName);
     const predicate = {
       schemaVersion: 1,

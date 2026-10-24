@@ -84,6 +84,9 @@
 
 ## Desktop Workbench
 
+- `npm run test:desktop-candidate-stage` runs the complete Store candidate
+  contract suite and source-built MSIX tests, including source bindings,
+  reviewed runtime test fingerprints and raw package/PE validation.
 - Native document-start recovery runs before a stale cached frontend entry can
   prevent startup. It removes only JoeSSH's root `/sw.js` registration and known
   static caches on the native application origin, prevents native registration,
