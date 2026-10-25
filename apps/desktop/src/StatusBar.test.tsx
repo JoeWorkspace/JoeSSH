@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { StatusBar } from "./StatusBar";
-import { createLocaleFormatters } from "@atlasterm/i18n";
+import { createLocaleFormatters, loadLocale } from "@atlasterm/i18n";
 
 const t = ((key: string, values?: Record<string, string | number>) => {
   if (values) return `${key}:${JSON.stringify(values)}`;
@@ -31,7 +31,7 @@ describe("StatusBar", () => {
         teamAccess={defaultTeamAccess}
       />,
     );
-    expect(screen.getByText("desktop.sessions")).toBeTruthy();
+    expect(screen.getByText("desktop.connectionStatusOnline")).toBeTruthy();
     expect(screen.getByText("desktop.sftp")).toBeTruthy();
     expect(screen.getByText("team.summary", { exact: false })).toBeTruthy();
     expect(
@@ -39,7 +39,7 @@ describe("StatusBar", () => {
     ).toBeTruthy();
   });
 
-  it("shows no-session copy instead of live fleet status when disconnected", () => {
+  it("shows no-session copy when the selected connection is disconnected", () => {
     render(
       <StatusBar
         activeConnection={{ latencyMs: 42 }}
@@ -57,6 +57,35 @@ describe("StatusBar", () => {
     expect(screen.queryByText(/42/)).toBeNull();
     expect(screen.queryByText("desktop.sftp")).toBeNull();
   });
+
+  it.each([
+    ["en", "Online", "No SSH session"],
+    ["zh-CN", "在线", "未连接 SSH"],
+  ] as const)(
+    "shows the selected connection status without a session count in %s",
+    async (locale, online, disconnected) => {
+      const translator = await loadLocale(locale);
+      const props = {
+        activeConnection: { latencyMs: 42 },
+        formatters: createLocaleFormatters(locale),
+        onPanelChange: vi.fn(),
+        showTeamAccess: false,
+        t: translator,
+        teamAccess: defaultTeamAccess,
+      };
+      const { rerender } = render(<StatusBar {...props} hasActiveSession />);
+      const connectionStatus = () =>
+        screen.getByRole("button", {
+          name: translator("desktop.sessionContext"),
+        });
+
+      expect(connectionStatus().textContent?.trim()).toBe(online);
+      rerender(<StatusBar {...props} hasActiveSession={false} />);
+      expect(connectionStatus().textContent?.trim()).toBe(disconnected);
+      rerender(<StatusBar {...props} hasActiveSession />);
+      expect(connectionStatus().textContent?.trim()).toBe(online);
+    },
+  );
 
   it("displays latency when latencyMs is provided", () => {
     render(
@@ -182,7 +211,7 @@ describe("StatusBar", () => {
     expect(screen.getByLabelText("team.accessSummary")).toBeTruthy();
   });
 
-  it("calls onPanelChange('inspector') when clicking sessions button", () => {
+  it("calls onPanelChange('inspector') when clicking connection status", () => {
     const onPanelChange = vi.fn();
     render(
       <StatusBar
@@ -193,7 +222,7 @@ describe("StatusBar", () => {
         teamAccess={defaultTeamAccess}
       />,
     );
-    fireEvent.click(screen.getByText("desktop.sessions"));
+    fireEvent.click(screen.getByText("desktop.connectionStatusOnline"));
     expect(onPanelChange).toHaveBeenCalledWith("inspector");
   });
 

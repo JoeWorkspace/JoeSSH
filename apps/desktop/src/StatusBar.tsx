@@ -51,7 +51,9 @@ export const StatusBar = memo(function StatusBar({
         onClick={() => onPanelChange("inspector")}
       >
         <Wifi size={14} aria-hidden="true" />{" "}
-        {hasActiveSession ? t("desktop.sessions") : t("desktop.noSession")}
+        {hasActiveSession
+          ? t("desktop.connectionStatusOnline")
+          : t("desktop.noSession")}
       </button>
       <button
         type="button"
