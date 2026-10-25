@@ -109,6 +109,9 @@
   authentication happens before the user supplies credentials. This is browser
   behavior evidence, separate from real SSH and installed Store verification.
 - Terminal panes render with LTR terminal content under LTR and RTL UI locales.
+- The status bar reports the selected profile's SSH connection state using
+  localized online/disconnected copy. It must not show a fixed session count
+  or imply that selecting a disconnected profile closes other live sessions.
 - Terminal session rendering uses structured line IDs so repeated command text does not collide or reorder in React.
 - Terminal command input accepts safe commands through the local safety preflight before they reach the session log.
 - One-shot `ssh_exec` command output is capped at 1 MiB in the core SSH read loop, and Tauri maps output-limit failures to a stable renderer-safe error instead of buffering unbounded stdout.
