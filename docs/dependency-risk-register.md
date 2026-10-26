@@ -43,13 +43,25 @@ The October 24 release CI detected
 [RUSTSEC-2026-0387](https://github.com/RustSec/advisory-db/blob/main/crates/crypto-bigint/RUSTSEC-2026-0387.md)
 in `crypto-bigint 0.7.5` in both Rust lockfiles. The affected arithmetic can
 vary with secret inputs; downstream exploitability depends on the algorithm,
-compiler, CPU and observable side channel. This candidate resolves both
+compiler, CPU and observable side channel. The October 24 remediation moved both
 graphs to the official `0.7.6` patch with the
 [upstream constant-time fixes](https://github.com/RustCrypto/crypto-bigint/pull/1365).
-Its required `ctutils` dependency advances from `0.4.4` to `0.4.5`; the
-manifests and the rest of the resolved package graph are unchanged.
+Its required `ctutils` dependency advanced from `0.4.4` to `0.4.5`.
+
+On October 27, source CI rejected `0.7.6` because upstream had yanked it,
+along with `0.7.7` and `0.7.8`, after a
+[breaking correction to the `NonZero<T>` multiplication trait implementation](https://github.com/RustCrypto/crypto-bigint/pull/1373).
+Both source lockfiles now resolve the official, non-yanked `0.7.10` release
+and its required `ctutils 0.4.6`. The manifests and remaining resolved packages
+are unchanged. The
+[upstream changelog](https://github.com/RustCrypto/crypto-bigint/blob/master/CHANGELOG.md)
+records the intervening arithmetic fixes and the compatibility change; matching
+semver constraints alone do not establish compatibility.
 Keep the original failed CI and require complete online audits and locked
 compilation/tests of the updated graphs. No advisory is ignored or downgraded.
+This source update does not change previously built candidates or the current
+Store installation package; a new application package requires fresh release
+validation.
 
 ### Remediated Production Runtime Findings
 
