@@ -20,8 +20,206 @@ import {
   verifyStoreAssetBundle,
 } from "./prepare-windows-store-assets.mjs";
 import { readWindowsStoreManifestLanguageContract } from "./windows-store-language-contract.mjs";
+import { WINDOWS_STORE_SOURCE_POLICY } from "./verify-windows-store-source-artifacts.mjs";
 
 const repositoryRoot = resolve(import.meta.dirname, "..");
+
+test("accepts generated GitHub candidate provenance and retains its exact receipt binding", (t) => {
+  const fixture = authenticatedCandidateFixture(t);
+  const session = initializeStoreAssetCaptureSession({
+    ...fixture,
+    captureDir: join(fixture.root, "captures"),
+  });
+  assert.equal(session.candidate.sha256, fixture.evidence.artifact.sha256);
+  assert.equal(
+    session.candidatePreflightEvidence.sha256,
+    sha256(readFileSync(fixture.candidateEvidencePath)),
+  );
+  assert.equal(
+    session.candidatePreflightEvidence.signatureState,
+    "pending-microsoft-store-signing",
+  );
+});
+
+test("rejects forged or substituted receipts even after all local hashes are recomputed", (t) => {
+  const mutations = [
+    (receipt) => {
+      receipt.source.repository = "attacker/JoeSSH";
+    },
+    (receipt) => {
+      receipt.source.sha = "b".repeat(40);
+    },
+    (receipt) => {
+      receipt.candidate.sha256 = "b".repeat(64);
+    },
+    (receipt) => {
+      receipt.producer.runId = "40000000002";
+    },
+    (receipt) => {
+      receipt.attestations.signer.issuer = "https://untrusted.example";
+    },
+    (receipt) => {
+      receipt.attestations.offlineVerification.customTrustedRootSha256 =
+        "b".repeat(64);
+    },
+    (receipt) => {
+      receipt.attestations.offlineVerification.tokensRemovedFromCryptographicVerifier = false;
+    },
+    (receipt) => {
+      receipt.verifier.githubCli.executableSha256 = "b".repeat(64);
+    },
+    (receipt) => {
+      receipt.artifacts.candidate.metadataDigest = `sha256:${"b".repeat(64)}`;
+    },
+  ];
+  for (const mutate of mutations) {
+    const fixture = authenticatedCandidateFixture(t);
+    mutate(fixture.receipt);
+    saveAuthenticatedFixture(fixture);
+    assert.throws(
+      () =>
+        initializeStoreAssetCaptureSession({
+          ...fixture,
+          captureDir: join(fixture.root, "captures"),
+        }),
+      /provenance receipt|receipt mismatch|receipt.*binding mismatch|canonical source\/SHA\/run/i,
+    );
+  }
+});
+
+test("rejects missing or altered receipt, mixed provenance claims, and extra candidate files", (t) => {
+  const mutations = [
+    (fixture) =>
+      rmSync(
+        join(
+          dirname(fixture.candidateEvidencePath),
+          "github-actions-source-provenance.json",
+        ),
+      ),
+    (fixture) =>
+      writeFileSync(
+        join(
+          dirname(fixture.candidateEvidencePath),
+          "github-actions-source-provenance.json",
+        ),
+        "{}\n",
+      ),
+    (fixture) => {
+      fixture.evidence.gates.authenticatedProvenance = false;
+      saveAuthenticatedFixture(fixture);
+    },
+    (fixture) => {
+      fixture.evidence.artifact.integrity.observations[1].sha256 =
+        fixture.evidence.artifact.sha256;
+      saveAuthenticatedFixture(fixture, false);
+    },
+    (fixture) => {
+      fixture.evidence.attestations.authenticatedProvenance.signer.issuer =
+        "https://untrusted.example";
+      saveAuthenticatedFixture(fixture);
+    },
+    (fixture) =>
+      writeFileSync(
+        join(dirname(fixture.candidateEvidencePath), "extra.json"),
+        "{}\n",
+      ),
+  ];
+  for (const mutate of mutations) {
+    const fixture = authenticatedCandidateFixture(t);
+    mutate(fixture);
+    assert.throws(() =>
+      initializeStoreAssetCaptureSession({
+        ...fixture,
+        captureDir: join(fixture.root, "captures"),
+      }),
+    );
+  }
+});
+
+test("validates hosted sidecar source and candidate bindings without adding it to generator checksums", (t) => {
+  const fixture = authenticatedCandidateFixture(t);
+  const hosted = hostedEvidenceFixture(
+    fixture.evidence,
+    fixture.candidateEvidencePath,
+  );
+  const hostedPath = join(
+    dirname(fixture.candidateEvidencePath),
+    "hosted-workflow-evidence.json",
+  );
+  writeFileSync(
+    hostedPath,
+    `${JSON.stringify(hosted, null, 2)}\n`.replaceAll("\n", "\r\n"),
+  );
+  assert.doesNotThrow(() =>
+    initializeStoreAssetCaptureSession({
+      ...fixture,
+      captureDir: join(fixture.root, "captures-valid"),
+    }),
+  );
+  for (const mutate of [
+    (value) => {
+      value.candidateJsonSha256 = "b".repeat(64);
+    },
+    (value) => {
+      value.artifact.sha256 = "b".repeat(64);
+    },
+    (value) => {
+      value.reviewedCommit = "b".repeat(40);
+    },
+    (value) => {
+      value.releaseDecision.msixFallback = true;
+    },
+    (value) => {
+      value.identity.legalPublisher = "Someone else";
+    },
+    (value) => {
+      value.unexpected = true;
+    },
+  ]) {
+    const changed = structuredClone(hosted);
+    mutate(changed);
+    writeFileSync(hostedPath, `${JSON.stringify(changed, null, 2)}\n`);
+    assert.throws(() =>
+      initializeStoreAssetCaptureSession({
+        ...fixture,
+        captureDir: join(fixture.root, "captures-invalid"),
+      }),
+    );
+  }
+});
+
+test("rejects malformed UTF-8, BOM and noncanonical hosted sidecar bytes", (t) => {
+  const fixture = authenticatedCandidateFixture(t);
+  const hosted = hostedEvidenceFixture(
+    fixture.evidence,
+    fixture.candidateEvidencePath,
+  );
+  const hostedPath = join(
+    dirname(fixture.candidateEvidencePath),
+    "hosted-workflow-evidence.json",
+  );
+  const validBytes = Buffer.from(`${JSON.stringify(hosted, null, 2)}\n`);
+  const invalidUtf8 = Buffer.from(validBytes);
+  const marker = Buffer.from('"runnerImage": "');
+  const runnerImageOffset = invalidUtf8.indexOf(marker);
+  assert.notEqual(runnerImageOffset, -1);
+  invalidUtf8[runnerImageOffset + marker.length] = 0xff;
+  for (const [bytes, expectedError] of [
+    [invalidUtf8, /not valid UTF-8 JSON/],
+    [Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), validBytes]), /UTF-8 BOM/],
+    [Buffer.from(JSON.stringify(hosted)), /canonical JSON/],
+  ]) {
+    writeFileSync(hostedPath, bytes);
+    assert.throws(
+      () =>
+        initializeStoreAssetCaptureSession({
+          ...fixture,
+          captureDir: join(fixture.root, "captures-invalid"),
+        }),
+      expectedError,
+    );
+  }
+});
 
 test("pins eight localized scene slots with light and dark coverage", () => {
   assert.equal(STORE_SCREENSHOT_SLOTS.length, 8);
@@ -995,6 +1193,9 @@ function rewriteCandidateEvidenceChecksums(evidenceRoot, evidence) {
   const paths = [
     evidence.artifact.fileName,
     evidence.legalNotices.evidenceFileName,
+    ...(evidence.artifact.source === "github-actions-artifact"
+      ? ["github-actions-source-provenance.json"]
+      : []),
     "candidate.json",
   ];
   const lines = paths.map((path) => {
@@ -1002,6 +1203,249 @@ function rewriteCandidateEvidenceChecksums(evidenceRoot, evidence) {
     return `${sha256(readFileSync(absolute))}  ${path}`;
   });
   writeFileSync(join(evidenceRoot, "SHA256SUMS.txt"), `${lines.join("\n")}\n`);
+}
+
+function authenticatedCandidateFixture(t) {
+  const root = temporaryDirectory(t);
+  const evidenceRoot = join(root, "candidate");
+  mkdirSync(evidenceRoot);
+  const candidatePath = join(
+    evidenceRoot,
+    "JoeSSH_1.1.30.0_x64_aaaaaaaaaaaa_40000000001_1.msix",
+  );
+  const candidateEvidencePath = join(evidenceRoot, "candidate.json");
+  writeFileSync(
+    candidatePath,
+    "synthetic package bytes for receipt contract tests",
+  );
+  writeCandidateEvidence(candidatePath, candidateEvidencePath);
+  const evidence = JSON.parse(readFileSync(candidateEvidencePath, "utf8"));
+  const policy = WINDOWS_STORE_SOURCE_POLICY;
+  const sourceSha = evidence.commits.artifactSourceCommit;
+  const runId = "40000000001";
+  const ids = {
+    candidate: "50000000001",
+    evidence: "50000000002",
+    attestations: "50000000003",
+  };
+  const signer = {
+    subjectAlternativeName: `https://github.com/${policy.repository}/${policy.workflowPath}@${policy.sourceRef}`,
+    issuer: "https://token.actions.githubusercontent.com",
+    workflowName: policy.workflowName,
+    workflowRepository: policy.repository,
+    workflowRef: policy.sourceRef,
+    workflowSha: sourceSha,
+    runInvocationURI: `https://github.com/${policy.repository}/actions/runs/${runId}/attempts/1`,
+    runnerEnvironment: "github-hosted",
+  };
+  const offlineVerification = {
+    mode: "local-bundle-and-pinned-trusted-root",
+    customTrustedRootPath: policy.trustedRoot.path,
+    customTrustedRootSha256: policy.trustedRoot.sha256,
+    githubApiAttestationLookup: false,
+    osNetworkIsolation: "not-enforced",
+    outboundProxyConfiguration: "loopback-refusal",
+    tokensRemovedFromCryptographicVerifier: true,
+  };
+  const receipt = {
+    schemaVersion: 1,
+    kind: "windows-store-github-actions-artifact-provenance",
+    generatedAt: evidence.generatedAt,
+    source: {
+      repository: policy.repository,
+      repositoryId: policy.repositoryId,
+      ref: policy.sourceRef,
+      sha: sourceSha,
+    },
+    producer: {
+      workflowId: policy.workflowId,
+      workflowName: policy.workflowName,
+      workflowPath: policy.workflowPath,
+      runId,
+      runAttempt: "1",
+      runNumber: 1,
+      event: "workflow_dispatch",
+      status: "completed",
+      conclusion: "success",
+      headRepository: policy.repository,
+      headBranch: policy.sourceBranch,
+      headSha: sourceSha,
+    },
+    candidate: {
+      artifactId: ids.candidate,
+      fileName: evidence.artifact.fileName,
+      sha256: evidence.artifact.sha256,
+      sizeBytes: evidence.artifact.sizeBytes,
+    },
+    artifacts: Object.fromEntries(
+      Object.entries(ids).map(([role, artifactId]) => [
+        role,
+        {
+          artifactId,
+          name:
+            role === "candidate"
+              ? evidence.artifact.fileName
+              : `store-source-${role}-${runId}-1`,
+          sizeBytes: role === "candidate" ? evidence.artifact.sizeBytes : 123,
+          metadataDigest: `sha256:${role === "candidate" ? evidence.artifact.sha256 : "b".repeat(64)}`,
+          expired: false,
+          createdAt: "2019-12-31T23:59:00Z",
+          updatedAt: "2019-12-31T23:59:00Z",
+          expiresAt: "2021-01-01T00:00:00Z",
+        },
+      ]),
+    ),
+    evidence: {
+      artifactId: ids.evidence,
+      checksumManifestSha256: "b".repeat(64),
+      predicateSha256: "c".repeat(64),
+      ciSha256: "d".repeat(64),
+      fileCount: policy.expectedEvidenceFileCount,
+    },
+    attestations: {
+      artifactId: ids.attestations,
+      slsaBundleSha256: "e".repeat(64),
+      bindingsBundleSha256: "f".repeat(64),
+      signer,
+      slsa: { predicateType: "https://slsa.dev/provenance/v1" },
+      buildBindings: {
+        predicateType:
+          "https://github.com/JoeWorkspace/JoeSSH/attestations/windows-store-build/v1",
+        exactEvidencePredicate: true,
+      },
+      offlineVerification,
+    },
+    verifier: { githubCli: { ...policy.githubCli, signatureStatus: "Valid" } },
+    gates: {
+      authenticatedProvenance: true,
+      sourceArtifactMetadata: "exact-live-match",
+      storePublicationReady: false,
+    },
+  };
+  evidence.version = "0.1.0-beta.30";
+  evidence.projectIdentity.version = evidence.version;
+  evidence.verification.manifest.version = "1.1.30.0";
+  evidence.verification.projectVersionMapping = {
+    msixVersion: "1.1.30.0",
+    projectVersion: evidence.version,
+  };
+  evidence.commits.sourceCommitBinding =
+    "offline-verified Sigstore subject, signer workflow, producer run, source commit, evidence predicate, and GitHub Actions artifact metadata";
+  evidence.executionIdentity.repository = {
+    slug: policy.repository,
+    source: "github-actions-context",
+  };
+  evidence.executionIdentity.run = {
+    attempt: "1",
+    id: "40000000002",
+    job: "verify",
+    serverUrl: "https://github.com",
+    status: "github-actions-context-recorded",
+    workflow: "Windows Store Hosted Candidate",
+  };
+  evidence.artifact.source = "github-actions-artifact";
+  evidence.artifact.githubActionsArtifact = {
+    artifactId: ids.candidate,
+    evidenceArtifactId: ids.evidence,
+    attestationsArtifactId: ids.attestations,
+    producerRunId: runId,
+    producerRunAttempt: "1",
+  };
+  evidence.artifact.integrity.observations.splice(1, 0, {
+    point: "offline-verified-github-actions-provenance",
+    sha256: "a".repeat(64),
+  });
+  evidence.artifact.integrity.urlImmutability = {
+    artifactId: ids.candidate,
+    expiresAt: receipt.artifacts.candidate.expiresAt,
+    status: "github-actions-artifact-retention-verified-live",
+  };
+  evidence.attestations.authenticatedProvenance = {
+    status: "verified-offline",
+    requiredBeforePublication: true,
+    receiptFileName: "github-actions-source-provenance.json",
+    receiptSha256: "a".repeat(64),
+    sourceRepository: policy.repository,
+    sourceCommit: sourceSha,
+    producerRunId: runId,
+    producerRunAttempt: "1",
+    signer: structuredClone(signer),
+    offlineVerification: structuredClone(offlineVerification),
+    acceptedEvidence:
+      evidence.attestations.authenticatedProvenance.acceptedEvidence,
+  };
+  evidence.attestations.protectedEnvironment.repository = structuredClone(
+    evidence.executionIdentity.repository,
+  );
+  evidence.attestations.protectedEnvironment.run = structuredClone(
+    evidence.executionIdentity.run,
+  );
+  evidence.attestations.protectedEnvironment.status =
+    "source-build-cryptographically-authenticated";
+  evidence.gates.authenticatedProvenance = true;
+  const fixture = {
+    root,
+    candidatePath,
+    candidateEvidencePath,
+    evidence,
+    receipt,
+  };
+  saveAuthenticatedFixture(fixture);
+  return fixture;
+}
+
+function saveAuthenticatedFixture(fixture, updateObservation = true) {
+  const evidenceRoot = dirname(fixture.candidateEvidencePath);
+  const receiptBytes = `${JSON.stringify(fixture.receipt, null, 2)}\n`;
+  writeFileSync(
+    join(evidenceRoot, "github-actions-source-provenance.json"),
+    receiptBytes,
+  );
+  fixture.evidence.attestations.authenticatedProvenance.receiptSha256 =
+    sha256(receiptBytes);
+  if (updateObservation)
+    fixture.evidence.artifact.integrity.observations[1].sha256 =
+      sha256(receiptBytes);
+  writeFileSync(
+    fixture.candidateEvidencePath,
+    `${JSON.stringify(fixture.evidence, null, 2)}\n`,
+  );
+  rewriteCandidateEvidenceChecksums(evidenceRoot, fixture.evidence);
+}
+
+function hostedEvidenceFixture(evidence, evidencePath) {
+  return {
+    schemaVersion: 2,
+    kind: "windows-store-hosted-verification",
+    reviewedCommit: evidence.commits.preflightCommit,
+    releaseDecision: {
+      preferredFormat: "msix",
+      selectedFormat: "msix",
+      msixFallback: false,
+      msixFallbackJustification: "",
+    },
+    candidateJsonSha256: sha256(readFileSync(evidencePath)),
+    artifact: {
+      source: evidence.artifact.source,
+      sourceCommit: evidence.commits.artifactSourceCommit,
+      url: null,
+      sha256: evidence.artifact.sha256,
+      fileName: evidence.artifact.fileName,
+      authenticatedProvenance: true,
+    },
+    identity: { legalPublisher: evidence.projectIdentity.publisher },
+    surfaceIndexSha256: "a".repeat(64),
+    workflowSha256: "b".repeat(64),
+    toolchain: {
+      node: evidence.executionIdentity.tool.nodeVersion,
+      npm: "10.9.7",
+      rustc: "rustc 1.96.0",
+      runnerImage: "test",
+      runnerImageVersion: "1",
+    },
+    boundary:
+      "Hosted candidate verification only; no build signing, Partner Center submission, certification, Store signing, or publication occurred.",
+  };
 }
 
 function toExeEvidence(evidence) {
