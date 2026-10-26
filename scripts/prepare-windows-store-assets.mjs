@@ -34,6 +34,7 @@ import {
   validatePartnerCenterIdentity,
 } from "./windows-store-contract.mjs";
 import { readWindowsStoreManifestLanguageContract } from "./windows-store-language-contract.mjs";
+import { validateWindowsStoreSourceReceiptMetadata } from "./verify-windows-store-source-artifacts.mjs";
 
 const repositoryRoot = resolve(import.meta.dirname, "..");
 const PNG_SIGNATURE = Buffer.from([
@@ -55,6 +56,10 @@ const CHECKSUMS_NAME = "SHA256SUMS.txt";
 const CAPTURE_SESSION_NAME = "capture-session.json";
 const CANDIDATE_BINDING_NAME = "candidate-binding.json";
 const CANDIDATE_EVIDENCE_NAME = "candidate.json";
+const SOURCE_RECEIPT_NAME = "github-actions-source-provenance.json";
+const HOSTED_EVIDENCE_NAME = "hosted-workflow-evidence.json";
+const AUTHENTICATED_SOURCE_BINDING =
+  "offline-verified Sigstore subject, signer workflow, producer run, source commit, evidence predicate, and GitHub Actions artifact metadata";
 const MASTER_ICON_PATH =
   "apps/desktop/src-tauri/icons/joessh-icon-master-1024.png";
 const BRAND_ASSET_SPECS = Object.freeze([
@@ -586,13 +591,15 @@ function assertCandidateEvidenceContract(evidence, artifact) {
   }
   assertNormalizedPastTimestamp(evidence.generatedAt, "candidate generatedAt");
   requireNonEmptyString(evidence.version, "candidate version");
-  assertCandidateCommitEvidence(evidence.commits);
+  const authenticatedSource =
+    evidence.artifact?.source === "github-actions-artifact";
+  assertCandidateCommitEvidence(evidence.commits, authenticatedSource);
   assertCandidateExecutionIdentity(
     evidence.executionIdentity,
     evidence.commits,
   );
   assertCandidateProjectIdentity(evidence.projectIdentity, evidence.version);
-  assertCandidateArtifactEvidence(evidence.artifact, artifact);
+  assertCandidateArtifactEvidence(evidence.artifact, artifact, evidence);
   assertCandidateLegalEvidence(evidence.legalNotices);
   assertCandidateAttestations(evidence.attestations, evidence);
   assertCandidateGates(
@@ -600,6 +607,7 @@ function assertCandidateEvidenceContract(evidence, artifact) {
     evidence.format,
     evidence.artifact.source,
     evidence.artifact.integrity.urlImmutability.status,
+    authenticatedSource,
   );
   assertCandidateSubmissionState(evidence.storeSubmission, evidence.format);
   assertCandidateVerification(evidence.verification, evidence);
@@ -611,7 +619,7 @@ function assertCandidateEvidenceContract(evidence, artifact) {
   }
 }
 
-function assertCandidateCommitEvidence(commits) {
+function assertCandidateCommitEvidence(commits, authenticatedSource) {
   assertExactObjectKeys(
     commits,
     [
@@ -630,7 +638,9 @@ function assertCandidateCommitEvidence(commits) {
         ? "same-commit"
         : "distinct-commits") ||
     commits.sourceCommitBinding !==
-      "operator-supplied input; authenticated provenance not provided"
+      (authenticatedSource
+        ? AUTHENTICATED_SOURCE_BINDING
+        : "operator-supplied input; authenticated provenance not provided")
   ) {
     throw new Error("Candidate commit evidence is incomplete or inconsistent.");
   }
@@ -721,7 +731,13 @@ function assertCandidateProjectIdentity(projectIdentity, version) {
   }
 }
 
-function assertCandidateArtifactEvidence(candidateArtifact, artifact) {
+function assertCandidateArtifactEvidence(
+  candidateArtifact,
+  artifact,
+  evidence,
+) {
+  const authenticatedSource =
+    candidateArtifact.source === "github-actions-artifact";
   assertExactObjectKeys(
     candidateArtifact,
     [
@@ -730,6 +746,9 @@ function assertCandidateArtifactEvidence(candidateArtifact, artifact) {
       "sizeBytes",
       "source",
       "versionedHttpsUrl",
+      ...(Object.hasOwn(candidateArtifact, "githubActionsArtifact")
+        ? ["githubActionsArtifact"]
+        : []),
       "stagedCopySha256",
       "integrity",
     ],
@@ -740,10 +759,46 @@ function assertCandidateArtifactEvidence(candidateArtifact, artifact) {
     candidateArtifact.sha256 !== artifact.sha256 ||
     candidateArtifact.stagedCopySha256 !== artifact.sha256 ||
     candidateArtifact.sizeBytes !== artifact.sizeBytes ||
-    !["local-artifact", "hosted-download"].includes(candidateArtifact.source)
+    !["local-artifact", "hosted-download", "github-actions-artifact"].includes(
+      candidateArtifact.source,
+    )
   ) {
     throw new Error(
       "Candidate file does not match the artifact recorded by candidate preflight evidence.",
+    );
+  }
+  if (authenticatedSource) {
+    const github = candidateArtifact.githubActionsArtifact;
+    assertExactObjectKeys(
+      github,
+      [
+        "artifactId",
+        "evidenceArtifactId",
+        "attestationsArtifactId",
+        "producerRunId",
+        "producerRunAttempt",
+      ],
+      "Candidate GitHub artifact identity",
+    );
+    if (
+      evidence.format !== "msix" ||
+      Object.values(github).some(
+        (value) => !/^[1-9][0-9]*$/.test(value ?? ""),
+      ) ||
+      new Set([
+        github.artifactId,
+        github.evidenceArtifactId,
+        github.attestationsArtifactId,
+      ]).size !== 3
+    ) {
+      throw new Error("Candidate GitHub artifact identity is invalid.");
+    }
+  } else if (
+    Object.hasOwn(candidateArtifact, "githubActionsArtifact") &&
+    candidateArtifact.githubActionsArtifact !== null
+  ) {
+    throw new Error(
+      "Non-GitHub candidate must not claim a GitHub artifact identity.",
     );
   }
   if (
@@ -782,12 +837,40 @@ function assertCandidateArtifactEvidence(candidateArtifact, artifact) {
       "private-snapshot-before-verification" ||
     integrity.observations.at(-1)?.point !== "candidate-evidence-staged-copy" ||
     integrity.observations.some(
-      (observation) =>
+      (observation, index) =>
         !hasExactObjectKeys(observation, ["point", "sha256"]) ||
-        observation.sha256 !== artifact.sha256,
+        observation.sha256 !==
+          (authenticatedSource && index === 1
+            ? evidence.attestations?.authenticatedProvenance?.receiptSha256
+            : artifact.sha256),
     )
   ) {
     throw new Error("Candidate artifact integrity evidence is incomplete.");
+  }
+  if (
+    authenticatedSource &&
+    (integrity.observations.length !== 3 ||
+      integrity.observations[1].point !==
+        "offline-verified-github-actions-provenance")
+  ) {
+    throw new Error("Candidate GitHub provenance observation is inconsistent.");
+  }
+  if (authenticatedSource) {
+    assertExactObjectKeys(
+      integrity.urlImmutability,
+      ["artifactId", "expiresAt", "status"],
+      "Candidate GitHub retention evidence",
+    );
+    if (
+      integrity.urlImmutability.artifactId !==
+        candidateArtifact.githubActionsArtifact.artifactId ||
+      integrity.urlImmutability.status !==
+        "github-actions-artifact-retention-verified-live" ||
+      !Number.isFinite(Date.parse(integrity.urlImmutability.expiresAt))
+    ) {
+      throw new Error("Candidate GitHub retention evidence is inconsistent.");
+    }
+    return;
   }
   const expectedImmutability =
     candidateArtifact.source === "local-artifact"
@@ -860,6 +943,8 @@ function assertCandidateLegalEvidence(legalNotices) {
 }
 
 function assertCandidateAttestations(attestations, evidence) {
+  const authenticatedSource =
+    evidence.artifact.source === "github-actions-artifact";
   assertExactObjectKeys(
     attestations,
     [
@@ -869,13 +954,32 @@ function assertCandidateAttestations(attestations, evidence) {
     ],
     "Candidate attestations",
   );
+  const provenance = attestations.authenticatedProvenance;
+  const receiptFields = [
+    "receiptFileName",
+    "receiptSha256",
+    "sourceRepository",
+    "sourceCommit",
+    "producerRunId",
+    "producerRunAttempt",
+    "signer",
+    "offlineVerification",
+  ];
   assertExactObjectKeys(
-    attestations.authenticatedProvenance,
-    ["status", "requiredBeforePublication", "acceptedEvidence"],
+    provenance,
+    [
+      "status",
+      "requiredBeforePublication",
+      "acceptedEvidence",
+      ...(authenticatedSource || Object.hasOwn(provenance, "receiptFileName")
+        ? receiptFields
+        : []),
+    ],
     "Candidate provenance attestation",
   );
   if (
-    attestations.authenticatedProvenance.status !== "not-provided" ||
+    provenance.status !==
+      (authenticatedSource ? "verified-offline" : "not-provided") ||
     attestations.authenticatedProvenance.requiredBeforePublication !== true ||
     !requireNonEmptyString(
       attestations.authenticatedProvenance.acceptedEvidence,
@@ -883,6 +987,32 @@ function assertCandidateAttestations(attestations, evidence) {
     )
   ) {
     throw new Error("Candidate provenance boundary is invalid.");
+  }
+  if (authenticatedSource) {
+    const github = evidence.artifact.githubActionsArtifact;
+    if (
+      provenance.receiptFileName !== SOURCE_RECEIPT_NAME ||
+      !isSha256(provenance.receiptSha256) ||
+      provenance.sourceCommit !== evidence.commits.artifactSourceCommit ||
+      provenance.sourceRepository !==
+        evidence.executionIdentity.repository.slug ||
+      provenance.producerRunId !== github.producerRunId ||
+      provenance.producerRunAttempt !== github.producerRunAttempt ||
+      evidence.executionIdentity.repository.source !==
+        "github-actions-context" ||
+      evidence.executionIdentity.run.status !==
+        "github-actions-context-recorded"
+    ) {
+      throw new Error("Candidate authenticated provenance is inconsistent.");
+    }
+  } else if (
+    receiptFields.some(
+      (field) => Object.hasOwn(provenance, field) && provenance[field] !== null,
+    )
+  ) {
+    throw new Error(
+      "Unauthenticated candidate must not claim a source receipt.",
+    );
   }
   assertExactObjectKeys(
     attestations.protectedEnvironment,
@@ -922,7 +1052,9 @@ function assertCandidateAttestations(attestations, evidence) {
     JSON.stringify(protectedEnvironment.run) !==
       JSON.stringify(evidence.executionIdentity.run) ||
     protectedEnvironment.status !==
-      "inputs-enforced-not-cryptographically-authenticated"
+      (authenticatedSource
+        ? "source-build-cryptographically-authenticated"
+        : "inputs-enforced-not-cryptographically-authenticated")
   ) {
     throw new Error(
       "Candidate protected-environment evidence is inconsistent.",
@@ -950,6 +1082,7 @@ function assertCandidateGates(
   format,
   artifactSource,
   urlImmutabilityStatus,
+  authenticatedSource,
 ) {
   assertExactObjectKeys(
     gates,
@@ -976,7 +1109,7 @@ function assertCandidateGates(
         : "unverified";
   if (
     gates.artifactHashBound !== true ||
-    gates.authenticatedProvenance !== false ||
+    gates.authenticatedProvenance !== authenticatedSource ||
     gates.candidatePreflightPassed !== true ||
     gates.publicSbomsBound !== true ||
     gates.thirdPartyNoticesBundled !== true ||
@@ -1337,11 +1470,75 @@ function assertCandidateEvidenceBundle(evidencePath, evidence, artifact) {
     "candidate evidence directory",
   );
   const legalFileName = evidence.legalNotices.evidenceFileName;
-  const expectedContentPaths = [
-    artifact.fileName,
-    legalFileName,
-    CANDIDATE_EVIDENCE_NAME,
-  ];
+  const expectedContentPaths = [artifact.fileName, legalFileName];
+  const authenticatedSource =
+    evidence.artifact.source === "github-actions-artifact";
+  if (authenticatedSource) {
+    const receiptFile = captureStableFile(
+      resolveBundlePath(evidenceRoot, SOURCE_RECEIPT_NAME),
+      "candidate source receipt",
+      MAX_CANDIDATE_EVIDENCE_BYTES,
+    );
+    const provenance = evidence.attestations.authenticatedProvenance;
+    if (receiptFile.sha256 !== provenance.receiptSha256) {
+      throw new Error(
+        "Candidate source receipt hash does not match candidate.json.",
+      );
+    }
+    const receipt = parseCanonicalGeneratedJson(
+      receiptFile.bytes,
+      "candidate source receipt",
+    );
+    validateWindowsStoreSourceReceiptMetadata(receipt, {
+      artifactSourceSha: evidence.commits.artifactSourceCommit,
+      candidate: {
+        fileName: artifact.fileName,
+        sha256: artifact.sha256,
+        sizeBytes: artifact.sizeBytes,
+      },
+      expectedSha256: artifact.sha256,
+    });
+    assertNormalizedPastTimestamp(
+      receipt.generatedAt,
+      "candidate source receipt generatedAt",
+    );
+    const github = evidence.artifact.githubActionsArtifact;
+    if (
+      Date.parse(receipt.generatedAt) > Date.parse(evidence.generatedAt) ||
+      receipt.source.repository !== provenance.sourceRepository ||
+      receipt.producer.runId !== github.producerRunId ||
+      receipt.producer.runAttempt !== github.producerRunAttempt ||
+      receipt.candidate.artifactId !== github.artifactId ||
+      receipt.evidence.artifactId !== github.evidenceArtifactId ||
+      receipt.attestations.artifactId !== github.attestationsArtifactId ||
+      JSON.stringify(receipt.attestations.signer) !==
+        JSON.stringify(provenance.signer) ||
+      JSON.stringify(receipt.attestations.offlineVerification) !==
+        JSON.stringify(provenance.offlineVerification) ||
+      receipt.artifacts.candidate.expiresAt !==
+        evidence.artifact.integrity.urlImmutability.expiresAt
+    ) {
+      throw new Error(
+        "Candidate source receipt identity or verification binding mismatch.",
+      );
+    }
+    expectedContentPaths.push(SOURCE_RECEIPT_NAME);
+  }
+  expectedContentPaths.push(CANDIDATE_EVIDENCE_NAME);
+  const hostedEvidencePath = resolveBundlePath(
+    evidenceRoot,
+    HOSTED_EVIDENCE_NAME,
+  );
+  const hostedEvidence = existsSync(hostedEvidencePath)
+    ? captureStableFile(
+        hostedEvidencePath,
+        "hosted candidate evidence",
+        MAX_CANDIDATE_EVIDENCE_BYTES,
+      )
+    : null;
+  if (hostedEvidence) {
+    assertHostedCandidateEvidence(hostedEvidence.bytes, evidence, evidencePath);
+  }
   if (new Set(expectedContentPaths).size !== expectedContentPaths.length) {
     throw new Error("Candidate evidence file names must be distinct.");
   }
@@ -1378,9 +1575,133 @@ function assertCandidateEvidenceBundle(evidencePath, evidence, artifact) {
   );
   assertExactBundleInventory(
     evidenceRoot,
-    [...expectedContentPaths, CHECKSUMS_NAME],
+    [
+      ...expectedContentPaths,
+      CHECKSUMS_NAME,
+      ...(hostedEvidence ? [HOSTED_EVIDENCE_NAME] : []),
+    ],
     "Candidate evidence",
   );
+}
+
+function assertHostedCandidateEvidence(bytes, evidence, evidencePath) {
+  // PowerShell's hosted workflow writes CRLF; retain the original bytes and
+  // validate the same generated JSON shape without rewriting any evidence.
+  let text;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch (error) {
+    throw new Error("hosted candidate evidence is not valid UTF-8 JSON.", {
+      cause: error,
+    });
+  }
+  if (bytes.subarray(0, 3).equals(Buffer.from([0xef, 0xbb, 0xbf]))) {
+    throw new Error("hosted candidate evidence must not include a UTF-8 BOM.");
+  }
+  const hosted = parseCanonicalGeneratedJson(
+    Buffer.from(text.replaceAll("\r\n", "\n")),
+    "hosted candidate evidence",
+  );
+  assertExactObjectKeys(
+    hosted,
+    [
+      "schemaVersion",
+      "kind",
+      "reviewedCommit",
+      "releaseDecision",
+      "candidateJsonSha256",
+      "artifact",
+      "identity",
+      "surfaceIndexSha256",
+      "workflowSha256",
+      "toolchain",
+      "boundary",
+    ],
+    "Hosted candidate evidence",
+  );
+  assertExactObjectKeys(
+    hosted.releaseDecision,
+    [
+      "preferredFormat",
+      "selectedFormat",
+      "msixFallback",
+      "msixFallbackJustification",
+    ],
+    "Hosted release decision",
+  );
+  assertExactObjectKeys(
+    hosted.artifact,
+    [
+      "source",
+      "sourceCommit",
+      "url",
+      "sha256",
+      "fileName",
+      "authenticatedProvenance",
+    ],
+    "Hosted artifact evidence",
+  );
+  assertExactObjectKeys(
+    hosted.identity,
+    evidence.format === "msix"
+      ? ["legalPublisher"]
+      : ["certificateSubject", "certificateThumbprint", "legalPublisher"],
+    "Hosted publisher identity",
+  );
+  assertExactObjectKeys(
+    hosted.toolchain,
+    ["node", "npm", "rustc", "runnerImage", "runnerImageVersion"],
+    "Hosted toolchain evidence",
+  );
+  const decision = hosted.releaseDecision;
+  const isExe = evidence.format === "exe";
+  if (
+    hosted.schemaVersion !== 2 ||
+    hosted.kind !== "windows-store-hosted-verification" ||
+    hosted.reviewedCommit !== evidence.commits.preflightCommit ||
+    evidence.executionIdentity.run.status !==
+      "github-actions-context-recorded" ||
+    hosted.candidateJsonSha256 !==
+      captureStableFile(
+        evidencePath,
+        "hosted candidate JSON binding",
+        MAX_CANDIDATE_EVIDENCE_BYTES,
+      ).sha256 ||
+    decision.preferredFormat !== "msix" ||
+    decision.selectedFormat !== evidence.format ||
+    decision.msixFallback !== isExe ||
+    (isExe
+      ? typeof decision.msixFallbackJustification !== "string" ||
+        decision.msixFallbackJustification.trim().length < 40
+      : decision.msixFallbackJustification !== "") ||
+    hosted.artifact.source !== evidence.artifact.source ||
+    hosted.artifact.sourceCommit !== evidence.commits.artifactSourceCommit ||
+    hosted.artifact.url !== evidence.artifact.versionedHttpsUrl ||
+    hosted.artifact.sha256 !== evidence.artifact.sha256 ||
+    hosted.artifact.fileName !== evidence.artifact.fileName ||
+    hosted.artifact.authenticatedProvenance !==
+      evidence.gates.authenticatedProvenance ||
+    hosted.identity.legalPublisher !== evidence.projectIdentity.publisher ||
+    !isSha256(hosted.surfaceIndexSha256) ||
+    !isSha256(hosted.workflowSha256) ||
+    hosted.toolchain.node !== evidence.executionIdentity.tool.nodeVersion ||
+    Object.values(hosted.toolchain).some(
+      (value) => typeof value !== "string" || value.trim().length === 0,
+    ) ||
+    hosted.boundary !==
+      "Hosted candidate verification only; no build signing, Partner Center submission, certification, Store signing, or publication occurred."
+  ) {
+    throw new Error("Hosted candidate evidence binding mismatch.");
+  }
+  if (
+    isExe &&
+    (hosted.identity.certificateSubject !==
+      evidence.verification.signerPolicy.expectedSubject ||
+      hosted.identity.certificateThumbprint !==
+        evidence.verification.signerPolicy.expectedThumbprint)
+  ) {
+    throw new Error("Hosted candidate signer binding mismatch.");
+  }
 }
 
 function assertCaptureSession(session, candidate) {
