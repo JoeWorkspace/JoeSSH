@@ -6,7 +6,6 @@ import {
   verifyVendoredZod,
   verifyVendoredZodSource,
 } from "./vendored-zod-contract.mjs";
-import { verifyVendoredNodeForge } from "./vendored-node-forge-contract.mjs";
 import { isVerifiedNpmBackportFinding } from "./vendored-npm-audit.mjs";
 import {
   assessZodRegistryAudit,
@@ -224,7 +223,6 @@ test("source-only proof cannot authorize original-identity audit, direct matchin
   const sourceProof = verifyVendoredZodSource(
     resolve(import.meta.dirname, ".."),
   );
-  const forge = verifyVendoredNodeForge(resolve(import.meta.dirname, ".."));
   assert.equal(sourceProof.installation.verified, false);
   assert.throws(() => zodRegistryAuditInputs(sourceProof), /source-verified/);
   assert.throws(
@@ -239,7 +237,6 @@ test("source-only proof cannot authorize original-identity audit, direct matchin
     assert.throws(
       () =>
         isVerifiedNpmBackportFinding(workspace, name, {
-          forge,
           zod: sourceProof,
         }),
       /source-verified/,

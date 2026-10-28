@@ -106,14 +106,12 @@ We appreciate the security research community and will credit reporters (with pe
 - High and critical npm dependency findings block release across the full
   workspace, including development and mobile build tooling. No high-severity
   exceptions are active.
-- A content-verified security backport must retain and audit its original
-  registry identity. Only the exact source-remediated defect can be recognized;
-  unknown or changed findings and any source/lock mismatch remain blocking.
-  See the [Node-only forge backport](docs/node-forge-backport.md) for its pins,
-  independent review, actual-consumer tests and retirement requirements.
-  The scoped [Expo CLI Zod v3 backport](docs/zod-v3-backport.md) follows the same
-  source and original-identity requirements, with separate exact advisory
-  verification before recognizing either repaired leaf in a shared parent.
+- The [Node-only node-forge distribution](docs/node-forge-backport.md) is
+  derived from the pinned upstream fixed release and must pass source, lock,
+  actual-consumer and fresh original-registry checks with no forge findings.
+  The scoped [Expo CLI Zod v3 backport](docs/zod-v3-backport.md) requires
+  separate source and original-identity verification and the exact reviewed
+  advisory graph before its repaired findings can be recognized.
 - Moderate production dependency findings must be documented in
   `docs/dependency-risk-register.md` with advisory URL, affected path, runtime
   impact, Public Beta decision, and follow-up.

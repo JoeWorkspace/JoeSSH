@@ -45,8 +45,8 @@ test("verifies complete reviewed tree and preserves registry identity", (t) => {
   const f = fixture(t);
   const result = verifyVendoredNodeForge(f.root);
   assert.equal(result.name, "node-forge");
-  assert.equal(result.version, "1.4.0");
-  assert.equal(result.path, "vendor/node-forge-1.4.0");
+  assert.equal(result.version, "1.4.2");
+  assert.equal(result.path, "vendor/node-forge-1.4.2");
   assert.equal(result.directory, f.vendor);
   assert.equal(result.metadataSha256, NODE_FORGE_REGISTRATION.metadataSha256);
   assert.equal(result.declaredLicense, "(BSD-3-Clause OR GPL-2.0)");
@@ -54,16 +54,14 @@ test("verifies complete reviewed tree and preserves registry identity", (t) => {
   assert.match(result.treeSha256, /^[a-f0-9]{64}$/u);
   assert.deepEqual(result.registryPackage, {
     name: "node-forge",
-    version: "1.4.0",
+    version: "1.4.2",
     resolved: NODE_FORGE_REGISTRATION.archive,
     integrity: NODE_FORGE_REGISTRATION.integrity,
     shasum: NODE_FORGE_REGISTRATION.shasum,
   });
-  assert.deepEqual(result.patchedAdvisories, ["GHSA-86w9-cpqp-85rv"]);
   assert(Object.isFrozen(result));
   assert(Object.isFrozen(result.metadata.files));
   assert(Object.isFrozen(result.registryPackage));
-  assert(Object.isFrozen(result.patchedAdvisories));
   assert(Object.isFrozen(NODE_FORGE_REGISTRATION));
   assert(Object.isFrozen(NODE_FORGE_REGISTRATION.removedFiles));
   assert.throws(() => {

@@ -3,12 +3,9 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import test from "node:test";
 import { isVerifiedNpmBackportFinding } from "./vendored-npm-audit.mjs";
-import { isVerifiedNodeForgeFinding } from "./vendored-node-forge-audit.mjs";
-import { verifyVendoredNodeForge } from "./vendored-node-forge-contract.mjs";
 import { verifyVendoredZod } from "./vendored-zod-contract.mjs";
 
 const root = resolve(import.meta.dirname, "..");
-const forge = verifyVendoredNodeForge(root);
 const zod = verifyVendoredZod(root);
 const captured = JSON.parse(
   readFileSync(
@@ -17,13 +14,12 @@ const captured = JSON.parse(
   ),
 );
 
-test("requires both independently verified leaves for Expo's shared path without modifying its evidence", () => {
+test("requires verified Zod and the precise Expo dependency graph without modifying its evidence", () => {
   const report = freeze(structuredClone(captured));
   const original = JSON.stringify(report);
-  assert.equal(isVerifiedNodeForgeFinding(report, "@expo/cli", forge), false);
-  for (const name of Object.keys(report.vulnerabilities)) {
+  for (const name of ["zod", "@expo/cli", "expo"]) {
     assert.equal(
-      isVerifiedNpmBackportFinding(report, name, { forge, zod }),
+      isVerifiedNpmBackportFinding(report, name, { zod }),
       true,
       name,
     );
@@ -34,14 +30,9 @@ test("requires both independently verified leaves for Expo's shared path without
 for (const name of ["@expo/cli", "expo", "zod"]) {
   test(`missing Zod source proof cannot recognize ${name}`, () => {
     assert.equal(
-      isVerifiedNpmBackportFinding(captured, name, { forge }),
+      isVerifiedNpmBackportFinding(captured, name, {}),
       false,
     );
-  });
-}
-for (const name of ["@expo/cli", "expo", "node-forge"]) {
-  test(`missing forge source proof cannot recognize ${name}`, () => {
-    assert.equal(isVerifiedNpmBackportFinding(captured, name, { zod }), false);
   });
 }
 
@@ -83,14 +74,10 @@ for (const [label, mutate] of [
       r.vulnerabilities.zod.severity = "critical";
     },
   ],
-  [
-    "unknown forge advisory",
-    (r) =>
-      r.vulnerabilities["node-forge"].via.push({
-        ...r.vulnerabilities["node-forge"].via[0],
-        source: 9999998,
-      }),
-  ],
+  ["deepmerge severity raised", (r) => { r.vulnerabilities.deepmerge.severity = "high"; }],
+  ["deepmerge advisory changed", (r) => { r.vulnerabilities.deepmerge.via[0].source++; }],
+  ["new low parent edge", (r) => { r.vulnerabilities["@expo/config"].via.push("unknown"); }],
+  ["unpatched nested deepmerge", (r) => { r.vulnerabilities.deepmerge.nodes.push("node_modules/example/node_modules/deepmerge"); }],
   [
     "changed CLI node",
     (r) =>
@@ -110,7 +97,7 @@ for (const [label, mutate] of [
     mutate(report);
     const original = JSON.stringify(report);
     assert.equal(
-      isVerifiedNpmBackportFinding(report, "expo", { forge, zod }),
+      isVerifiedNpmBackportFinding(report, "expo", { zod }),
       false,
     );
     assert.equal(JSON.stringify(report), original);
@@ -122,7 +109,6 @@ test("a forged or cloned Zod proof cannot authorize composition", () => {
     assert.throws(
       () =>
         isVerifiedNpmBackportFinding(captured, "expo", {
-          forge,
           zod: unverified,
         }),
       /source-verified pinned v3 backport/,
@@ -137,7 +123,7 @@ test("an unrelated high finding remains unrecognized", () => {
     name: "other",
   };
   assert.equal(
-    isVerifiedNpmBackportFinding(report, "other", { forge, zod }),
+    isVerifiedNpmBackportFinding(report, "other", { zod }),
     false,
   );
 });

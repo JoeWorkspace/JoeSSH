@@ -5,66 +5,120 @@
       "name": "@expo/cli",
       "severity": "high",
       "isDirect": false,
-      "via": ["@expo/code-signing-certificates", "node-forge", "zod"],
+      "via": [
+        "@expo/config",
+        "@expo/metro-config",
+        "@expo/prebuild-config",
+        "zod"
+      ],
       "effects": ["expo"],
-      "range": "<=0.0.0-canary-20231123-1b19f96-4 || >=0.0.1-canary-20231125-d600e44",
+      "range": ">=0.19.0-canary-20240625-2333e70",
       "nodes": ["node_modules/@expo/cli"],
       "fixAvailable": {
         "name": "expo",
-        "version": "54.0.38",
+        "version": "51.0.39",
         "isSemVerMajor": true
       }
     },
-    "@expo/code-signing-certificates": {
-      "name": "@expo/code-signing-certificates",
-      "severity": "high",
+    "@expo/config": {
+      "name": "@expo/config",
+      "severity": "low",
       "isDirect": false,
-      "via": ["node-forge"],
-      "effects": [],
+      "via": ["deepmerge"],
+      "effects": [
+        "@expo/cli",
+        "@expo/local-build-cache-provider",
+        "@expo/metro-config",
+        "@expo/prebuild-config",
+        "expo"
+      ],
+      "range": ">=9.1.0-canary-20240628-1ba8152",
+      "nodes": ["node_modules/@expo/config"],
+      "fixAvailable": {
+        "name": "expo",
+        "version": "51.0.39",
+        "isSemVerMajor": true
+      }
+    },
+    "@expo/local-build-cache-provider": {
+      "name": "@expo/local-build-cache-provider",
+      "severity": "low",
+      "isDirect": false,
+      "via": ["@expo/config"],
+      "effects": ["expo"],
       "range": "*",
-      "nodes": ["node_modules/@expo/code-signing-certificates"],
+      "nodes": ["node_modules/@expo/local-build-cache-provider"],
+      "fixAvailable": {
+        "name": "expo",
+        "version": "51.0.39",
+        "isSemVerMajor": true
+      }
+    },
+    "@expo/metro-config": {
+      "name": "@expo/metro-config",
+      "severity": "low",
+      "isDirect": false,
+      "via": ["@expo/config"],
+      "effects": [],
+      "range": ">=0.19.0-canary-20240625-2333e70",
+      "nodes": ["node_modules/@expo/metro-config"],
       "fixAvailable": true
+    },
+    "@expo/prebuild-config": {
+      "name": "@expo/prebuild-config",
+      "severity": "low",
+      "isDirect": false,
+      "via": ["@expo/config"],
+      "effects": [],
+      "range": ">=7.1.0-canary-20240904-69100c1",
+      "nodes": ["node_modules/@expo/prebuild-config"],
+      "fixAvailable": true
+    },
+    "deepmerge": {
+      "name": "deepmerge",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1243505,
+          "name": "deepmerge",
+          "dependency": "deepmerge",
+          "title": "deepmerge mergeObject() allows prototype poisoning of returned objects",
+          "url": "https://github.com/advisories/GHSA-gcqx-w48m-w2h4",
+          "severity": "low",
+          "cwe": ["CWE-1321"],
+          "cvss": {
+            "score": 5.3,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N"
+          },
+          "range": ">=4.2.0 <=4.3.1"
+        }
+      ],
+      "effects": ["@expo/config"],
+      "range": ">=4.2.0",
+      "nodes": ["node_modules/deepmerge"],
+      "fixAvailable": {
+        "name": "expo",
+        "version": "51.0.39",
+        "isSemVerMajor": true
+      }
     },
     "expo": {
       "name": "expo",
       "severity": "high",
       "isDirect": true,
-      "via": ["@expo/cli"],
+      "via": [
+        "@expo/cli",
+        "@expo/config",
+        "@expo/local-build-cache-provider",
+        "@expo/metro-config"
+      ],
       "effects": [],
-      "range": "52.0.0-canary-20240625-2333e70 - 52.0.0-canary-20241018-f71b3e0 || >=55.0.0-canary-20250912-b5ce2a8",
+      "range": ">=52.0.0-canary-20240625-2333e70",
       "nodes": ["node_modules/expo"],
       "fixAvailable": {
         "name": "expo",
-        "version": "54.0.38",
-        "isSemVerMajor": true
-      }
-    },
-    "node-forge": {
-      "name": "node-forge",
-      "severity": "high",
-      "isDirect": true,
-      "via": [
-        {
-          "source": 1240912,
-          "name": "node-forge",
-          "dependency": "node-forge",
-          "title": "node-forge RSA PKCS#1 v1.5 signature verification accepts extra nested DigestAlgorithm elements",
-          "url": "https://github.com/advisories/GHSA-86w9-cpqp-85rv",
-          "severity": "high",
-          "cwe": ["CWE-347"],
-          "cvss": {
-            "score": 7.5,
-            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
-          },
-          "range": "<=1.4.0"
-        }
-      ],
-      "effects": ["@expo/cli", "@expo/code-signing-certificates"],
-      "range": "*",
-      "nodes": ["node_modules/node-forge", "vendor/node-forge-1.4.0"],
-      "fixAvailable": {
-        "name": "expo",
-        "version": "54.0.38",
+        "version": "51.0.39",
         "isSemVerMajor": true
       }
     },
@@ -96,7 +150,7 @@
       ],
       "fixAvailable": {
         "name": "expo",
-        "version": "54.0.38",
+        "version": "51.0.39",
         "isSemVerMajor": true
       }
     }
@@ -104,19 +158,19 @@
   "metadata": {
     "vulnerabilities": {
       "info": 0,
-      "low": 0,
+      "low": 5,
       "moderate": 0,
-      "high": 5,
+      "high": 3,
       "critical": 0,
-      "total": 5
+      "total": 8
     },
     "dependencies": {
-      "prod": 606,
+      "prod": 605,
       "dev": 273,
       "optional": 39,
       "peer": 25,
       "peerOptional": 0,
-      "total": 914
+      "total": 913
     }
   }
 }

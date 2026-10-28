@@ -1,0 +1,152 @@
+{
+  "@expo/cli": {
+    "name": "@expo/cli",
+    "severity": "high",
+    "isDirect": false,
+    "via": [
+      "@expo/config",
+      "@expo/metro-config",
+      "@expo/prebuild-config",
+      "zod"
+    ],
+    "effects": ["expo"],
+    "range": ">=0.19.0-canary-20240625-2333e70",
+    "nodes": ["node_modules/@expo/cli"],
+    "fixAvailable": {
+      "name": "expo",
+      "version": "51.0.39",
+      "isSemVerMajor": true
+    }
+  },
+  "@expo/config": {
+    "name": "@expo/config",
+    "severity": "low",
+    "isDirect": false,
+    "via": ["deepmerge"],
+    "effects": [
+      "@expo/cli",
+      "@expo/local-build-cache-provider",
+      "@expo/metro-config",
+      "@expo/prebuild-config",
+      "expo"
+    ],
+    "range": ">=9.1.0-canary-20240628-1ba8152",
+    "nodes": ["node_modules/@expo/config"],
+    "fixAvailable": {
+      "name": "expo",
+      "version": "51.0.39",
+      "isSemVerMajor": true
+    }
+  },
+  "@expo/local-build-cache-provider": {
+    "name": "@expo/local-build-cache-provider",
+    "severity": "low",
+    "isDirect": false,
+    "via": ["@expo/config"],
+    "effects": ["expo"],
+    "range": "*",
+    "nodes": ["node_modules/@expo/local-build-cache-provider"],
+    "fixAvailable": {
+      "name": "expo",
+      "version": "51.0.39",
+      "isSemVerMajor": true
+    }
+  },
+  "@expo/metro-config": {
+    "name": "@expo/metro-config",
+    "severity": "low",
+    "isDirect": false,
+    "via": ["@expo/config"],
+    "effects": [],
+    "range": ">=0.19.0-canary-20240625-2333e70",
+    "nodes": ["node_modules/@expo/metro-config"],
+    "fixAvailable": true
+  },
+  "@expo/prebuild-config": {
+    "name": "@expo/prebuild-config",
+    "severity": "low",
+    "isDirect": false,
+    "via": ["@expo/config"],
+    "effects": [],
+    "range": ">=7.1.0-canary-20240904-69100c1",
+    "nodes": ["node_modules/@expo/prebuild-config"],
+    "fixAvailable": true
+  },
+  "deepmerge": {
+    "name": "deepmerge",
+    "severity": "low",
+    "isDirect": false,
+    "via": [
+      {
+        "source": 1243505,
+        "name": "deepmerge",
+        "dependency": "deepmerge",
+        "title": "deepmerge mergeObject() allows prototype poisoning of returned objects",
+        "url": "https://github.com/advisories/GHSA-gcqx-w48m-w2h4",
+        "severity": "low",
+        "cwe": ["CWE-1321"],
+        "cvss": {
+          "score": 5.3,
+          "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N"
+        },
+        "range": ">=4.2.0 <=4.3.1"
+      }
+    ],
+    "effects": ["@expo/config"],
+    "range": ">=4.2.0",
+    "nodes": ["node_modules/deepmerge"],
+    "fixAvailable": {
+      "name": "expo",
+      "version": "51.0.39",
+      "isSemVerMajor": true
+    }
+  },
+  "expo": {
+    "name": "expo",
+    "severity": "high",
+    "isDirect": true,
+    "via": [
+      "@expo/cli",
+      "@expo/config",
+      "@expo/local-build-cache-provider",
+      "@expo/metro-config"
+    ],
+    "effects": [],
+    "range": ">=52.0.0-canary-20240625-2333e70",
+    "nodes": ["node_modules/expo"],
+    "fixAvailable": {
+      "name": "expo",
+      "version": "51.0.39",
+      "isSemVerMajor": true
+    }
+  },
+  "zod": {
+    "name": "zod",
+    "severity": "high",
+    "isDirect": false,
+    "via": [
+      {
+        "source": 1243066,
+        "name": "zod",
+        "dependency": "zod",
+        "title": "Zod can exhaust memory while validating oversized constrained collections",
+        "url": "https://github.com/advisories/GHSA-mrhx-c7xc-m3w5",
+        "severity": "high",
+        "cwe": ["CWE-770"],
+        "cvss": {
+          "score": 7.5,
+          "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+        },
+        "range": "<4.6.6"
+      }
+    ],
+    "effects": ["@expo/cli"],
+    "range": "<4.6.6",
+    "nodes": ["node_modules/@expo/cli/node_modules/zod", "vendor/zod-3.25.76"],
+    "fixAvailable": {
+      "name": "expo",
+      "version": "51.0.39",
+      "isSemVerMajor": true
+    }
+  }
+}
