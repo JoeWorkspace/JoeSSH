@@ -4,64 +4,48 @@ import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 
 const metadataFile = "JOESSH-PATCH.json";
+const verifiedRecords = new WeakSet();
+export function assertVerifiedNodeForge(record) {
+  if (!verifiedRecords.has(record)) throw new Error("Original node-forge audit requires the verified pinned distribution.");
+}
 
 // This independent pin must change only after source, patch, file-set, and
 // cryptographic regression review. Editable package metadata is not authority.
 export const NODE_FORGE_REGISTRATION = deepFreeze({
-  name: "node-forge",
-  version: "1.4.0",
-  path: "vendor/node-forge-1.4.0",
-  dependencySpec: "file:vendor/node-forge-1.4.0",
-  metadataSha256:
-    "fe2b1bf06499efd7b3a970a122dcd64ee8d17ec8586454aa15892b5e33b4b127",
-  archive: "https://registry.npmjs.org/node-forge/-/node-forge-1.4.0.tgz",
-  integrity:
-    "sha512-LarFH0+6VfriEhqMMcLX2F7SwSXeWwnEAJEsYm5QKWchiVYVvJyV9v7UDvUv+w5HO23ZpQTXDv/GxdDdMyOuoQ==",
-  shasum: "1c7b7d8bdc2d078739f58287d589d903a11b2fc2",
-  archiveSha256:
-    "bf9d7ca0d774235354697bd4b5e642af6505e7ce2066762c3b855138cf870820",
-  repository: "https://github.com/digitalbazaar/forge",
-  gitCommit: "fa385f92440879601240020f158bed68e444e83a",
-  securityFixCommit: "db05494352dd3c9a5a07c5270333dcc78866cad2",
-  upstreamPullRequest: "https://github.com/digitalbazaar/forge/pull/1159",
-  upstreamStatus: "open-unmerged",
-  patchSha256:
-    "37b89ad5884509ccd246b120bf6ad185eaf8963da91769b7781de111c4a4bb92",
-  originalRsaSha256:
-    "fd4740238145ec26470eb3f06a627c72039538ce1307dbdce40521f94dfd0a50",
-  patchedRsaSha256:
-    "c7b72e7ef41f4fc0e5228dce3e37851e9ca064c789365d5e392c25d1c5f6e710",
-  license: "(BSD-3-Clause OR GPL-2.0)",
-  licenseSha256:
-    "f63ff0e4e239244aa79280da2dd4811a0469e5e201caf5cbc0d97c3a1dff8e82",
-  sourceAdjustments: {
+  "name": "node-forge",
+  "version": "1.4.2",
+  "path": "vendor/node-forge-1.4.2",
+  "dependencySpec": "file:vendor/node-forge-1.4.2",
+  "metadataSha256": "af047ece8378dda66c06cbeff73736639641c4f0dbcb6cf9aa579efa90c4bcc4",
+  "archive": "https://registry.npmjs.org/node-forge/-/node-forge-1.4.2.tgz",
+  "integrity": "sha512-rRtAR5XLJ8gCKd9du4qrKAsgCG1ObGP4gLeNJMa4vYSeq4bmBMOJk5IHkrviBV0q7uoAJlVd8HEQYQSVUb4FGQ==",
+  "shasum": "9988b154241e3b401a969a76cfb7aca7ddb5e70b",
+  "archiveSha256": "2a1307974013e802032149b472fca74d492572251b51b995f5f09d19725c5e10",
+  "repository": "https://github.com/digitalbazaar/forge",
+  "gitCommit": "7928054627d93ab8c0216b756246e8ca8d62a93e",
+  "license": "(BSD-3-Clause OR GPL-2.0)",
+  "licenseSha256": "f63ff0e4e239244aa79280da2dd4811a0469e5e201caf5cbc0d97c3a1dff8e82",
+  "sourceAdjustments": {
     "lib/pkcs12.js": {
-      originalSha256:
-        "d0f9693ff8b6e755031566139f0e23a762c9a7af6a1b08a27d522810019906d3",
-      sha256:
-        "a3f5e45ff46e94979de8a78d1031d61d5941982263f52e9a5b3e2c5d2c26cc83",
-      reason:
-        "Equivalent bracket-property alias assignment avoids a non-secret false positive after linear-history merges.",
+      "originalSha256": "4e471bf3e717d940a07b34d5716d988cfa01b143c38c3fc1f8b597cb83d29742",
+      "sha256": "71602edc791742fc947f9cc3725bb08b18c6cbc681b8953b491dae851a4fe5a2",
+      "reason": "Reviewed behavior-neutral false-positive adjustment."
     },
     "README.md": {
-      originalSha256:
-        "4ea0e2db410fd5d87c3c9b21912b9ed3fe6c57b3107fa92e2c90b1e618121a49",
-      sha256:
-        "19fe5303e915a3f81e59cb25e2ea0d425bbef52854ccc2d4a8630b2694f68d95",
-      reason:
-        "Remove a duplicate password-derived seed example while retaining the original secure random 32-byte seed example.",
-    },
+      "originalSha256": "548e7cd9b92703b46bd34a6c73c1be5df9901a2012a029f87e073b776e53314c",
+      "sha256": "c1d731151a68b66e9ae78aaebde2cf85eec0994ea47c0bf36cff9337c381c390",
+      "reason": "Remove the previously reviewed duplicate password-derived seed example."
+    }
   },
-  patchedAdvisories: ["GHSA-86w9-cpqp-85rv"],
-  removedFiles: [
+  "removedFiles": [
     "dist/forge.all.min.js",
-    "dist/forge.min.js",
-    "dist/prime.worker.min.js",
     "dist/forge.all.min.js.map",
+    "dist/forge.min.js",
     "dist/forge.min.js.map",
+    "dist/prime.worker.min.js",
     "dist/prime.worker.min.js.map",
-    "flash/swf/SocketPool.swf",
-  ],
+    "flash/swf/SocketPool.swf"
+  ]
 });
 
 /**
@@ -148,7 +132,7 @@ export function verifyVendoredNodeForge(root) {
       .map(([name, digest]) => name + "\0" + digest + "\n")
       .join(""),
   );
-  return deepFreeze({
+  const result = deepFreeze({
     name: NODE_FORGE_REGISTRATION.name,
     version: NODE_FORGE_REGISTRATION.version,
     path: NODE_FORGE_REGISTRATION.path,
@@ -165,8 +149,9 @@ export function verifyVendoredNodeForge(root) {
       integrity: NODE_FORGE_REGISTRATION.integrity,
       shasum: NODE_FORGE_REGISTRATION.shasum,
     },
-    patchedAdvisories: [...NODE_FORGE_REGISTRATION.patchedAdvisories],
   });
+  verifiedRecords.add(result);
+  return result;
 }
 
 function assertMetadata(metadata) {
@@ -179,48 +164,25 @@ function assertMetadata(metadata) {
     gitCommit: NODE_FORGE_REGISTRATION.gitCommit,
   };
   if (
-    metadata.schemaVersion !== 1 ||
+    metadata.schemaVersion !== 2 ||
     !isDeepStrictEqual(metadata.package, {
       name: NODE_FORGE_REGISTRATION.name,
       version: NODE_FORGE_REGISTRATION.version,
       license: NODE_FORGE_REGISTRATION.license,
     }) ||
     !isDeepStrictEqual(metadata.source, expectedSource) ||
-    metadata.patch?.kind !== "security-backport" ||
-    !isDeepStrictEqual(
-      metadata.patch?.advisories,
-      NODE_FORGE_REGISTRATION.patchedAdvisories,
-    ) ||
-    metadata.patch?.url !== NODE_FORGE_REGISTRATION.upstreamPullRequest ||
-    metadata.patch?.upstreamStatus !== NODE_FORGE_REGISTRATION.upstreamStatus ||
-    metadata.patch?.securityFixCommit !==
-      NODE_FORGE_REGISTRATION.securityFixCommit ||
-    metadata.patch?.patchSha256 !== NODE_FORGE_REGISTRATION.patchSha256 ||
-    metadata.patch?.originalRsaSha256 !==
-      NODE_FORGE_REGISTRATION.originalRsaSha256 ||
-    metadata.patch?.patchedRsaSha256 !==
-      NODE_FORGE_REGISTRATION.patchedRsaSha256 ||
     metadata.distribution?.kind !== "node-only" ||
-    !isDeepStrictEqual(
-      metadata.distribution?.removedFiles,
-      NODE_FORGE_REGISTRATION.removedFiles,
-    ) ||
-    !isDeepStrictEqual(
-      metadata.distribution?.sourceAdjustments,
-      NODE_FORGE_REGISTRATION.sourceAdjustments,
-    ) ||
+    !isDeepStrictEqual(metadata.distribution?.removedFiles, NODE_FORGE_REGISTRATION.removedFiles) ||
+    !isDeepStrictEqual(metadata.distribution?.sourceAdjustments, NODE_FORGE_REGISTRATION.sourceAdjustments) ||
     !isDeepStrictEqual(metadata.license, {
       expression: NODE_FORGE_REGISTRATION.license,
       file: "LICENSE",
       sha256: NODE_FORGE_REGISTRATION.licenseSha256,
-    }) ||
-    !isRecord(metadata.files) ||
-    !isRecord(metadata.originalFiles)
+    }) || !isRecord(metadata.files) || !isRecord(metadata.originalFiles)
   ) {
-    throw new Error(
-      "node-forge vendor source or patch metadata is not approved.",
-    );
+    throw new Error("node-forge vendor source or distribution metadata is not approved.");
   }
+
   const originalNames = Object.keys(metadata.originalFiles);
   if (
     originalNames.length !== 59 ||
@@ -271,23 +233,16 @@ function assertMetadata(metadata) {
     }
     if (
       name !== "package.json" &&
-      name !== "lib/rsa.js" &&
       !adjustment &&
       record.sha256 !== originalHash
     ) {
       throw new Error("Unapproved node-forge source modification: " + name);
     }
   }
-  if (
-    metadata.files["LICENSE"].sha256 !==
-      NODE_FORGE_REGISTRATION.licenseSha256 ||
-    metadata.files["lib/rsa.js"].sha256 !==
-      NODE_FORGE_REGISTRATION.patchedRsaSha256 ||
-    metadata.originalFiles["lib/rsa.js"].sha256 !==
-      NODE_FORGE_REGISTRATION.originalRsaSha256
-  ) {
-    throw new Error("node-forge license or RSA patch identity mismatch.");
+  if (metadata.files["LICENSE"].sha256 !== NODE_FORGE_REGISTRATION.licenseSha256) {
+    throw new Error("node-forge license identity mismatch.");
   }
+
 }
 
 function assertManifest(actual, original) {

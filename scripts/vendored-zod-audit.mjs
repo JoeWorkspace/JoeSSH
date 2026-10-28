@@ -107,7 +107,7 @@ export function isVerifiedZodFinding(report, name, verified) {
     effects: ["@expo/cli"],
     range: "<4.6.6",
     nodes: ["node_modules/@expo/cli/node_modules/zod", "vendor/zod-3.25.76"],
-    fixAvailable: { name: "expo", version: "54.0.38", isSemVerMajor: true },
+    fixAvailable: { name: "expo", version: "51.0.39", isSemVerMajor: true },
   };
   return isDeepStrictEqual(report.vulnerabilities?.zod, expected);
 }

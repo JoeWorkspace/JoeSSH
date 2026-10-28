@@ -10,7 +10,7 @@ const os = require("node:os");
 const { spawnSync } = require("node:child_process");
 const Module = require("node:module");
 const root = path.resolve(__dirname, "..");
-const expectedVendor = path.join(root, "vendor/node-forge-1.4.0");
+const expectedVendor = path.join(root, "vendor/node-forge-1.4.2");
 const expectedEntry = fs.realpathSync(
   path.join(expectedVendor, "lib/index.js"),
 );
@@ -505,7 +505,7 @@ test("Node-only distributable excludes every old browser bundle", () => {
     fs.readFileSync(path.join(dir, "package.json"), "utf8"),
   );
   assert.equal(pkg.name, "node-forge");
-  assert.equal(pkg.version, "1.4.0");
+  assert.equal(pkg.version, "1.4.2");
   assert(!fs.existsSync(path.join(dir, "dist")));
   assert(!fs.existsSync(path.join(dir, "flash")));
   assert.deepEqual(pkg.exports["."], { node: "./lib/index.js" });
@@ -519,4 +519,44 @@ test("Node-only distributable excludes every old browser bundle", () => {
   assert.throws(() => selfRequire("node-forge/dist/forge.all.min.js"), {
     code: "ERR_PACKAGE_PATH_NOT_EXPORTED",
   });
+});
+
+// These fixtures are synthetic and exercise upstream 1.4.1/1.4.2 hardening.
+test("PEM string and Buffer inputs decode equivalently", () => {
+  const stringParts = forge.pem.decode(key.privatePem);
+  const bufferParts = forge.pem.decode(Buffer.from(key.privatePem));
+  assert.deepEqual(bufferParts, stringParts);
+});
+test("PKCS#12 iteration bounds preserve valid key derivation and MAC", () => {
+  for (const count of [0, -1]) {
+    assert.throws(() => forge.pbe.generatePkcs12Key("synthetic", forge.util.createBuffer("salt"), 1, count, 16), /iteration count/);
+  }
+  for (const count of [1, 2048]) {
+    assert.equal(forge.pbe.generatePkcs12Key("synthetic", forge.util.createBuffer("salt"), 1, count, 16).length(), 16);
+    const pfx = forge.pkcs12.toPkcs12Asn1(null, null, "synthetic", { count });
+    assert.doesNotThrow(() => forge.pkcs12.pkcs12FromAsn1(pfx, "synthetic"));
+    if (count === 1) {
+      pfx.value[2].value.pop(); // ASN.1 DEFAULT 1
+      assert.doesNotThrow(() => forge.pkcs12.pkcs12FromAsn1(pfx, "synthetic"));
+    }
+  }
+  for (const bytes of ["\x00", "\xff"]) {
+    const pfx = forge.pkcs12.toPkcs12Asn1(null, null, "synthetic", { count: 1 });
+    pfx.value[2].value[2].value = bytes;
+    assert.throws(() => forge.pkcs12.pkcs12FromAsn1(pfx, "synthetic"), bytes === "\x00" ? /iteration count/ : /MAC could not be verified/);
+  }
+});
+test("AES-GCM rejects zero authentication tags and supports a valid tag", () => {
+  const secret = "\x00".repeat(16);
+  const iv = "\x00".repeat(12);
+  const encrypt = forge.cipher.createCipher("AES-GCM", secret);
+  assert.throws(() => encrypt.start({ iv, tagLength: 0 }), /tag length/i);
+  encrypt.start({ iv, tagLength: 128 });
+  encrypt.update(forge.util.createBuffer("synthetic"));
+  assert.equal(encrypt.finish(), true);
+  const decrypt = forge.cipher.createDecipher("AES-GCM", secret);
+  decrypt.start({ iv, tagLength: 128, tag: encrypt.mode.tag });
+  decrypt.update(forge.util.createBuffer(encrypt.output.bytes()));
+  assert.equal(decrypt.finish(), true);
+  assert.equal(decrypt.output.bytes(), "synthetic");
 });
