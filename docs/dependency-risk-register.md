@@ -148,6 +148,24 @@ recognizing the shared Expo parent. Raw reports still contain five high paths
 for these two repaired defects. Retain the failed CI and original reports;
 fresh protected CI and candidate qualification remain required for release.
 
+### October 28: node-forge upstream update
+
+The installed Expo toolchain now uses the verified, Node-only distribution of
+upstream `node-forge 1.4.2`. The previous 1.4.0 RSA backport and its special
+advisory recognition have been retired. A fresh audit of the official 1.4.2
+registry identity must report no findings, and any additional or changed
+finding blocks release. Full and production audit JSON remain unmodified.
+
+The current npm report also contains the independently source-verified Zod v3
+backport and its Expo parents, with low-severity paths to
+[deepmerge GHSA-gcqx-w48m-w2h4](https://github.com/advisories/GHSA-gcqx-w48m-w2h4).
+Only the reviewed complete graph is recognized for the Zod paths; changed
+advisories, severity, parent edges or vulnerable copies block the gate. The
+low-severity deepmerge finding itself is not represented as fixed.
+
+The October 23 material below is historical and does not describe the current
+installed version or its current live audit.
+
 ### October 23 Audit And Backport Review
 
 The final full-workspace and production npm reports at 14:26 UTC both contain

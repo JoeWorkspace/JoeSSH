@@ -262,7 +262,7 @@ function verifyOriginalRegistryAudit(inputs, verified, name, assess) {
     );
     const assessment = assess(report, verified);
     console.log(
-      `VERIFIED BACKPORT ${assessment.verifiedBackport}: original ${name}@${verified.version} remains audited; installed source is pinned and patched. No upstream fixed release is claimed.`,
+      `Registry audit ${name}@${verified.version}: ${assessment.originalRegistryFindings} original findings; installed source is pinned and verified.`,
     );
   } finally {
     // Delete only this call's private, canonical temporary audit directory.

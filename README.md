@@ -1,10 +1,12 @@
 # JoeSSH
 
-**SSH terminals, SFTP, and local port forwarding in one free Windows app.**
+**English** · [简体中文](README.zh-CN.md)
 
-Connect to your servers, run commands, and transfer files from a desktop
-workspace. No JoeSSH account is required; saved connection profiles and
-workspace preferences stay on this device by default.
+**Free, open-source SSH terminals and SFTP in one Windows workspace.**
+
+Connect to a VPS or development server, switch between terminal sessions, and
+transfer files without leaving your workspace. No JoeSSH account is required;
+connection profiles and preferences stay on this device by default.
 
 **[Get JoeSSH free on Microsoft Store](https://apps.microsoft.com/detail/9nk5llmf8lhm)**
 
@@ -12,10 +14,10 @@ Windows 10/11 x64 · Public Beta · Open source under the MIT License
 
 [First connection guide](docs/getting-started.md) · [Report a problem](https://github.com/JoeWorkspace/JoeSSH/issues/new/choose) · [Privacy](PRIVACY.md)
 
-![JoeSSH Desktop workbench in English with sample hosts and fixture terminals](docs/assets/screenshots/desktop-workbench-en.png)
+![JoeSSH connected terminal with an SFTP file browser](docs/assets/screenshots/desktop-demo-connected-en.png)
 
-This is a real E2E capture of the implemented interface with sample hosts and a
-fixture terminal transcript, not a connected SSH session.
+The active session connects to a loopback SSH server in an isolated demo
+environment. The other tabs, profiles, and files are sample data.
 [More screenshots](#screenshots), including Simplified Chinese.
 
 ## What You Can Do
@@ -58,13 +60,10 @@ terminal output in an issue or screenshot.
 
 The Windows app is available from the Microsoft Store. The project remains a
 Public Beta: evaluate it for your workflow and keep backups before changing
-important files. The beta.20 through beta.22 GitHub prereleases remain
-source-only. Beta.23 through beta.28 are Store-candidate source revisions;
-GitHub source records do not carry Windows installers. The beta.23 through
-beta.25 through beta.27 qualification candidates are superseded; beta.28 is the current source
-candidate and is not evidence of a built, certified, or published Store update.
-Unsigned CI bundles are for staging and installation testing, not public
-distribution.
+important files. GitHub prereleases are source previews, not Windows installers.
+The Store package and the latest repository source can differ; a source revision
+or an unsigned CI bundle is not evidence of a published Store update. Unsigned
+CI bundles are for staging and installation testing, not public distribution.
 
 This repository also contains an optional self-hosted change ledger, a
 preview-only Mobile shell, and a read-only Web Admin companion. Mobile is
@@ -129,7 +128,7 @@ connection walkthrough, host-key safety, and the supported deployment paths.
 - `tests/e2e`: Playwright acceptance, release-surface, responsive, accessibility,
   and visual-regression suites.
 
-> **Verification note:** the TCP port-forwarder is covered end-to-end by loopback integration tests. The SSH/PTY/SFTP/`direct-tcpip` paths are exercised by unit tests for their deterministic logic (host-key policy, fingerprinting) and verified to compile against the real `russh` API; a live handshake requires a reachable SSH server, and the Tauri GUI requires a desktop WebView2 runtime. Building `apps/desktop/src-tauri` requires NASM on `PATH` (the `russh` `ring` crypto backend assembles primitives at build time).
+> **Verification note:** the TCP port-forwarder is covered end-to-end by loopback integration tests. The repository also includes a real-SSH smoke suite for the SSH/PTY/SFTP/`direct-tcpip` paths; a live handshake requires a reachable SSH server, and the Tauri GUI requires a desktop WebView2 runtime. Building `apps/desktop/src-tauri` requires NASM on `PATH` (the `russh` `ring` crypto backend assembles primitives at build time).
 
 Rust/Cargo is required for native Desktop development and `npm run qa:rust`;
 the JavaScript, mobile, E2E, and docs-contract QA lanes do not invoke Cargo
@@ -403,13 +402,13 @@ reverse, refund, or automatically return payments made through them.
 
 ## Screenshots
 
-| Desktop workbench (English)                                                                                                      | Desktop workbench (Simplified Chinese)                                                                                                         |
-| -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| ![JoeSSH Desktop workbench in English with sample hosts and fixture terminals](docs/assets/screenshots/desktop-workbench-en.png) | ![JoeSSH Desktop workbench in Simplified Chinese with sample hosts and fixture terminals](docs/assets/screenshots/desktop-workbench-zh-cn.png) |
+| Connected workspace (English)                                                                                 | Connected workspace (Simplified Chinese)                                                                                    |
+| ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| ![JoeSSH connected terminal and SFTP panel in English](docs/assets/screenshots/desktop-demo-connected-en.png) | ![JoeSSH connected terminal and SFTP panel in Simplified Chinese](docs/assets/screenshots/desktop-demo-connected-zh-cn.png) |
 
-The Desktop images are real E2E visual-regression captures using labeled
-sample data. They show the implemented interface, but no real SSH session is
-connected and the terminal text is a fixture transcript.
+These Desktop captures show an active SSH session to a loopback server in an
+isolated demo environment. Other profiles and tabs are sample data; the files
+and terminal output are for demonstration.
 
 ![JoeSSH read-only Web Admin dashboard using fixture data](docs/assets/screenshots/web-admin-read-only-en.png)
 

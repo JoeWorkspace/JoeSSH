@@ -57,9 +57,10 @@ identities. It preserves the upstream findings. It recognizes
 only after the installed source, original-identity report and exact advisory
 leaf match. Diagnostic fixture flags cannot grant that recognition.
 
-Expo CLI now has two repaired leaves. A separate composition checker can remove
-one verified Zod edge from a copy of that CLI finding, then requires the
-unchanged Forge checker to validate the remaining graph. The original report
+The Forge backport was replaced with upstream 1.4.2 in a Node-only
+distribution. The composition checker now recognizes the source-verified Zod
+leaf and its Expo parents only if their complete reviewed graph matches,
+including the independently low-severity deepmerge path. The original report
 is never rewritten. A missing proof, changed advisory, duplicate edge, extra
 parent, unpatched copy or unrelated high finding remains blocking. This is
 source remediation verification, not a high-severity exception.

@@ -1,289 +1,44 @@
 import assert from "node:assert/strict";
-import {
-  cpSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  realpathSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
-import { basename, dirname, join, resolve } from "node:path";
-import { tmpdir } from "node:os";
 import test from "node:test";
-import { verifyVendoredNodeForge } from "./vendored-node-forge-contract.mjs";
-import {
-  assessNodeForgeRegistryAudit,
-  isVerifiedNodeForgeFinding,
-  nodeForgeRegistryAuditInputs,
-} from "./vendored-node-forge-audit.mjs";
-import { parseAuditResult } from "./check-dependency-risk-register.mjs";
+import { cpSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { basename, dirname, join } from "node:path";
+import { tmpdir } from "node:os";
 import { verifyVendoredNpmPackages } from "./vendored-npm-contract.mjs";
-
+import { parseAuditResult } from "./check-dependency-risk-register.mjs";
+import { resolve } from "node:path";
+import { verifyVendoredNodeForge } from "./vendored-node-forge-contract.mjs";
+import { nodeForgeRegistryAuditInputs, assessNodeForgeRegistryAudit } from "./vendored-node-forge-audit.mjs";
 const verified = verifyVendoredNodeForge(resolve(import.meta.dirname, ".."));
-// Captured from npm 10.9.7's fresh, one-package original-identity audit.
-const report = JSON.parse(
-  readFileSync(
-    new URL("./node-forge-registry-audit.fixture.json", import.meta.url),
-    "utf8",
-  ),
-);
-
-const workspaceReport = JSON.parse(
-  readFileSync(
-    new URL("./node-forge-workspace-audit.fixture.json", import.meta.url),
-    "utf8",
-  ),
-);
-
-test("audits the published 1.4.0 identity while accounting for the verified backport", () => {
+const clean = { auditReportVersion: 2, vulnerabilities: {}, metadata: {
+  vulnerabilities: { info: 0, low: 0, moderate: 0, high: 0, critical: 0, total: 0 },
+  dependencies: { prod: 2, dev: 0, optional: 0, peer: 0, peerOptional: 0, total: 1 },
+} };
+test("original official 1.4.2 identity must be audited clean", () => {
   const inputs = nodeForgeRegistryAuditInputs(verified);
-  assert.deepEqual(inputs.manifest.dependencies, { "node-forge": "1.4.0" });
-  const locked = inputs.lock.packages["node_modules/node-forge"];
-  assert.equal(locked.version, "1.4.0");
-  assert.equal(locked.resolved, verified.registryPackage.resolved);
-  assert.equal(locked.integrity, verified.registryPackage.integrity);
-  assert.equal(locked.link, undefined);
-  assert.equal(Object.keys(inputs.lock.packages).length, 2);
-  assert.deepEqual(
-    parseAuditResult(
-      { status: 1, stdout: JSON.stringify(report) },
-      "registry",
-      "high",
-    ),
-    report,
-  );
+  assert.equal(inputs.manifest.dependencies["node-forge"], "1.4.2");
+  assert.equal(inputs.lock.packages["node_modules/node-forge"].integrity, verified.registryPackage.integrity);
+  assert.equal(assessNodeForgeRegistryAudit(clean, verified).originalRegistryFindings, 0);
+});
+for (const [name, mutate] of [
+  ["new high advisory", (r) => { r.vulnerabilities["node-forge"] = { severity: "high" }; }],
+  ["new low advisory", (r) => { r.vulnerabilities["node-forge"] = { severity: "low" }; }],
+  ["altered counts", (r) => { r.metadata.vulnerabilities.total++; }],
+  ["altered dependency counts", (r) => { r.metadata.dependencies.total++; }],
+]) test(name + " blocks original audit", () => { const changed = structuredClone(clean); mutate(changed); assert.throws(() => assessNodeForgeRegistryAudit(changed, verified), /review required/); });
+test("forged source identity cannot authorize registry audit", () => {
+  assert.throws(() => nodeForgeRegistryAuditInputs(Object.freeze({ ...verified, metadataSha256: "bad" })), /verified pinned/);
 });
 
-test("recognizes only the exact source-verified defect and makes no upstream release claim", () => {
-  assert.deepEqual(assessNodeForgeRegistryAudit(report, verified), {
-    originalRegistryFindings: 1,
-    verifiedBackport: "GHSA-86w9-cpqp-85rv",
-    upstreamFixedRelease: false,
-  });
+test("exact frozen clone cannot forge source proof", () => {
+  const cloned = Object.freeze({ ...verified });
+  assert.throws(() => nodeForgeRegistryAuditInputs(cloned), /verified pinned/);
+  assert.throws(() => assessNodeForgeRegistryAudit(clean, cloned), /verified pinned/);
 });
-
-for (const [label, change] of [
-  [
-    "extra advisory",
-    (r) =>
-      r.vulnerabilities["node-forge"].via.push({
-        ...r.vulnerabilities["node-forge"].via[0],
-        source: 9999999,
-        url: "https://example.test/new-advisory",
-      }),
-  ],
-  [
-    "unknown advisory ID",
-    (r) => {
-      r.vulnerabilities["node-forge"].via[0].url =
-        "https://example.test/unknown";
-    },
-  ],
-  [
-    "changed source ID",
-    (r) => {
-      r.vulnerabilities["node-forge"].via[0].source += 1;
-    },
-  ],
-  [
-    "changed range",
-    (r) => {
-      r.vulnerabilities["node-forge"].via[0].range = "<=1.4.1";
-    },
-  ],
-  [
-    "changed severity",
-    (r) => {
-      r.vulnerabilities["node-forge"].via[0].severity = "critical";
-    },
-  ],
-  [
-    "changed CVSS",
-    (r) => {
-      r.vulnerabilities["node-forge"].via[0].cvss.score = 10;
-    },
-  ],
-  [
-    "dangling reference",
-    (r) => {
-      r.vulnerabilities["node-forge"].via = ["missing"];
-    },
-  ],
-  [
-    "different node",
-    (r) => {
-      r.vulnerabilities["node-forge"].nodes = ["node_modules/other"];
-    },
-  ],
-  [
-    "additional vulnerable package",
-    (r) => {
-      r.vulnerabilities.other = structuredClone(
-        r.vulnerabilities["node-forge"],
-      );
-    },
-  ],
-  [
-    "unreported vulnerability",
-    (r) => {
-      r.vulnerabilities = {};
-    },
-  ],
-  [
-    "inconsistent count",
-    (r) => {
-      r.metadata.vulnerabilities.high = 0;
-    },
-  ],
-  [
-    "unexpected dependency",
-    (r) => {
-      r.metadata.dependencies.total = 2;
-    },
-  ],
-  [
-    "new published fix",
-    (r) => {
-      r.vulnerabilities["node-forge"].fixAvailable = true;
-    },
-  ],
-]) {
-  test(`blocks original registry ${label} instead of silently filtering it`, () => {
-    const changed = structuredClone(report);
-    change(changed);
-    assert.throws(
-      () => assessNodeForgeRegistryAudit(changed, verified),
-      /unexpected or changed finding/,
-    );
-  });
-}
-
-for (const key of [
-  "name",
-  "version",
-  "path",
-  "metadataSha256",
-  "patchedAdvisories",
-  "registryPackage",
-]) {
-  test(`rejects an unverified backport ${key}`, () => {
-    const changed = {
-      ...verified,
-      [key]: key === "patchedAdvisories" ? [] : "altered",
-    };
-    Object.freeze(changed);
-    assert.throws(
-      () => nodeForgeRegistryAuditInputs(changed),
-      /verified pinned backport/,
-    );
-    assert.throws(
-      () => assessNodeForgeRegistryAudit(report, changed),
-      /verified pinned backport/,
-    );
-  });
-}
-
-test("rejects upstream transport or exit-status failures even for the known advisory", () => {
-  for (const status of [0, 2, null]) {
-    assert.throws(() =>
-      parseAuditResult(
-        { status, stdout: JSON.stringify(report) },
-        "registry",
-        "high",
-      ),
-    );
-  }
-  assert.throws(() =>
-    parseAuditResult(
-      {
-        status: 1,
-        error: new Error("network unavailable"),
-        stdout: JSON.stringify(report),
-      },
-      "registry",
-      "high",
-    ),
-  );
-  assert.throws(() =>
-    parseAuditResult(
-      {
-        status: 1,
-        stdout: JSON.stringify({ ...report, error: { code: "EAUDIT" } }),
-      },
-      "registry",
-      "high",
-    ),
-  );
+test("transport, invalid exit status and EAUDIT errors block the clean registry audit", () => {
+  for (const status of [1, 2, null]) assert.throws(() => parseAuditResult({ status, stdout: JSON.stringify(clean) }, "registry", "high"));
+  assert.throws(() => parseAuditResult({ status: 0, error: new Error("network unavailable"), stdout: JSON.stringify(clean) }, "registry", "high"));
+  assert.throws(() => parseAuditResult({ status: 0, stdout: JSON.stringify({ ...clean, error: { code: "EAUDIT" } }) }, "registry", "high"));
 });
-
-test("recognizes the same fixed defect through its four real workspace dependency paths", () => {
-  for (const name of Object.keys(workspaceReport.vulnerabilities)) {
-    assert.equal(
-      isVerifiedNodeForgeFinding(workspaceReport, name, verified),
-      true,
-      name,
-    );
-  }
-  const changed = structuredClone(workspaceReport);
-  changed.vulnerabilities.unrelated = {
-    ...changed.vulnerabilities.expo,
-    name: "unrelated",
-  };
-  assert.equal(
-    isVerifiedNodeForgeFinding(changed, "unrelated", verified),
-    false,
-  );
-});
-
-for (const [label, mutate] of [
-  [
-    "additional upstream advisory",
-    (r) =>
-      r.vulnerabilities["node-forge"].via.push({
-        ...r.vulnerabilities["node-forge"].via[0],
-        source: 9,
-      }),
-  ],
-  [
-    "changed upstream advisory",
-    (r) => {
-      r.vulnerabilities["node-forge"].via[0].url =
-        "https://example.test/unknown";
-    },
-  ],
-  [
-    "unpatched nested copy",
-    (r) =>
-      r.vulnerabilities["node-forge"].nodes.push(
-        "node_modules/expo/node_modules/node-forge",
-      ),
-  ],
-  [
-    "extra parent advisory",
-    (r) =>
-      r.vulnerabilities["@expo/cli"].via.push({
-        ...r.vulnerabilities["node-forge"].via[0],
-      }),
-  ],
-  [
-    "critical propagation",
-    (r) => {
-      r.vulnerabilities["node-forge"].severity = "critical";
-    },
-  ],
-  [
-    "unknown parent dependency",
-    (r) => r.vulnerabilities.expo.via.push("unknown"),
-  ],
-]) {
-  test(`never recognizes ${label} as the verified workspace backport`, () => {
-    const changed = structuredClone(workspaceReport);
-    mutate(changed);
-    assert.equal(isVerifiedNodeForgeFinding(changed, "expo", verified), false);
-  });
-}
-
 for (const alternative of [
   "missing",
   "devDependencies",
@@ -302,7 +57,7 @@ for (const alternative of [
     cpSync(verified.directory, join(fixture, verified.path), {
       recursive: true,
     });
-    const spec = "file:vendor/node-forge-1.4.0";
+    const spec = "file:vendor/node-forge-1.4.2";
     const manifest = {
       dependencies: { "node-forge": spec },
       overrides: { "node-forge": "$node-forge" },
