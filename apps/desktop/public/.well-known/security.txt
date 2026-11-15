@@ -1,4 +1,0 @@
-Contact: https://github.com/JoeWorkspace/JoeSSH/security/advisories/new
-Expires: 2027-05-31T00:00:00.000Z
-Preferred-Languages: en, zh
-Policy: https://github.com/JoeWorkspace/JoeSSH/security/policy
