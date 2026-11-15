@@ -20,6 +20,15 @@ type CommandFeedback = {
   tone: "accepted" | "blocked";
 };
 
+function getSearchScrollBehavior(): ScrollBehavior {
+  if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      ? "auto"
+      : "smooth";
+  }
+  return "auto";
+}
+
 export function highlightMatch(text: string, query: string) {
   if (!query) return text;
   const idx = text.toLowerCase().indexOf(query.toLowerCase());
@@ -115,7 +124,13 @@ export const TerminalPane = memo(function TerminalPane({
         </span>
         <div>
           {recording ? (
-            <span className="recording-indicator" aria-label={t("desktop.recording")}>
+            <span
+              className="recording-indicator"
+              aria-label={t("desktop.recording")}
+              aria-live="polite"
+              aria-atomic="true"
+              role="status"
+            >
               <span className="recording-dot" />
               <span className="recording-time">{recordingTimeLabel}</span>
             </span>
@@ -183,7 +198,7 @@ export const TerminalPane = memo(function TerminalPane({
                   <code
                     className={`terminal-line terminal-line--${line.kind}${isCurrentMatch ? " terminal-line--current-match" : ""}`}
                     key={line.id}
-                    ref={isCurrentMatch ? (el) => { if (el) el.scrollIntoView({ block: "nearest", behavior: "smooth" }); } : undefined}
+                    ref={isCurrentMatch ? (el) => { if (el) el.scrollIntoView({ block: "nearest", behavior: getSearchScrollBehavior() }); } : undefined}
                     style={{ display: "block", height: LINE_HEIGHT }}
                   >
                     {searchQuery ? highlightMatch(line.text, searchQuery) : line.text}
@@ -199,7 +214,7 @@ export const TerminalPane = memo(function TerminalPane({
               <code
                 className={`terminal-line terminal-line--${line.kind}${isCurrentMatch ? " terminal-line--current-match" : ""}`}
                 key={line.id}
-                ref={isCurrentMatch ? (el) => { if (el) el.scrollIntoView({ block: "nearest", behavior: "smooth" }); } : undefined}
+                ref={isCurrentMatch ? (el) => { if (el) el.scrollIntoView({ block: "nearest", behavior: getSearchScrollBehavior() }); } : undefined}
               >
                 {searchQuery ? highlightMatch(line.text, searchQuery) : line.text}
               </code>
@@ -215,7 +230,9 @@ export const TerminalPane = memo(function TerminalPane({
             <input
               aria-describedby={commandFeedback ? "terminal-command-feedback" : undefined}
               aria-autocomplete="list"
+              aria-expanded={autocompleteSuggestions.length > 0}
               aria-controls={autocompleteSuggestions.length > 0 ? "terminal-autocomplete" : undefined}
+              aria-activedescendant={autocompleteIdx >= 0 ? `terminal-autocomplete-option-${autocompleteIdx}` : undefined}
               autoComplete="off"
               dir="ltr"
               onChange={(event) => { onCommandInputChange?.(event.currentTarget.value); setAutocompleteIdx(-1); }}
@@ -228,6 +245,7 @@ export const TerminalPane = memo(function TerminalPane({
               <div className="terminal-autocomplete" id="terminal-autocomplete" role="listbox">
                 {autocompleteSuggestions.map((suggestion, idx) => (
                   <div
+                    id={`terminal-autocomplete-option-${idx}`}
                     key={suggestion}
                     className={`terminal-autocomplete-item${idx === autocompleteIdx ? " is-selected" : ""}`}
                     role="option"

@@ -192,6 +192,14 @@ pub fn detect_dangerous_command(command: &str) -> Option<DangerousCommandMatch> 
         ));
     }
 
+    if matches_shell_variable_expansion(&lower) {
+        return Some(command_match(
+            "shell variable expansion",
+            "uses shell variable expansion that can hide execution",
+            DangerousCommandAction::Block,
+        ));
+    }
+
     DANGEROUS_PATTERNS
         .iter()
         .filter(|(pattern, _, _)| lower.contains(&pattern.to_ascii_lowercase()))
@@ -221,7 +229,9 @@ fn command_match(
 fn normalize_command_for_detection(command: &str) -> String {
     let lower = command.to_ascii_lowercase();
     let collapsed = lower.split_whitespace().collect::<Vec<_>>().join(" ");
-    let expanded = expand_simple_shell_assignments(&collapsed);
+    let expanded = expand_simple_shell_assignments(&collapsed)
+        .replace("${ifs}", " ")
+        .replace("$ifs", " ");
 
     expanded.replace(['"', '\''], "")
 }
@@ -229,14 +239,67 @@ fn normalize_command_for_detection(command: &str) -> String {
 fn expand_simple_shell_assignments(command: &str) -> String {
     let mut assignments = Vec::new();
 
-    for token in command.split_whitespace() {
-        let Some((name, value)) = token.split_once('=') else {
-            continue;
-        };
-        if name.is_empty() || value.is_empty() || !is_shell_identifier(name) {
+    // Keep this deliberately small and shell-oriented. Splitting only on
+    // whitespace misses assignments immediately before a command separator
+    // (`r=rm; $r -rf /`), while accepting the separator as part of the value
+    // prevents the expanded command from being tokenized correctly.
+    let bytes = command.as_bytes();
+    let mut index = 0;
+    while index < bytes.len() {
+        while index < bytes.len() && bytes[index].is_ascii_whitespace() {
+            index += 1;
+        }
+        if index >= bytes.len() {
+            break;
+        }
+
+        let name_start = index;
+        while index < bytes.len()
+            && (bytes[index] == b'_' || bytes[index].is_ascii_alphanumeric())
+        {
+            index += 1;
+        }
+        if index == name_start || index >= bytes.len() || bytes[index] != b'=' {
+            while index < bytes.len() && !matches!(bytes[index], b';' | b'&' | b'|') {
+                index += 1;
+            }
+            index += usize::from(index < bytes.len());
             continue;
         }
-        assignments.push((name.to_string(), value.to_string()));
+
+        let name = &command[name_start..index];
+        if !is_shell_identifier(name) {
+            index += 1;
+            continue;
+        }
+        index += 1;
+        let value_start = index;
+        let value_end;
+        if let Some(quote @ (b'\'' | b'"')) = bytes.get(index).copied() {
+            index += 1;
+            let quoted_start = index;
+            while index < bytes.len() && bytes[index] != quote {
+                index += 1;
+            }
+            value_end = index;
+            if index < bytes.len() {
+                index += 1;
+            }
+            if value_end > quoted_start {
+                assignments.push((name.to_string(), command[quoted_start..value_end].to_string()));
+            }
+        } else {
+            while index < bytes.len()
+                && !bytes[index].is_ascii_whitespace()
+                && !matches!(bytes[index], b';' | b'&' | b'|')
+            {
+                index += 1;
+            }
+            value_end = index;
+            if value_end > value_start {
+                assignments.push((name.to_string(), command[value_start..value_end].to_string()));
+            }
+        }
     }
 
     if assignments.is_empty() {
@@ -262,12 +325,56 @@ fn is_shell_identifier(name: &str) -> bool {
 }
 
 fn matches_rm_root(command: &str) -> bool {
-    command.contains("rm -rf /")
-        || command.contains("rm -fr /")
-        || command.contains("rm -r -f /")
-        || command.contains("rm -f -r /")
-        || command.contains("rm --recursive --force /")
-        || command.contains("rm --force --recursive /")
+    let tokens = command.split_whitespace().collect::<Vec<_>>();
+
+    for (index, token) in tokens.iter().enumerate() {
+        let executable = token.rsplit('/').next().unwrap_or(token);
+        if executable != "rm" {
+            continue;
+        }
+
+        let mut recursive = false;
+        let mut force = false;
+        let mut options_done = false;
+
+        for argument in tokens.iter().skip(index + 1) {
+            if !options_done && *argument == "--" {
+                options_done = true;
+                continue;
+            }
+
+            if !options_done && argument.starts_with("--") {
+                match *argument {
+                    "--recursive" => recursive = true,
+                    "--force" => force = true,
+                    // `--no-preserve-root` is not itself required for rm to
+                    // target `/`, but it is a strong signal that the root is
+                    // intentional. Keep scanning for the actual flags/path.
+                    "--no-preserve-root" => {}
+                    _ => {}
+                }
+                continue;
+            }
+
+            if !options_done && argument.starts_with('-') && argument.len() > 1 {
+                for flag in argument.chars().skip(1) {
+                    if flag == 'r' {
+                        recursive = true;
+                    } else if flag == 'f' {
+                        force = true;
+                    }
+                }
+                continue;
+            }
+
+            options_done = true;
+            if recursive && force && is_root_rm_target(argument) {
+                return true;
+            }
+        }
+    }
+
+    false
 }
 
 fn matches_fork_bomb(command: &str) -> bool {
@@ -391,6 +498,42 @@ fn matches_command_substitution(command: &str) -> bool {
     command.contains("$(") || command.contains('`')
 }
 
+fn matches_shell_variable_expansion(command: &str) -> bool {
+    let bytes = command.as_bytes();
+    let mut index = 0;
+    while index + 1 < bytes.len() {
+        if bytes[index] != b'$' {
+            index += 1;
+            continue;
+        }
+
+        match bytes[index + 1] {
+            b'{' => {
+                if let Some(next) = bytes.get(index + 2) {
+                    if next.is_ascii_alphabetic() || *next == b'_' {
+                        return true;
+                    }
+                }
+            }
+            next if next.is_ascii_alphabetic() || next == b'_' => return true,
+            _ => {}
+        }
+        index += 1;
+    }
+    false
+}
+
+fn is_root_rm_target(argument: &str) -> bool {
+    let target = argument.trim_end_matches(|ch| matches!(ch, ';' | '&' | '|' | '>'));
+    let canonical = target.trim_end_matches('/');
+    let canonical = if canonical.is_empty() { "/" } else { canonical };
+    canonical == "/"
+        || canonical == "/."
+        || canonical == "/.."
+        || canonical.starts_with("/*")
+        || canonical.starts_with("//")
+}
+
 fn contains_block_device_path(command: &str) -> bool {
     command.contains("/dev/sd")
         || command.contains("/dev/nvme")
@@ -404,11 +547,139 @@ pub fn is_dangerous_command(command: &str) -> bool {
 }
 
 pub fn redact_log(input: &str) -> String {
-    input
-        .split_whitespace()
-        .map(redact_token)
-        .collect::<Vec<_>>()
-        .join(" ")
+    let tokens = input.split_whitespace().collect::<Vec<_>>();
+    let mut redacted = Vec::with_capacity(tokens.len());
+    let mut index = 0;
+
+    while index < tokens.len() {
+        let token = tokens[index];
+        if let Some(option) = credential_option(token, &tokens, index) {
+            match option {
+                CredentialOption::Attached { prefix } => {
+                    redacted.push(format!("{prefix}<redacted>"));
+                }
+                CredentialOption::Next {
+                    consume_option_like,
+                } => {
+                    redacted.push(token.to_string());
+                    if let Some(next) = tokens.get(index + 1) {
+                        if consume_option_like || !looks_like_option(next) {
+                            redacted.push("<redacted>".to_string());
+                            index += 1;
+                        }
+                    }
+                }
+            }
+        } else {
+            redacted.push(redact_token(token).into_owned());
+        }
+        index += 1;
+    }
+
+    redacted.join(" ")
+}
+
+enum CredentialOption {
+    Next { consume_option_like: bool },
+    Attached { prefix: String },
+}
+
+fn credential_option(token: &str, tokens: &[&str], index: usize) -> Option<CredentialOption> {
+    let normalized = trim_matching_quotes(token);
+    if normalized.is_empty() {
+        return None;
+    }
+
+    if normalized.eq_ignore_ascii_case("--password") {
+        return Some(CredentialOption::Next {
+            consume_option_like: true,
+        });
+    }
+    if let Some((key, _)) = normalized.split_once('=') {
+        if key.eq_ignore_ascii_case("--password") {
+            return Some(CredentialOption::Attached {
+                prefix: format!("{key}="),
+            });
+        }
+    }
+
+    if has_command_before(tokens, index, &["sshpass"]) {
+        if normalized == "-p" {
+            return Some(CredentialOption::Next {
+                consume_option_like: true,
+            });
+        }
+        if normalized.starts_with("-p") && normalized.len() > 2 {
+            return Some(CredentialOption::Attached {
+                prefix: "-p".to_string(),
+            });
+        }
+    }
+
+    if has_command_before(tokens, index, &["mysql", "mariadb"]) {
+        if normalized == "-p" {
+            return Some(CredentialOption::Next {
+                consume_option_like: false,
+            });
+        }
+        if normalized.starts_with("-p") && normalized.len() > 2 {
+            return Some(CredentialOption::Attached {
+                prefix: "-p".to_string(),
+            });
+        }
+    }
+
+    if has_command_before(tokens, index, &["curl", "wget"]) {
+        if normalized == "-u" || normalized.eq_ignore_ascii_case("--user") {
+            return Some(CredentialOption::Next {
+                consume_option_like: true,
+            });
+        }
+        if let Some((key, _)) = normalized.split_once('=') {
+            if key.eq_ignore_ascii_case("--user") {
+                return Some(CredentialOption::Attached {
+                    prefix: format!("{key}="),
+                });
+            }
+        }
+        if normalized.starts_with("-u") && normalized.len() > 2 {
+            return Some(CredentialOption::Attached {
+                prefix: "-u".to_string(),
+            });
+        }
+    }
+
+    None
+}
+
+fn has_command_before(tokens: &[&str], index: usize, names: &[&str]) -> bool {
+    tokens[..index].iter().any(|token| {
+        let normalized = trim_matching_quotes(token);
+        if normalized.is_empty() || normalized.contains('=') || looks_like_option(&normalized) {
+            return false;
+        }
+        let command_name = normalized.rsplit('/').next().unwrap_or(normalized);
+        names
+            .iter()
+            .any(|name| command_name.eq_ignore_ascii_case(name))
+    })
+}
+
+fn trim_matching_quotes(token: &str) -> &str {
+    let bytes = token.as_bytes();
+    if bytes.len() >= 2
+        && (bytes[0] == b'\'' || bytes[0] == b'"')
+        && bytes[bytes.len() - 1] == bytes[0]
+    {
+        &token[1..token.len() - 1]
+    } else {
+        token
+    }
+}
+
+fn looks_like_option(token: &str) -> bool {
+    let bytes = token.as_bytes();
+    bytes.len() > 1 && bytes[0] == b'-' && bytes[1].is_ascii_alphanumeric()
 }
 
 fn redact_token(token: &str) -> Cow<'_, str> {

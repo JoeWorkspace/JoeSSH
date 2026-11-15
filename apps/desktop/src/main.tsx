@@ -2221,15 +2221,36 @@ function App({
 
         <nav className="tabbar" aria-label={t("desktop.terminalTabs")}>
           <div role="tablist" aria-label={t("desktop.terminalTabs")}>
-            {openTerminalTabs.map((tab) => (
+            {openTerminalTabs.map((tab, tabIndex) => (
               <button
                 className={tab === activeConnection.name ? "is-active" : ""}
+                id={`terminal-tab-${tabIndex}`}
                 key={tab}
                 title={tab}
                 type="button"
                 role="tab"
                 aria-selected={tab === activeConnection.name}
+                aria-controls="terminal-panel"
+                tabIndex={tab === activeConnection.name ? 0 : -1}
                 onClick={() => activateConnection(tab)}
+                onKeyDown={(event) => {
+                  let nextIndex: number | undefined;
+                  if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+                    nextIndex = (tabIndex + 1) % openTerminalTabs.length;
+                  } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+                    nextIndex = (tabIndex - 1 + openTerminalTabs.length) % openTerminalTabs.length;
+                  } else if (event.key === "Home") {
+                    nextIndex = 0;
+                  } else if (event.key === "End") {
+                    nextIndex = openTerminalTabs.length - 1;
+                  }
+                  if (nextIndex === undefined) return;
+                  event.preventDefault();
+                  const nextTab = openTerminalTabs[nextIndex];
+                  if (!nextTab) return;
+                  activateConnection(nextTab);
+                  (event.currentTarget.parentElement?.children[nextIndex] as HTMLElement | undefined)?.focus();
+                }}
               >
                 <TerminalSquare size={15} aria-hidden="true" />
                 <span>{tab}</span>
@@ -2239,6 +2260,10 @@ function App({
         </nav>
 
         <div
+          id="terminal-panel"
+          role="tabpanel"
+          aria-labelledby={`terminal-tab-${Math.max(0, openTerminalTabs.indexOf(activeConnection.name))}`}
+          tabIndex={0}
           className={`terminal-grid ${
             activeConnection.status !== "locked" &&
             activeConnection.name === "prod-edge-01"

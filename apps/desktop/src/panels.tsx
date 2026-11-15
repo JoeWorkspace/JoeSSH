@@ -741,19 +741,18 @@ export const SftpPanel = memo(function SftpPanel({
                 const isSelected =
                   !entry.is_dir && entry.name === selectedDownloadName;
                 return (
-                  <button
-                    key={entry.name}
-                    type="button"
-                    aria-label={`${entry.is_dir ? t("desktop.folder") : t("desktop.file")}: ${entry.name}`}
-                    aria-pressed={entry.is_dir ? undefined : isSelected}
-                    className={isSelected ? "is-selected" : undefined}
-                    role="listitem"
-                    disabled={!onClick}
-                    onClick={onClick}
-                    title={
-                      !safeEntryName ? t("desktop.notAvailable") : undefined
-                    }
-                  >
+                  <div className="file-list-item" key={entry.name} role="listitem">
+                    <button
+                      type="button"
+                      aria-label={`${entry.is_dir ? t("desktop.folder") : t("desktop.file")}: ${entry.name}`}
+                      aria-pressed={entry.is_dir ? undefined : isSelected}
+                      className={isSelected ? "is-selected" : undefined}
+                      disabled={!onClick}
+                      onClick={onClick}
+                      title={
+                        !safeEntryName ? t("desktop.notAvailable") : undefined
+                      }
+                    >
                     {entry.is_dir ? (
                       <Folder size={16} aria-hidden="true" />
                     ) : (
@@ -765,19 +764,19 @@ export const SftpPanel = memo(function SftpPanel({
                         ? t("desktop.notAvailable")
                         : formatters.fileSize(entry.size)}
                     </small>
-                  </button>
+                    </button>
+                  </div>
                 );
               })
             : !live
               ? sftpItems.map((item) => (
+                <div className="file-list-item" key={item.name} role="listitem">
                   <button
-                    key={item.name}
-                    type="button"
-                    aria-label={`${item.type === "dir" ? t("desktop.folder") : t("desktop.file")}: ${item.name}`}
-                    role="listitem"
-                    disabled
-                    title={t("desktop.noSessionActionDetail")}
-                  >
+                      type="button"
+                      aria-label={`${item.type === "dir" ? t("desktop.folder") : t("desktop.file")}: ${item.name}`}
+                      disabled
+                      title={t("desktop.noSessionActionDetail")}
+                    >
                     {item.type === "dir" ? (
                       <Folder size={16} aria-hidden="true" />
                     ) : (
@@ -796,6 +795,7 @@ export const SftpPanel = memo(function SftpPanel({
                       )}
                     </small>
                   </button>
+                </div>
                 ))
               : null}
         </div>

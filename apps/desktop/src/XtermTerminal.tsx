@@ -320,7 +320,13 @@ export function XtermTerminal({
           </IconButton>
         </div>
       ) : null}
-      <div className="xterm-host" ref={containerRef} aria-label={label} />
+      <div
+        className="xterm-host"
+        ref={containerRef}
+        role="region"
+        aria-label={label}
+        tabIndex={0}
+      />
       <div
         className="xterm-status-bar"
         role={pty.blockedReason !== null ? "alert" : "status"}

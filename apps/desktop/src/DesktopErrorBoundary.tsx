@@ -1,4 +1,4 @@
-import { Component, type ErrorInfo, type PropsWithChildren } from "react";
+import { Component, createRef, type ErrorInfo, type PropsWithChildren } from "react";
 import { InlineAlert } from "./InlineAlert";
 
 export type DesktopErrorMonitor = {
@@ -20,6 +20,7 @@ type DesktopErrorBoundaryState = {
 
 export class DesktopErrorBoundary extends Component<DesktopErrorBoundaryProps, DesktopErrorBoundaryState> {
   state: DesktopErrorBoundaryState = { error: undefined };
+  private readonly errorShellRef = createRef<HTMLElement>();
 
   static getDerivedStateFromError(error: Error): DesktopErrorBoundaryState {
     return { error };
@@ -30,6 +31,12 @@ export class DesktopErrorBoundary extends Component<DesktopErrorBoundaryProps, D
       componentStack: errorInfo.componentStack,
     });
     this.props.errorMonitor.report(error.message, error.stack);
+  }
+
+  componentDidUpdate(previousState: DesktopErrorBoundaryState) {
+    if (!previousState.error && this.state.error) {
+      window.requestAnimationFrame(() => this.errorShellRef.current?.focus());
+    }
   }
 
   render() {
@@ -43,7 +50,12 @@ export class DesktopErrorBoundary extends Component<DesktopErrorBoundaryProps, D
     const onReload = this.props.onReload ?? (() => window.location.reload());
 
     return (
-      <main className="error-boundary-shell">
+      <main
+        className="error-boundary-shell"
+        ref={this.errorShellRef}
+        tabIndex={-1}
+        aria-labelledby="desktop-error-boundary-title"
+      >
         <section className="error-boundary-card" aria-labelledby="desktop-error-boundary-title">
           <h1 id="desktop-error-boundary-title">{title}</h1>
           <InlineAlert className="error-boundary-alert" title={title} detail={message} />

@@ -1,5 +1,10 @@
 import type { TranslationKey } from "@atlasterm/i18n";
 
+// Shell variable expansion can turn an apparently harmless token sequence
+// into a different command (for example, `rm -rf${IFS}/`). Keep this pattern
+// deliberately small: command substitution is handled separately below.
+const shellVariablePattern = /\$(?:\{?[a-z_][a-z0-9_]*\}?)/i;
+
 const dangerousPatterns = [
   {
     pattern: "rm -rf /",
@@ -8,7 +13,8 @@ const dangerousPatterns = [
       /(?:^|[;&|]\s*)(?:sudo(?:\s+-\S+)*\s+)?(?:\/(?:usr\/)?s?bin\/)?rm\s+(?:(?:-(?=[a-z-]*r)(?=[a-z-]*f)[a-z-]*)|(?:(?:-[a-z]+\s+|--recursive\s+|--force\s+|--no-preserve-root\s+)*(?:--recursive|--force)(?:\s+(?:-[a-z]+|--recursive|--force|--no-preserve-root))*))(?:\s+--no-preserve-root)?\s+\/(?:\s|$|[;&|])/.test(command) ||
       /(?:^|[;&|]\s*)(?:sudo(?:\s+-\S+)*\s+)?(?:\/(?:usr\/)?s?bin\/)?rm\s+(?:(?:-(?=[a-z-]*r)(?=[a-z-]*f)[a-z-]*)|(?:(?:-[a-z]+\s+|--recursive\s+|--force\s+|--no-preserve-root\s+)*(?:--recursive|--force)(?:\s+(?:-[a-z]+|--recursive|--force|--no-preserve-root))*))\s+\/\*(?:\s|$|[;&|])/.test(command) ||
       /(?:^|[;&|]\s*)(?:sudo(?:\s+-\S+)*\s+)?(?:\/(?:usr\/)?s?bin\/)?rm\s+-[a-z]*r[a-z]*\s+-[a-z]*f[a-z]*\s+\/(?:\s|$|[;&|])/.test(command) ||
-      /(?:^|[;&|]\s*)(?:sudo(?:\s+-\S+)*\s+)?(?:\/(?:usr\/)?s?bin\/)?rm\s+-[a-z]*f[a-z]*\s+-[a-z]*r[a-z]*\s+\/(?:\s|$|[;&|])/.test(command),
+      /(?:^|[;&|]\s*)(?:sudo(?:\s+-\S+)*\s+)?(?:\/(?:usr\/)?s?bin\/)?rm\s+-[a-z]*f[a-z]*\s+-[a-z]*r[a-z]*\s+\/(?:\s|$|[;&|])/.test(command) ||
+      matchesRmRootVariant(command),
   },
   { pattern: "mkfs", reasonKey: "desktop.safetyReasonMkfs", test: (command: string) => /(?:^|[;&|]\s*)(?:sudo\s+)?mkfs(?:\.\w+)?(?:\s|$)/.test(command) },
   { pattern: ":(){:|:&};:", reasonKey: "desktop.safetyReasonForkBomb", test: (command: string) => /:\s*\(\s*\)\s*\{\s*:\s*\|\s*:\s*&\s*\}\s*;\s*:/.test(command) },
@@ -95,6 +101,11 @@ const dangerousPatterns = [
     reasonKey: "desktop.safetyReasonCommandSubstitution",
     test: (command: string) => /\$\([^)]*\)/.test(command) || /`[^`]+`/.test(command),
   },
+  {
+    pattern: "shell variable expansion",
+    reasonKey: "desktop.safetyReasonCommandSubstitution",
+    test: (command: string) => shellVariablePattern.test(command),
+  },
 ] as const;
 
 const sensitiveKeys = ["password", "passwd", "passphrase", "secret", "token", "api_key", "apikey", "private_key"];
@@ -128,10 +139,62 @@ export function interceptTerminalCommand(command: string): TerminalCommandDecisi
 
 export function detectDangerousCommand(command: string): DangerousCommandMatch | null {
   const trimmed = command.trim().replace(/\s+/g, " ").toLowerCase();
-  const expanded = expandShellVariables(trimmed);
+  const expanded = expandShellVariables(trimmed)
+    // `${IFS}` expands to shell whitespace; normalize it before matching so
+    // it cannot hide destructive command arguments.
+    .replace(/\$\{ifs\}|\$ifs/gi, " ")
+    .replace(/\s+/g, " ");
   const normalized = expanded.replace(/['"]/g, "");
   const hit = dangerousPatterns.find((entry) => entry.test(normalized));
   return hit ? { pattern: hit.pattern, reasonKey: hit.reasonKey } : null;
+}
+
+function matchesRmRootVariant(command: string): boolean {
+  const tokens = command.split(/\s+/).filter(Boolean);
+
+  for (const [index, token] of tokens.entries()) {
+    const executable = token.split("/").pop();
+    if (executable !== "rm") continue;
+
+    let recursive = false;
+    let force = false;
+    let optionsDone = false;
+    for (const argument of tokens.slice(index + 1)) {
+      if (!optionsDone && argument === "--") {
+        optionsDone = true;
+        continue;
+      }
+      if (!optionsDone && argument.startsWith("--")) {
+        if (argument === "--recursive") recursive = true;
+        if (argument === "--force") force = true;
+        continue;
+      }
+      if (!optionsDone && argument.startsWith("-") && argument.length > 1) {
+        for (const flag of argument.slice(1)) {
+          if (flag === "r") recursive = true;
+          if (flag === "f") force = true;
+        }
+        continue;
+      }
+
+      optionsDone = true;
+      const target = argument.replace(/[;&|>]+$/g, "");
+      const canonicalTarget = target.replace(/\/+$/g, "") || "/";
+      if (
+        recursive &&
+        force &&
+        (canonicalTarget === "/" ||
+          canonicalTarget === "/." ||
+          canonicalTarget === "/.." ||
+          canonicalTarget.startsWith("/*") ||
+          canonicalTarget.startsWith("//"))
+      ) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
 
 export type SnippetCommandValidation =
@@ -152,7 +215,8 @@ export function validateSnippetCommand(command: string): SnippetCommandValidatio
     ) ||
     /(?:authorization\s*:\s*(?:bearer|basic)\s+|:\/\/[^\s:@/]+:[^\s:@/]+@)/i.test(
       trimmed,
-    )
+    ) ||
+    hasSensitiveCredentialOption(trimmed)
   ) {
     return { valid: false, reason: "sensitive" };
   }
@@ -160,6 +224,7 @@ export function validateSnippetCommand(command: string): SnippetCommandValidatio
   if (
     /[;&|`\n\r]/.test(trimmed) ||
     /\$\([^)]*\)/.test(trimmed) ||
+    shellVariablePattern.test(trimmed) ||
     /(?:^|\s)(?:sudo|su|doas)(?:\s|$)/i.test(trimmed) ||
     /(?:^|\s)(?:bash|sh|zsh|fish|pwsh|powershell)(?:\.exe)?(?:\s|$)/i.test(
       trimmed,
@@ -173,7 +238,10 @@ export function validateSnippetCommand(command: string): SnippetCommandValidatio
 
 function expandShellVariables(command: string): string {
   const assignments = new Map<string, string>();
-  let result = command;
+  // IFS is commonly used to hide argument separators from text-based checks.
+  // Expand the two forms that matter for command-token inspection before the
+  // normal assignment expansion below.
+  let result = command.replace(/\$\{IFS\}|\$IFS/g, " ");
 
   const assignmentPattern = /(?:^|[;&|]\s*)([a-z_][a-z0-9_]*)=(?:"([^"]*)"|'([^']*)'|([^\s;&|]+))/g;
   let match: RegExpExecArray | null;
@@ -206,6 +274,28 @@ export function redactLogLine(line: string): string {
 
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index];
+    const credentialOption = getCredentialOption(token, tokens, index);
+    if (credentialOption) {
+      if (credentialOption.kind === "attached") {
+        redactedTokens.push(credentialOption.redacted);
+        continue;
+      }
+
+      redactedTokens.push(token);
+      const nextToken = tokens[index + 1];
+      if (
+        nextToken &&
+        (credentialOption.consumeOptionLike || !looksLikeOption(normalizeToken(nextToken)))
+      ) {
+        const isCurlUser =
+          (normalizeToken(token) === "-u" || normalizeToken(token).toLowerCase() === "--user") &&
+          !/[:@]/.test(normalizeToken(nextToken));
+        redactedTokens.push(isCurlUser ? nextToken : "<redacted>");
+        index += 1;
+      }
+      continue;
+    }
+
     const assignment = getAssignmentRedaction(token);
 
     if (assignment) {
@@ -267,6 +357,98 @@ function getAssignmentRedaction(token: string): string | null {
 
 function isSensitiveFlag(token: string): boolean {
   return token.startsWith("--") && isSensitiveKey(token.slice(2));
+}
+
+type CredentialOption =
+  | { kind: "next"; consumeOptionLike?: boolean }
+  | { kind: "attached"; redacted: string };
+
+function hasSensitiveCredentialOption(command: string): boolean {
+  const tokens = tokenizeCommandLine(command);
+
+  for (let index = 0; index < tokens.length; index += 1) {
+    if (getCredentialOption(tokens[index], tokens, index)) return true;
+  }
+
+  return false;
+}
+
+function getCredentialOption(
+  token: string,
+  tokens: string[],
+  index: number,
+): CredentialOption | null {
+  const normalized = normalizeToken(token);
+  const lower = normalized.toLowerCase();
+  if (!normalized) return null;
+
+  if (lower === "--password") return { kind: "next", consumeOptionLike: true };
+  if (lower.startsWith("--password=")) {
+    const separatorIndex = normalized.indexOf("=");
+    return {
+      kind: "attached",
+      redacted: `${normalized.slice(0, separatorIndex)}=<redacted>`,
+    };
+  }
+
+  if (hasCommandBefore(tokens, index, ["sshpass"])) {
+    if (normalized === "-p") return { kind: "next", consumeOptionLike: true };
+    if (normalized.startsWith("-p") && normalized.length > 2) {
+      return { kind: "attached", redacted: "-p<redacted>" };
+    }
+  }
+
+  if (
+    hasCommandBefore(tokens, index, ["mysql", "mariadb"]) &&
+    normalized === "-p"
+  ) {
+    return { kind: "next" };
+  }
+  if (
+    hasCommandBefore(tokens, index, ["mysql", "mariadb"]) &&
+    normalized.startsWith("-p") &&
+    normalized.length > 2
+  ) {
+    return { kind: "attached", redacted: "-p<redacted>" };
+  }
+
+  if (hasCommandBefore(tokens, index, ["curl", "wget"])) {
+    if (normalized === "-u" || lower === "--user") {
+      return { kind: "next", consumeOptionLike: true };
+    }
+    if (lower.startsWith("--user=")) {
+      const separatorIndex = normalized.indexOf("=");
+      return {
+        kind: "attached",
+        redacted: `${normalized.slice(0, separatorIndex)}=<redacted>`,
+      };
+    }
+    if (normalized.startsWith("-u") && normalized.length > 2) {
+      return { kind: "attached", redacted: "-u<redacted>" };
+    }
+  }
+
+  return null;
+}
+
+function normalizeToken(token: string): string {
+  if (token.length >= 2) {
+    const first = token[0];
+    const last = token[token.length - 1];
+    if ((first === "'" || first === '"') && last === first) {
+      return token.slice(1, -1);
+    }
+  }
+  return token;
+}
+
+function hasCommandBefore(tokens: string[], index: number, names: readonly string[]): boolean {
+  return tokens.slice(0, index).some((token) => {
+    const normalized = normalizeToken(token);
+    if (!normalized || normalized.includes("=") || looksLikeOption(normalized)) return false;
+    const commandName = normalized.split("/").pop()?.toLowerCase();
+    return commandName !== undefined && names.includes(commandName);
+  });
 }
 
 function isSensitiveKey(key: string): boolean {

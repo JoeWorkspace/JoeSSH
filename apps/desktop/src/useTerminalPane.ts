@@ -102,9 +102,23 @@ export function useTerminalPane({
   }, [commandInput, commandHistory, autocompleteCommands]);
 
   const handleCommandKeyDown = useCallback((event: ReactKeyboardEvent) => {
-    if (autocompleteSuggestions.length > 0 && event.key === "Tab") {
+    if (
+      autocompleteSuggestions.length > 0 &&
+      (event.key === "ArrowDown" || event.key === "ArrowUp") &&
+      (event.altKey || commandHistory.length === 0)
+    ) {
       event.preventDefault();
-      const selected = autocompleteIdx >= 0 ? autocompleteSuggestions[autocompleteIdx] : autocompleteSuggestions[0];
+      if (event.key === "ArrowDown") {
+        setAutocompleteIdx((prev) => (prev + 1) % autocompleteSuggestions.length);
+      } else {
+        setAutocompleteIdx((prev) => (prev <= 0 ? autocompleteSuggestions.length - 1 : prev - 1));
+      }
+      return;
+    }
+
+    if (autocompleteSuggestions.length > 0 && event.key === "Enter" && autocompleteIdx >= 0) {
+      event.preventDefault();
+      const selected = autocompleteSuggestions[autocompleteIdx];
       if (selected) {
         onCommandInputChange?.(selected);
         setAutocompleteIdx(-1);
@@ -112,15 +126,13 @@ export function useTerminalPane({
       return;
     }
 
-    if (autocompleteSuggestions.length > 0 && event.key === "ArrowDown" && event.altKey) {
+    if (autocompleteSuggestions.length > 0 && event.key === "Tab") {
       event.preventDefault();
-      setAutocompleteIdx((prev) => (prev + 1) % autocompleteSuggestions.length);
-      return;
-    }
-
-    if (autocompleteSuggestions.length > 0 && event.key === "ArrowUp" && event.altKey) {
-      event.preventDefault();
-      setAutocompleteIdx((prev) => (prev <= 0 ? autocompleteSuggestions.length - 1 : prev - 1));
+      const selected = autocompleteIdx >= 0 ? autocompleteSuggestions[autocompleteIdx] : autocompleteSuggestions[0];
+      if (selected) {
+        onCommandInputChange?.(selected);
+        setAutocompleteIdx(-1);
+      }
       return;
     }
 
