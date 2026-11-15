@@ -15,6 +15,7 @@ type StatusBarProps = {
 };
 
 export const StatusBar = memo(function StatusBar({ activeConnection, formatters, hasActiveSession = true, onPanelChange, t, teamAccess }: StatusBarProps) {
+  void teamAccess;
   const latencyText = hasActiveSession
     ? "latencyMs" in activeConnection
       ? formatters.latency(activeConnection.latencyMs ?? 0)
@@ -35,10 +36,7 @@ export const StatusBar = memo(function StatusBar({ activeConnection, formatters,
         <Gauge size={14} aria-hidden="true" /> {latencyText}
       </button>
       <button type="button" className="statusbar-item" aria-label={t("team.accessSummary")} onClick={() => onPanelChange("team")}>
-        <KeyRound size={14} aria-hidden="true" /> {t("team.summary", {
-          active: formatters.number(teamAccess.activeJitMembers),
-          pending: formatters.number(teamAccess.pendingVaults),
-        })}
+        <KeyRound size={14} aria-hidden="true" /> {t("desktop.sampleDataShort")}
       </button>
     </footer>
   );

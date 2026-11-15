@@ -34,6 +34,17 @@ describe("ContextMenu", () => {
     expect(screen.getByText("desktop.moveToGroup")).toBeTruthy();
   });
 
+  it("hides actions that are unavailable for the runtime or connection type", () => {
+    render(<ContextMenu {...defaultProps} capabilities={{ connect: false, delete: false, edit: false, test: false }} />);
+
+    expect(screen.queryByText("desktop.contextConnect")).toBeNull();
+    expect(screen.queryByText("desktop.contextTest")).toBeNull();
+    expect(screen.queryByText("desktop.contextEdit")).toBeNull();
+    expect(screen.queryByText("desktop.contextDelete")).toBeNull();
+    expect(screen.getByText("desktop.contextDuplicate")).toBeTruthy();
+    expect(screen.getByText("desktop.contextCopySsh")).toBeTruthy();
+  });
+
   it("renders at the correct position", () => {
     render(<ContextMenu {...defaultProps} />);
     const menu = screen.getByRole("menu");

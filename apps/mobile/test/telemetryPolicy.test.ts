@@ -15,4 +15,15 @@ describe('mobile entry telemetry policy', () => {
     expect(content).not.toContain("version: '0.1.0'");
     expect(content).not.toContain('version: "0.1.0"');
   });
+
+  it('uses the product screen as the first surface instead of a generic route header', async () => {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const layoutPath = path.resolve(__dirname, '../app/_layout.tsx');
+    const content = fs.readFileSync(layoutPath, 'utf-8');
+
+    expect(content).toContain('headerShown: false');
+    expect(content).toContain('<StatusBar style="auto" />');
+    expect(content).not.toContain("headerStyle: { backgroundColor: '#101820' }");
+  });
 });

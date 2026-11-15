@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Boxes, Braces, ChevronDown, ChevronRight, Command, Folder, Lock, Plus, Search, Star, TerminalSquare, Users, Cloud } from "lucide-react";
+import { Boxes, Braces, ChevronDown, ChevronRight, Command, Folder, Lock, Plus, Search, Star, TerminalSquare } from "lucide-react";
 import { Badge, Button, IconButton } from "@atlasterm/ui";
 import type { AtlasLocale, LocaleFormatters, TranslationKey, Translator } from "@atlasterm/i18n";
 import { LanguagePicker } from "./LanguagePicker";
@@ -250,24 +250,9 @@ export const Sidebar = memo(function Sidebar({
         </div>
       </section>
 
-      <nav className="sidebar-groups" aria-label={t("desktop.workspace")}>
-        <button type="button">
-          <Star size={16} aria-hidden="true" /> {t("desktop.favorites")}
-        </button>
-        <button type="button">
-          <Users size={16} aria-hidden="true" /> {t("desktop.teamVault")}
-        </button>
-        <button type="button">
-          <Cloud size={16} aria-hidden="true" /> {t("desktop.syncSpaces")}
-        </button>
-      </nav>
-
       <section className="snippets-section" aria-label={t("desktop.snippets")}>
         <header>
           <span>{t("desktop.snippets")}</span>
-          <IconButton label={t("desktop.snippetAdd")}>
-            <Plus size={14} />
-          </IconButton>
         </header>
         <div className="snippet-list">
           {commandSnippets.map((snippet) => (

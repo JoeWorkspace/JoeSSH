@@ -1,4 +1,5 @@
 import Constants from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
 import type { RegisteredDevice, SyncConflict, SyncError, SyncPreview } from '@/models/sync';
@@ -16,9 +17,20 @@ type SyncRegisterDeviceResponse = {
 };
 
 type SyncPullResponse = {
-  changes: unknown[];
+  changes: SyncChangeEnvelope[];
   device_id: string;
+  has_more: boolean;
   next_cursor: string;
+};
+
+type SyncChangeEnvelope = {
+  entity_id: string;
+  entity_type: string;
+  id: string;
+  operation: 'create' | 'delete' | 'update';
+  payload: unknown;
+  server_time: string;
+  sync_cursor: string;
 };
 
 type SyncPushResponse = {
@@ -34,12 +46,16 @@ export type SyncCheckpointResult = {
 };
 
 const REQUEST_TIMEOUT_MS = 8_000;
+const MAX_PULL_PAGES = 256;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export const MOBILE_DEVICE_ID_STORAGE_KEY = 'atlasterm.mobile.deviceId';
 
 let rememberedRegisteredDeviceId: string | undefined;
+const syncedEntitiesByDevice = new Map<string, Map<string, SyncChangeEnvelope>>();
 
 export function resetRegisteredDeviceMemoryForTests() {
   rememberedRegisteredDeviceId = undefined;
+  syncedEntitiesByDevice.clear();
 }
 
 function delay(ms: number) {
@@ -219,9 +235,29 @@ function parsePullResponse(value: unknown): SyncPullResponse {
   }
 
   return {
-    changes,
+    changes: changes.map(parseSyncChangeEnvelope),
     device_id: requireString(response, 'device_id', 'pull'),
+    has_more: requireBoolean(response, 'has_more', 'pull'),
     next_cursor: requireString(response, 'next_cursor', 'pull'),
+  };
+}
+
+function parseSyncChangeEnvelope(value: unknown): SyncChangeEnvelope {
+  const change = requireObject(value, 'pull change');
+  const operation = requireString(change, 'operation', 'pull change');
+
+  if (operation !== 'create' && operation !== 'delete' && operation !== 'update') {
+    throw new Error('invalid sync API pull change response: operation is unsupported');
+  }
+
+  return {
+    entity_id: requireString(change, 'entity_id', 'pull change'),
+    entity_type: requireString(change, 'entity_type', 'pull change'),
+    id: requireString(change, 'id', 'pull change'),
+    operation,
+    payload: change.payload,
+    server_time: requireString(change, 'server_time', 'pull change'),
+    sync_cursor: requireString(change, 'sync_cursor', 'pull change'),
   };
 }
 
@@ -248,6 +284,16 @@ function requireNonNegativeNumber(response: Record<string, unknown>, field: stri
 
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
     throw new Error(`invalid sync API ${context} response: ${field} must be a non-negative number`);
+  }
+
+  return value;
+}
+
+function requireBoolean(response: Record<string, unknown>, field: string, context: string): boolean {
+  const value = response[field];
+
+  if (typeof value !== 'boolean') {
+    throw new Error(`invalid sync API ${context} response: ${field} must be a boolean`);
   }
 
   return value;
@@ -293,27 +339,18 @@ function getFallbackDevice(request: DeviceRegistrationRequest): RegisteredDevice
   };
 }
 
-export function getFallbackPreview(device: RegisteredDevice, pendingChangeCount = device.connectionQuality === 'offline' ? 2 : 0): SyncPreview {
+export function getFallbackPreview(device: RegisteredDevice): SyncPreview {
   return {
     generatedAt: new Date().toISOString(),
-    profileCount: 3,
-    openSessionCount: 1,
-    pendingChangeCount,
+    profileCount: 0,
+    openSessionCount: 0,
+    pendingChangeCount: 0,
     cursor: {
-      workspace: 'C:\\Tools\\agenttool',
-      branch: 'mobile-sync-preview',
-      lastCommand: 'npm run typecheck',
+      workspace: 'JoeSSH Sync',
+      branch: device.connectionQuality,
+      lastCommand: device.syncCursor ?? '0',
     },
-    devices: [
-      device,
-      {
-        id: 'desktop-primary',
-        name: 'JoeSSH Desktop',
-        platform: 'windows',
-        registeredAt: new Date(Date.now() - 1000 * 60 * 34).toISOString(),
-        connectionQuality: 'online',
-      },
-    ],
+    devices: [device],
     emergencyChannels: [
       {
         id: 'relay',
@@ -344,6 +381,33 @@ function mapRegisteredDevice(response: SyncRegisterDeviceResponse, request: Devi
   };
 }
 
+async function readStoredDeviceId(): Promise<string | undefined> {
+  if (rememberedRegisteredDeviceId) {
+    return rememberedRegisteredDeviceId;
+  }
+
+  try {
+    const stored = await AsyncStorage.getItem(MOBILE_DEVICE_ID_STORAGE_KEY);
+    if (stored && isUuidLike(stored)) {
+      rememberedRegisteredDeviceId = stored;
+      return stored;
+    }
+  } catch {
+    // A storage outage must not make the mobile companion unusable.
+  }
+
+  return undefined;
+}
+
+async function persistDeviceId(deviceId: string): Promise<void> {
+  rememberedRegisteredDeviceId = deviceId;
+  try {
+    await AsyncStorage.setItem(MOBILE_DEVICE_ID_STORAGE_KEY, deviceId);
+  } catch {
+    // Keep the in-memory identity for this runtime and retry persistence later.
+  }
+}
+
 export async function registerDevice(): Promise<RegisteredDevice> {
   const installId = Constants.sessionId ?? `mobile-${Platform.OS}`;
   const request: DeviceRegistrationRequest = {
@@ -351,14 +415,14 @@ export async function registerDevice(): Promise<RegisteredDevice> {
     displayName: Constants.deviceName ?? 'JoeSSH Mobile',
     platform: normalizePlatform(Platform.OS),
   };
-  const existingDeviceId = isUuidLike(installId) ? installId : rememberedRegisteredDeviceId ?? installId;
+  const existingDeviceId = await readStoredDeviceId();
 
   await delay(250);
 
   try {
     const response = parseRegisterDeviceResponse(await requestJson('/v1/devices/register', {
       body: JSON.stringify({
-        ...(isUuidLike(existingDeviceId) ? { device_id: existingDeviceId } : {}),
+        ...(existingDeviceId ? { device_id: existingDeviceId } : {}),
         platform: request.platform,
         app_version: Constants.expoConfig?.version ?? '0.1.0',
         display_name: request.displayName,
@@ -366,7 +430,9 @@ export async function registerDevice(): Promise<RegisteredDevice> {
       method: 'POST',
     }));
 
-    return mapRegisteredDevice(response, request);
+    const device = mapRegisteredDevice(response, request);
+    await persistDeviceId(device.id);
+    return device;
   } catch (error) {
     if (!getApiBaseUrl()) {
       return getFallbackDevice(request);
@@ -424,9 +490,34 @@ export async function fetchSyncPreview(deviceId: string, sinceCursor = '0'): Pro
   await delay(350);
 
   try {
-    const response = parsePullResponse(await requestJson(
-      `/v1/sync/pull?device_id=${encodeURIComponent(deviceId)}&since=${encodeURIComponent(sinceCursor)}`,
-    ));
+    const changes: SyncChangeEnvelope[] = [];
+    let cursor = sinceCursor;
+    let response: SyncPullResponse | undefined;
+
+    for (let page = 0; page < MAX_PULL_PAGES; page += 1) {
+      response = parsePullResponse(await requestJson(
+        `/v1/sync/pull?device_id=${encodeURIComponent(deviceId)}&since=${encodeURIComponent(cursor)}`,
+      ));
+      if (response.device_id !== deviceId) {
+        throw new Error('invalid sync API pull response: device_id did not match the request');
+      }
+      changes.push(...response.changes);
+
+      if (!response.has_more) {
+        break;
+      }
+      if (response.next_cursor === cursor) {
+        throw new Error('invalid sync API pull response: pagination cursor did not advance');
+      }
+      cursor = response.next_cursor;
+    }
+
+    if (!response || response.has_more) {
+      throw new Error(`sync API pull exceeded ${MAX_PULL_PAGES} pages`);
+    }
+
+    const entityState = applySyncChanges(deviceId, changes);
+    const lastChange = changes.at(-1);
     const liveDevice = getFallbackDevice({
       installId: response.device_id,
       displayName: Constants.deviceName ?? 'JoeSSH Mobile',
@@ -434,11 +525,14 @@ export async function fetchSyncPreview(deviceId: string, sinceCursor = '0'): Pro
     });
 
     return {
-      ...getFallbackPreview({ ...liveDevice, connectionQuality: 'online' }, response.changes.length),
+      ...getFallbackPreview({ ...liveDevice, connectionQuality: 'online' }),
+      profileCount: countEntityTypes(entityState, ['connection_profile', 'profile']),
+      openSessionCount: countEntityTypes(entityState, ['session', 'ssh_session', 'terminal_session']),
+      pendingChangeCount: changes.length,
       cursor: {
-        workspace: 'C:\\Tools\\agenttool',
-        branch: 'sync-api',
-        lastCommand: `next cursor ${response.next_cursor}`,
+        workspace: lastChange ? `${lastChange.entity_type}:${lastChange.entity_id}` : 'JoeSSH Sync',
+        branch: lastChange?.operation ?? 'current',
+        lastCommand: response.next_cursor,
       },
       generatedAt: new Date().toISOString(),
       syncCursor: response.next_cursor,
@@ -456,6 +550,33 @@ export async function fetchSyncPreview(deviceId: string, sinceCursor = '0'): Pro
 
     throw toSyncError(error);
   }
+}
+
+function applySyncChanges(deviceId: string, changes: readonly SyncChangeEnvelope[]) {
+  const entities = syncedEntitiesByDevice.get(deviceId) ?? new Map<string, SyncChangeEnvelope>();
+  syncedEntitiesByDevice.set(deviceId, entities);
+
+  for (const change of changes) {
+    const key = `${change.entity_type}:${change.entity_id}`;
+    if (change.operation === 'delete') {
+      entities.delete(key);
+    } else {
+      entities.set(key, change);
+    }
+  }
+
+  return entities;
+}
+
+function countEntityTypes(entities: ReadonlyMap<string, SyncChangeEnvelope>, entityTypes: readonly string[]) {
+  const allowed = new Set(entityTypes);
+  let count = 0;
+  for (const change of entities.values()) {
+    if (allowed.has(change.entity_type)) {
+      count += 1;
+    }
+  }
+  return count;
 }
 
 function isUuidLike(value: string) {

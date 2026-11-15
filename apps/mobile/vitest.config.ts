@@ -25,6 +25,7 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname),
       '@atlasterm/i18n': path.resolve(__dirname, '../../packages/i18n/src/index.ts'),
+      'lucide-react-native': path.resolve(__dirname, 'test/lucideReactNativeMock.tsx'),
       'react-native': path.resolve(__dirname, 'test/reactNativeMock.ts'),
     },
   },

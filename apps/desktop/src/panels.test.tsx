@@ -85,6 +85,7 @@ const messages: Partial<Record<TranslationKey, string>> = {
   'desktop.syncEncrypted': 'Sync encrypted snippets',
   'desktop.telemetryErrors': 'Error telemetry',
   'desktop.telemetryErrorsHint': 'Send redacted crash and error summaries.',
+  'desktop.telemetryPrivacyHint': 'Optional and off by default. Never sends sensitive SSH data.',
   'desktop.team': 'Team',
   'desktop.upload': 'Upload',
   'desktop.workspaceSettings': 'Workspace Settings',
@@ -214,100 +215,68 @@ describe('panel charts', () => {
 });
 
 describe('extracted desktop panels', () => {
-  it('renders the inspector skeleton without needing the lazy-loaded effect to run', () => {
+  it('renders inspector content immediately during server rendering', () => {
     const html = renderToStaticMarkup(renderInspectorPanel());
 
-    expect(html).toContain('skeleton--card');
-    expect(html).toContain('role="status"');
-    expect(html).toContain('aria-busy="true"');
-    expect(html).toContain('aria-label="Loading panel"');
-    expect(html).toContain('aria-hidden="true"');
+    expect(html).toContain('prod-edge-01');
+    expect(html).toContain('10.48.12.11');
+    expect(html).not.toContain('skeleton--card');
     expect(html).not.toMatch(/NaN|Infinity/);
   });
 
   it('renders latency metrics when connection has latencyMs and latencyHistory', () => {
-    vi.useFakeTimers();
-    try {
-      const { container } = render(renderInspectorPanel());
-      act(() => { vi.advanceTimersByTime(700); });
-      const html = container.innerHTML;
-      expect(html).toContain('28');
-      expect(html).toContain('Online');
-      expect(html).toContain('Production group');
-      expect(html).toContain('lin.chen');
-      expect(html).toContain('us-east / edge');
-      expect(html).toContain('37 ms');
-      expect(html).not.toContain('>online<');
-      expect(html).not.toContain('skeleton--card');
-    } finally {
-      vi.useRealTimers();
-    }
+    const { container } = render(renderInspectorPanel());
+    const html = container.innerHTML;
+    expect(html).toContain('28');
+    expect(html).toContain('Online');
+    expect(html).toContain('Production group');
+    expect(html).toContain('lin.chen');
+    expect(html).toContain('us-east / edge');
+    expect(html).toContain('37 ms');
+    expect(html).not.toContain('>online<');
+    expect(html).not.toContain('skeleton--card');
   });
 
   it('labels sample fixture connections without online status copy', () => {
-    vi.useFakeTimers();
-    try {
-      const sampleConnection = {
-        ...activeConnection,
-        color: 'neutral' as const,
-        latencyHistory: undefined,
-        latencyMs: undefined,
-        status: 'sample',
-      };
-      const { container } = render(renderInspectorPanel(sampleConnection));
-      act(() => { vi.advanceTimersByTime(700); });
-      expect(container.innerHTML).toContain('Sample data');
-      expect(container.innerHTML).not.toContain('ui-badge--good">Online');
-      expect(container.innerHTML).not.toContain('latency-chart');
-    } finally {
-      vi.useRealTimers();
-    }
+    const sampleConnection = {
+      ...activeConnection,
+      color: 'neutral' as const,
+      latencyHistory: undefined,
+      latencyMs: undefined,
+      status: 'sample',
+    };
+    const { container } = render(renderInspectorPanel(sampleConnection));
+    expect(container.innerHTML).toContain('Sample data');
+    expect(container.innerHTML).not.toContain('ui-badge--good">Online');
+    expect(container.innerHTML).not.toContain('latency-chart');
   });
 
   it('uses no-session inspector copy and disables remote runbook actions when disconnected', () => {
-    vi.useFakeTimers();
-    try {
-      const { container } = render(renderInspectorPanel(activeConnection, false));
-      act(() => { vi.advanceTimersByTime(700); });
-      expect(container.innerHTML).toContain('No SSH session');
-      expect(container.innerHTML).toContain('Connect before using remote actions.');
-      expect(container.innerHTML).not.toContain('trusted');
-      expect(container.innerHTML).not.toContain('Production SSH with recording');
-      for (const button of container.querySelectorAll('.runbook-item button')) {
-        expect((button as HTMLButtonElement).disabled).toBe(true);
-        expect((button as HTMLButtonElement).title).toBe('Connect before using remote actions.');
-      }
-    } finally {
-      vi.useRealTimers();
+    const { container } = render(renderInspectorPanel(activeConnection, false));
+    expect(container.innerHTML).toContain('No SSH session');
+    expect(container.innerHTML).toContain('Connect before using remote actions.');
+    expect(container.innerHTML).not.toContain('trusted');
+    expect(container.innerHTML).not.toContain('Production SSH with recording');
+    for (const button of container.querySelectorAll('.runbook-item button')) {
+      expect((button as HTMLButtonElement).disabled).toBe(true);
+      expect((button as HTMLButtonElement).title).toBe('Connect before using remote actions.');
     }
   });
 
 
   it('renders without latency metrics when connection lacks latencyMs and latencyHistory', () => {
-    vi.useFakeTimers();
-    try {
-      const { container } = render(renderInspectorPanel(connectionWithoutLatency));
-      act(() => { vi.advanceTimersByTime(700); });
-      const html = container.innerHTML;
-      expect(html).not.toContain('skeleton--card');
-      expect(html).not.toContain('latency-value');
-    } finally {
-      vi.useRealTimers();
-    }
+    const { container } = render(renderInspectorPanel(connectionWithoutLatency));
+    const html = container.innerHTML;
+    expect(html).not.toContain('skeleton--card');
+    expect(html).not.toContain('latency-value');
   });
 
   it('does not leak NaN/Infinity for an empty latencyHistory', () => {
-    vi.useFakeTimers();
-    try {
-      const emptyHistory = { ...activeConnection, latencyHistory: [] as number[] };
-      const { container } = render(renderInspectorPanel(emptyHistory));
-      act(() => { vi.advanceTimersByTime(700); });
-      const html = container.innerHTML;
-      expect(html).not.toMatch(/NaN|Infinity|∞/);
-      expect(html).not.toContain('latency-chart');
-    } finally {
-      vi.useRealTimers();
-    }
+    const emptyHistory = { ...activeConnection, latencyHistory: [] as number[] };
+    const { container } = render(renderInspectorPanel(emptyHistory));
+    const html = container.innerHTML;
+    expect(html).not.toMatch(/NaN|Infinity|∞/);
+    expect(html).not.toContain('latency-chart');
   });
 
   it('renders SFTP file rows with localized file size and relative time', () => {
@@ -558,10 +527,28 @@ describe('extracted desktop panels', () => {
     const html = renderToStaticMarkup(<SettingsPanel t={t} />);
 
     expect(html).toContain('Workspace Settings');
-    expect(html).toContain('Record terminal sessions');
     expect(html).toContain('Export connections');
     expect(html).toContain('Import connections');
-    expect(html).toContain('Business Layer');
+    expect(html).not.toContain('Record terminal sessions');
+    expect(html).not.toContain('Business Layer');
+    expect(html).not.toContain('Seat billing');
+  });
+
+  it('surfaces invalid connection import files through the parent error callback', async () => {
+    const onImport = vi.fn();
+    const onImportError = vi.fn();
+    const badFile = new File(['not-json'], 'bad.json', { type: 'application/json' });
+    const { container } = render(
+      <SettingsPanel t={t} connectionsIO={{ exportConnections: [], onImport, onImportError }} />,
+    );
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+
+    fireEvent.change(input, { target: { files: [badFile] } });
+
+    await waitFor(() => {
+      expect(onImportError).toHaveBeenCalled();
+    });
+    expect(onImport).not.toHaveBeenCalled();
   });
 
   it('renders telemetry consent control and wires changes', () => {
@@ -571,7 +558,7 @@ describe('extracted desktop panels', () => {
     );
 
     expect(container.innerHTML).toContain('Error telemetry');
-    expect(container.innerHTML).toContain('Send redacted crash and error summaries.');
+    expect(container.innerHTML).toContain('Optional and off by default. Never sends sensitive SSH data.');
     const checkbox = Array.from(container.querySelectorAll('input[type="checkbox"]'))
       .find((input) => input.closest('label')?.textContent?.includes('Error telemetry')) as HTMLInputElement;
     expect(checkbox.checked).toBe(false);
@@ -849,21 +836,6 @@ describe('extracted desktop panels', () => {
       URL.revokeObjectURL = origRevoke;
       clickSpy.mockRestore();
     }
-  });
-
-  it('surfaces invalid connection import files through the parent error callback', async () => {
-    const onImport = vi.fn();
-    const onImportError = vi.fn();
-    const badFile = new File(['not-json'], 'bad.json', { type: 'application/json' });
-    const { container } = render(<SettingsPanel t={t} connectionsIO={{ exportConnections: [], onImport, onImportError }} />);
-    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
-
-    fireEvent.change(input, { target: { files: [badFile] } });
-
-    await waitFor(() => {
-      expect(onImportError).toHaveBeenCalled();
-    });
-    expect(onImport).not.toHaveBeenCalled();
   });
 
   it('shows the stored known-host count and confirms before clearing them', async () => {

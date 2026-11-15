@@ -41,9 +41,11 @@ test.describe('JoeSSH mobile companion live sync smoke', () => {
 
     await expect(page.getByTestId('sync-status-panel')).toContainText('Preview ready');
     await expect(page.getByTestId('sync-device-quality')).toContainText('online');
-    await expect(page.getByText('3', { exact: true })).toHaveCount(2);
-    await expect(page.getByText('C:\\Tools\\agenttool')).toBeVisible();
-    await expect(page.getByText('sync-api / next cursor server-42')).toBeVisible();
+    await expect(page.getByTestId('sync-profile-count')).toContainText('2');
+    await expect(page.getByTestId('sync-session-count')).toContainText('1');
+    await expect(page.getByTestId('sync-change-count')).toContainText('3');
+    await expect(page.getByText('session:session-01')).toBeVisible();
+    await expect(page.getByText('create / server-42')).toBeVisible();
     await expect(page.getByText('Relay Connect')).toBeVisible();
     await expect(page.getByText('Cached Key')).toBeVisible();
     await expectNoDocumentOverflow(page);
@@ -51,7 +53,11 @@ test.describe('JoeSSH mobile companion live sync smoke', () => {
     await page.getByTestId('sync-primary-action').click();
 
     await expect(page.getByTestId('sync-status-panel')).toContainText('Preview ready');
-    await expect(page.getByText('sync-api / next cursor server-43')).toBeVisible();
+    await expect(page.getByTestId('sync-profile-count')).toContainText('2');
+    await expect(page.getByTestId('sync-session-count')).toContainText('1');
+    await expect(page.getByTestId('sync-change-count')).toContainText('2');
+    await expect(page.getByText('profile:prod-edge-03')).toBeVisible();
+    await expect(page.getByText('create / server-43')).toBeVisible();
     await expectNoDocumentOverflow(page);
 
     expect(registerRequests).toEqual([

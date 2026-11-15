@@ -22,9 +22,11 @@ const shortcuts = [
 ] as const satisfies readonly (readonly [string, TranslationKey])[];
 
 export const ShortcutsOverlay = memo(function ShortcutsOverlay({
+  desktopRuntime = true,
   onClose,
   t,
 }: {
+  desktopRuntime?: boolean;
   onClose: () => void;
   t: Translator;
 }) {
@@ -38,7 +40,7 @@ export const ShortcutsOverlay = memo(function ShortcutsOverlay({
           <Badge>Esc</Badge>
         </div>
         <div className="shortcuts-grid">
-          {shortcuts.map(([key, messageKey]) => (
+          {shortcuts.filter(([key]) => desktopRuntime || key !== "Ctrl+Shift+C").map(([key, messageKey]) => (
             <div className="shortcut-row" key={key}>
               <kbd>{key}</kbd>
               <span>{t(messageKey)}</span>

@@ -285,7 +285,7 @@ function App({
             />
             <label
               className="telemetryToggle"
-              title={!telemetry.available ? t.shared('web.telemetryUnavailable') : undefined}
+              title={telemetry.available ? t.shared('desktop.telemetryPrivacyHint') : t.shared('web.telemetryUnavailable')}
             >
               <span>{t.shared('web.telemetryErrors')}</span>
               <input

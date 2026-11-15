@@ -77,6 +77,9 @@ describe('mobile home screen sync states', () => {
     expect(textContent(screen.root)).toContain('No workspace pulled yet');
     expect(textContent(screen.root)).toContain('Emergency routes appear after the first preview.');
     expect(hostByTestId(screen.root, 'sync-primary-action').props.disabled).toBe(false);
+    expect(hostByTestId(screen.root, 'sync-profile-count')).toBeTruthy();
+    expect(hostByTestId(screen.root, 'sync-session-count')).toBeTruthy();
+    expect(hostByTestId(screen.root, 'sync-change-count')).toBeTruthy();
     expect(hostNodesByTestId(screen.root, 'sync-error-panel')).toHaveLength(0);
   });
 

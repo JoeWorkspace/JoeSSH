@@ -1,11 +1,17 @@
-import { memo } from "react";
-import { ChevronRight, ClipboardCheck, Copy, Folder, Gauge, Settings, TerminalSquare, Trash2 } from "lucide-react";
+import { memo, useLayoutEffect, useRef, useState } from "react";
+import { Check, ChevronRight, ClipboardCheck, Copy, Folder, Gauge, Settings, TerminalSquare, Trash2 } from "lucide-react";
 import type { Translator } from "@atlasterm/i18n";
 import { desktopGroupLabel } from "./desktopGroups";
 
 
 type ContextMenuProps = {
   allGroupNames: readonly string[];
+  capabilities?: {
+    connect?: boolean;
+    delete?: boolean;
+    edit?: boolean;
+    test?: boolean;
+  };
   connection: { name: string; group: string };
   moveToGroupMenu: string | null;
   onClose: () => void;
@@ -18,6 +24,7 @@ type ContextMenuProps = {
 
 export const ContextMenu = memo(function ContextMenu({
   allGroupNames,
+  capabilities = {},
   connection,
   moveToGroupMenu,
   onClose,
@@ -27,6 +34,24 @@ export const ContextMenu = memo(function ContextMenu({
   position,
   t,
 }: ContextMenuProps) {
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuPosition, setMenuPosition] = useState(position);
+  const canConnect = capabilities.connect ?? true;
+  const canDelete = capabilities.delete ?? true;
+  const canEdit = capabilities.edit ?? true;
+  const canTest = capabilities.test ?? true;
+
+  useLayoutEffect(() => {
+    const menu = menuRef.current;
+    if (!menu) return;
+    const margin = 8;
+    const rect = menu.getBoundingClientRect();
+    setMenuPosition({
+      x: Math.max(margin, Math.min(position.x, window.innerWidth - rect.width - margin)),
+      y: Math.max(margin, Math.min(position.y, window.innerHeight - rect.height - margin)),
+    });
+  }, [canConnect, canDelete, canEdit, canTest, moveToGroupMenu, position]);
+
   return (
     <div
       className="context-menu-backdrop"
@@ -36,7 +61,8 @@ export const ContextMenu = memo(function ContextMenu({
     >
       <div
         className="context-menu"
-        style={{ left: position.x, top: position.y }}
+        ref={menuRef}
+        style={{ left: menuPosition.x, top: menuPosition.y }}
         role="menu"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
@@ -47,15 +73,21 @@ export const ContextMenu = memo(function ContextMenu({
           else if (e.key === 'Escape') { onClose(); onToggleMoveToGroup(null); }
         }}
       >
-        <button className="context-menu-item" type="button" role="menuitem" onClick={() => { onClose(); onSelect("connect"); }}>
-          <TerminalSquare size={14} aria-hidden="true" /> {t("desktop.contextConnect")}
-        </button>
-        <button className="context-menu-item" type="button" role="menuitem" onClick={() => { onClose(); onSelect("test"); }}>
-          <Gauge size={14} aria-hidden="true" /> {t("desktop.contextTest")}
-        </button>
-        <button className="context-menu-item" type="button" role="menuitem" onClick={() => { onClose(); onSelect("edit"); }}>
-          <Settings size={14} aria-hidden="true" /> {t("desktop.contextEdit")}
-        </button>
+        {canConnect ? (
+          <button className="context-menu-item" type="button" role="menuitem" onClick={() => { onClose(); onSelect("connect"); }}>
+            <TerminalSquare size={14} aria-hidden="true" /> {t("desktop.contextConnect")}
+          </button>
+        ) : null}
+        {canTest ? (
+          <button className="context-menu-item" type="button" role="menuitem" onClick={() => { onClose(); onSelect("test"); }}>
+            <Gauge size={14} aria-hidden="true" /> {t("desktop.contextTest")}
+          </button>
+        ) : null}
+        {canEdit ? (
+          <button className="context-menu-item" type="button" role="menuitem" onClick={() => { onClose(); onSelect("edit"); }}>
+            <Settings size={14} aria-hidden="true" /> {t("desktop.contextEdit")}
+          </button>
+        ) : null}
         <button className="context-menu-item" type="button" role="menuitem" onClick={() => { onClose(); onSelect("duplicate"); }}>
           <Copy size={14} aria-hidden="true" /> {t("desktop.contextDuplicate")}
         </button>
@@ -77,16 +109,20 @@ export const ContextMenu = memo(function ContextMenu({
                   onClose();
                 }}>
                   <Folder size={12} aria-hidden="true" /> {desktopGroupLabel(groupName, t)}
-                  {connection.group === groupName ? " ✓" : null}
+                  {connection.group === groupName ? <Check className="context-menu-check" size={12} aria-hidden="true" /> : null}
                 </button>
               ))}
             </div>
           ) : null}
         </div>
-        <div className="context-menu-separator" />
-        <button className="context-menu-item context-menu-item--danger" type="button" role="menuitem" onClick={() => { onClose(); onSelect("delete"); }}>
-          <Trash2 size={14} aria-hidden="true" /> {t("desktop.contextDelete")}
-        </button>
+        {canDelete ? (
+          <>
+            <div className="context-menu-separator" />
+            <button className="context-menu-item context-menu-item--danger" type="button" role="menuitem" onClick={() => { onClose(); onSelect("delete"); }}>
+              <Trash2 size={14} aria-hidden="true" /> {t("desktop.contextDelete")}
+            </button>
+          </>
+        ) : null}
       </div>
     </div>
   );

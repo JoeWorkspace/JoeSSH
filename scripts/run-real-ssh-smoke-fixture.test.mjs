@@ -14,6 +14,8 @@ test("fixture runner can wrap a release gate without replacing the dogfood smoke
   assert.match(source, /if \(exitCode === 0 && wrappedCommand\)/);
   assert.match(source, /runFixtureCommand\(fixture, wrappedCommand\)/);
   assert.match(source, /qa:desktop:real-ssh-smoke:required/);
+  assert.match(source, /Subsystem sftp \$\{toSshPath\(sftpServerCommand\)\} -d \$\{toSshPath\(directory\)\}/);
+  assert.match(source, /JOESSH_REAL_SSH_REMOTE_DIR: "\."/);
   assert.match(source, /wrappedCommand/);
   assert.match(source, /status: result\.status === 0 \? "passed" : "failed"/);
 });

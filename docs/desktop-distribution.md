@@ -20,6 +20,31 @@ npm run release:desktop:package
 npm run release:desktop:verify-evidence
 ```
 
+For unsigned cross-platform installation candidates, manually run the
+`Desktop Unsigned Candidates` GitHub Actions workflow. It builds Windows,
+macOS, and Linux bundles, stages each platform under
+`reports/candidates/desktop/<platform>-unsigned/`, and uploads artifacts named
+`joessh-<platform>-unsigned-candidate`. Candidate metadata always records
+`releaseEligible: false` and `signingStatus: "unverified"`. These artifacts are
+for installation QA only and must never be attached to a public release. The
+workflow captures `git rev-parse HEAD`, records that exact checkout in the
+metadata, and runs the candidate verifier before upload.
+
+After downloading and extracting a candidate, verify its self-contained
+metadata, complete file set, sizes, and SHA-256 hashes from any directory. Pass
+the commit shown by the workflow run to bind the files to the expected source:
+
+```bash
+npm run release:desktop:verify-candidate -- \
+  --standalone \
+  --candidate-dir path/to/joessh-windows-unsigned-candidate \
+  --platform windows \
+  --source-commit 0123456789abcdef0123456789abcdef01234567
+```
+
+Omit `--standalone` on a build machine so the verifier also requires the
+candidate version to match the checked-out root package and Tauri metadata.
+
 `qa:tauri` compiles the Tauri shell with `cargo build --release`. It does not
 produce installers. `release:desktop:build` runs `tauri build` from the desktop
 workspace and expects platform signing configuration to be available on the
@@ -37,6 +62,25 @@ readiness also checks
 `apps/desktop/src-tauri/capabilities/*.json` and
 `apps/desktop/src-tauri/permissions/*.toml` so missing, wildcard, remote-source,
 or stale IPC command permissions block the release.
+
+Windows MSI metadata uses `bundle.windows.wix.version: 0.1.0.9` for the current
+public beta because WiX/MSI cannot encode the semantic prerelease label in
+`0.1.0-beta.9`. Increment the fourth MSI field with the beta sequence while
+keeping the application version and public artifact version semantic. The WiX
+upgrade code is pinned in `tauri.conf.json`; it must stay unchanged across
+updates so Windows upgrades the existing JoeSSH installation instead of
+creating a second product.
+
+The editable JoeSSH app-icon source is
+`apps/desktop/src-tauri/icons/joessh-icon-source.svg`. Regenerate the complete
+Tauri platform icon set after changing it with:
+
+```bash
+npm exec --workspace @atlasterm/desktop tauri icon -- apps/desktop/src-tauri/icons/joessh-icon-source.svg --output apps/desktop/src-tauri/icons
+```
+
+The bundle config must continue to name `icon.png`, `icon.ico`, and `icon.icns`;
+public readiness checks both the configuration and the files on disk.
 
 ## Desktop Artifact Workflow
 

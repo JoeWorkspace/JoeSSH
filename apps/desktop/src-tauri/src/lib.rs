@@ -8,6 +8,8 @@
 //! `atlasterm-core` unit/integration tests it delegates to.
 
 use std::collections::HashMap;
+use std::fs::OpenOptions;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -43,8 +45,15 @@ struct AppState {
     sessions: Mutex<HashMap<Uuid, Arc<SshClient>>>,
     forwards: Mutex<HashMap<Uuid, SessionResource<TcpForwardHandle>>>,
     ptys: Mutex<HashMap<Uuid, SessionResource<PtyWriter>>>,
-    pty_input_buffers: Mutex<HashMap<Uuid, Vec<u8>>>,
+    pty_input_buffers: Mutex<HashMap<Uuid, PtyInputState>>,
     known_hosts: Mutex<()>,
+}
+
+#[derive(Default)]
+struct PtyInputState {
+    command: Vec<u8>,
+    escape_sequence: Vec<u8>,
+    unverifiable: bool,
 }
 
 struct SessionResource<T> {
@@ -167,13 +176,14 @@ async fn ssh_connect(
     state: tauri::State<'_, AppState>,
     input: ConnectInput,
 ) -> Result<ConnectOutput, String> {
-    let _known_hosts_guard = state.known_hosts.lock().await;
     let known_hosts_path = known_hosts_path(&app)?;
     let host_key = known_host_key(&input.host, input.port);
-    let known_hosts = read_known_hosts_file(&known_hosts_path)?;
-    let stored_fingerprint = known_hosts
-        .get(&host_key)
-        .map(|record| record.fingerprint.clone());
+    let stored_fingerprint = {
+        let _known_hosts_guard = state.known_hosts.lock().await;
+        read_known_hosts_file(&known_hosts_path)?
+            .get(&host_key)
+            .map(|record| record.fingerprint.clone())
+    };
     let manual_fingerprint = normalize_manual_fingerprint(input.pinned_fingerprint);
     let host_key_policy = host_key_policy_for(stored_fingerprint.clone(), manual_fingerprint)?;
 
@@ -190,14 +200,15 @@ async fn ssh_connect(
         .map_err(sanitize_ssh_error)?;
     let fingerprint = client.server_fingerprint().map(|s| s.to_string());
 
-    if stored_fingerprint.is_none() {
-        let fingerprint = fingerprint
-            .as_deref()
-            .ok_or_else(|| HOST_KEY_VERIFICATION_FAILED.to_string())?;
+    let verified_fingerprint = fingerprint
+        .as_deref()
+        .ok_or_else(|| HOST_KEY_VERIFICATION_FAILED.to_string())?;
+    {
+        let _known_hosts_guard = state.known_hosts.lock().await;
         persist_known_host_if_first_use(
             &known_hosts_path,
             &host_key,
-            fingerprint,
+            verified_fingerprint,
             KnownHostSource::Confirmed,
         )?;
     }
@@ -479,7 +490,7 @@ async fn pty_open(
         .pty_input_buffers
         .lock()
         .await
-        .insert(pty_id, Vec::new());
+        .insert(pty_id, PtyInputState::default());
 
     let output_event = format!("pty://output/{pty_id}");
     let exit_event = format!("pty://exit/{pty_id}");
@@ -767,9 +778,49 @@ fn write_known_hosts_file(
     };
     let json = serde_json::to_string_pretty(&file)
         .map_err(|_| HOST_KEY_STORAGE_UNAVAILABLE.to_string())?;
-    std::fs::write(path, format!("{json}\n"))
-        .map_err(|_| HOST_KEY_STORAGE_UNAVAILABLE.to_string())?;
-    harden_known_hosts_file_permissions(path)
+    let file_name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or_else(|| HOST_KEY_STORAGE_UNAVAILABLE.to_string())?;
+    let temp_path = parent.join(format!(".{file_name}.{}.tmp", Uuid::new_v4()));
+    let result = (|| {
+        let mut temp_file = OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(&temp_path)
+            .map_err(|_| HOST_KEY_STORAGE_UNAVAILABLE.to_string())?;
+        temp_file
+            .write_all(format!("{json}\n").as_bytes())
+            .map_err(|_| HOST_KEY_STORAGE_UNAVAILABLE.to_string())?;
+        temp_file
+            .sync_all()
+            .map_err(|_| HOST_KEY_STORAGE_UNAVAILABLE.to_string())?;
+        harden_known_hosts_file_permissions(&temp_path)?;
+        drop(temp_file);
+        std::fs::rename(&temp_path, path).map_err(|_| HOST_KEY_STORAGE_UNAVAILABLE.to_string())?;
+        sync_known_hosts_parent(parent)
+    })();
+
+    if result.is_err() {
+        let _ = std::fs::remove_file(&temp_path);
+    }
+    result
+}
+
+fn sync_known_hosts_parent(parent: &Path) -> Result<(), String> {
+    #[cfg(unix)]
+    {
+        std::fs::File::open(parent)
+            .and_then(|directory| directory.sync_all())
+            .map_err(|_| HOST_KEY_STORAGE_UNAVAILABLE.to_string())?;
+    }
+
+    #[cfg(not(unix))]
+    {
+        let _ = parent;
+    }
+
+    Ok(())
 }
 
 fn harden_known_hosts_file_permissions(path: &Path) -> Result<(), String> {
@@ -983,34 +1034,62 @@ async fn ensure_safe_pty_write(
     data: &[u8],
 ) -> Result<(), String> {
     let mut buffers = state.pty_input_buffers.lock().await;
-    let buffer = buffers.entry(pty_id).or_default();
-    apply_pty_input_safety(buffer, data)
+    let input_state = buffers.entry(pty_id).or_default();
+    apply_pty_input_safety(input_state, data)
 }
 
-fn apply_pty_input_safety(buffer: &mut Vec<u8>, data: &[u8]) -> Result<(), String> {
+fn apply_pty_input_safety(input: &mut PtyInputState, data: &[u8]) -> Result<(), String> {
     for byte in data {
+        if !input.escape_sequence.is_empty() {
+            input.escape_sequence.push(*byte);
+            if escape_sequence_complete(&input.escape_sequence) {
+                if !matches!(
+                    input.escape_sequence.as_slice(),
+                    b"\x1b[200~" | b"\x1b[201~"
+                ) {
+                    input.unverifiable = true;
+                }
+                input.escape_sequence.clear();
+            } else if input.escape_sequence.len() > 16 {
+                input.escape_sequence.clear();
+                input.unverifiable = true;
+            }
+            continue;
+        }
+
         match *byte {
+            0x1b => input.escape_sequence.push(*byte),
             b'\r' | b'\n' => {
-                let command = String::from_utf8_lossy(buffer);
+                if input.unverifiable {
+                    input.command.clear();
+                    input.unverifiable = false;
+                    return Err(format!(
+                        "{PTY_COMMAND_BLOCKED}: terminal editing made the command unverifiable"
+                    ));
+                }
+                let command = String::from_utf8_lossy(&input.command);
                 if let Some(detected) = detect_dangerous_command(&command) {
                     if detected.action == DangerousCommandAction::Block {
-                        buffer.clear();
+                        input.command.clear();
                         return Err(format!("{PTY_COMMAND_BLOCKED}: {}", detected.pattern));
                     }
                 }
-                buffer.clear();
+                input.command.clear();
             }
             0x03 | 0x15 => {
-                buffer.clear();
+                input.command.clear();
+                input.escape_sequence.clear();
+                input.unverifiable = false;
             }
             0x08 | 0x7f => {
-                buffer.pop();
+                input.command.pop();
             }
-            byte if byte.is_ascii_control() && byte != b'\t' => {}
+            byte if byte.is_ascii_control() => input.unverifiable = true,
             byte => {
-                buffer.push(byte);
-                if buffer.len() > PTY_COMMAND_BUFFER_MAX_BYTES {
-                    buffer.clear();
+                input.command.push(byte);
+                if input.command.len() > PTY_COMMAND_BUFFER_MAX_BYTES {
+                    input.command.clear();
+                    input.unverifiable = false;
                     return Err(format!(
                         "{PTY_COMMAND_BLOCKED}: input line exceeds safety limit"
                     ));
@@ -1020,6 +1099,18 @@ fn apply_pty_input_safety(buffer: &mut Vec<u8>, data: &[u8]) -> Result<(), Strin
     }
 
     Ok(())
+}
+
+fn escape_sequence_complete(sequence: &[u8]) -> bool {
+    match sequence {
+        [0x1b] => false,
+        [0x1b, b'[' | b'O'] => false,
+        [0x1b, b'[' | b'O', rest @ ..] => {
+            rest.last().is_some_and(|byte| (0x40..=0x7e).contains(byte))
+        }
+        [0x1b, ..] => true,
+        _ => false,
+    }
 }
 
 #[cfg(test)]
@@ -1181,47 +1272,70 @@ mod tests {
 
     #[test]
     fn pty_input_safety_blocks_destructive_line_across_chunks() {
-        let mut buffer = Vec::new();
+        let mut input = PtyInputState::default();
 
-        apply_pty_input_safety(&mut buffer, b"sudo rm -r").unwrap();
-        let error = apply_pty_input_safety(&mut buffer, b"f /\n").unwrap_err();
+        apply_pty_input_safety(&mut input, b"sudo rm -r").unwrap();
+        let error = apply_pty_input_safety(&mut input, b"f /\n").unwrap_err();
 
         assert!(error.starts_with(PTY_COMMAND_BLOCKED));
         assert!(error.contains("rm -rf /"));
-        assert!(buffer.is_empty());
+        assert!(input.command.is_empty());
     }
 
     #[test]
     fn pty_input_safety_allows_normal_lines_and_clears_on_submit() {
-        let mut buffer = Vec::new();
+        let mut input = PtyInputState::default();
 
-        apply_pty_input_safety(&mut buffer, b"whoami\n").unwrap();
+        apply_pty_input_safety(&mut input, b"whoami\n").unwrap();
 
-        assert!(buffer.is_empty());
+        assert!(input.command.is_empty());
     }
 
     #[test]
     fn pty_input_safety_tracks_basic_line_editing() {
-        let mut buffer = Vec::new();
+        let mut input = PtyInputState::default();
 
-        apply_pty_input_safety(&mut buffer, b"sudo rm -rf /").unwrap();
-        apply_pty_input_safety(&mut buffer, &[0x15]).unwrap();
-        apply_pty_input_safety(&mut buffer, b"whoamix").unwrap();
-        apply_pty_input_safety(&mut buffer, &[0x7f]).unwrap();
-        apply_pty_input_safety(&mut buffer, b"\n").unwrap();
+        apply_pty_input_safety(&mut input, b"sudo rm -rf /").unwrap();
+        apply_pty_input_safety(&mut input, &[0x15]).unwrap();
+        apply_pty_input_safety(&mut input, b"whoamix").unwrap();
+        apply_pty_input_safety(&mut input, &[0x7f]).unwrap();
+        apply_pty_input_safety(&mut input, b"\n").unwrap();
 
-        assert!(buffer.is_empty());
+        assert!(input.command.is_empty());
     }
 
     #[test]
     fn pty_input_safety_rejects_unbounded_pending_line() {
-        let mut buffer = Vec::new();
+        let mut input = PtyInputState::default();
         let data = vec![b'a'; PTY_COMMAND_BUFFER_MAX_BYTES + 1];
 
-        let error = apply_pty_input_safety(&mut buffer, &data).unwrap_err();
+        let error = apply_pty_input_safety(&mut input, &data).unwrap_err();
 
         assert!(error.contains("input line exceeds safety limit"));
-        assert!(buffer.is_empty());
+        assert!(input.command.is_empty());
+    }
+
+    #[test]
+    fn pty_input_safety_blocks_commands_recalled_with_history_navigation() {
+        let mut input = PtyInputState::default();
+
+        apply_pty_input_safety(&mut input, b"\x1b[A").unwrap();
+        let error = apply_pty_input_safety(&mut input, b"\r").unwrap_err();
+
+        assert!(error.starts_with(PTY_COMMAND_BLOCKED));
+        assert!(error.contains("unverifiable"));
+        assert!(input.command.is_empty());
+        assert!(!input.unverifiable);
+    }
+
+    #[test]
+    fn pty_input_safety_allows_bracketed_paste_for_a_safe_command() {
+        let mut input = PtyInputState::default();
+
+        apply_pty_input_safety(&mut input, b"\x1b[200~whoami\x1b[201~\r").unwrap();
+
+        assert!(input.command.is_empty());
+        assert!(!input.unverifiable);
     }
 
     #[test]

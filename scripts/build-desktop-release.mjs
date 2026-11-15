@@ -49,9 +49,9 @@ process.exit(result.status ?? 1);
 
 function defaultBundleArgsForPlatform() {
   if (process.platform === "win32") {
-    // MSI rejects semver prerelease identifiers such as 0.1.0-beta.1. NSIS can
-    // carry Public Beta Desktop staging builds without weakening signing gates.
-    return ["nsis"];
+    // tauri.conf.json maps the prerelease to a numeric WiX version, so both
+    // standard Windows installer formats can be built from the same source.
+    return ["msi", "nsis"];
   }
 
   return [];

@@ -85,12 +85,11 @@ function RootLayoutWithBoundary() {
     >
       <Stack
         screenOptions={{
-          headerStyle: { backgroundColor: '#101820' },
-          headerTintColor: '#f4f7fb',
           contentStyle: { backgroundColor: '#f4f7fb' },
+          headerShown: false,
         }}
       />
-      <StatusBar style="light" />
+      <StatusBar style="auto" />
     </ErrorBoundary>
   );
 }

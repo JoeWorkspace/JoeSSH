@@ -25,6 +25,13 @@ describe("ShortcutsOverlay", () => {
     expect(screen.queryByText("Toggle theme")).toBeNull();
   });
 
+  it("hides native-only quick connect in browser previews", () => {
+    render(<ShortcutsOverlay desktopRuntime={false} onClose={vi.fn()} t={t} />);
+
+    expect(screen.queryByText("desktop.quickConnect")).toBeNull();
+    expect(screen.getByText("desktop.new")).toBeTruthy();
+  });
+
   it("closes when clicking the backdrop", () => {
     const onClose = vi.fn();
     render(<ShortcutsOverlay onClose={onClose} t={t} />);

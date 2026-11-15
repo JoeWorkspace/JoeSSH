@@ -21,8 +21,11 @@ test.describe('JoeSSH mobile companion web smoke', () => {
 
     await expect(page.getByTestId('sync-status-panel')).toContainText('Offline fallback active');
     await expect(page.getByTestId('sync-error-panel')).toContainText('Sync service offline');
-    await expect(page.getByText('C:\\Tools\\agenttool')).toBeVisible();
-    await expect(page.getByText('mobile-sync-preview / npm run typecheck')).toBeVisible();
+    await expect(page.getByTestId('sync-profile-count')).toContainText('0');
+    await expect(page.getByTestId('sync-session-count')).toContainText('0');
+    await expect(page.getByTestId('sync-change-count')).toContainText('0');
+    await expect(page.getByText('JoeSSH Sync')).toBeVisible();
+    await expect(page.getByText('offline / 0')).toBeVisible();
     await expect(page.getByText('Relay Connect')).toBeVisible();
     await expect(page.getByText('Cached Key')).toBeVisible();
     await expect(page.getByTestId('emergency-channel-relay-live')).toContainText('Live');

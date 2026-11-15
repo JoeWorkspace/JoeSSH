@@ -63,9 +63,21 @@ const server = http.createServer(async (request, response) => {
 
   if (request.method === 'GET' && request.url.startsWith('/v1/sync/pull?')) {
     pullCount += 1;
+    const changes =
+      pullCount === 1
+        ? [
+            syncChange('00000000-0000-4000-8000-000000000001', 'profile', 'prod-edge-01', 'create', 'server-40'),
+            syncChange('00000000-0000-4000-8000-000000000002', 'profile', 'prod-edge-02', 'create', 'server-41'),
+            syncChange('00000000-0000-4000-8000-000000000003', 'session', 'session-01', 'create', 'server-42'),
+          ]
+        : [
+            syncChange('00000000-0000-4000-8000-000000000004', 'profile', 'prod-edge-02', 'delete', 'server-43'),
+            syncChange('00000000-0000-4000-8000-000000000005', 'profile', 'prod-edge-03', 'create', 'server-43'),
+          ];
     sendJson(response, 200, {
-      changes: [{ id: 'profile-change' }, { id: 'session-change' }, { id: 'audit-change' }],
+      changes,
       device_id: '0af7b567-8c34-4318-8c6b-31cddfc36e6f',
+      has_more: false,
       next_cursor: pullCount === 1 ? 'server-42' : 'server-43',
     });
     return;
@@ -84,6 +96,18 @@ function sendJson(response, status, body) {
     'Content-Type': 'application/json',
   });
   response.end(JSON.stringify(body));
+}
+
+function syncChange(id, entityType, entityId, operation, cursor) {
+  return {
+    entity_id: entityId,
+    entity_type: entityType,
+    id,
+    operation,
+    payload: {},
+    server_time: '2026-05-25T00:00:00Z',
+    sync_cursor: cursor,
+  };
 }
 
 function readJsonBody(request) {

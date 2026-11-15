@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import {
   commonMarketLocales,
   expectedAtlasLocaleByMarketLocale,
@@ -9,6 +9,111 @@ import {
 } from './i18n';
 
 test.describe('JoeSSH desktop workbench', () => {
+  test('keeps the workbench stable across common display-scaling viewports', async ({ page }) => {
+    const scaledViewports = [
+      { height: 768, label: '1366x768 at 100%', width: 1366 },
+      { height: 614, label: '1366x768 at 125%', width: 1093 },
+      { height: 512, label: '1366x768 at 150%', width: 911 },
+      { height: 720, label: '1920x1080 at 150%', width: 1280 },
+      { height: 864, label: '1920x1080 at 125%', width: 1536 },
+      { height: 960, label: '2560x1440 at 150%', width: 1707 },
+    ] as const;
+
+    for (const viewport of scaledViewports) {
+      await test.step(viewport.label, async () => {
+        await page.setViewportSize({ height: viewport.height, width: viewport.width });
+        await page.goto('/?lang=en');
+        await page.getByRole('tab', { name: /staging-api/ }).click();
+
+        const layout = await page.evaluate(() => {
+          const bounds = (selector: string) => {
+            const element = document.querySelector(selector);
+            if (!(element instanceof HTMLElement)) throw new Error(`Missing ${selector}`);
+            const rect = element.getBoundingClientRect();
+            return { bottom: rect.bottom, height: rect.height, left: rect.left, right: rect.right, top: rect.top, width: rect.width };
+          };
+          const terminalTabTops = [...document.querySelectorAll<HTMLElement>('.tabbar [role="tab"]')]
+            .map((tab) => Math.round(tab.getBoundingClientRect().top));
+
+          return {
+            context: bounds('.context-pane'),
+            documentHeight: document.documentElement.scrollHeight,
+            documentWidth: document.documentElement.scrollWidth,
+            pane: bounds('.terminal-pane'),
+            status: bounds('.statusbar'),
+            terminal: bounds('.terminal-zone'),
+            terminalGrid: bounds('.terminal-grid'),
+            terminalTabTops,
+            viewportHeight: window.innerHeight,
+            viewportWidth: window.innerWidth,
+          };
+        });
+
+        expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth);
+        expect(layout.documentHeight).toBeLessThanOrEqual(layout.viewportHeight);
+        expect(new Set(layout.terminalTabTops).size).toBe(1);
+        expect(layout.pane.width).toBeGreaterThanOrEqual(layout.terminalGrid.width - 24);
+        expect(layout.pane.height).toBeGreaterThan(180);
+        expect(layout.status.bottom).toBeLessThanOrEqual(layout.viewportHeight + 1);
+        expect(layout.terminal.right).toBeLessThanOrEqual(layout.viewportWidth + 1);
+        expect(layout.context.right).toBeLessThanOrEqual(layout.viewportWidth + 1);
+      });
+    }
+
+    await test.step('short 150% viewport keeps both default terminal panes inside the terminal row', async () => {
+      await page.setViewportSize({ height: 512, width: 911 });
+      await page.goto('/?lang=en');
+      await page.getByRole('tab', { name: /prod-edge-01/ }).click();
+      await expect(page.locator('.context-pane')).toBeVisible();
+
+      const layout = await page.evaluate(() => {
+        const grid = document.querySelector<HTMLElement>('.terminal-grid');
+        const context = document.querySelector<HTMLElement>('.context-pane');
+        if (!grid || !context) throw new Error('Missing scaled workbench regions');
+        const gridRect = grid.getBoundingClientRect();
+        const contextRect = context.getBoundingClientRect();
+        const panes = [...grid.querySelectorAll<HTMLElement>('.terminal-pane')].map((pane) => {
+          const rect = pane.getBoundingClientRect();
+          return { bottom: rect.bottom, height: rect.height, top: rect.top };
+        });
+        return {
+          contextTop: contextRect.top,
+          gridBottom: gridRect.bottom,
+          gridTop: gridRect.top,
+          panes,
+        };
+      });
+
+      expect(layout.panes).toHaveLength(2);
+      expect(layout.panes.every((pane) => pane.height >= 100)).toBe(true);
+      expect(layout.panes.every((pane) => pane.top >= layout.gridTop - 1)).toBe(true);
+      expect(layout.panes.every((pane) => pane.bottom <= layout.gridBottom + 1)).toBe(true);
+      expect(layout.gridBottom).toBeLessThanOrEqual(layout.contextTop + 1);
+    });
+
+    await test.step('900px split-terminal layout', async () => {
+      await page.setViewportSize({ height: 768, width: 900 });
+      await page.goto('/?lang=en');
+      await page.getByRole('tab', { name: /prod-edge-01/ }).click();
+
+      const splitLayout = await page.evaluate(() => {
+        const grid = document.querySelector('.terminal-grid');
+        if (!(grid instanceof HTMLElement)) throw new Error('Missing terminal grid');
+        const gridRect = grid.getBoundingClientRect();
+        const panes = [...grid.querySelectorAll<HTMLElement>('.terminal-pane')].map((pane) => {
+          const rect = pane.getBoundingClientRect();
+          return { bottom: rect.bottom, height: rect.height, top: rect.top };
+        });
+        return { gridBottom: gridRect.bottom, gridTop: gridRect.top, panes };
+      });
+
+      expect(splitLayout.panes).toHaveLength(2);
+      expect(splitLayout.panes.every((pane) => pane.height >= 180)).toBe(true);
+      expect(splitLayout.panes[0].top).toBeGreaterThanOrEqual(splitLayout.gridTop);
+      expect(splitLayout.panes[1].bottom).toBeLessThanOrEqual(splitLayout.gridBottom + 1);
+    });
+  });
+
   test('opens directly to the usable terminal workbench', async ({ page }) => {
     await page.goto('/');
 
@@ -22,6 +127,38 @@ test.describe('JoeSSH desktop workbench', () => {
     await expect(page.getByText(oneOf('运行命令、打开主机、启动流程', 'Run command, open host, start workflow'))).toHaveCount(0);
   });
 
+  test('opens onboarding help and toggles terminal focus mode', async ({ page }) => {
+    await page.goto('/?lang=en');
+
+    await page.getByRole('button', { name: 'Getting started' }).click();
+    const guide = page.getByRole('dialog', { name: 'Getting started' });
+    await expect(guide).toBeVisible();
+    await expect(guide.getByText(/Desktop opens SSH sessions/)).toBeVisible();
+    await expect(guide.getByText(/Never sends hosts, usernames, commands/)).toBeVisible();
+    await guide.getByRole('button', { name: 'Close' }).last().click();
+    await expect(guide).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Maximize terminal' }).click();
+    await expect(page.locator('.workbench')).toHaveClass(/terminal-maximized/);
+    await expect(page.locator('.sidebar')).toBeHidden();
+    await expect(page.locator('.context-pane')).toBeHidden();
+
+    await page.getByRole('button', { name: 'Restore workspace' }).click();
+    await expect(page.locator('.sidebar')).toBeVisible();
+    await expect(page.locator('.context-pane')).toBeVisible();
+  });
+
+  test('executes navigation commands from the command palette', async ({ page }) => {
+    await page.goto('/?lang=en');
+    await page.getByRole('button', { name: 'Command palette' }).click();
+    const palette = page.getByRole('dialog', { name: 'Command palette' });
+    await palette.getByRole('combobox').fill('Open SFTP');
+    await palette.getByRole('option', { name: /Open SFTP/ }).click();
+
+    await expect(page.getByText('/srv/atlas')).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'SFTP' })).toHaveAttribute('aria-selected', 'true');
+  });
+
   test('switches context, SFTP, and settings panels', async ({ page }) => {
     await page.goto('/');
 
@@ -33,8 +170,9 @@ test.describe('JoeSSH desktop workbench', () => {
 
     await page.getByRole('tab', { name: oneOf('设置', 'Settings') }).click();
     await expectVisibleText(page, '工作区设置', 'Workspace Settings');
-    await expectVisibleText(page, '商业层', 'Business Layer');
-    await expectVisibleText(page, '席位计费', 'Seat billing');
+    await expectVisibleText(page, '导出连接', 'Export connections');
+    await expectVisibleText(page, '导入连接', 'Import connections');
+    await expect(page.getByText(oneOf('商业层', 'Business Layer'))).toHaveCount(0);
   });
 
   test('shows team access, shared vault, and audit context', async ({ page }) => {
@@ -106,20 +244,22 @@ test.describe('JoeSSH desktop workbench', () => {
     await expect(paletteDialog).toHaveCount(0);
   });
 
-  test('prefills quick connect from keyboard shortcuts', async ({ page }) => {
+  test('opens new connection from Ctrl+N without exposing native quick connect in browser preview', async ({ page }) => {
     await page.goto('/?lang=en');
     await expect(page.getByRole('button', { name: 'Command palette' })).toBeVisible();
 
-    let paletteInput = await openQuickConnectWithShortcut(page, 'n');
-    await expect(paletteInput).toBeVisible();
-    await expect(paletteInput).toHaveValue('ssh://');
-    await expect(page.getByText('Quick connect').first()).toBeVisible();
+    const newConnectionDialog = page.getByRole('dialog', { name: 'New connection' });
+    for (let attempt = 0; attempt < 5 && !(await newConnectionDialog.isVisible()); attempt += 1) {
+      await dispatchAppShortcut(page, 'n');
+      await page.waitForTimeout(100);
+    }
+    await expect(newConnectionDialog).toBeVisible();
+    await newConnectionDialog.getByRole('button', { name: 'Close' }).click();
 
-    await page.keyboard.press('Escape');
-    await expect(paletteInput).toHaveCount(0);
-    paletteInput = await openQuickConnectWithShortcut(page, 'C', { shiftKey: true });
-    await expect(paletteInput).toBeVisible();
-    await expect(paletteInput).toHaveValue('ssh://');
+    await page.getByRole('button', { name: 'Command palette' }).click();
+    const palette = page.getByRole('dialog', { name: 'Command palette' });
+    await palette.getByRole('combobox').fill('ssh://example.internal');
+    await expect(palette.getByText('Quick connect')).toHaveCount(0);
   });
 
   test('activates a connection from the command palette with Enter', async ({ page }) => {
@@ -175,6 +315,50 @@ test.describe('JoeSSH desktop workbench', () => {
     const prodLog = page.getByRole('log', { name: 'sample shell' });
     await expect(prodLog).toContainText('atlas@prod-edge-01:~$ kubectl get pods -n gateway');
     await expect(prodLog).not.toContainText('atlas@staging-api:~$ ssh stg-api.atlas');
+  });
+
+  test('opens a long custom connection in one truthful, responsive terminal tab', async ({ page }) => {
+    const connectionName = 'customer-edge-with-a-long-profile-name-for-scaled-displays';
+    await page.addInitScript(({ name }) => {
+      window.localStorage.setItem('atlasterm.customConnections', JSON.stringify([{
+        group: 'Production',
+        host: 'customer-edge.internal',
+        name,
+        tags: ['custom'],
+      }]));
+    }, { name: connectionName });
+    await page.setViewportSize({ height: 512, width: 911 });
+    await page.goto('/?lang=en');
+
+    const connectionButton = page.getByRole('button', { name: new RegExp(connectionName) });
+    await expect(connectionButton.getByRole('img', { name: 'Sample data' })).toBeVisible();
+    await connectionButton.click();
+
+    const customTab = page.getByRole('tab', { name: connectionName });
+    await expect(customTab).toHaveCount(1);
+    await expect(customTab).toHaveAttribute('aria-selected', 'true');
+    await expect(customTab).toHaveAttribute('title', connectionName);
+    await expect(page.locator('.session-title')).toContainText('Demo sample - no real SSH session');
+
+    await connectionButton.click();
+    await expect(page.getByRole('tab', { name: connectionName })).toHaveCount(1);
+
+    await page.reload();
+    await expect(page.getByRole('tab', { name: connectionName })).toHaveCount(1);
+    await expect(page.getByRole('tab', { name: connectionName })).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('.session-title')).toContainText(connectionName);
+
+    const layout = await page.evaluate(() => {
+      const label = document.querySelector<HTMLElement>('.tabbar [aria-selected="true"] > span');
+      return {
+        documentWidth: document.documentElement.scrollWidth,
+        labelClientWidth: label?.clientWidth ?? 0,
+        labelScrollWidth: label?.scrollWidth ?? 0,
+        viewportWidth: window.innerWidth,
+      };
+    });
+    expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth);
+    expect(layout.labelScrollWidth).toBeGreaterThan(layout.labelClientWidth);
   });
 
   test('keeps the Chinese default path and English regional path testable', async ({ browser, baseURL }) => {
@@ -316,7 +500,6 @@ test.describe('JoeSSH desktop workbench', () => {
 
     const productionGroup = page.getByRole('list', { name: 'Production' });
     const prodEdge01 = productionGroup.getByRole('button', { name: /prod-edge-01/i });
-    const prodEdge02 = productionGroup.getByRole('button', { name: /prod-edge-02/i });
 
     await expect(productionGroup.getByRole('listitem').first()).toContainText('prod-edge-01');
     await expect(prodEdge01).toHaveAttribute('aria-keyshortcuts', /Alt\+ArrowUp/);
@@ -365,17 +548,47 @@ test.describe('JoeSSH desktop workbench', () => {
     await expect(stagingGroup.getByRole('button', { name: /prod-edge-01/i })).toBeVisible();
   });
 
-  test('connection right-click context menu has all expected actions', async ({ page }) => {
+  test('connection context menu exposes only executable actions and stays inside the viewport', async ({ page }) => {
+    const customName = 'customer-ops';
+    await page.addInitScript(({ name }) => {
+      window.localStorage.setItem('atlasterm.customConnections', JSON.stringify([{
+        group: 'Production',
+        host: 'customer-ops.internal',
+        name,
+        tags: ['custom'],
+      }]));
+    }, { name: customName });
     await page.goto('/?lang=en');
 
     const connection = page.getByText('prod-edge-01').first();
     await connection.click({ button: 'right' });
 
-    await expect(page.getByRole('menuitem', { name: 'Connect', exact: true })).toBeVisible();
-    await expect(page.getByRole('menuitem', { name: /Edit connection|编辑连接/i })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: 'Connect', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('menuitem', { name: /Test connection/i })).toHaveCount(0);
+    await expect(page.getByRole('menuitem', { name: /Edit connection/i })).toHaveCount(0);
+    await expect(page.getByRole('menuitem', { name: /Delete/i })).toHaveCount(0);
     await expect(page.getByRole('menuitem', { name: /Duplicate|复制/i })).toBeVisible();
     await expect(page.getByRole('menuitem', { name: /Copy SSH command|SSH/i })).toBeVisible();
-    await expect(page.getByRole('menuitem', { name: /Delete|删除/i })).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    const customConnection = page.getByRole('button', { name: new RegExp(customName) });
+    await customConnection.evaluate((element) => {
+      element.dispatchEvent(new MouseEvent('contextmenu', {
+        bubbles: true,
+        cancelable: true,
+        clientX: 898,
+        clientY: 766,
+      }));
+    });
+    await expect(page.getByRole('menuitem', { name: /Edit connection/i })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: /Delete/i })).toBeVisible();
+
+    const menuBounds = await page.getByRole('menu').evaluate((menu) => {
+      const rect = menu.getBoundingClientRect();
+      return { bottom: rect.bottom, right: rect.right, viewportHeight: window.innerHeight, viewportWidth: window.innerWidth };
+    });
+    expect(menuBounds.right).toBeLessThanOrEqual(menuBounds.viewportWidth - 7);
+    expect(menuBounds.bottom).toBeLessThanOrEqual(menuBounds.viewportHeight - 7);
   });
 
   test('toggles theme with keyboard shortcut', async ({ page }) => {
@@ -496,33 +709,15 @@ test.describe('JoeSSH desktop workbench', () => {
   test('toast appears after a successful action', async ({ page }) => {
     await page.goto('/?lang=en');
 
-    // Right-click on a connection and select an action — triggers a toast
+    // Duplicate is available in browser preview and reports the completed local action.
     await page.getByRole('button', { name: /prod-edge-01/i }).click({ button: 'right' });
-    await page.getByRole('menuitem', { name: 'Connect', exact: true }).click();
+    await page.getByRole('menuitem', { name: /Duplicate/i }).click();
 
     // Toast container should show a status message
     const toast = page.locator('.toast-container [role="status"]');
     await expect(toast.first()).toBeVisible({ timeout: 3000 });
   });
 });
-
-async function openQuickConnectWithShortcut(page: Page, key: string, options?: { shiftKey?: boolean }): Promise<Locator> {
-  const paletteInput = page.getByPlaceholder('Run command, open host, start workflow');
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    await dispatchAppShortcut(page, key, options);
-    try {
-      await expect(paletteInput).toBeVisible({ timeout: 750 });
-      return paletteInput;
-    } catch (error) {
-      if (attempt === 4) {
-        throw error;
-      }
-      await page.waitForTimeout(100);
-    }
-  }
-
-  return paletteInput;
-}
 
 async function dispatchAppShortcut(page: Page, key: string, options?: { shiftKey?: boolean }) {
   for (let attempt = 0; attempt < 3; attempt += 1) {

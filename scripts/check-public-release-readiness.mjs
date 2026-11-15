@@ -8,6 +8,8 @@ const root = resolve(
 const rootPackageJson = readJson("package.json");
 const expectedVersion = rootPackageJson.version;
 const expectedReleaseTag = `v${expectedVersion}`;
+const expectedWindowsMsiVersion = toWindowsMsiVersion(expectedVersion);
+const expectedWindowsWixUpgradeCode = "c2a51a19-3ad8-5494-8c3e-6eb5d2e3e748";
 const allowUnhealthyGit = process.argv.includes("--allow-unhealthy-git");
 const checks = [];
 
@@ -151,6 +153,8 @@ function checkPackageScripts() {
     "qa:desktop-release-package",
     "test:desktop-release-evidence",
     "qa:desktop-release-evidence",
+    "test:desktop-candidate-stage",
+    "qa:desktop-candidate-stage",
     "test:desktop-release-secrets",
     "qa:desktop-release-secrets",
     "test:desktop-release-diagnostics",
@@ -192,6 +196,7 @@ function checkPackageScripts() {
     "release:desktop:configure-secrets",
     "release:desktop:evidence-diagnostics",
     "release:desktop:verify-evidence",
+    "release:desktop:verify-candidate",
     "release:desktop:evidence-download",
     "release:desktop:evidence-preflight",
     "release:desktop:evidence-workflow",
@@ -219,6 +224,8 @@ function checkPackageScripts() {
     packageJson.scripts?.["release:desktop:checksums"] ?? "";
   const desktopPackageScript =
     packageJson.scripts?.["release:desktop:package"] ?? "";
+  const desktopCandidateVerifyScript =
+    packageJson.scripts?.["release:desktop:verify-candidate"] ?? "";
   passIf(
     desktopPackageScript.includes("--require-platforms") &&
       desktopPackageScript.includes("windows,macos,linux"),
@@ -236,6 +243,11 @@ function checkPackageScripts() {
       !desktopChecksumsScript.includes("target/release/bundle"),
     "Desktop checksum script does not bypass Desktop release evidence",
     desktopChecksumsScript,
+  );
+  passIf(
+    desktopCandidateVerifyScript.includes("verify-desktop-candidate.mjs"),
+    "Desktop candidate verification script uses the candidate verifier",
+    desktopCandidateVerifyScript,
   );
 
   const releaseVerifyChecksumsScript =
@@ -405,6 +417,11 @@ function checkPackageScripts() {
     rootQaScript,
   );
   passIf(
+    rootQaScript.includes("qa:desktop-candidate-stage"),
+    "Root QA verifies unsigned Desktop candidate staging",
+    rootQaScript,
+  );
+  passIf(
     rootQaScript.includes("qa:e2e:fresh"),
     "Root QA runs E2E on fresh local ports",
     rootQaScript,
@@ -438,6 +455,7 @@ function checkCiPublicReleaseWiring() {
     "npm run qa:artifact-checksums",
     "npm run qa:desktop-release-package",
     "npm run qa:desktop-release-evidence",
+    "npm run qa:desktop-candidate-stage",
     "npm run qa:desktop-release-secrets",
     "npm run qa:desktop-release-diagnostics",
     "npm run qa:desktop-release-parity",
@@ -492,6 +510,12 @@ function checkReleaseToolingFiles() {
   for (const relativePath of [
     "scripts/package-desktop-release.mjs",
     "scripts/package-desktop-release.test.mjs",
+    "scripts/stage-desktop-candidate.mjs",
+    "scripts/stage-desktop-candidate.test.mjs",
+    "scripts/verify-desktop-candidate.mjs",
+    "scripts/verify-desktop-candidate.test.mjs",
+    "scripts/desktop-candidate-workflow.test.mjs",
+    ".github/workflows/desktop-candidates.yml",
     "scripts/configure-desktop-release-secrets.mjs",
     "scripts/configure-desktop-release-secrets.test.mjs",
     "scripts/diagnose-desktop-release-evidence.mjs",
@@ -553,6 +577,12 @@ function checkReleaseToolingFiles() {
     readTextIfExists("scripts/verify-public-beta-dogfood-evidence.mjs") ?? "";
   const unsignedStagingReporter =
     readTextIfExists("scripts/report-desktop-unsigned-staging.mjs") ?? "";
+  const desktopCandidateStager =
+    readTextIfExists("scripts/stage-desktop-candidate.mjs") ?? "";
+  const desktopCandidateVerifier =
+    readTextIfExists("scripts/verify-desktop-candidate.mjs") ?? "";
+  const desktopCandidateWorkflow =
+    readTextIfExists(".github/workflows/desktop-candidates.yml") ?? "";
   passIf(
     dogfoodVerifier.includes("desktop-install-launch") &&
       dogfoodVerifier.includes("sync-backup-restore-rollback") &&
@@ -569,19 +599,48 @@ function checkReleaseToolingFiles() {
     "Desktop unsigned staging reporter records handoff evidence without weakening release artifacts",
   );
   passIf(
+    desktopCandidateStager.includes("--source-commit") &&
+      desktopCandidateStager.includes("cannot overlap") &&
+      desktopCandidateStager.includes("Desktop bundle directory"),
+    "Desktop candidate stager binds source commits and contains input/output paths",
+  );
+  passIf(
+    desktopCandidateVerifier.includes("releaseEligible") &&
+      desktopCandidateVerifier.includes("signingStatus") &&
+      desktopCandidateVerifier.includes("sourceCommit") &&
+      desktopCandidateVerifier.includes("--standalone") &&
+      desktopCandidateVerifier.includes("SHA256SUMS.txt") &&
+      desktopCandidateVerifier.includes(
+        "candidate metadata does not list file",
+      ),
+    "Desktop candidate verifier binds non-release metadata, source, files, and checksums",
+  );
+  passIf(
+    desktopCandidateWorkflow.includes("git rev-parse HEAD") &&
+      desktopCandidateWorkflow.includes("--source-commit") &&
+      desktopCandidateWorkflow.includes("release:desktop:verify-candidate") &&
+      desktopCandidateWorkflow.indexOf("release:desktop:verify-candidate") <
+        desktopCandidateWorkflow.indexOf("actions/upload-artifact"),
+    "Desktop candidate workflow verifies the checked-out commit before upload",
+  );
+  passIf(
     desktopPackager.includes("artifactSha256") &&
       desktopPackager.includes("sha256: artifactSha256"),
     "Desktop release packager records artifact SHA256 in release evidence",
   );
   passIf(
-    desktopPackager.includes("Desktop bundle source contains artifact(s) that do not include") &&
+    desktopPackager.includes(
+      "Desktop bundle source contains artifact(s) that do not include",
+    ) &&
       desktopPackager.includes("releaseVersion") &&
       desktopPackager.includes("basename(artifact.path)"),
     "Desktop release packager rejects stale source bundle artifacts before staging",
   );
   passIf(
     desktopPackager.includes("validateSignatureEvidence(sourceArtifacts)") &&
-      desktopPackager.includes("Windows Desktop artifacts require --windows-signature-verification") &&
+      desktopPackager.includes(
+        "Windows Desktop artifacts require --windows-signature-verification",
+      ) &&
       desktopPackager.indexOf("validateSignatureEvidence(sourceArtifacts)") <
         desktopPackager.indexOf("mkdirSync(outputDir"),
     "Desktop release packager validates signing evidence before staging artifacts",
@@ -612,7 +671,9 @@ function checkReleaseToolingFiles() {
   passIf(
     desktopEvidenceVerifier.includes("release-evidence-source.json") &&
       desktopEvidenceVerifier.includes("--require-source") &&
-      desktopEvidenceVerifier.includes("workflowRun.headSha must match releaseTagCommit") &&
+      desktopEvidenceVerifier.includes(
+        "workflowRun.headSha must match releaseTagCommit",
+      ) &&
       desktopEvidenceVerifier.includes("Package Formal Desktop Evidence"),
     "Desktop release evidence verifier can require formal workflow source provenance",
   );
@@ -639,13 +700,17 @@ function checkReleaseToolingFiles() {
   passIf(
     desktopEvidenceDownloader.includes("Package Formal Desktop Evidence") &&
       desktopEvidenceDownloader.includes("--run-id is required") &&
-      desktopEvidenceDownloader.includes("verify-desktop-release-evidence.mjs") &&
+      desktopEvidenceDownloader.includes(
+        "verify-desktop-release-evidence.mjs",
+      ) &&
       desktopEvidenceDownloader.includes("--require-source") &&
       desktopEvidenceDownloader.includes("release-evidence-source.json") &&
       desktopEvidenceDownloader.includes("workflowDatabaseId") &&
       desktopEvidenceDownloader.includes("artifact.expired") &&
       desktopEvidenceDownloader.includes("reports/release/desktop/") &&
-      desktopEvidenceDownloader.includes("check-runs/${checkRunId}/annotations"),
+      desktopEvidenceDownloader.includes(
+        "check-runs/${checkRunId}/annotations",
+      ),
     "Desktop formal evidence downloader imports only verified workflow evidence",
   );
   const desktopReleaseWorkflow =
@@ -662,17 +727,21 @@ function checkReleaseToolingFiles() {
     readTextIfExists("scripts/require-real-ssh-smoke-env.mjs") ?? "";
   passIf(
     requiredRealSshSmokeEnv.includes("JOESSH_REAL_SSH_SMOKE") &&
-    requiredRealSshSmokeEnv.includes("JOESSH_REAL_SSH_HOST") &&
-    requiredRealSshSmokeEnv.includes("JOESSH_REAL_SSH_PASSWORD") &&
+      requiredRealSshSmokeEnv.includes("JOESSH_REAL_SSH_HOST") &&
+      requiredRealSshSmokeEnv.includes("JOESSH_REAL_SSH_PASSWORD") &&
       requiredRealSshSmokeEnv.includes("JOESSH_REAL_SSH_PRIVATE_KEY_PATH") &&
       requiredRealSshSmokeEnv.includes("JOESSH_REAL_SSH_REMOTE_DIR") &&
-      requiredRealSshSmokeEnv.includes("JOESSH_REAL_SSH_PORT must be an integer"),
+      requiredRealSshSmokeEnv.includes(
+        "JOESSH_REAL_SSH_PORT must be an integer",
+      ),
     "Required Desktop SSH smoke env guard rejects missing real dogfood fixtures",
   );
   const realSshFixtureRunner =
     readTextIfExists("scripts/run-real-ssh-smoke-fixture.mjs") ?? "";
   passIf(
-    realSshFixtureRunner.includes("reports\", \"smoke\", \"desktop\", \"real-ssh-smoke.json") &&
+    realSshFixtureRunner.includes(
+      'reports", "smoke", "desktop", "real-ssh-smoke.json',
+    ) &&
       realSshFixtureRunner.includes("JOESSH_REAL_SSH_PRIVATE_KEY_PATH") &&
       realSshFixtureRunner.includes("qa:desktop:real-ssh-smoke:required") &&
       realSshFixtureRunner.includes("local forwarding start/traffic/shutdown"),
@@ -689,21 +758,29 @@ function checkReleaseToolingFiles() {
       desktopSecretConfigurator.includes("secret-input-template.env") &&
       desktopSecretConfigurator.includes('"secret", "set"') &&
       desktopSecretConfigurator.includes("--body-file") &&
-      desktopSecretConfigurator.includes("desktop-release-evidence-preflight.mjs"),
+      desktopSecretConfigurator.includes(
+        "desktop-release-evidence-preflight.mjs",
+      ),
     "Desktop formal evidence secret configurator sets GitHub secrets from env or files without command-line values",
   );
   const desktopEvidenceDiagnostics =
     readTextIfExists("scripts/diagnose-desktop-release-evidence.mjs") ?? "";
   passIf(
-    desktopEvidenceDiagnostics.includes("formal-evidence-unblock-report.json") &&
+    desktopEvidenceDiagnostics.includes(
+      "formal-evidence-unblock-report.json",
+    ) &&
       desktopEvidenceDiagnostics.includes("reports/handoff/desktop") &&
       desktopEvidenceDiagnostics.includes("release-evidence-source.json") &&
       desktopEvidenceDiagnostics.includes("release-remote-ref") &&
       desktopEvidenceDiagnostics.includes("desktop-signing-secrets") &&
       desktopEvidenceDiagnostics.includes("release-desktop-stale-artifacts") &&
       desktopEvidenceDiagnostics.includes("github-ci") &&
-      desktopEvidenceDiagnostics.includes("check-runs/${checkRunId}/annotations") &&
-      desktopEvidenceDiagnostics.includes("verify-desktop-release-evidence.mjs"),
+      desktopEvidenceDiagnostics.includes(
+        "check-runs/${checkRunId}/annotations",
+      ) &&
+      desktopEvidenceDiagnostics.includes(
+        "verify-desktop-release-evidence.mjs",
+      ),
     "Desktop formal evidence diagnostics report binds local evidence, signing secrets, workflow runs, and CI annotations",
   );
   const desktopEvidenceParity =
@@ -715,8 +792,12 @@ function checkReleaseToolingFiles() {
       desktopEvidenceParity.includes("desktop-release-evidence") &&
       desktopEvidenceParity.includes("ATLASTERM_WINDOWS_CERTIFICATE") &&
       desktopEvidenceParity.includes("ATLASTERM_APPLE_CERTIFICATE") &&
-      desktopEvidenceParity.includes("reports/handoff/desktop/formal-evidence-unblock-report.json") &&
-      desktopEvidenceParity.includes("reports/release/desktop/release-evidence-source.json"),
+      desktopEvidenceParity.includes(
+        "reports/handoff/desktop/formal-evidence-unblock-report.json",
+      ) &&
+      desktopEvidenceParity.includes(
+        "reports/release/desktop/release-evidence-source.json",
+      ),
     "Desktop formal evidence parity checker prevents workflow, script, and docs contract drift",
   );
 
@@ -803,7 +884,9 @@ function checkReleaseToolingFiles() {
         "reports/release/desktop/release-evidence-SHA256SUMS.txt",
       ) &&
       releaseProvenanceGenerator.includes("release-evidence-source.json") &&
-      releaseProvenanceGenerator.includes("verify-desktop-release-evidence.mjs --require-source") &&
+      releaseProvenanceGenerator.includes(
+        "verify-desktop-release-evidence.mjs --require-source",
+      ) &&
       releaseProvenanceGenerator.includes(
         "reports/release/sync/backup-restore-smoke-SHA256SUMS.txt",
       ),
@@ -819,7 +902,9 @@ function checkReleaseToolingFiles() {
       releaseProvenanceVerifier.includes("artifact hash mismatch") &&
       releaseProvenanceVerifier.includes("requiredChecksumManifests") &&
       releaseProvenanceVerifier.includes("release-evidence-source.json") &&
-      releaseProvenanceVerifier.includes("verify-desktop-release-evidence.mjs --require-source") &&
+      releaseProvenanceVerifier.includes(
+        "verify-desktop-release-evidence.mjs --require-source",
+      ) &&
       releaseProvenanceVerifier.includes(
         "unexpected Public Beta checksum manifest is staged",
       ),
@@ -941,6 +1026,39 @@ function checkTauriDistributionMetadata() {
     Array.isArray(tauri.bundle?.icon) && tauri.bundle.icon.length > 0,
     "Tauri bundle icon is configured",
   );
+  const requiredBundleIcons = [
+    "icons/icon.png",
+    "icons/icon.ico",
+    "icons/icon.icns",
+  ];
+  passIf(
+    Array.isArray(tauri.bundle?.icon) &&
+      requiredBundleIcons.every((icon) => tauri.bundle.icon.includes(icon)),
+    "Tauri bundle icon config covers Windows, macOS, and PNG targets",
+    `expected ${requiredBundleIcons.join(", ")}`,
+  );
+  passIf(
+    requiredBundleIcons.every((icon) =>
+      existsSync(resolve(root, "apps/desktop/src-tauri", icon)),
+    ),
+    "Tauri platform bundle icon files exist",
+    `expected ${requiredBundleIcons.join(", ")}`,
+  );
+  passIf(
+    tauri.bundle?.windows?.wix?.version === expectedWindowsMsiVersion,
+    `Tauri WiX version maps ${expectedVersion} to MSI-compatible ${expectedWindowsMsiVersion}`,
+    `found ${String(tauri.bundle?.windows?.wix?.version)}`,
+  );
+  passIf(
+    tauri.bundle?.windows?.wix?.upgradeCode === expectedWindowsWixUpgradeCode,
+    "Tauri WiX upgrade code is stable for JoeSSH",
+    `found ${String(tauri.bundle?.windows?.wix?.upgradeCode)}`,
+  );
+}
+
+function toWindowsMsiVersion(version) {
+  const match = version.match(/^(\d+)\.(\d+)\.(\d+)-beta\.(\d+)$/);
+  return match ? `${match[1]}.${match[2]}.${match[3]}.${match[4]}` : null;
 }
 
 function checkDesktopReleaseMetadata() {

@@ -129,7 +129,7 @@ describe('panel event handlers', () => {
     vi.useRealTimers();
   });
 
-  it('transitions InspectorPanel from skeleton to loaded after effect timer', async () => {
+  it('renders InspectorPanel content without an artificial loading delay', () => {
     render(
       <InspectorPanel
         activeConnection={activeConnection}
@@ -140,18 +140,34 @@ describe('panel event handlers', () => {
       />,
     );
 
-    expect(document.querySelector('.skeleton--card')).toBeTruthy();
-
-    await act(async () => {
-      vi.advanceTimersByTime(700);
-    });
-
     expect(document.querySelector('.skeleton--card')).toBeNull();
     expect(screen.getByText('prod-edge-01')).toBeTruthy();
     expect(screen.getByText('10.48.12.11')).toBeTruthy();
     expect(screen.getByText('Production group')).toBeTruthy();
     expect(screen.getByText('lin.chen')).toBeTruthy();
     expect(screen.getByText('us-east / edge')).toBeTruthy();
+  });
+
+  it('runs inspector actions only through provided handlers', async () => {
+    const onOpenForwarding = vi.fn();
+    const onPrepareCommand = vi.fn();
+    render(
+      <InspectorPanel
+        activeConnection={activeConnection}
+        connectionStats={inspectorConnectionStats}
+        formatters={formatters}
+        onOpenForwarding={onOpenForwarding}
+        onPrepareCommand={onPrepareCommand}
+        sessionContext={inspectorSessionContext}
+        t={t}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start' }));
+
+    expect(onPrepareCommand).toHaveBeenCalledOnce();
+    expect(onOpenForwarding).toHaveBeenCalledOnce();
   });
 
   it('toggles team access review visibility on button click', async () => {

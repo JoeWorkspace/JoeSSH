@@ -42,6 +42,8 @@ const releaseScriptNames = [
   "qa:desktop-release-package",
   "test:desktop-release-evidence",
   "qa:desktop-release-evidence",
+  "test:desktop-candidate-stage",
+  "qa:desktop-candidate-stage",
   "test:desktop-release-secrets",
   "qa:desktop-release-secrets",
   "test:desktop-release-diagnostics",
@@ -83,6 +85,7 @@ const releaseScriptNames = [
   "release:desktop:configure-secrets",
   "release:desktop:evidence-diagnostics",
   "release:desktop:verify-evidence",
+  "release:desktop:verify-candidate",
   "release:desktop:evidence-download",
   "release:desktop:evidence-preflight",
   "release:desktop:evidence-workflow",
@@ -127,7 +130,7 @@ function fixtureScriptValue(name, overrides = {}) {
     return "npm run test:desktop-unsigned-staging-report";
   }
   if (name === "qa") {
-    return "npm run lint && npm run qa:desktop-release-diagnostics && npm run qa:desktop-release-parity && npm run qa:lighthouse-audit && npm run qa:e2e:fresh";
+    return "npm run lint && npm run qa:desktop-candidate-stage && npm run qa:desktop-release-diagnostics && npm run qa:desktop-release-parity && npm run qa:lighthouse-audit && npm run qa:e2e:fresh";
   }
   if (name === "qa:desktop:real-ssh-smoke:required") {
     return "node scripts/require-real-ssh-smoke-env.mjs && npm run qa:desktop:real-ssh-smoke";
@@ -146,6 +149,9 @@ function fixtureScriptValue(name, overrides = {}) {
   }
   if (name === "release:desktop:package") {
     return "node scripts/package-desktop-release.mjs --require-platforms windows,macos,linux";
+  }
+  if (name === "release:desktop:verify-candidate") {
+    return "node scripts/verify-desktop-candidate.mjs";
   }
   if (name === "release:desktop:configure-secrets") {
     return "node scripts/configure-desktop-release-secrets.mjs";
@@ -218,17 +224,31 @@ function createFixture(t, overrides = {}) {
     "Cargo.toml": `version = "${version}"\n`,
     "crates/core/Cargo.toml":
       'russh = { version = "0.61", default-features = false, features = ["ring", "flate2"] }\n',
-    "services/sync/Cargo.toml":
-      `version = "${version}"\ndescription = "JoeSSH sync service API"\n`,
+    "services/sync/Cargo.toml": `version = "${version}"\ndescription = "JoeSSH sync service API"\n`,
     "apps/desktop/src-tauri/Cargo.toml": `version = "${version}"\n`,
     "apps/desktop/src-tauri/tauri.conf.json": JSON.stringify({
       productName: "JoeSSH",
       version,
       identifier: "dev.atlasterm.joessh",
-      bundle: { active: true, targets: "all", icon: ["icons/icon.png"] },
+      bundle: {
+        active: true,
+        targets: "all",
+        icon: ["icons/icon.png", "icons/icon.ico", "icons/icon.icns"],
+        windows: {
+          wix: {
+            version: version.replace(/-beta\./, "."),
+            upgradeCode: "c2a51a19-3ad8-5494-8c3e-6eb5d2e3e748",
+          },
+        },
+      },
       app: { windows: [{ label: "main" }] },
     }),
+    "apps/desktop/src-tauri/icons/icon.png": "png icon fixture",
+    "apps/desktop/src-tauri/icons/icon.ico": "ico icon fixture",
+    "apps/desktop/src-tauri/icons/icon.icns": "icns icon fixture",
     ".github/workflows/ci.yml": ciFixture(),
+    ".github/workflows/desktop-candidates.yml":
+      "git rev-parse HEAD\nstage-desktop-candidate.mjs --source-commit\nrelease:desktop:verify-candidate --source-commit\nactions/upload-artifact\n",
     ".github/workflows/desktop-release-artifacts.yml":
       "Collect macOS DMG diagnostics desktop-macos-dmg-diagnostics bundle_dmg.sh hdiutil info\n",
     ".github/workflows/dependabot-auto-merge.yml":
@@ -257,6 +277,13 @@ function createFixture(t, overrides = {}) {
     "scripts/package-desktop-release.mjs":
       "artifactSha256 sha256: artifactSha256 Desktop bundle source contains artifact(s) that do not include releaseVersion basename(artifact.path) validateSignatureEvidence(sourceArtifacts) Windows Desktop artifacts require --windows-signature-verification mkdirSync(outputDir\n",
     "scripts/package-desktop-release.test.mjs": "",
+    "scripts/stage-desktop-candidate.mjs":
+      "--source-commit cannot overlap Desktop bundle directory\n",
+    "scripts/stage-desktop-candidate.test.mjs": "",
+    "scripts/verify-desktop-candidate.mjs":
+      "releaseEligible signingStatus sourceCommit --standalone SHA256SUMS.txt candidate metadata does not list file\n",
+    "scripts/verify-desktop-candidate.test.mjs": "",
+    "scripts/desktop-candidate-workflow.test.mjs": "",
     "scripts/configure-desktop-release-secrets.mjs":
       'ATLASTERM_WINDOWS_CERTIFICATE_FILE ATLASTERM_APPLE_CERTIFICATE_FILE --write-template reports/handoff/desktop secret-input-template.env "secret", "set" --body-file desktop-release-evidence-preflight.mjs\n',
     "scripts/configure-desktop-release-secrets.test.mjs": "",
@@ -299,7 +326,7 @@ function createFixture(t, overrides = {}) {
       "source.repository git fsck --strict release notes hash mismatch artifact hash mismatch requiredChecksumManifests release-evidence-source.json verify-desktop-release-evidence.mjs --require-source unexpected Public Beta checksum manifest is staged\n",
     "scripts/verify-release-provenance.test.mjs": "",
     "scripts/audit-public-beta-rc.mjs":
-      'public-beta-rc-audit.json desktop-signing-secrets desktop-dogfood release-desktop-stale-artifacts publish-preflight github-ci check-runs/${checkRunId}/annotations\n',
+      "public-beta-rc-audit.json desktop-signing-secrets desktop-dogfood release-desktop-stale-artifacts publish-preflight github-ci check-runs/${checkRunId}/annotations\n",
     "scripts/audit-public-beta-rc.test.mjs": "",
     "scripts/release-publish-preflight.mjs":
       'Verify release Git checkout rev-parse --porcelain=v1 :(exclude)reports/release must point at HEAD for publish preflight verify-web-release-package.mjs verify-sync-release-evidence.mjs verify-desktop-release-evidence.mjs --require-source verify-artifact-checksums.mjs --all-release verify-release-provenance.mjs Verify GitHub CLI publish readiness ATLASTERM_RELEASE_GH_COMMAND auth", "status release", "view", releaseTag already exists; refusing to publish a duplicate release\n',
@@ -363,10 +390,8 @@ function createFixture(t, overrides = {}) {
       "Public Beta docs/repository-release-handoff.md SBOM SHA256 SBOM-SHA256SUMS.txt release-evidence.json release-evidence-source.json release-evidence-SHA256SUMS.txt reports/handoff/desktop/formal-evidence-unblock-report.json release-provenance.json release-provenance-SHA256SUMS.txt artifact sha256 manifest hash staged cargo-audit qa:rust-advisory qa:release:public:fixture qa:lighthouse release:publish-preflight backup-restore-smoke.json qa:sync:backup-restore-smoke unknown-host fingerprint changed-host-key blocking per-host known host removal runtime telemetry rollback\n",
     "docs/public-beta-dogfood-script.md":
       "Top 10 Tasks desktop-install-launch desktop-connection-host-key desktop-pty-session desktop-command-safety desktop-sftp-transfer desktop-forwarding web-admin-live-sync sync-device-flow sync-backup-restore-rollback release-evidence-review unsigned internal staging signed Desktop formal release evidence release:desktop:unsigned-staging-report reports/handoff/desktop/unsigned-staging-report.json qa:public-beta-dogfood reports/dogfood/public-beta/latest.json\n",
-    "docs/repository-release-handoff.md":
-      `healthy Git checkout do not publish from the damaged workspace git status --short git fsck --strict git diff --binary release-provenance.json npm run qa:release:public npm run qa:release:public:fixture release-evidence-source.json reports/handoff/desktop/formal-evidence-unblock-report.json node scripts/check-public-release-readiness.mjs v${version}\n`,
-    [`docs/release-notes/${version}.md`]:
-      `JoeSSH ${version} Desktop Web Admin Sync Service SHA256 release:publish-preflight\n`,
+    "docs/repository-release-handoff.md": `healthy Git checkout do not publish from the damaged workspace git status --short git fsck --strict git diff --binary release-provenance.json npm run qa:release:public npm run qa:release:public:fixture release-evidence-source.json reports/handoff/desktop/formal-evidence-unblock-report.json node scripts/check-public-release-readiness.mjs v${version}\n`,
+    [`docs/release-notes/${version}.md`]: `JoeSSH ${version} Desktop Web Admin Sync Service SHA256 release:publish-preflight\n`,
     "docs/desktop-release-metadata.json": JSON.stringify({
       productName: "JoeSSH",
       identifier: "dev.atlasterm.joessh",
@@ -454,6 +479,7 @@ function ciFixture() {
     "npm run qa:artifact-checksums",
     "npm run qa:desktop-release-package",
     "npm run qa:desktop-release-evidence",
+    "npm run qa:desktop-candidate-stage",
     "npm run qa:desktop-release-secrets",
     "npm run qa:desktop-release-diagnostics",
     "npm run qa:desktop-release-parity",

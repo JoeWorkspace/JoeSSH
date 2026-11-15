@@ -27,6 +27,12 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "icon": ["icons/icon.png"]
+    "icon": ["icons/icon.png", "icons/icon.ico", "icons/icon.icns"],
+    "windows": {
+      "wix": {
+        "version": "0.1.0.9",
+        "upgradeCode": "c2a51a19-3ad8-5494-8c3e-6eb5d2e3e748"
+      }
+    }
   }
 }

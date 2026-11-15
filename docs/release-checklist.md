@@ -36,6 +36,9 @@ native apps stay in preflight/device-smoke validation until a later beta.
   coverage for every generated SBOM/metadata file.
 - Build release artifacts and generate per-artifact `SHA256` checksum files
   before uploading.
+- Confirm the Tauri WiX version maps the semantic beta to a valid numeric MSI
+  version (`0.1.0-beta.9` to `0.1.0.9`) and keep the pinned WiX upgrade code
+  unchanged across releases.
 - Run `npm run release:web` and confirm the GitHub Release includes
   `reports/release/web/joessh-web-admin-0.1.0-beta.9.zip`, not only a checksum
   manifest for unpackaged `dist` files. The Web package self-test must keep
@@ -57,6 +60,16 @@ native apps stay in preflight/device-smoke validation until a later beta.
   `release-evidence-SHA256SUMS.txt`. The public release wrapper requires
   Windows, macOS, and Linux artifacts by default; aggregate platform build
   outputs first, then run the package step once.
+- The manual `Desktop Unsigned Candidates` workflow may be used before signing
+  to test installation on all three operating systems. Its output lives under
+  `reports/candidates/`, records `releaseEligible: false`, and must never be
+  copied directly into `reports/release/` or attached to a public release. It
+  must capture the checked-out commit with `git rev-parse HEAD` and run
+  `release:desktop:verify-candidate` before uploading each candidate.
+- After downloading a candidate, run `release:desktop:verify-candidate` with
+  `--standalone`, the extracted directory, platform, and expected 40-character
+  source commit. Reject candidates with unlisted files, mismatched sizes or
+  hashes, source/version drift, or changed non-release metadata.
 - Run `npm run release:verify-checksums` before drafting the GitHub Release so
   stale or incomplete checksum manifests fail before upload. The command
   discovers every staged `reports/release/**/SHA256SUMS.txt` manifest, including

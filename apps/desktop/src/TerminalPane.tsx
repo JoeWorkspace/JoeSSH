@@ -3,7 +3,6 @@ import {
   ChevronDown,
   ChevronUp,
   Monitor,
-  MoreHorizontal,
   Search,
   TerminalSquare,
   Video,
@@ -131,9 +130,6 @@ export const TerminalPane = memo(function TerminalPane({
               <Video size={15} className={recording ? "recording-active" : ""} />
             </IconButton>
           ) : null}
-          <IconButton label={t("desktop.paneMenu")}>
-            <MoreHorizontal size={15} />
-          </IconButton>
         </div>
       </header>
       {searchOpen ? (
