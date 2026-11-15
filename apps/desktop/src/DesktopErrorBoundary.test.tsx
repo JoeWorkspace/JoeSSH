@@ -60,7 +60,10 @@ describe("DesktopErrorBoundary", () => {
     expect(alert.querySelector(".inline-alert-copy strong")?.textContent).toBe("Localized crash title");
     expect(alert.querySelector(".inline-alert-copy small")?.textContent).toBe("Safe localized recovery guidance");
     expect(alert.textContent).not.toContain("render exploded");
-    expect(screen.getByRole("heading", { name: "Localized crash title" })).toBeTruthy();
+    const heading = screen.getByRole("heading", { name: "Localized crash title" });
+    expect(heading).toBeTruthy();
+    expect(heading.getAttribute("tabindex")).toBe("-1");
+    expect(document.activeElement).toBe(heading);
     expect(screen.getByRole("button", { name: "Reload workbench" })).toBeTruthy();
     expect(monitor.addBreadcrumb).toHaveBeenCalledWith(
       "react",

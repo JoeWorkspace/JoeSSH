@@ -166,6 +166,34 @@ describe("JoeSSH i18n", () => {
     }
   });
 
+  it("ships localized onboarding and terminal safety copy for every locale", () => {
+    const localizedKeys = [
+      "desktop.demoScopeSummary",
+      "desktop.demoShell",
+      "desktop.noSession",
+      "desktop.noSessionActionDetail",
+      "desktop.sampleDataShort",
+      "desktop.terminalSessionConnectRequired",
+      "desktop.terminalSessionSample",
+      "desktop.gettingStartedSampleData",
+      "desktop.gettingStartedRealConnection",
+      "desktop.ptyBlocked",
+    ] as const;
+
+    for (const locale of supportedLocaleCodes) {
+      for (const key of localizedKeys) {
+        const value = translate(locale, key);
+
+        expect(value).not.toBe(key);
+        expect(value.trim().length).toBeGreaterThan(0);
+
+        if (locale !== "en") {
+          expect(value).not.toBe(translate("en", key));
+        }
+      }
+    }
+  });
+
   it("keeps advertised locale names and shipped translations free of mojibake", { timeout: 15000 }, async () => {
     for (const locale of supportedLocaleCodes) {
       const meta = getLocaleMeta(locale);

@@ -1,11 +1,8 @@
 import { memo, useEffect, useRef, useState, type FormEvent } from "react";
 import {
   ArrowRight,
-  Bell,
-  Boxes,
   Braces,
   CircleAlert,
-  CircleDollarSign,
   ClipboardCheck,
   Database,
   DownloadCloud,
@@ -13,7 +10,6 @@ import {
   FileUp,
   Folder,
   Gauge,
-  HardDrive,
   KeyRound,
   LoaderCircle,
   Network,
@@ -210,6 +206,8 @@ export const InspectorPanel = memo(function InspectorPanel({
   connectionStats,
   formatters,
   hasActiveSession = true,
+  onOpenForwarding,
+  onPrepareCommand,
   sessionContext,
   t,
 }: {
@@ -217,30 +215,11 @@ export const InspectorPanel = memo(function InspectorPanel({
   connectionStats: InspectorConnectionStats;
   formatters: LocaleFormatters;
   hasActiveSession?: boolean;
+  onOpenForwarding?: () => void;
+  onPrepareCommand?: () => void;
   sessionContext: InspectorSessionContext;
   t: Translator;
 }) {
-  const [loaded, setLoaded] = useState(false);
-  useEffect(() => { const timer = setTimeout(() => setLoaded(true), 600); return () => clearTimeout(timer); }, []);
-
-  if (!loaded) {
-    return (
-      <div className="stack" aria-busy="true" aria-label={t("desktop.panelLoading")} role="status">
-        <Panel className="context-card skeleton--card" aria-hidden="true">
-          <div className="skeleton-row"><div className="skeleton skeleton--text" /><div className="skeleton skeleton--circle" /></div>
-          <div className="skeleton-row"><div className="skeleton skeleton--text" /><div className="skeleton skeleton--text-sm" /></div>
-          <div className="skeleton-row"><div className="skeleton skeleton--text" /><div className="skeleton skeleton--text-sm" /></div>
-          <div className="skeleton-row"><div className="skeleton skeleton--text" /><div className="skeleton skeleton--text-sm" /></div>
-        </Panel>
-        <Panel className="context-card skeleton--card" aria-hidden="true">
-          <div className="skeleton-row"><div className="skeleton skeleton--text" /><div className="skeleton skeleton--circle" /></div>
-          <div className="skeleton-row"><div className="skeleton skeleton--text" /></div>
-          <div className="skeleton-row"><div className="skeleton skeleton--text" /></div>
-        </Panel>
-      </div>
-    );
-  }
-
   return (
     <div className="stack">
       <Panel className="context-card">
@@ -322,26 +301,26 @@ export const InspectorPanel = memo(function InspectorPanel({
           </div>
           <div>
             <dt>{t("desktop.avgLatency")}</dt>
-            <dd>{formatters.latency(connectionStats.averageLatencyMs)}</dd>
+            <dd>{hasActiveSession ? formatters.latency(connectionStats.averageLatencyMs) : t("desktop.notAvailable")}</dd>
           </div>
         </dl>
       </Panel>
       <Panel className="context-card">
         <header>
           <span>{t("desktop.runbook")}</span>
-          <Badge tone="info">{t("desktop.attached")}</Badge>
+          <Badge tone={hasActiveSession ? "info" : "neutral"}>{hasActiveSession ? t("desktop.attached") : t("desktop.noSession")}</Badge>
         </header>
         <div className="runbook-item">
           <Braces size={16} aria-hidden="true" />
           <span>{t("desktop.gatewayTriage")}</span>
-          <Button disabled={!hasActiveSession} size="sm" title={!hasActiveSession ? t("desktop.noSessionActionDetail") : undefined} variant="ghost">
+          <Button disabled={!hasActiveSession || !onPrepareCommand} onClick={onPrepareCommand} size="sm" title={!hasActiveSession ? t("desktop.noSessionActionDetail") : undefined} variant="ghost">
             <Play size={13} aria-hidden="true" /> {t("desktop.run")}
           </Button>
         </div>
         <div className="runbook-item">
           <Network size={16} aria-hidden="true" />
           <span>{t("desktop.openSecureTunnel")}</span>
-          <Button disabled={!hasActiveSession} size="sm" title={!hasActiveSession ? t("desktop.noSessionActionDetail") : undefined} variant="ghost">
+          <Button disabled={!hasActiveSession || !onOpenForwarding} onClick={onOpenForwarding} size="sm" title={!hasActiveSession ? t("desktop.noSessionActionDetail") : undefined} variant="ghost">
             <Zap size={13} aria-hidden="true" /> {t("desktop.start")}
           </Button>
         </div>
@@ -516,21 +495,25 @@ export const SftpPanel = memo(function SftpPanel({ sftpItems, formatters, t, dir
                   : (transfer ? () => setSelectedDownloadName(entry.name) : undefined);
                 const isSelected = !entry.is_dir && entry.name === selectedDownloadName;
                 return (
-                <button key={entry.name} type="button" aria-label={`${entry.is_dir ? t("desktop.folder") : t("desktop.file")}: ${entry.name}`} aria-pressed={entry.is_dir ? undefined : isSelected} className={isSelected ? "is-selected" : undefined} role="listitem" disabled={!onClick} onClick={onClick} title={!safeEntryName ? t("desktop.notAvailable") : undefined}>
-                  {entry.is_dir ? <Folder size={16} aria-hidden="true" /> : <FileDown size={16} aria-hidden="true" />}
-                  <span>{entry.name}</span>
-                  <small>{!safeEntryName || entry.size === null ? t("desktop.notAvailable") : formatters.fileSize(entry.size)}</small>
-                </button>
+                  <div key={entry.name} role="listitem">
+                    <button type="button" aria-label={`${entry.is_dir ? t("desktop.folder") : t("desktop.file")}: ${entry.name}`} aria-pressed={entry.is_dir ? undefined : isSelected} className={isSelected ? "is-selected" : undefined} disabled={!onClick} onClick={onClick} title={!safeEntryName ? t("desktop.notAvailable") : undefined}>
+                      {entry.is_dir ? <Folder size={16} aria-hidden="true" /> : <FileDown size={16} aria-hidden="true" />}
+                      <span>{entry.name}</span>
+                      <small>{!safeEntryName || entry.size === null ? t("desktop.notAvailable") : formatters.fileSize(entry.size)}</small>
+                    </button>
+                  </div>
                 );
               })
             : !live
               ? sftpItems.map((item) => (
-            <button key={item.name} type="button" aria-label={`${item.type === "dir" ? t("desktop.folder") : t("desktop.file")}: ${item.name}`} role="listitem" disabled title={t("desktop.noSessionActionDetail")}>
-              {item.type === "dir" ? <Folder size={16} aria-hidden="true" /> : <FileDown size={16} aria-hidden="true" />}
-              <span>{item.name}</span>
-              <small>{item.sizeBytes === undefined ? t("desktop.notAvailable") : formatters.fileSize(item.sizeBytes)}</small>
-              <small>{formatters.relativeTime(item.modified.value, item.modified.unit as RelativeTimeFormatUnit)}</small>
-            </button>
+            <div key={item.name} role="listitem">
+              <button type="button" aria-label={`${item.type === "dir" ? t("desktop.folder") : t("desktop.file")}: ${item.name}`} disabled title={t("desktop.noSessionActionDetail")}>
+                {item.type === "dir" ? <Folder size={16} aria-hidden="true" /> : <FileDown size={16} aria-hidden="true" />}
+                <span>{item.name}</span>
+                <small>{item.sizeBytes === undefined ? t("desktop.notAvailable") : formatters.fileSize(item.sizeBytes)}</small>
+                <small>{formatters.relativeTime(item.modified.value, item.modified.unit as RelativeTimeFormatUnit)}</small>
+              </button>
+            </div>
           ))
               : null}
         </div>
@@ -561,7 +544,7 @@ export const TeamAccessPanel = memo(function TeamAccessPanel({ formatters, t }: 
       <Panel className="context-card team-access-card">
         <header>
           <span>{t("team.access")}</span>
-          <Badge tone="premium">{t("team.business")}</Badge>
+          <Badge tone="info">{t("desktop.sampleDataShort")}</Badge>
         </header>
         <div className="team-summary" aria-label={t("team.accessSummary")}>
           <span>
@@ -904,7 +887,12 @@ export type SettingsTelemetryControl = {
   onChange: (enabled: boolean) => void;
 };
 
-export const SettingsPanel = memo(function SettingsPanel({ t, connectionsIO, knownHosts, telemetry }: { t: Translator; connectionsIO?: SettingsConnectionsIO; knownHosts?: SettingsKnownHosts; telemetry?: SettingsTelemetryControl }) {
+export type SettingsReducedMotionControl = {
+  enabled: boolean;
+  onChange: (enabled: boolean) => void;
+};
+
+export const SettingsPanel = memo(function SettingsPanel({ t, connectionsIO, knownHosts, telemetry, reducedMotion }: { t: Translator; connectionsIO?: SettingsConnectionsIO; knownHosts?: SettingsKnownHosts; telemetry?: SettingsTelemetryControl; reducedMotion?: SettingsReducedMotionControl }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pendingKnownHostAction, setPendingKnownHostAction] = useState<{ type: "clear" } | { type: "remove"; key: string } | null>(null);
   const [knownHostActionBusy, setKnownHostActionBusy] = useState(false);
@@ -959,30 +947,30 @@ export const SettingsPanel = memo(function SettingsPanel({ t, connectionsIO, kno
           <span>{t("desktop.workspaceSettings")}</span>
           <Settings size={16} />
         </header>
-        <label className="toggle-row">
-          <span>
-            <strong>{t("desktop.recordTerminal")}</strong>
-            <small>{t("desktop.requiredProduction")}</small>
-          </span>
-          <input checked readOnly type="checkbox" />
-        </label>
-        <label className="toggle-row">
-          <span>
-            <strong>{t("desktop.syncEncrypted")}</strong>
-            <small>{t("desktop.availableProBusiness")}</small>
-          </span>
-          <input readOnly type="checkbox" />
-        </label>
         {telemetry ? (
           <label className="toggle-row">
             <span>
               <strong>{t("desktop.telemetryErrors")}</strong>
-              <small>{t("desktop.telemetryErrorsHint")}</small>
+              <small>{t("desktop.telemetryPrivacyHint")}</small>
             </span>
             <input
               checked={telemetry.enabled}
               disabled={!telemetry.available}
               onChange={(event) => telemetry.onChange(event.currentTarget.checked)}
+              type="checkbox"
+            />
+          </label>
+        ) : null}
+        {reducedMotion ? (
+          <label className="toggle-row">
+            <span>
+              <strong>{t("desktop.reduceMotion")}</strong>
+              <small>{t("desktop.reduceMotionHint")}</small>
+            </span>
+            <input
+              aria-label={t("desktop.reduceMotion")}
+              checked={reducedMotion.enabled}
+              onChange={(event) => reducedMotion.onChange(event.currentTarget.checked)}
               type="checkbox"
             />
           </label>
@@ -1059,29 +1047,6 @@ export const SettingsPanel = memo(function SettingsPanel({ t, connectionsIO, kno
             )}
           </>
         ) : null}
-      </Panel>
-      <Panel className="context-card commercial-card">
-        <header>
-          <span>{t("desktop.businessLayer")}</span>
-          <Badge tone="premium">{t("desktop.team")}</Badge>
-        </header>
-        <div className="tier-grid">
-          <span>
-            <Boxes size={16} /> {t("desktop.sharedVaults")}
-          </span>
-          <span>
-            <Database size={16} /> {t("desktop.auditExport")}
-          </span>
-          <span>
-            <HardDrive size={16} /> {t("desktop.devicePosture")}
-          </span>
-          <span>
-            <CircleDollarSign size={16} /> {t("desktop.seatBilling")}
-          </span>
-        </div>
-        <Button variant="ghost">
-          <Bell size={15} /> {t("desktop.managePlan")}
-        </Button>
       </Panel>
     </div>
   );

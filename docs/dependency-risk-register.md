@@ -1,64 +1,114 @@
 # Dependency Risk Register
 
-This register tracks known production dependency findings that do not block the
-Desktop + Web Admin + self-hosted Sync Service Public Beta because they are not
-on the first public runtime path or require a breaking platform upgrade.
-It also records non-production audit findings that affect local QA or release
-tooling so dependency maintenance work is visible before GA.
-
-The release gate remains strict for high severity:
+This register records unresolved dependency findings and their owners. Recording
+a finding is not a release waiver. The full npm workspace audit must pass its
+high-severity gate, and both Rust lockfiles must pass an audit that denies
+warnings. Mobile or development-only paths do not bypass those gates.
 
 ```bash
-npm audit --audit-level=high
-node scripts/check-dependency-risk-register.mjs
+npm run qa:prod-audit
+npm run qa:rust-advisory
 ```
 
-The checker shells out to `npm audit --omit=dev --audit-level=moderate --json`
-to validate production-scope moderate advisories against this register, while
-the high-severity gate runs against the full workspace audit output.
+The register checker separately checks production-scope moderate-or-higher
+package entries against this document. Passing that checker confirms documentation
+coverage only; it does not mean the vulnerability audit passed.
 
-## Active Risks
+## Audit snapshot: 2026-10-23
 
-### RustSec Audit
+After the initial compatible updates, the full npm audit reported 22 affected
+package entries (19 high, 3 moderate), down from 68 (37 high, 30 moderate,
+1 critical). The subsequent lint-staged 17.6.0 upgrade removes its braces path;
+the full and production audits now both report 21 entries (18 high, 3 moderate,
+no critical). These are propagated
+package entries, not distinct advisories: three advisories remain.
 
-The Rust SSH stack previously pulled `rsa` through the optional `russh/rsa`
-feature, which triggered RUSTSEC-2023-0071. Public Beta disables that feature in
-`crates/core/Cargo.toml`; password auth and non-RSA private keys remain in
-scope, while RSA private-key auth stays out of scope until the upstream timing
-side-channel advisory has a safe path.
+The initial evidence is in `reports/remediation-2026-10-23/npm-audit-final.json`
+and `npm-audit-production-final.json`. Follow-up evidence and upstream fix
+research are in `reports/release-remediation-2026-10-23/npm/`. Rerun audits for any later release; this
+snapshot does not establish release readiness.
 
-### Production Runtime Audit
+## Unresolved npm findings
 
-| Package                                        | Severity | Advisory                                          | Runtime Impact                                                                                                                                                  | Public Beta Decision                                                                | Follow-up                                                            |
-| ---------------------------------------------- | -------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| `js-yaml` via React Native test/coverage chain | Moderate | https://github.com/advisories/GHSA-h67p-54hq-rp68 | Current audit path is introduced through React Native/Babel/Jest tooling for the mobile workspace. Mobile native apps are not part of the first public release. | Accepted for `0.1.0-beta.1`; does not block Desktop + Web Admin + self-hosted Sync. | Reassess during Expo/React Native upgrade before mobile public beta. |
+| Origin | Advisory | Impact and decision | Owner and next action |
+| --- | --- | --- | --- |
+| `braces` 3.0.3, high | https://github.com/advisories/GHSA-vfj7-8cjw-p6xm | Deeply nested patterns can exhaust the stack. Present in Metro file matching. The lint-staged path was removed by upgrading to 17.6.0. No patched upstream release was available at review. The high-severity release gate remains blocked. | Repository/mobile maintainers: adopt a patched braces or supported parent chain, then rerun tooling and mobile checks. |
+| `node-forge` 1.4.0, high | https://github.com/advisories/GHSA-86w9-cpqp-85rv | RSA signature verification accepts malformed DigestAlgorithm nesting. Reached through Expo code-signing tools. No patched upstream release was available at review. This is not the Rust SSH implementation, but the full npm gate remains blocked. | Mobile/release maintainers: update Expo's certificate chain after the upstream fix; do not substitute unreviewed cryptographic code. |
+| `decode-uri-component` 0.2.2, moderate | https://github.com/advisories/GHSA-vcc3-ghjq-m6fr | Malformed encoded input can cause excessive decoding work through mobile routing. Version 0.5.0 fixes it but changes to ESM; overriding query-string 7's CommonJS dependency breaks decoding. No risk waiver is introduced here. | Mobile maintainers: upgrade Expo and Router together to a supported chain without the old decoder, then validate routes and real native devices. |
 
-Current npm audit reports the affected production dependency chain through
-`react-native`, `babel-jest`, `@jest/transform`, `babel-plugin-istanbul`, and
-`@istanbuljs/load-nyc-config` before reaching `js-yaml`.
+The production audit propagates the braces finding through `micromatch`,
+`metro-file-map`, `metro`, `metro-config`, `metro-transform-worker`,
+`@expo/metro`, `@expo/metro-config`, `@react-native/metro-config`,
+`@react-native/community-cli-plugin`, `react-native`,
+`@react-native/virtualized-lists`, `react-native-reanimated`, and
+`react-native-worklets`. Expo findings also include `@expo/cli`,
+`@expo/code-signing-certificates`, and `expo`. The decoder path is
+`expo-router` -> `query-string` -> `decode-uri-component`.
 
-### Development And QA Toolchain Audit
+The full audit no longer reports `lint-staged`. Its upgrade requires Node
+22.22.1 or newer and Git 2.32 or newer; Prettier 3.9.10 is now an explicit
+development dependency because the existing commit-hook configuration invokes
+it. Isolated Git hook tests cover formatting, lint failures, partial staging,
+unrelated modifications, and rollback.
 
-These findings appear in full `npm audit` output without `--omit=dev`. They do
-not ship in the Desktop/Web/Sync runtime artifacts, but they are tracked because
-release engineering should not normalize noisy audit output.
+The `--omit=dev` label
+does not prove every affected package ships in a desktop artifact: Expo declares
+build and development tools as production dependencies. Reachability must be
+assessed for each release artifact rather than assumed from labels.
 
-| Package                                               | Severity | Advisory                                          | Tooling Impact                                                                                                                                                                            | Public Beta Decision                                                                                                                 | Follow-up                                                                                                                                  |
-| ----------------------------------------------------- | -------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `@opentelemetry/core` via `lighthouse`/`@sentry/node` | Moderate | https://github.com/advisories/GHSA-8988-4f7v-96qf | Affects the Lighthouse QA dependency chain used for local audits, not shipped app runtime code. The audit fix currently requires a breaking Lighthouse downgrade/major dependency change. | Accepted for `0.1.0-beta.1`; keep high-severity audit as the blocking gate and isolate Lighthouse usage to trusted local/CI targets. | Recheck after Lighthouse/Sentry/OpenTelemetry publish a compatible patched chain; remove or pin the audit lane if a high severity appears. |
-| `esbuild`                                             | Moderate | https://github.com/advisories/GHSA-g7r4-m6w7-qqqr | Affects Windows development server file-read exposure. Public release artifacts are produced by trusted CI/local builds; the dev server must not be exposed to untrusted networks.        | Accepted for `0.1.0-beta.1`; does not affect static Web Admin, desktop installer, or Sync service runtime artifacts.                 | Upgrade Vite/esbuild when the compatible patched esbuild range is available; keep dev server bound to loopback for local development.      |
+Metro 0.84.5 removes the affected `image-size` dependency within the current
+React Native/Expo ranges. See the [official Metro release](https://github.com/react/metro/releases/tag/v0.84.5).
+The isolated decoder compatibility reproduction is retained under
+`reports/remediation-2026-10-23/dependency-compatibility/`.
+
+The canonical mainline inspected on 2026-10-23 already contains a separately
+validated decoder 0.5.0 vendor package with a CommonJS compatibility entry and
+source-integrity checks. That is another integration option; the raw ESM
+override failure does not establish that a compatible fix is impossible.
+This historical workspace has not adopted that vendor contract. Reconcile it
+against mainline and rerun its integrity, routing, lockfile, and artifact checks
+before claiming the decoder finding is resolved here.
+
+## RustSec
+
+The root workspace lock passes the freshly fetched 2026-10-23 RustSec database
+after updating `ctutils` to 0.4.4, `chacha20` to 0.10.2, and `der` to 0.8.2.
+The Tauri lock additionally updates compatible dependencies including `anyhow`,
+`crypto-bigint`, `plist`/`quick-xml`, and `tauri-utils`, removing the old `unic`
+chain. No advisory ignore or warning suppression was added.
+
+The complete Tauri lock still fails `--deny warnings` for two Linux GTK chain
+findings, even though neither appears in the Windows target dependency tree:
+
+| Package | Advisory | Decision and follow-up |
+| --- | --- | --- |
+| `glib` 0.18.5 | https://rustsec.org/advisories/RUSTSEC-2024-0429.html | Unsound Iterator and DoubleEndedIterator implementations. The fixed glib line is outside Tauri's GTK 0.18 dependency range. Desktop/release maintainers must adopt a supported Tauri/GTK upgrade; cross-platform release remains blocked. |
+| `proc-macro-error` 1.0.4 | https://rustsec.org/advisories/RUSTSEC-2024-0370.html | Unmaintained dependency in the same GTK chain. Update through the supported framework chain; keep warnings denied. |
+
+Evidence: `rustsec-fresh-audit-after.log`, `tauri-rustsec-final.log`, and
+`tauri-windows-*-tree.log` under `reports/remediation-2026-10-23/`.
+The official advisory database checkout used for local evidence is at commit
+`f7b2f6bc663452200bbe639ebb75e0c762b3422b`. Local audits used that freshly
+fetched database without disabling yanked-package checks.
+
+Canonical mainline also has a verified GLib backport and a separate audit of
+the original registry identity. Its maintenance policy was still within its
+2026-11-28 review date at inspection. These are relevant reconciliation
+sources, not evidence that this workspace has the backport or passes its
+unchanged `cargo audit --deny warnings` gate. See the investigation and
+mainline comparison under `reports/release-remediation-2026-10-23/rust/`.
+
+The Rust SSH `russh/rsa` feature remains disabled for RUSTSEC-2023-0071.
+Password auth and supported non-RSA private keys remain in scope; RSA private-key
+auth requires a safe upstream path before reintroduction.
 
 ## Rules
 
-- Any high or critical production vulnerability blocks release.
-- Any moderate production vulnerability must be listed here with advisory URL,
-  affected path, runtime impact, and follow-up owner before Public Beta.
-- Low severity findings are reviewed during dependency maintenance but do not
-  block Public Beta unless they affect credential handling or remote code
-  execution surfaces.
-- Development and QA toolchain findings do not block Public Beta unless they
-  affect release artifact integrity, CI secrets, credential handling, or a
-  network-exposed service in the release pipeline.
-- If mobile moves into the public release scope, React Native and Expo moderate
-  findings become release blockers unless fixed or proven unreachable in the
-  shipped binary.
+- High or critical findings in the full npm audit block release.
+- Both Rust lockfiles must pass `cargo audit --deny warnings`.
+- Moderate production findings need an advisory URL, affected path, impact,
+  decision, and follow-up owner. Documentation does not waive another gate.
+- Preserve lockfile reproducibility and supported peer ranges. Do not use forced
+  downgrades, incompatible overrides, or audit ignores just to get a green result.
+- Signed packages, provenance, real SSH/device tests, and a clean canonical
+  release checkout remain separate acceptance requirements.

@@ -17,6 +17,21 @@ native apps stay in preflight/device-smoke validation until a later beta.
 - Update `CHANGELOG.md` with the `0.1.0-beta.1` section.
 - Update `docs/release-notes/0.1.0-beta.1.md`; the GitHub Release draft uses
   this versioned notes file, not the release checklist.
+- Confirm the release accurately links `SUPPORT.md`, `PRIVACY.md`,
+  `TRADEMARKS.md`, and `THIRD_PARTY_NOTICES.md`, and does not advertise Pro,
+  Founder, hosted support, or a funding benefit that is not live.
+- Keep `.github/FUNDING.yml` comments-only unless its destination and payout
+  owner have passed `docs/commercial-release-readiness.md`.
+- Do not enable paid checkout while `PRIVACY.md`, `REFUND_POLICY.md`,
+  `TERMS_OF_SALE.md`, or `TRADEMARKS.md` contains a `{{...}}` seller,
+  processor, contact, or governing-law placeholder.
+- Generate a build-specific third-party license inventory in addition to the
+  SBOM with `npm run release:sbom`. Keep `third-party-licenses.json` and
+  `third-party-license-texts.json` beside the four SBOM documents; they contain
+  the component mapping and preserved license/`NOTICE` text, covered by
+  `SBOM-SHA256SUMS.txt`. Include or link this bundle with the distributed
+  artifacts. Missing or unreviewed license material must fail verification.
+  `THIRD_PARTY_NOTICES.md` is an overview, not the complete bundle.
 - Run `npm run qa:release:public` on a clean release machine.
   The root QA portion uses `npm run qa:e2e:fresh` so release-machine E2E
   starts local web, desktop, mobile companion, and mock services on freshly
@@ -29,9 +44,14 @@ native apps stay in preflight/device-smoke validation until a later beta.
 - Run `npm run release:sbom:verify`; it verifies CycloneDX SBOM structure,
   Cargo metadata structure, required Rust/Tauri workspace packages, required
   third-party dependency packages, and `reports/release/SBOM-SHA256SUMS.txt`
-  coverage for every generated SBOM/metadata file.
+  coverage for every generated SBOM/metadata and license file. It also rejects
+  stale lockfile SHA256 bindings, missing or mismatched dependency versions,
+  missing license components, altered license text, and invalid source paths.
 - Build release artifacts and generate per-artifact `SHA256` checksum files
   before uploading.
+- Confirm the Tauri WiX version maps the semantic beta to a valid numeric MSI
+  version (`0.1.0-beta.1` to `0.1.0.1`) and keep the pinned WiX upgrade code
+  unchanged across releases.
 - Run `npm run release:web` and confirm the GitHub Release includes
   `reports/release/web/joessh-web-admin-0.1.0-beta.1.zip`, not only a checksum
   manifest for unpackaged `dist` files. The Web package self-test must keep
@@ -53,6 +73,18 @@ native apps stay in preflight/device-smoke validation until a later beta.
   `release-evidence-SHA256SUMS.txt`. The public release wrapper requires
   Windows, macOS, and Linux artifacts by default; aggregate platform build
   outputs first, then run the package step once.
+- The manual `Desktop Unsigned Candidates` workflow may be used before signing
+  to test installation on all three operating systems. Its output lives under
+  `reports/candidates/`, records `releaseEligible: false`, and must never be
+  copied directly into `reports/release/` or attached to a public release. It
+  resolves the requested ref once in `source-gate`; every platform checks out
+  that exact commit and rejects checkout drift before building. It captures the
+  checked-out commit with `git rev-parse HEAD` and runs
+  `release:desktop:verify-candidate` before uploading each candidate.
+- After downloading a candidate, run `release:desktop:verify-candidate` with
+  `--standalone`, the extracted directory, platform, and expected 40-character
+  source commit. Reject candidates with unlisted files, mismatched sizes or
+  hashes, source/version drift, or changed non-release metadata.
 - Run `npm run release:verify-checksums` before drafting the GitHub Release so
   stale or incomplete checksum manifests fail before upload. The command
   discovers every staged `reports/release/**/SHA256SUMS.txt` manifest, including
@@ -197,7 +229,7 @@ native apps stay in preflight/device-smoke validation until a later beta.
   staged `reports/release/**/SHA256SUMS.txt` files before invoking
   `gh release create`.
 - `npm run release:publish-preflight` must pass before `npm run
-  release:desktop:draft`; it wraps the real checksum verifier, Desktop release
+release:desktop:draft`; it wraps the real checksum verifier, Desktop release
   evidence verifier, SBOM verifier, and draft dry-run so missing artifacts or
   stale artifact sha256 bindings or signing evidence do not masquerade as
   release readiness.

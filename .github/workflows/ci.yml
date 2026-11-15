@@ -31,12 +31,15 @@ jobs:
       - run: npm run qa:artifact-checksums
       - run: npm run qa:desktop-release-package
       - run: npm run qa:desktop-release-evidence
+      - run: npm run qa:desktop-candidate-stage
       - run: npm run qa:sync-release-package
       - run: npm run qa:sync-release-evidence
       - run: npm run qa:web-release
       - run: npm run qa:release-sbom
       - run: npm run qa:release-draft
       - run: npm run qa:release-publish-preflight
+      - run: npm run qa:release-readiness
+      - run: npm run test:dependency-risk-register
       - run: npm run qa:lighthouse-audit
       - run: npm run test:web-admin-bundle-token-scan
 
@@ -139,7 +142,7 @@ jobs:
 
   visual-qa:
     name: Visual QA
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     needs: [build]
     steps:
       - uses: actions/checkout@v4
@@ -151,9 +154,9 @@ jobs:
       - name: Cache Playwright browsers
         uses: actions/cache@v4
         with:
-          path: ~/.cache/ms-playwright
+          path: ~/AppData/Local/ms-playwright
           key: playwright-visual-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install chromium
       - run: npm run qa:e2e:visual:fresh
       - uses: actions/upload-artifact@v4
         if: failure()
@@ -189,6 +192,7 @@ jobs:
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace
       - run: cargo audit --deny warnings
+      - run: cargo audit --file apps/desktop/src-tauri/Cargo.lock --deny warnings
 
   tauri-shell:
     name: Tauri Shell

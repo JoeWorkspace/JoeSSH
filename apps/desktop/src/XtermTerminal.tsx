@@ -105,13 +105,13 @@ export function XtermTerminal({
     if (typeof ResizeObserver !== "undefined") {
       const observer = new ResizeObserver((entries) => {
         const target = entries[0]?.target;
-        applyDimensions(measureTerminalDimensions(target instanceof HTMLElement ? target : container, fallbackDimensions));
+        applyDimensions(measureTerminalDimensions(target instanceof HTMLElement ? target : container, dimensionsRef.current));
       });
       observer.observe(container);
       disconnectResize = () => observer.disconnect();
     } else {
       const handleWindowResize = () => {
-        applyDimensions(measureTerminalDimensions(container, fallbackDimensions));
+        applyDimensions(measureTerminalDimensions(container, dimensionsRef.current));
       };
       window.addEventListener("resize", handleWindowResize);
       disconnectResize = () => window.removeEventListener("resize", handleWindowResize);

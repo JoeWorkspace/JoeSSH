@@ -25,11 +25,39 @@ function setup(
 const q = (container: HTMLElement, selector: string) => container.querySelector(selector) as HTMLInputElement;
 
 describe("ConnectModal", () => {
+  it("places initial focus on the host instead of the close control", () => {
+    setup(vi.fn());
+    expect(document.activeElement).toBe(screen.getByLabelText("desktop.host"));
+  });
+
   it("renders a labelled dialog with a disabled connect button until valid", () => {
     setup(vi.fn());
     expect(screen.getByRole("dialog", { name: "desktop.connectTitle" })).toBeTruthy();
     const button = screen.getByRole("button", { name: "desktop.connectAction" }) as HTMLButtonElement;
     expect(button.disabled).toBe(true);
+  });
+
+  it("exposes required connection fields and password-manager semantics", () => {
+    const { container } = setup(vi.fn());
+
+    expect((container.querySelector('input[type="text"]') as HTMLInputElement)?.required).toBe(true);
+    expect((container.querySelector('input[type="number"]') as HTMLInputElement)?.required).toBe(true);
+    expect((container.querySelectorAll('input[type="text"]')[1] as HTMLInputElement)?.required).toBe(true);
+    expect((container.querySelector('input[type="password"]') as HTMLInputElement)?.required).toBe(true);
+    expect(container.querySelector('input[type="password"]')?.getAttribute("autocomplete")).toBe(
+      "current-password",
+    );
+  });
+
+  it("marks the private key credential as required when selected", () => {
+    const { container } = setup(vi.fn());
+
+    fireEvent.change(container.querySelector("select") as HTMLSelectElement, {
+      target: { value: "private_key" },
+    });
+
+    expect((container.querySelector("textarea") as HTMLTextAreaElement)?.required).toBe(true);
+    expect((container.querySelector('input[type="password"]') as HTMLInputElement)?.required).toBe(false);
   });
 
   it("submits a password connection and reports the session id", async () => {
@@ -222,10 +250,14 @@ describe("ConnectModal", () => {
 
   it("closes on Escape and on backdrop click", () => {
     const onClose = vi.fn();
+    const bubbledKeyDown = vi.fn();
+    window.addEventListener("keydown", bubbledKeyDown);
     render(<ConnectModal onClose={onClose} onConnect={vi.fn()} onConnected={vi.fn()} t={t} />);
     fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     expect(onClose).toHaveBeenCalledTimes(1);
+    expect(bubbledKeyDown).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("dialog"));
     expect(onClose).toHaveBeenCalledTimes(2);
+    window.removeEventListener("keydown", bubbledKeyDown);
   });
 });

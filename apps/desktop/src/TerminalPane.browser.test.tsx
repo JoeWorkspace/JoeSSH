@@ -511,6 +511,8 @@ describe("TerminalPane", () => {
 
   it("handles Escape key in search bar", () => {
     const onClose = vi.fn();
+    const bubbledKeyDown = vi.fn();
+    window.addEventListener("keydown", bubbledKeyDown);
     render(
       <TerminalPane
         title="Test Esc"
@@ -527,6 +529,8 @@ describe("TerminalPane", () => {
     const input = screen.getByPlaceholderText("desktop.searchPlaceholder");
     fireEvent.keyDown(input, { key: "Escape" });
     expect(onClose).toHaveBeenCalled();
+    expect(bubbledKeyDown).not.toHaveBeenCalled();
+    window.removeEventListener("keydown", bubbledKeyDown);
   });
 
   it("handles Enter key in search bar for next match", () => {
@@ -690,6 +694,35 @@ describe("TerminalPane", () => {
     await new Promise((r) => setTimeout(r, 100));
     const suggestions = document.querySelectorAll(".terminal-autocomplete-item");
     expect(suggestions.length).toBeGreaterThan(0);
+  });
+
+  it("exposes the active suggestion and selects it from the keyboard", async () => {
+    const onChange = vi.fn();
+    render(
+      <TerminalPane
+        title="Test AutocompleteKeyboard"
+        lines={makeLines(3)}
+        statusLabel="Live"
+        t={mockT as never}
+        active
+        commandInput="ku"
+        commandHistory={["kubectl get pods", "kubectl logs"]}
+        onCommandInputChange={onChange}
+        onCommandSubmit={vi.fn()}
+      />,
+    );
+    await new Promise((r) => setTimeout(r, 100));
+
+    const input = screen.getByRole("combobox");
+    expect(input.getAttribute("aria-expanded")).toBe("true");
+    expect(input.getAttribute("aria-activedescendant")).toBeNull();
+
+    fireEvent.keyDown(input, { key: "ArrowDown", altKey: true });
+    expect(input.getAttribute("aria-activedescendant")).toBe("terminal-autocomplete-option-0");
+    expect(document.getElementById("terminal-autocomplete-option-0")?.getAttribute("aria-selected")).toBe("true");
+
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(onChange).toHaveBeenCalledWith("kubectl get pods");
   });
 
   it("renders autocomplete hint through the translator", () => {

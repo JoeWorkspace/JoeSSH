@@ -34,6 +34,32 @@ describe("ContextMenu", () => {
     expect(screen.getByText("desktop.moveToGroup")).toBeTruthy();
   });
 
+  it("focuses its first command and restores the invoking control", () => {
+    const opener = document.createElement("button");
+    document.body.appendChild(opener);
+    opener.focus();
+
+    const { unmount } = render(<ContextMenu {...defaultProps} />);
+    expect(document.activeElement).toBe(
+      screen.getByRole("menuitem", { name: "desktop.contextConnect" }),
+    );
+
+    unmount();
+    expect(document.activeElement).toBe(opener);
+    opener.remove();
+  });
+
+  it("hides actions that are unavailable for the runtime or connection type", () => {
+    render(<ContextMenu {...defaultProps} capabilities={{ connect: false, delete: false, edit: false, test: false }} />);
+
+    expect(screen.queryByText("desktop.contextConnect")).toBeNull();
+    expect(screen.queryByText("desktop.contextTest")).toBeNull();
+    expect(screen.queryByText("desktop.contextEdit")).toBeNull();
+    expect(screen.queryByText("desktop.contextDelete")).toBeNull();
+    expect(screen.getByText("desktop.contextDuplicate")).toBeTruthy();
+    expect(screen.getByText("desktop.contextCopySsh")).toBeTruthy();
+  });
+
   it("renders at the correct position", () => {
     render(<ContextMenu {...defaultProps} />);
     const menu = screen.getByRole("menu");
@@ -198,10 +224,26 @@ describe("ContextMenu", () => {
     fireEvent.keyDown(menu, { key: "ArrowUp" });
   });
 
-  it("does nothing for other keys", () => {
-    render(<ContextMenu {...defaultProps} />);
+  it("closes on Tab so focus cannot escape behind the open menu", () => {
+    const onClose = vi.fn();
+    const onToggleMoveToGroup = vi.fn();
+    render(
+      <ContextMenu
+        {...defaultProps}
+        onClose={onClose}
+        onToggleMoveToGroup={onToggleMoveToGroup}
+      />,
+    );
     const menu = screen.getByRole("menu");
-    fireEvent.keyDown(menu, { key: "Tab" });
+    const event = new KeyboardEvent("keydown", {
+      bubbles: true,
+      cancelable: true,
+      key: "Tab",
+    });
+    menu.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(onToggleMoveToGroup).toHaveBeenCalledWith(null);
   });
 
   it("handles ArrowDown with empty menu", () => {
@@ -218,12 +260,26 @@ describe("ContextMenu", () => {
     fireEvent.keyDown(menu, { key: "ArrowUp" });
   });
 
+  it("supports Home and End navigation", () => {
+    render(<ContextMenu {...defaultProps} />);
+    const menu = screen.getByRole("menu");
+    const items = menu.querySelectorAll(
+      '[role="menuitem"]:not([disabled])',
+    ) as NodeListOf<HTMLElement>;
+
+    fireEvent.keyDown(menu, { key: "End" });
+    expect(document.activeElement).toBe(items[items.length - 1]);
+    fireEvent.keyDown(menu, { key: "Home" });
+    expect(document.activeElement).toBe(items[0]);
+  });
+
   it("handles Escape key inside menu to close", () => {
     const onClose = vi.fn();
     const onToggleMoveToGroup = vi.fn();
     render(<ContextMenu {...defaultProps} onClose={onClose} onToggleMoveToGroup={onToggleMoveToGroup} />);
     fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
-    expect(onClose).toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onToggleMoveToGroup).toHaveBeenCalledTimes(1);
     expect(onToggleMoveToGroup).toHaveBeenCalledWith(null);
   });
 });

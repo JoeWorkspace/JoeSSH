@@ -1,24 +1,31 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { basename, isAbsolute, relative, resolve } from "node:path";
+import { assertReportOutput, validateCargoInventory, validateNpmInventory, validateSbomBinding } from "./release-sbom-lib.mjs";
+import { validateLicenseInventory } from "./release-license-lib.mjs";
 
 const defaultRoot = resolve(import.meta.dirname, "..");
-const { root } = parseArgs(process.argv.slice(2));
+const { root, output } = parseArgs(process.argv.slice(2));
+const outputDir = assertReportOutput(root, output);
+const outputPath = relative(root, outputDir).replaceAll("\\", "/");
 const expectedSbomFiles = [
   {
     label: "Desktop npm CycloneDX SBOM",
     path: "reports/release/npm-desktop-sbom.cdx.json",
     validate: validateCycloneDxSbom,
+    workspace: "desktop",
   },
   {
     label: "Web Admin npm CycloneDX SBOM",
     path: "reports/release/npm-web-sbom.cdx.json",
     validate: validateCycloneDxSbom,
+    workspace: "web",
   },
   {
     label: "Rust workspace cargo metadata",
     path: "reports/release/cargo-metadata.json",
     validate: validateCargoMetadata,
+    lockfile: "Cargo.lock",
     requiredPackages: [
       "atlasterm-core",
       "atlasterm-sync",
@@ -34,6 +41,7 @@ const expectedSbomFiles = [
     label: "Tauri shell cargo metadata",
     path: "reports/release/tauri-cargo-metadata.json",
     validate: validateCargoMetadata,
+    lockfile: "apps/desktop/src-tauri/Cargo.lock",
     requiredPackages: [
       "atlasterm-desktop-shell",
       "atlasterm-core",
@@ -46,12 +54,18 @@ const expectedSbomFiles = [
     ],
   },
 ];
-const checksumManifestPath = "reports/release/SBOM-SHA256SUMS.txt";
+for (const entry of expectedSbomFiles) entry.path = entry.path.replace("reports/release/", `${outputPath}/`);
+const checksumManifestPath = `${outputPath}/SBOM-SHA256SUMS.txt`;
 const errors = [];
+const documents = {};
+let licenseFiles = [];
 
 for (const sbomFile of expectedSbomFiles) {
   validateSbomFile(sbomFile);
 }
+try {
+  if (Object.keys(documents).length === 4) licenseFiles = validateLicenseInventory(root, outputDir, documents);
+} catch (error) { errors.push(`Third-party license verification failed: ${error.message}`); }
 validateChecksumManifest();
 
 if (errors.length > 0) {
@@ -60,8 +74,9 @@ if (errors.length > 0) {
 
 console.log(`Release SBOM verified for ${expectedSbomFiles.length} file(s).`);
 
-function validateSbomFile({ label, path, validate, requiredPackages }) {
+function validateSbomFile({ label, path, validate, requiredPackages, workspace, lockfile }) {
   const fullPath = resolve(root, path);
+  try { assertReportOutput(root, fullPath); } catch (error) { errors.push(`${label}: ${error.message}`); return; }
   if (!existsSync(fullPath)) {
     errors.push(`${label} is missing: ${path}`);
     return;
@@ -80,6 +95,12 @@ function validateSbomFile({ label, path, validate, requiredPackages }) {
   }
 
   validate(label, json, { requiredPackages });
+  documents[basename(path)] = json;
+  try {
+    validateSbomBinding(json, root, workspace ? "npm" : "cargo");
+    if (workspace) validateNpmInventory(json, root, workspace);
+    else validateCargoInventory(json, root, lockfile);
+  } catch (error) { errors.push(`${label}: ${error.message}`); }
 }
 
 function validateCycloneDxSbom(label, json) {
@@ -155,9 +176,13 @@ function validateChecksumManifest() {
       errors.push(`SBOM checksum manifest is missing ${path}`);
     }
   }
+  for (const name of licenseFiles) {
+    if (!entryPaths.has(`${outputPath}/${name}`)) errors.push(`SBOM checksum manifest is missing ${outputPath}/${name}`);
+  }
 
   for (const entry of manifestEntries) {
     const fullPath = resolve(root, entry.path);
+    try { assertReportOutput(root, fullPath); } catch (error) { errors.push(`${checksumManifestPath}: ${error.message}`); continue; }
     if (!existsSync(fullPath)) {
       errors.push(`${checksumManifestPath} references missing file ${entry.path}`);
       continue;
@@ -212,9 +237,15 @@ function sha256(file) {
 
 function parseArgs(args) {
   let root = defaultRoot;
+  let output = "reports/release";
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
+    if (arg === "--output-dir") {
+      if (!args[index + 1]) fail("--output-dir requires a path.");
+      output = args[++index];
+      continue;
+    }
     if (arg === "--root") {
       const value = args[index + 1];
       if (!value) {
@@ -232,7 +263,7 @@ function parseArgs(args) {
     fail(`Unknown argument: ${arg}`);
   }
 
-  return { root };
+  return { root, output };
 }
 
 function fail(message) {

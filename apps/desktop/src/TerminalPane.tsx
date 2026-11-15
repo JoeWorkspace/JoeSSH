@@ -3,7 +3,6 @@ import {
   ChevronDown,
   ChevronUp,
   Monitor,
-  MoreHorizontal,
   Search,
   TerminalSquare,
   Video,
@@ -32,6 +31,12 @@ export function highlightMatch(text: string, query: string) {
       {text.slice(idx + query.length)}
     </>
   );
+}
+
+function prefersReducedMotion() {
+  return typeof window !== "undefined" && typeof window.matchMedia === "function"
+    ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    : false;
 }
 
 export const TerminalPane = memo(function TerminalPane({
@@ -116,7 +121,7 @@ export const TerminalPane = memo(function TerminalPane({
         </span>
         <div>
           {recording ? (
-            <span className="recording-indicator" aria-label={t("desktop.recording")}>
+            <span className="recording-indicator" role="status" aria-label={t("desktop.recording")} aria-live="polite" aria-atomic="true">
               <span className="recording-dot" />
               <span className="recording-time">{recordingTimeLabel}</span>
             </span>
@@ -131,9 +136,6 @@ export const TerminalPane = memo(function TerminalPane({
               <Video size={15} className={recording ? "recording-active" : ""} />
             </IconButton>
           ) : null}
-          <IconButton label={t("desktop.paneMenu")}>
-            <MoreHorizontal size={15} />
-          </IconButton>
         </div>
       </header>
       {searchOpen ? (
@@ -146,7 +148,11 @@ export const TerminalPane = memo(function TerminalPane({
             placeholder={t("desktop.searchPlaceholder")}
             aria-label={t("desktop.searchPlaceholder")}
             onKeyDown={(e) => {
-              if (e.key === "Escape") onSearchClose?.();
+              if (e.key === "Escape") {
+                e.preventDefault();
+                e.stopPropagation();
+                onSearchClose?.();
+              }
               if (e.key === "Enter") { e.preventDefault(); goToMatch(e.shiftKey ? -1 : 1); }
             }}
           />
@@ -183,7 +189,7 @@ export const TerminalPane = memo(function TerminalPane({
                   <code
                     className={`terminal-line terminal-line--${line.kind}${isCurrentMatch ? " terminal-line--current-match" : ""}`}
                     key={line.id}
-                    ref={isCurrentMatch ? (el) => { if (el) el.scrollIntoView({ block: "nearest", behavior: "smooth" }); } : undefined}
+                    ref={isCurrentMatch ? (el) => { if (el) el.scrollIntoView({ block: "nearest", behavior: prefersReducedMotion() ? "auto" : "smooth" }); } : undefined}
                     style={{ display: "block", height: LINE_HEIGHT }}
                   >
                     {searchQuery ? highlightMatch(line.text, searchQuery) : line.text}
@@ -199,7 +205,7 @@ export const TerminalPane = memo(function TerminalPane({
               <code
                 className={`terminal-line terminal-line--${line.kind}${isCurrentMatch ? " terminal-line--current-match" : ""}`}
                 key={line.id}
-                ref={isCurrentMatch ? (el) => { if (el) el.scrollIntoView({ block: "nearest", behavior: "smooth" }); } : undefined}
+                ref={isCurrentMatch ? (el) => { if (el) el.scrollIntoView({ block: "nearest", behavior: prefersReducedMotion() ? "auto" : "smooth" }); } : undefined}
               >
                 {searchQuery ? highlightMatch(line.text, searchQuery) : line.text}
               </code>
@@ -213,9 +219,12 @@ export const TerminalPane = memo(function TerminalPane({
           <label>
             <span>{t("desktop.terminalInputLabel")}</span>
             <input
+              role="combobox"
+              aria-expanded={autocompleteSuggestions.length > 0}
               aria-describedby={commandFeedback ? "terminal-command-feedback" : undefined}
               aria-autocomplete="list"
               aria-controls={autocompleteSuggestions.length > 0 ? "terminal-autocomplete" : undefined}
+              aria-activedescendant={autocompleteIdx >= 0 ? `terminal-autocomplete-option-${autocompleteIdx}` : undefined}
               autoComplete="off"
               dir="ltr"
               onChange={(event) => { onCommandInputChange?.(event.currentTarget.value); setAutocompleteIdx(-1); }}
@@ -230,12 +239,14 @@ export const TerminalPane = memo(function TerminalPane({
                   <div
                     key={suggestion}
                     className={`terminal-autocomplete-item${idx === autocompleteIdx ? " is-selected" : ""}`}
+                    id={`terminal-autocomplete-option-${idx}`}
                     role="option"
                     aria-selected={idx === autocompleteIdx}
+                    tabIndex={-1}
                     onMouseDown={(e) => { e.preventDefault(); onCommandInputChange?.(suggestion); setAutocompleteIdx(-1); }}
                     onMouseEnter={() => setAutocompleteIdx(idx)}
                   >
-                    <TerminalSquare size={12} />
+                    <TerminalSquare size={12} aria-hidden="true" />
                     <span>{suggestion}</span>
                   </div>
                 ))}

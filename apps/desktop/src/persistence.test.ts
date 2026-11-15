@@ -6,12 +6,14 @@ import {
   CUSTOM_CONNECTIONS_STORAGE_KEY,
   FAVORITES_KEY,
   LAYOUT_STORAGE_KEY,
+  REDUCED_MOTION_STORAGE_KEY,
   THEME_STORAGE_KEY,
   readStorageText,
   readStoredConnectionGroups,
   readStoredConnectionOrder,
   readStoredCustomConnections,
   readStoredLayout,
+  readStoredReducedMotion,
   readStoredStringList,
   readStoredTheme,
   writeStorageJson,
@@ -173,6 +175,18 @@ describe('desktop persistence helpers', () => {
     installStorage({ [THEME_STORAGE_KEY]: 'neon' });
 
     expect(readStoredTheme('system')).toBe('system');
+  });
+
+  it('reads a strict persisted reduced-motion preference and falls back safely', () => {
+    installStorage({ [REDUCED_MOTION_STORAGE_KEY]: 'true' });
+    expect(readStoredReducedMotion()).toBe(true);
+
+    installStorage({ [REDUCED_MOTION_STORAGE_KEY]: 'false' });
+    expect(readStoredReducedMotion(true)).toBe(false);
+
+    installStorage({ [REDUCED_MOTION_STORAGE_KEY]: '1' });
+    expect(readStoredReducedMotion()).toBe(false);
+    expect(readStoredReducedMotion(true)).toBe(true);
   });
 
   it('swallows localStorage read and write failures', () => {

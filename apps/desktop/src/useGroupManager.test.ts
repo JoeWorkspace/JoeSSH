@@ -197,4 +197,27 @@ describe("useGroupManager", () => {
     const stored = JSON.parse(store.get("atlasterm.connectionGroups") ?? "{}");
     expect(stored).toEqual({ s1: "Staging" });
   });
+
+  it("drops persisted group overrides when a connection is removed", () => {
+    const { result, rerender } = renderHook(
+      ({ connectionNames }) => useGroupManager(BUILTIN, connectionNames),
+      { initialProps: { connectionNames: ["custom-server"] } },
+    );
+
+    act(() =>
+      result.current.dispatch({
+        type: "MOVE_CONNECTION",
+        connection: "custom-server",
+        group: "Staging",
+      }),
+    );
+    expect(
+      JSON.parse(store.get("atlasterm.connectionGroups") ?? "{}"),
+    ).toEqual({ "custom-server": "Staging" });
+
+    rerender({ connectionNames: [] });
+    expect(
+      JSON.parse(store.get("atlasterm.connectionGroups") ?? "{}"),
+    ).toEqual({});
+  });
 });

@@ -1,4 +1,4 @@
-import { Component, type ErrorInfo, type PropsWithChildren } from "react";
+import { Component, createRef, type ErrorInfo, type PropsWithChildren } from "react";
 import { InlineAlert } from "./InlineAlert";
 
 export type DesktopErrorMonitor = {
@@ -20,6 +20,7 @@ type DesktopErrorBoundaryState = {
 
 export class DesktopErrorBoundary extends Component<DesktopErrorBoundaryProps, DesktopErrorBoundaryState> {
   state: DesktopErrorBoundaryState = { error: undefined };
+  private readonly fallbackHeadingRef = createRef<HTMLHeadingElement>();
 
   static getDerivedStateFromError(error: Error): DesktopErrorBoundaryState {
     return { error };
@@ -30,6 +31,17 @@ export class DesktopErrorBoundary extends Component<DesktopErrorBoundaryProps, D
       componentStack: errorInfo.componentStack,
     });
     this.props.errorMonitor.report(error.message, error.stack);
+    this.focusFallbackHeading();
+  }
+
+  componentDidUpdate(_previousProps: DesktopErrorBoundaryProps, previousState: DesktopErrorBoundaryState) {
+    if (!previousState.error && this.state.error) {
+      this.focusFallbackHeading();
+    }
+  }
+
+  private focusFallbackHeading() {
+    this.fallbackHeadingRef.current?.focus();
   }
 
   render() {
@@ -45,7 +57,7 @@ export class DesktopErrorBoundary extends Component<DesktopErrorBoundaryProps, D
     return (
       <main className="error-boundary-shell">
         <section className="error-boundary-card" aria-labelledby="desktop-error-boundary-title">
-          <h1 id="desktop-error-boundary-title">{title}</h1>
+          <h1 ref={this.fallbackHeadingRef} id="desktop-error-boundary-title" tabIndex={-1}>{title}</h1>
           <InlineAlert className="error-boundary-alert" title={title} detail={message} />
           <button className="error-boundary-reload" type="button" onClick={onReload}>
             {reloadLabel}

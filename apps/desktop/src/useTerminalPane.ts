@@ -104,6 +104,16 @@ export function useTerminalPane({
       return;
     }
 
+    if (autocompleteSuggestions.length > 0 && event.key === "Enter" && autocompleteIdx >= 0) {
+      event.preventDefault();
+      const selected = autocompleteSuggestions[autocompleteIdx];
+      if (selected) {
+        onCommandInputChange?.(selected);
+        setAutocompleteIdx(-1);
+      }
+      return;
+    }
+
     if (autocompleteSuggestions.length > 0 && event.key === "ArrowDown" && event.altKey) {
       event.preventDefault();
       setAutocompleteIdx((prev) => (prev + 1) % autocompleteSuggestions.length);

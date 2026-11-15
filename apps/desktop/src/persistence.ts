@@ -8,6 +8,8 @@ export const CONNECTION_GROUPS_STORAGE_KEY = "atlasterm.connectionGroups";
 export const CONNECTION_ORDER_STORAGE_KEY = "atlasterm.connectionOrder";
 export const CUSTOM_CONNECTIONS_STORAGE_KEY = "atlasterm.customConnections";
 export const LAYOUT_STORAGE_KEY = "atlasterm.layout";
+export const GETTING_STARTED_STORAGE_KEY = "atlasterm.gettingStarted";
+export const REDUCED_MOTION_STORAGE_KEY = "atlasterm.reducedMotion";
 
 export type PersistedRightPanel = "inspector" | "sftp" | "team" | "forwarding" | "settings";
 export type PersistedTheme = "dark" | "light" | "system";
@@ -81,6 +83,20 @@ function readStorageJson(key: string): unknown {
 export function readStoredTheme(defaultTheme: PersistedTheme): PersistedTheme {
   const theme = readStorageText(THEME_STORAGE_KEY);
   return isTheme(theme) ? theme : defaultTheme;
+}
+
+export function readStoredReducedMotion(defaultValue = false): boolean {
+  const value = readStorageText(REDUCED_MOTION_STORAGE_KEY);
+
+  if (value === "true") {
+    return true;
+  }
+
+  if (value === "false") {
+    return false;
+  }
+
+  return defaultValue;
 }
 
 export function readStoredLayout(

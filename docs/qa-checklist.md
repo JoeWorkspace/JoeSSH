@@ -73,12 +73,13 @@
 - Expo Web E2E covers a mocked live register/presence-push/pull success path
   from the static mobile web server and verifies bearer authorization reaches
   every mobile sync request.
-- Mobile reuses a server-assigned `device_id` for later registrations when the Expo install id is not UUID-shaped, while preserving UUID install id priority when available.
+- Mobile persists the server-assigned `device_id` in AsyncStorage and restores it across cold starts; the session-scoped Expo identifier is never sent as a durable device identity.
 - Mobile retains the successful pull `next_cursor` for same-device refreshes; the next presence push uses it as `base_cursor`, and the next preview pull uses it as `since` without replacing that pull cursor with the push response cursor.
+- Mobile continues paginated pulls until `has_more` is false, rejects non-advancing cursors, and derives preview counts from validated sync change envelopes instead of fixture data.
 - Mobile treats stale `mobile_presence` checkpoint conflicts as non-blocking status-signal conflicts and still pulls the preview from the last successful cursor.
 - Sync service calls use `POST /v1/devices/register`, `POST /v1/sync/push`, and `GET /v1/sync/pull`.
 - Mobile persists explicit language choices and auto mode through native AsyncStorage, while invalid or unavailable storage falls back to automatic locale detection.
-- Mobile service tests cover endpoint selection, optional bearer auth, server-assigned device id reuse, mobile presence checkpoint push, retained-cursor preview pulls, malformed successful register/push/pull responses, offline fallback, timeout, unauthorized, and emergency-channel preview behavior.
+- Mobile service tests cover endpoint selection, optional bearer auth, persisted server-assigned device id reuse, mobile presence checkpoint push, paginated retained-cursor preview pulls, malformed successful register/push/pull responses, offline fallback, timeout, unauthorized, and emergency-channel preview behavior.
 - Device status remains readable in light and dark OS themes, with component and Expo Web runtime coverage for the themed status surface.
 - UI error handling preserves offline, timeout, unauthorized, and unknown sync error classifications.
 
@@ -88,7 +89,10 @@
 - Terminal session rendering uses structured line IDs so repeated command text does not collide or reorder in React.
 - Terminal command input accepts safe commands through the local safety preflight before they reach the session log.
 - One-shot `ssh_exec` command output is capped at 1 MiB in the core SSH read loop, and Tauri maps output-limit failures to a stable renderer-safe error instead of buffering unbounded stdout.
-- Dangerous terminal commands such as `sudo rm -rf /` are blocked with an accessible policy alert and are not appended to the session log; the native Tauri `ssh_exec` IPC boundary also runs the core command-safety blocklist before opening the session, and `pty_write` applies the same line-level blocklist before forwarding submitted PTY input, so direct renderer IPC cannot bypass the local preflight. Native `PTY_COMMAND_BLOCKED` rejections are surfaced in the xterm status bar as an assertive alert and the PTY remains open for the next safe command.
+- Dangerous explicit terminal commands such as `sudo rm -rf /` are blocked with an accessible policy alert and are not appended to the session log. The native Tauri `ssh_exec` IPC boundary checks the complete command before execution. The interactive `pty_write` boundary checks observable explicit input, including commands received across chunks, multiple lines and bracketed paste, with bounded input state. Native `PTY_COMMAND_BLOCKED` rejections are surfaced in the xterm status bar as an assertive alert and the PTY remains open for the next safe command.
+- Interactive PTY preflight is protection against observable dangerous input, not an authorization boundary: remote shell history, completion, expansion and TUI behavior cannot be reconstructed from client input bytes. Arrow-key editing, history recall and Tab completion must remain usable without automatic rejection or Ctrl-C solely because of their control sequences. Explicit dangerous text received after an unknown sequence must still be checked; UTF-8 cursor editing must preserve character boundaries.
+- Switching connection tabs preserves each live session's PTY, terminal contents and last valid dimensions. Connecting another session must not restart an existing terminal. Explicit disconnect or tab close releases only the associated terminal; a late PTY open result must also be closed after its session is removed.
+- Port-forward runtime IDs are retained per SSH session across tab switches. Late start/stop results must remain associated with their original session; removing a session cleans up its running and late-created forwards without affecting another connection.
 - Command palette, SFTP, settings, team access, shared vault, and audit context flows remain keyboard and screen-reader reachable.
 - SFTP upload/download uses a 25 MiB per-operation safety limit; the UI refuses known oversized remote downloads and local uploads before allocating file bytes where possible, remote listing entry names must pass safe single-segment validation before navigation/download/upload path joins, the core SFTP downloader enforces the cap before and during remote reads, and the Tauri backend rejects oversized upload IPC payloads before writing.
 - Team access review flow opens from the Review action, supports keyboard approval/rejection, updates pending JIT state, and records an audit event.
@@ -227,8 +231,9 @@
 ## Release Gate
 
 - Rust workspace formatting, clippy, and tests pass in an environment with Rust installed.
-- RustSec advisory audit passes with `npm run qa:rust-advisory`; release and CI
-  hosts must have `cargo-audit` installed before running the Public Beta gate.
+- RustSec advisory audit passes for both the workspace and Tauri lockfiles with
+  `npm run qa:rust-advisory`, including denied warnings; release and CI hosts
+  must have `cargo-audit` installed before running the Public Beta gate.
 - Tauri shell release build check passes with `npm run qa:tauri`.
 - `apps/mobile` installs dependencies and passes TypeScript checks plus mobile sync client tests.
 - Native mobile smoke preflight passes and statically verifies the no-endpoint

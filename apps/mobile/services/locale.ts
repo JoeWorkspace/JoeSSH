@@ -1,18 +1,24 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import Constants from 'expo-constants';
-import { NativeModules, Platform } from 'react-native';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Constants from "expo-constants";
+import { NativeModules, Platform } from "react-native";
 
-import { DEFAULT_LOCALE, detectAtlasLocale, getLocaleMeta, getTextDirection, resolveAtlasLocale } from '@atlasterm/i18n';
-import type { AtlasLocale, LocaleMeta } from '@atlasterm/i18n';
+import {
+  DEFAULT_LOCALE,
+  detectAtlasLocale,
+  getLocaleMeta,
+  getTextDirection,
+  resolveAtlasLocale,
+} from "@atlasterm/i18n";
+import type { AtlasLocale, LocaleMeta } from "@atlasterm/i18n";
 
-export type LocaleMode = 'auto' | AtlasLocale;
+export type LocaleMode = "auto" | AtlasLocale;
 
-export const MOBILE_LOCALE_STORAGE_KEY = 'atlasterm.mobile.language';
+export const MOBILE_LOCALE_STORAGE_KEY = "atlasterm.mobile.language";
 
 export type MobileLocaleState = {
   autoLocale: AtlasLocale;
   candidates: string[];
-  direction: 'ltr' | 'rtl';
+  direction: "ltr" | "rtl";
   locale: AtlasLocale;
   meta: LocaleMeta;
   mode: LocaleMode;
@@ -29,9 +35,12 @@ export function getMobileLocaleCandidates() {
   return uniqueLocales(candidates);
 }
 
-export function resolveMobileLocale(mode: LocaleMode, candidates = getMobileLocaleCandidates()): MobileLocaleState {
+export function resolveMobileLocale(
+  mode: LocaleMode,
+  candidates = getMobileLocaleCandidates(),
+): MobileLocaleState {
   const autoLocale = detectAtlasLocale(candidates);
-  const locale = mode === 'auto' ? autoLocale : mode;
+  const locale = mode === "auto" ? autoLocale : mode;
 
   return {
     autoLocale,
@@ -45,13 +54,18 @@ export function resolveMobileLocale(mode: LocaleMode, candidates = getMobileLoca
 
 export async function getStoredMobileLocaleMode(): Promise<LocaleMode> {
   try {
-    return getLocaleMode(await AsyncStorage.getItem(MOBILE_LOCALE_STORAGE_KEY)) ?? 'auto';
+    return (
+      getLocaleMode(await AsyncStorage.getItem(MOBILE_LOCALE_STORAGE_KEY)) ??
+      "auto"
+    );
   } catch {
-    return 'auto';
+    return "auto";
   }
 }
 
-export async function persistMobileLocaleMode(mode: LocaleMode): Promise<boolean> {
+export async function persistMobileLocaleMode(
+  mode: LocaleMode,
+): Promise<boolean> {
   try {
     await AsyncStorage.setItem(MOBILE_LOCALE_STORAGE_KEY, mode);
     return true;
@@ -75,7 +89,8 @@ function getExpoLocaleCandidates() {
 
 function getReactNativeLocaleCandidates() {
   const settings = NativeModules.SettingsManager?.settings;
-  const i18nConstants = NativeModules.I18nManager?.getConstants?.() ?? NativeModules.I18nManager;
+  const i18nConstants =
+    NativeModules.I18nManager?.getConstants?.() ?? NativeModules.I18nManager;
 
   return [
     settings?.AppleLocale,
@@ -99,7 +114,7 @@ function uniqueLocales(values: readonly unknown[]) {
   const locales: string[] = [];
 
   values.forEach((value) => {
-    const locale = getString(value)?.replace(/_/g, '-');
+    const locale = getString(value)?.replace(/_/g, "-");
 
     if (locale && !seen.has(locale)) {
       seen.add(locale);
@@ -111,12 +126,14 @@ function uniqueLocales(values: readonly unknown[]) {
 }
 
 function getString(value: unknown) {
-  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
+  return typeof value === "string" && value.trim().length > 0
+    ? value.trim()
+    : undefined;
 }
 
 function getLocaleMode(value: string | null): LocaleMode | undefined {
-  if (value === 'auto') {
-    return 'auto';
+  if (value === "auto") {
+    return "auto";
   }
 
   return resolveAtlasLocale(value);

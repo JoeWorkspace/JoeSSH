@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const nativeMocks = vi.hoisted(() => ({
+  asyncStorage: {
+    getItem: vi.fn(),
+    setItem: vi.fn(),
+  },
   constants: {
     deviceName: 'Atlas Phone',
     expoConfig: { version: '9.9.9' },
@@ -11,6 +15,10 @@ const nativeMocks = vi.hoisted(() => ({
 
 vi.mock('expo-constants', () => ({
   default: nativeMocks.constants,
+}));
+
+vi.mock('@react-native-async-storage/async-storage', () => ({
+  default: nativeMocks.asyncStorage,
 }));
 
 vi.mock('react-native', () => ({
@@ -24,6 +32,7 @@ import {
   getApiBaseUrl,
   getFallbackPreview,
   isSyncError,
+  MOBILE_DEVICE_ID_STORAGE_KEY,
   normalizePlatform,
   pushMobilePresenceCheckpoint,
   registerDevice,
@@ -40,6 +49,10 @@ describe('mobile sync service', () => {
     nativeMocks.constants.expoConfig.version = '9.9.9';
     nativeMocks.constants.sessionId = 'mobile-session';
     nativeMocks.platform.OS = 'ios';
+    nativeMocks.asyncStorage.getItem.mockReset();
+    nativeMocks.asyncStorage.getItem.mockResolvedValue(null);
+    nativeMocks.asyncStorage.setItem.mockReset();
+    nativeMocks.asyncStorage.setItem.mockResolvedValue(undefined);
     resetRegisteredDeviceMemoryForTests();
   });
 
@@ -93,9 +106,13 @@ describe('mobile sync service', () => {
       registeredAt: '2026-05-25T00:00:00Z',
       connectionQuality: 'online',
     });
+    expect(nativeMocks.asyncStorage.setItem).toHaveBeenCalledWith(
+      MOBILE_DEVICE_ID_STORAGE_KEY,
+      '0af7b567-8c34-4318-8c6b-31cddfc36e6f',
+    );
   });
 
-  it('sends an existing UUID install id when available', async () => {
+  it('does not treat the session-scoped Expo UUID as a stable device id', async () => {
     process.env.EXPO_PUBLIC_ATLASTERM_SYNC_URL = 'http://127.0.0.1:4100';
     nativeMocks.constants.sessionId = '1b9d5c4a-b2d8-4d38-9fb9-59ae1ce0e8ef';
     vi.mocked(fetch).mockResolvedValue(jsonResponse({
@@ -108,9 +125,7 @@ describe('mobile sync service', () => {
     await vi.advanceTimersByTimeAsync(250);
     await pendingDevice;
 
-    expect(JSON.parse(String(vi.mocked(fetch).mock.calls[0][1]?.body))).toMatchObject({
-      device_id: '1b9d5c4a-b2d8-4d38-9fb9-59ae1ce0e8ef',
-    });
+    expect(JSON.parse(String(vi.mocked(fetch).mock.calls[0][1]?.body))).not.toHaveProperty('device_id');
   });
 
   it('reuses a server-assigned device id when the Expo install id is not a UUID', async () => {
@@ -137,6 +152,25 @@ describe('mobile sync service', () => {
 
     expect(JSON.parse(String(vi.mocked(fetch).mock.calls[0][1]?.body))).not.toHaveProperty('device_id');
     expect(JSON.parse(String(vi.mocked(fetch).mock.calls[1][1]?.body))).toMatchObject({
+      device_id: '0af7b567-8c34-4318-8c6b-31cddfc36e6f',
+    });
+  });
+
+  it('restores the server-assigned device id after a cold start', async () => {
+    process.env.EXPO_PUBLIC_ATLASTERM_SYNC_URL = 'http://127.0.0.1:4100';
+    nativeMocks.asyncStorage.getItem.mockResolvedValue('0af7b567-8c34-4318-8c6b-31cddfc36e6f');
+    vi.mocked(fetch).mockResolvedValue(jsonResponse({
+      device_id: '0af7b567-8c34-4318-8c6b-31cddfc36e6f',
+      server_time: '2026-05-25T00:05:00Z',
+      sync_cursor: '0',
+    }));
+
+    const registration = registerDevice();
+    await vi.advanceTimersByTimeAsync(250);
+    await registration;
+
+    expect(nativeMocks.asyncStorage.getItem).toHaveBeenCalledWith(MOBILE_DEVICE_ID_STORAGE_KEY);
+    expect(JSON.parse(String(vi.mocked(fetch).mock.calls[0][1]?.body))).toMatchObject({
       device_id: '0af7b567-8c34-4318-8c6b-31cddfc36e6f',
     });
   });
@@ -172,8 +206,12 @@ describe('mobile sync service', () => {
   it('pulls a preview from the public v1 sync API', async () => {
     process.env.EXPO_PUBLIC_ATLASTERM_SYNC_URL = 'http://127.0.0.1:4100';
     vi.mocked(fetch).mockResolvedValue(jsonResponse({
-      changes: [{ id: 'change-1' }, { id: 'change-2' }],
+      changes: [
+        syncChange('change-1', 'profile', 'prod-edge-01', 'create', 'server-127'),
+        syncChange('change-2', 'session', 'session-01', 'create', 'server-128'),
+      ],
       device_id: '0af7b567-8c34-4318-8c6b-31cddfc36e6f',
+      has_more: false,
       next_cursor: 'server-128',
     }));
 
@@ -186,9 +224,12 @@ describe('mobile sync service', () => {
       expect.any(Object),
     );
     expect(preview.pendingChangeCount).toBe(2);
+    expect(preview.profileCount).toBe(1);
+    expect(preview.openSessionCount).toBe(1);
     expect(preview.cursor).toMatchObject({
-      branch: 'sync-api',
-      lastCommand: 'next cursor server-128',
+      branch: 'create',
+      lastCommand: 'server-128',
+      workspace: 'session:session-01',
     });
     expect(preview.syncCursor).toBe('server-128');
   });
@@ -208,11 +249,145 @@ describe('mobile sync service', () => {
     await expectation;
   });
 
+  it('keeps the request timeout active while the response body is still being read', async () => {
+    process.env.EXPO_PUBLIC_ATLASTERM_SYNC_URL = 'http://127.0.0.1:4100';
+    const cancelBodyRead = vi.fn().mockResolvedValue(undefined);
+    const readBody = vi.fn(() => new Promise<string>(() => {}));
+    vi.mocked(fetch).mockResolvedValue({
+      body: { cancel: cancelBodyRead },
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+      ok: true,
+      status: 202,
+      text: readBody,
+    } as unknown as Response);
+
+    const pendingPush = pushMobilePresenceCheckpoint(mobileDevice());
+    const assertion = expect(pendingPush).rejects.toMatchObject({ code: 'timeout' });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(readBody).toHaveBeenCalledOnce();
+
+    await vi.advanceTimersByTimeAsync(8_000);
+    await assertion;
+
+    expect((vi.mocked(fetch).mock.calls[0][1] as RequestInit).signal?.aborted).toBe(true);
+    expect(cancelBodyRead).toHaveBeenCalledWith('sync API response body read was aborted');
+  });
+
+  it('rejects an oversized declared response before reading its body', async () => {
+    process.env.EXPO_PUBLIC_ATLASTERM_SYNC_URL = 'http://127.0.0.1:4100';
+    const cancelBodyRead = vi.fn().mockResolvedValue(undefined);
+    const readBody = vi.fn().mockResolvedValue('{}');
+    vi.mocked(fetch).mockResolvedValue({
+      body: { cancel: cancelBodyRead },
+      headers: new Headers({
+        'Content-Length': '1048577',
+        'Content-Type': 'application/json',
+      }),
+      ok: true,
+      status: 202,
+      text: readBody,
+    } as unknown as Response);
+
+    await expect(pushMobilePresenceCheckpoint(mobileDevice())).rejects.toMatchObject({
+      code: 'unknown',
+      message: 'JoeSSH stopped reading a sync response because it exceeded the 1 MiB safety limit.',
+      title: 'Sync response rejected',
+    });
+    expect(readBody).not.toHaveBeenCalled();
+    expect(cancelBodyRead).toHaveBeenCalledWith('sync API response exceeded the size limit');
+  });
+
+  it('enforces the response byte limit when content-length is missing', async () => {
+    process.env.EXPO_PUBLIC_ATLASTERM_SYNC_URL = 'http://127.0.0.1:4100';
+    const sensitiveBody = JSON.stringify({
+      access_token: 'must-not-appear-in-errors',
+      padding: 'x'.repeat(1_048_576),
+    });
+    vi.mocked(fetch).mockResolvedValue(textResponse(sensitiveBody, 202));
+
+    const error = await pushMobilePresenceCheckpoint(mobileDevice()).catch((caught: unknown) => caught);
+
+    expect(error).toMatchObject({
+      code: 'unknown',
+      message: 'JoeSSH stopped reading a sync response because it exceeded the 1 MiB safety limit.',
+      title: 'Sync response rejected',
+    });
+    expect(JSON.stringify(error)).not.toContain('must-not-appear-in-errors');
+  });
+
+  it('stops an oversized streaming response before buffering the remaining chunks', async () => {
+    process.env.EXPO_PUBLIC_ATLASTERM_SYNC_URL = 'http://127.0.0.1:4100';
+    const cancelSource = vi.fn();
+    const body = new ReadableStream<Uint8Array>({
+      cancel: cancelSource,
+      start(controller) {
+        controller.enqueue(new Uint8Array(900_000));
+        controller.enqueue(new Uint8Array(200_000));
+      },
+    });
+    vi.mocked(fetch).mockResolvedValue({
+      body,
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+      ok: true,
+      status: 202,
+    } as Response);
+
+    await expect(pushMobilePresenceCheckpoint(mobileDevice())).rejects.toMatchObject({
+      code: 'unknown',
+      message: 'JoeSSH stopped reading a sync response because it exceeded the 1 MiB safety limit.',
+    });
+    expect(cancelSource).toHaveBeenCalledWith('sync API response exceeded the size limit');
+  });
+
+  it('parses a bounded streaming JSON response when the runtime exposes a body reader', async () => {
+    process.env.EXPO_PUBLIC_ATLASTERM_SYNC_URL = 'http://127.0.0.1:4100';
+    const encodedResponse = new TextEncoder().encode(JSON.stringify({
+      accepted: 1,
+      conflicts: [],
+      sync_cursor: 'server-12',
+    }));
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encodedResponse.slice(0, 10));
+        controller.enqueue(encodedResponse.slice(10));
+        controller.close();
+      },
+    });
+    vi.mocked(fetch).mockResolvedValue({
+      body,
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+      ok: true,
+      status: 202,
+    } as Response);
+
+    await expect(pushMobilePresenceCheckpoint(mobileDevice())).resolves.toMatchObject({
+      accepted: 1,
+      conflicts: [],
+      syncCursor: 'server-12',
+    });
+  });
+
+  it('reports malformed JSON without echoing sensitive response content', async () => {
+    process.env.EXPO_PUBLIC_ATLASTERM_SYNC_URL = 'http://127.0.0.1:4100';
+    vi.mocked(fetch).mockResolvedValue(textResponse('{"access_token":"must-not-appear-in-errors"', 202));
+
+    const error = await pushMobilePresenceCheckpoint(mobileDevice()).catch((caught: unknown) => caught);
+
+    expect(error).toMatchObject({
+      code: 'unknown',
+      message: 'The sync service returned a response that was not valid JSON.',
+      title: 'Sync response rejected',
+    });
+    expect(JSON.stringify(error)).not.toContain('must-not-appear-in-errors');
+  });
+
   it('pulls a preview from a retained sync cursor', async () => {
     process.env.EXPO_PUBLIC_ATLASTERM_SYNC_URL = 'http://127.0.0.1:4100';
     vi.mocked(fetch).mockResolvedValue(jsonResponse({
-      changes: [{ id: 'change-3' }],
+      changes: [syncChange('change-3', 'profile', 'prod-edge-02', 'update', 'server-129')],
       device_id: '0af7b567-8c34-4318-8c6b-31cddfc36e6f',
+      has_more: false,
       next_cursor: 'server-129',
     }));
 
@@ -226,6 +401,51 @@ describe('mobile sync service', () => {
     );
     expect(preview.pendingChangeCount).toBe(1);
     expect(preview.syncCursor).toBe('server-129');
+  });
+
+  it('continues pulling until has_more is false', async () => {
+    process.env.EXPO_PUBLIC_ATLASTERM_SYNC_URL = 'http://127.0.0.1:4100';
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(jsonResponse({
+        changes: [syncChange('change-1', 'profile', 'prod-edge-01', 'create', 'server-1')],
+        device_id: '0af7b567-8c34-4318-8c6b-31cddfc36e6f',
+        has_more: true,
+        next_cursor: 'server-1',
+      }))
+      .mockResolvedValueOnce(jsonResponse({
+        changes: [syncChange('change-2', 'session', 'session-01', 'create', 'server-2')],
+        device_id: '0af7b567-8c34-4318-8c6b-31cddfc36e6f',
+        has_more: false,
+        next_cursor: 'server-2',
+      }));
+
+    const pendingPreview = fetchSyncPreview('0af7b567-8c34-4318-8c6b-31cddfc36e6f');
+    await vi.advanceTimersByTimeAsync(350);
+    const preview = await pendingPreview;
+
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(fetch).mock.calls[1][0]).toContain('since=server-1');
+    expect(preview).toMatchObject({
+      openSessionCount: 1,
+      pendingChangeCount: 2,
+      profileCount: 1,
+      syncCursor: 'server-2',
+    });
+  });
+
+  it('fails closed when a paginated cursor does not advance', async () => {
+    process.env.EXPO_PUBLIC_ATLASTERM_SYNC_URL = 'http://127.0.0.1:4100';
+    vi.mocked(fetch).mockResolvedValue(jsonResponse({
+      changes: [],
+      device_id: '0af7b567-8c34-4318-8c6b-31cddfc36e6f',
+      has_more: true,
+      next_cursor: '0',
+    }));
+
+    const pendingPreview = fetchSyncPreview('0af7b567-8c34-4318-8c6b-31cddfc36e6f');
+    const expectation = expect(pendingPreview).rejects.toMatchObject({ code: 'unknown' });
+    await vi.advanceTimersByTimeAsync(350);
+    await expectation;
   });
 
   it('rejects a malformed pull response instead of reading missing changes', async () => {
@@ -283,6 +503,7 @@ describe('mobile sync service', () => {
       .mockResolvedValueOnce(jsonResponse({
         changes: [],
         device_id: '0af7b567-8c34-4318-8c6b-31cddfc36e6f',
+        has_more: false,
         next_cursor: 'server-129',
       }));
 
@@ -475,7 +696,7 @@ describe('mobile sync service', () => {
     await vi.advanceTimersByTimeAsync(350);
     const preview = await pendingPreview;
 
-    expect(preview.pendingChangeCount).toBe(2);
+    expect(preview.pendingChangeCount).toBe(0);
     expect(preview.devices[0]).toMatchObject({
       id: 'offline-device',
       connectionQuality: 'offline',
@@ -525,9 +746,43 @@ describe('mobile sync service', () => {
 });
 
 function jsonResponse(body: unknown, status = 200) {
+  return textResponse(JSON.stringify(body), status);
+}
+
+function textResponse(body: string, status = 200) {
   return {
-    json: () => Promise.resolve(body),
+    headers: new Headers({ 'Content-Type': 'application/json' }),
     ok: status >= 200 && status < 300,
     status,
-  } as Response;
+    text: () => Promise.resolve(body),
+  } as unknown as Response;
+}
+
+function mobileDevice() {
+  return {
+    connectionQuality: 'online' as const,
+    id: '0af7b567-8c34-4318-8c6b-31cddfc36e6f',
+    name: 'Atlas Phone',
+    platform: 'ios',
+    registeredAt: '2026-05-25T00:00:00Z',
+    syncCursor: 'server-11',
+  };
+}
+
+function syncChange(
+  id: string,
+  entityType: string,
+  entityId: string,
+  operation: 'create' | 'delete' | 'update',
+  cursor: string,
+) {
+  return {
+    entity_id: entityId,
+    entity_type: entityType,
+    id,
+    operation,
+    payload: {},
+    server_time: '2026-05-25T00:00:00Z',
+    sync_cursor: cursor,
+  };
 }
