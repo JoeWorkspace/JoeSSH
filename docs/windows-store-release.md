@@ -87,19 +87,25 @@ EXE 路径必须同时满足：
 - 发布者自己负责托管和更新行为。Microsoft Store **不会替 EXE/MSI
   重签名**，也不会把它变成 MSIX。
 
-`.github/workflows/windows-store-candidate.yml` 是 **hosted-only 验证
-workflow**：EXE 和 MSIX 都必须先由 workflow 外部生成，并通过可直接下载的
-HTTPS transfer URL 同时提供必填 `artifact_url` 与 `expected_sha256`。EXE
-直发路径还必须使用不可变、带版本的长期 URL；MSIX URL 只作为按 hash 绑定的
-验证传输输入，不构成长期托管或不可变性证明，后续必须把同一 SHA-256 的包提交
-Partner Center。workflow 中没有 build/sign job、self-hosted runner、OIDC、
-签名 secret、managed signer 或本地 handoff，也不接受 `--artifact` 路径。
+`.github/workflows/windows-store-candidate.yml` 是 hosted candidate 验证
+workflow，不负责构建或签名。它保留直接 `https` 模式，并新增受限的
+`github-actions-artifact` 模式。HTTPS 模式要求 `artifact_url` 与
+`expected_sha256`；EXE 直发路径还必须使用不可变、带版本的长期 URL。私有
+artifact 模式要求先把通用 fail-closed verifier 合入受保护 main，再在包含该
+verifier 的同一个 source commit 上运行 producer。dispatch 传入
+`producer_run_id`、`producer_run_attempt` 和三个 artifact ID 仅用于定位；
+`artifact_source_sha == reviewed_sha`，且必须等于 producer 的 live `head_sha`。
+verifier 不从源码审批某次 run、artifact ID、候选名称、hash、size 或时间戳；这些
+值必须由现场 Actions API、下载的精确字节及两份离线 Sigstore bundle 共同导出并
+写入 receipt。因此新 source build 不需要再提交一个硬编码 runtime tuple 的后续
+commit。workflow 中没有 build/sign job、
+self-hosted runner、OIDC、签名 secret、managed signer 或本地 handoff。
 仓库和 Actions 中仍然**禁止保存、base64 编码或临时导入 PFX**，但这项禁令
 不能被误读为仓库已经提供了替代签名服务；当前只验证外部提供的已签名 EXE。
 
 `npm run release:windows-store:build` 与本地 `--artifact` 预检仍保留供开发者
 在隔离 Windows VM 中诊断。它们不在 privileged workflow 中，产生的本地
-JSON、安装包或 checksum **不能作为正式发布证据**，也不能绕过 hosted URL、
+JSON、安装包或 checksum **不能作为正式发布证据**，也不能绕过选定 transport、
 SHA-256、来源 provenance 与独立验证要求。
 
 本地诊断预检会真实执行 `/S`，因此只能在一次性 Windows VM 或 CI runner 上
@@ -313,16 +319,19 @@ Store-only MSIX 可以在认证后由 Microsoft Store 重签。预检若看到�
 ## 手动工作流
 
 `.github/workflows/windows-store-candidate.yml` 是 fail-closed 的手动候选
-hosted-only 验证工作流；本文档**不声明远端仓库目前已经完成这些保护**。
-EXE 与 MSIX 都必须填写非空 `artifact_url` 和完整 `expected_sha256`，没有
-“URL 为空就本地构建”的分支。每次运行时，`policy` 会在受保护 environment
+验证工作流；本文档**不声明远端仓库目前已经完成这些保护**。`candidate_source`
+必须是 `github-actions-artifact` 或 `https`，两者都要求完整
+`expected_sha256` 和独立的 `artifact_source_sha`。HTTPS 模式要求非空
+`artifact_url`；artifact 模式要求 URL 严格为空，并只允许上述固定 MSIX tuple。
+不存在“URL 为空就本地构建”的分支。每次运行时，`policy` 会在受保护 environment
 批准之后用只读 fine-grained token 实时读取 GitHub API，并要求：
 
 - `candidate_format` 默认且首选 `msix`；选择 EXE 时必须提供 40–1000 字符、
   去首尾空格、无控制字符且非占位的 `msix_fallback_justification`，选择
   MSIX 时该输入必须严格为空；
-- dispatch 必须来自受保护 `main`，`reviewed_sha` 必须与 `github.sha`
-  完全相同；
+- dispatch 必须来自受保护 `main`，verifier 的 `reviewed_sha` 必须与
+  `github.sha` 完全相同；artifact 模式还要求它与固定 source commit 不同，
+  从而把 verifier commit 与 producer source commit 分开；
 - `windows-release-stage-b` 恰好有一个 required reviewer（仓库所有者），关闭
   `prevent self-review` 以允许单维护者批准自己触发的部署，关闭 admin bypass，
   且只允许 protected branches；该人工暂停点不构成独立审核；
@@ -353,20 +362,54 @@ GitHub API 不能从 workflow 内证明这个 fine-grained token 实际没有被
    `ATLASTERM_WINDOWS_CERTIFICATE_SUBJECT` 与
    `ATLASTERM_WINDOWS_CERTIFICATE_THUMBPRINT`；MSIX 的两个证书 output
    必须为空。
-2. `verify`：不挂载 environment，没有 OIDC 或任何 secret，也没有本地
-   artifact/handoff。它 checkout `policy` 输出的精确 SHA，以
+2. `verify`：不挂载 environment，没有 OIDC、签名 secret 或 policy token；
+   权限仅为 `contents: read` 与 `actions: read`。它 checkout `policy` 输出的精确 SHA，以
    `npm ci --ignore-scripts` 安装依赖，生成并复核法律资源和四份 SBOM，
-   执行真实 Store surface build 与 Playwright runtime 验证，再从
-   `artifact_url` 下载 EXE/MSIX 并按 `expected_sha256` 做 hosted preflight。
+   执行真实 Store surface build 与 Playwright runtime 验证。HTTPS 模式从
+   `artifact_url` 下载；artifact 模式用 full-SHA pinned
+   `actions/download-artifact`、精确 run/artifact ID、`digest-mismatch: error`
+   取得 raw MSIX、source evidence 与两个 Sigstore bundle。raw MSIX 使用
+   `skip-decompress: true`，三者都由 dispatch selector 定位，但 selector 本身不构成
+   信任证据。
+   verifier 随后读取 live run/artifact metadata，检查 workflow path/id、success、
+   attempt、head repository/main/SHA、name/digest/expiry。密码学验证只使用本地
+   bundle 和固定
+   `scripts/trusted-roots/github-attestation-trusted-root-2026-08-31.jsonl`
+   验证 SLSA 与 build-bindings bundle；该 root snapshot 的固定 SHA-256 是
+   `db07310827da2ae2798ec7eefc5daf8432506ce458d5bc30cd2feba03708d239`，
+   签名 subject、producer identity、candidate subject 和 evidence predicate 必须精确一致。
+   workflow 还从 GitHub CLI 官方 `v2.95.0` release URL 下载 Windows amd64 zip，
+   只允许从 `github.com` 重定向到 `release-assets.githubusercontent.com`，不用
+   token，并固定 zip SHA-256
+   `19a7154161ada9cfaa9e57edb752ecc679b75c391a62e4f7b586eea1df30b5bb`
+   与 `gh.exe` SHA-256
+   `cfefbc730f2ef7dc0352d6a5435b72fe6afce7fc56d61c90eb7703cd5d97b149`。
+   archive 树、版本输出、GitHub, Inc. Authenticode subject 与证书 thumbprint 也必须
+   精确一致，Node verifier 只接受该绝对路径并再次核验。
+
+   `gh` 子进程不继承 GitHub/OIDC token 或用户配置，且把代理指向本机拒绝端口；
+   receipt 会准确记录 `osNetworkIsolation: not-enforced`。这能证明验证使用了本地
+   bundle 和 pinned root，不能表述为操作系统已经阻断所有直接 socket。
    EXE 会真实 `/S` 安装、全 PE 验签和 `/S` 卸载；MSIX 会做
    manifest/Partner identity/PE/签名状态校验。
 
 `verify` 在执行候选前记录 clean reviewed HEAD、workflow、完整 Store `dist`
 文件树、法律资源和四份 SBOM 的 hash；执行后、上传前再次比较这些基线，并要求
-证据目录恰好只有审核过的五个文件且 checksum manifest 精确一致。这能阻断普通
+证据目录在 HTTPS 模式恰好有五个文件，在 authenticated artifact 模式另加一份
+`github-actions-source-provenance.json`，且 checksum manifest 精确一致。这能阻断普通
 安装器污染或复核后篡改，但同一 runner 上主动恶意的 native binary 仍不属于
 这套 candidate-only 证据的信任边界；更强保证需要隔离 clean VM/独立 verifier，
-不能把本流程升级描述为 authenticated provenance。
+artifact 模式可以声明 source build 的 authenticated provenance，但这仍不证明
+安装、WACK、Partner Center 上传、Store 签名、认证或发布；HTTPS 模式仍不能声明
+authenticated provenance。
+
+verifier 每次运行都从 GitHub API 复核三个选定 artifact 的 live digest、size、
+created/updated/expiry、`expired: false` 及同 run/repository/head SHA 关系；到期后
+fail closed，不能通过延长 dispatch 输入或替换同名 artifact 继续使用。receipt
+保存这组 runtime tuple、两个 bundle hash、签名身份与透明日志时间。候选 workflow
+再次精确核验 receipt 并将它连同候选证据放入不可覆盖的 Actions artifact；若源
+artifact 已过期，应在包含同一通用 verifier 的新 source commit 上重新生产和验证，
+不能提交一个只用于硬编码新 tuple 的源码变更。
 
 `windows-release-stage-b` 的公开身份变量按格式区分：
 

@@ -12,11 +12,16 @@ This draft deliberately describes only the free Windows Community product that
 exists today. It does not advertise Mobile SSH, hosted Sync, team mutations,
 paid support, Founder/Pro benefits, or future encryption features.
 
-The formal repository workflow is hosted-only verification, not a build or
-signing service. Both EXE and MSIX routes require the exact HTTPS transfer
-`artifact_url`, `expected_sha256`, and reviewed source SHA. The EXE URL must
-also be immutable and versioned; the MSIX URL is only a hash-bound verification
-input, and the same SHA-256 package must later be submitted to Partner Center.
+The formal repository workflow verifies hosted candidates; it is not a build or
+signing service. The legacy `https` route requires the exact transfer
+`artifact_url`. The reviewed `github-actions-artifact` route requires producer
+and verifier code from the same reviewed source commit. Its `producer_run_id`,
+attempt, and three artifact IDs are selectors rather than trust anchors: live
+GitHub metadata and two offline-verified Sigstore bundles must bind the exact
+repository, workflow, source SHA, run attempt, hosted runner, and MSIX bytes.
+Both routes require `expected_sha256`. The EXE URL must also be immutable and
+versioned, and the same verified MSIX package must later be submitted to Partner
+Center.
 Local build scripts, local `--artifact` checks, handoff files, and
 self-generated JSON cannot serve as formal listing or publication evidence.
 
@@ -317,8 +322,10 @@ The listing is still `NO-GO` until all of the following are true:
   listing calls JoeSSH open source;
 - real privacy and support HTTPS links pass a logged-out check;
 - the signed EXE or validated MSIX passes the candidate contract;
-- the exact candidate EXE or MSIX is downloadable from the reviewed HTTPS
-  `artifact_url`, and its bytes match `expected_sha256`;
+- the exact candidate EXE or MSIX comes from the reviewed direct HTTPS
+  `artifact_url` or a same-commit `github-actions-artifact` producer run whose
+  live metadata and offline attestations pass the generic verifier, and its bytes
+  match `expected_sha256`;
 - the EXE route has an immutable, versioned, direct HTTPS installer URL whose
   bytes and SHA-256 match the candidate evidence;
 - the EXE route includes a reviewed 40–1000 character

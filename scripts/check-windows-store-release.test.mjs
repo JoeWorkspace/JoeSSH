@@ -13,10 +13,12 @@ import {
 
 const CHECKOUT_ACTION =
   "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1";
+const DOWNLOAD_ARTIFACT_ACTION =
+  "actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c";
 const POWERSHELL_COMMAND =
   process.platform === "win32" ? "powershell.exe" : "pwsh";
 
-test("repository keeps the hosted-only Windows Store release contract fail-closed", () => {
+test("repository keeps the dual-source Windows Store release contract fail-closed", () => {
   const root = resolve(import.meta.dirname, "..");
   const results = checkWindowsStoreRelease(root);
   const failures = results.filter((result) => !result.passed);
@@ -160,6 +162,47 @@ test("workflow contract rejects any third job", () => {
   );
 });
 
+test("every PowerShell workflow step parses with the installed PowerShell parser", () => {
+  const structure = inspectWindowsStoreWorkflowStructure(readWorkflow());
+  const parserCommand = [
+    "$items = [Console]::In.ReadToEnd() | ConvertFrom-Json",
+    "$failures = @()",
+    'foreach ($item in @($items)) { $tokens = $null; $errors = $null; [System.Management.Automation.Language.Parser]::ParseInput([string]$item.script, [ref]$tokens, [ref]$errors) | Out-Null; foreach ($parseError in @($errors)) { $failures += "$($item.label): $($parseError.Message)" } }',
+    "if ($failures.Count -gt 0) { $failures | ForEach-Object { [Console]::Error.WriteLine($_) }; exit 1 }",
+  ].join("; ");
+  const scripts = [];
+
+  for (const [jobName, job] of Object.entries(structure.jobs)) {
+    for (const [stepIndex, step] of job.steps.entries()) {
+      if (typeof step.run !== "string" || step.shell === "bash") continue;
+      assert.ok(
+        step.shell === undefined || step.shell === "pwsh",
+        `${jobName} step ${stepIndex + 1} uses an unexpected shell`,
+      );
+      scripts.push({
+        label: `${jobName} step ${stepIndex + 1}`,
+        script: step.run,
+      });
+    }
+  }
+  assert.ok(scripts.length > 0);
+  const result = spawnSync(
+    POWERSHELL_COMMAND,
+    ["-NoProfile", "-NonInteractive", "-Command", parserCommand],
+    {
+      encoding: "utf8",
+      input: JSON.stringify(scripts),
+      timeout: 30_000,
+      windowsHide: true,
+    },
+  );
+  assert.equal(
+    result.status,
+    0,
+    `Workflow PowerShell parsing failed:\n${commandOutput(result)}`,
+  );
+});
+
 test("policy job cannot checkout or execute repository tools", () => {
   const workflow = readWorkflow();
   const checkout = workflow.replace(
@@ -207,15 +250,15 @@ test("policy job rejects extra steps and mutations to reviewed policy code", () 
   }
 });
 
-test("verify job rejects environment, OIDC, and every secret expression", () => {
+test("verify job rejects environment, OIDC, and secret expressions", () => {
   const workflow = readWorkflow();
   const environment = workflow.replace(
     "    timeout-minutes: 90\n    permissions:",
     "    timeout-minutes: 90\n    environment: windows-release-stage-b\n    permissions:",
   );
   const oidc = workflow.replace(
-    "    permissions:\n      contents: read\n    env:\n      ATLASTERM_WINDOWS_CANDIDATE_FORMAT:",
-    "    permissions:\n      contents: read\n      id-token: write\n    env:\n      ATLASTERM_WINDOWS_CANDIDATE_FORMAT:",
+    "    permissions:\n      actions: read\n      contents: read\n    env:\n      ATLASTERM_WINDOWS_CANDIDATE_FORMAT:",
+    "    permissions:\n      actions: read\n      contents: read\n      id-token: write\n    env:\n      ATLASTERM_WINDOWS_CANDIDATE_FORMAT:",
   );
   const secret = workflow.replace(
     "      JOESSH_WINDOWS_RELEASE_ENVIRONMENT: windows-release-stage-b",
@@ -225,12 +268,12 @@ test("verify job rejects environment, OIDC, and every secret expression", () => 
   for (const insecure of [environment, oidc, secret]) {
     assertHasFailure(
       checkWindowsStoreWorkflowSecurity(insecure),
-      "no environment, OIDC, or secrets",
+      "only contents/actions read, no environment or OIDC",
     );
   }
 });
 
-test("workflow rejects inherited root env, bracket secrets, and github.token", () => {
+test("workflow rejects inherited root env, bracket secrets, and extra github.token", () => {
   const workflow = readWorkflow();
   const inheritedRootSecret = workflow.replace(
     "\npermissions:\n  contents: read\n\njobs:",
@@ -288,7 +331,7 @@ jobs:`,
   for (const insecure of [bracketSecret, dynamicSecret, githubToken]) {
     assertHasFailure(
       checkWindowsStoreWorkflowSecurity(insecure),
-      "no environment, OIDC, or secrets",
+      "only contents/actions read, no environment or OIDC",
     );
   }
 });
@@ -306,7 +349,7 @@ test("workflow rejects self-hosted runners", () => {
   );
 });
 
-test("workflow rejects local artifact and handoff paths", () => {
+test("workflow rejects unapproved local artifact and handoff paths", () => {
   const workflow = readWorkflow();
   const localArtifact = workflow.replace(
     "            --download-url $env:ARTIFACT_URL `",
@@ -324,7 +367,7 @@ test("workflow rejects local artifact and handoff paths", () => {
   for (const insecure of [localArtifact, localHandoff]) {
     assertHasFailure(
       checkWindowsStoreWorkflowSecurity(insecure),
-      "hosted URL/hash only",
+      "exact selected private source artifacts with pinned download",
     );
   }
 });
@@ -377,23 +420,113 @@ test("workflow rejects mutable container images", () => {
   );
 });
 
-test("artifact_url and expected_sha256 can never become optional", () => {
+test("dual-source inputs keep exact required and optional fields", () => {
   const workflow = readWorkflow();
-  const optionalUrl = workflow.replace(
-    '      artifact_url:\n        description: "SHA-bound HTTPS transfer URL; EXE must also be immutable and versioned."\n        required: true',
-    '      artifact_url:\n        description: "SHA-bound HTTPS transfer URL; EXE must also be immutable and versioned."\n        required: false',
+  const optionalCandidateSource = workflow.replace(
+    '      candidate_source:\n        description: "Candidate transport: approved private GitHub Actions artifact or legacy direct HTTPS."\n        required: true',
+    '      candidate_source:\n        description: "Candidate transport: approved private GitHub Actions artifact or legacy direct HTTPS."\n        required: false',
+  );
+  const optionalSourceSha = workflow.replace(
+    '      artifact_source_sha:\n        description: "Full source commit SHA; artifact mode requires this to equal reviewed_sha."\n        required: true',
+    '      artifact_source_sha:\n        description: "Full source commit SHA; artifact mode requires this to equal reviewed_sha."\n        required: false',
   );
   const optionalHash = workflow.replace(
     '      expected_sha256:\n        description: "Exact SHA-256 of the hosted EXE or MSIX."\n        required: true',
     '      expected_sha256:\n        description: "Exact SHA-256 of the hosted EXE or MSIX."\n        required: false',
   );
+  const optionalReviewedSha = workflow.replace(
+    '      reviewed_sha:\n        description: "Full reviewed verifier commit SHA; it must be the protected main dispatch SHA."\n        required: true',
+    '      reviewed_sha:\n        description: "Full reviewed verifier commit SHA; it must be the protected main dispatch SHA."\n        required: false',
+  );
+  const mandatoryHttpsUrl = workflow.replace(
+    '      artifact_url:\n        description: "HTTPS mode only: SHA-bound direct transfer URL; leave empty for GitHub Actions artifacts."\n        required: false',
+    '      artifact_url:\n        description: "HTTPS mode only: SHA-bound direct transfer URL; leave empty for GitHub Actions artifacts."\n        required: true',
+  );
 
-  for (const insecure of [optionalUrl, optionalHash]) {
+  for (const insecure of [
+    optionalCandidateSource,
+    optionalSourceSha,
+    optionalHash,
+    optionalReviewedSha,
+    mandatoryHttpsUrl,
+  ]) {
+    assert.notEqual(insecure, workflow);
     assertHasFailure(
       checkWindowsStoreWorkflowSecurity(insecure),
-      "require artifact_url and expected_sha256",
+      "one exact HTTPS or same-commit authenticated GitHub Actions artifact source",
     );
   }
+});
+
+test("GitHub Actions artifact route keeps validated selector, digest, and archive bindings", () => {
+  const workflow = readWorkflow();
+  const wrongRun = workflow.replace(
+    "          run-id: ${{ needs.policy.outputs.producer_run_id }}",
+    "          run-id: ${{ inputs.producer_run_id }}",
+  );
+  const wrongArtifact = workflow.replace(
+    "          artifact-ids: ${{ needs.policy.outputs.candidate_artifact_id }}",
+    "          artifact-ids: ${{ needs.policy.outputs.evidence_artifact_id }}",
+  );
+  const floatingAction = workflow.replace(
+    DOWNLOAD_ARTIFACT_ACTION,
+    "actions/download-artifact@main",
+  );
+  const decompressedCandidate = workflow.replace(
+    "          skip-decompress: true",
+    "          skip-decompress: false",
+  );
+  const ignoredDigest = workflow.replace(
+    "          digest-mismatch: error",
+    "          digest-mismatch: warn",
+  );
+  const tokenRemoved = workflow.replace(
+    "          github-token: ${{ github.token }}",
+    "          github-token: ''",
+  );
+  const mutableGhVersion = workflow.replace(
+    "https://github.com/cli/cli/releases/download/v2.95.0/gh_2.95.0_windows_amd64.zip",
+    "https://github.com/cli/cli/releases/latest/download/gh_windows_amd64.zip",
+  );
+  const wrongGhArchiveHash = workflow.replace(
+    "19a7154161ada9cfaa9e57edb752ecc679b75c391a62e4f7b586eea1df30b5bb",
+    "0".repeat(64),
+  );
+  const wrongGhExecutableHash = workflow.replace(
+    "cfefbc730f2ef7dc0352d6a5435b72fe6afce7fc56d61c90eb7703cd5d97b149",
+    "0".repeat(64),
+  );
+  const automaticRedirect = workflow.replace(
+    "$handler.AllowAutoRedirect = $false",
+    "$handler.AllowAutoRedirect = $true",
+  );
+  const pathGh = workflow.replace(
+    '--gh-executable "$env:GH_EXECUTABLE"',
+    "--gh-executable gh",
+  );
+
+  for (const insecure of [
+    wrongRun,
+    wrongArtifact,
+    decompressedCandidate,
+    ignoredDigest,
+    tokenRemoved,
+    mutableGhVersion,
+    wrongGhArchiveHash,
+    wrongGhExecutableHash,
+    automaticRedirect,
+    pathGh,
+  ]) {
+    assert.notEqual(insecure, workflow);
+    assertHasFailure(
+      checkWindowsStoreWorkflowSecurity(insecure),
+      "exact selected private source artifacts with pinned download",
+    );
+  }
+  assertHasFailure(
+    checkWindowsStoreWorkflowSecurity(floatingAction),
+    "exact allowlist pinned to full commit SHAs",
+  );
 });
 
 test("candidate format remains MSIX-first", () => {
@@ -490,7 +623,7 @@ test("verification and evidence cannot erase the MSIX-first decision", () => {
 
   assertHasFailure(
     checkWindowsStoreWorkflowSecurity(unreviewedBranch),
-    "hosted URL/hash only",
+    "exact selected private source artifacts with pinned download",
   );
   for (const insecure of [
     unconditionalCertificateEvidence,
@@ -605,7 +738,7 @@ test("workflow requires legal resources, exact SBOMs, Store surface, and pending
   ]) {
     assertHasFailure(
       checkWindowsStoreWorkflowSecurity(insecure),
-      "rechecks hosted bytes, identity, legal resources, SBOMs, and Store surface",
+      "rechecks selected bytes, authenticated source receipt, identity, legal resources, SBOMs, Store surface, and final evidence",
     );
   }
 });
@@ -658,7 +791,7 @@ test("hosted recheck requires exact bundled third-party notices evidence", () =>
     assert.notEqual(insecure, workflow);
     assertHasFailure(
       checkWindowsStoreWorkflowSecurity(insecure),
-      "rechecks hosted bytes, identity, legal resources, SBOMs, and Store surface",
+      "rechecks selected bytes, authenticated source receipt, identity, legal resources, SBOMs, Store surface, and final evidence",
     );
   }
 });
@@ -708,7 +841,7 @@ test("verify cannot drop pre/post execution source and surface baselines", () =>
   for (const insecure of [missingBaselineOutput, missingPostExecutionCheck]) {
     assertHasFailure(
       checkWindowsStoreWorkflowSecurity(insecure),
-      "rechecks hosted bytes, identity, legal resources, SBOMs, and Store surface",
+      "rechecks selected bytes, authenticated source receipt, identity, legal resources, SBOMs, Store surface, and final evidence",
     );
   }
 });

@@ -53,6 +53,7 @@ import {
   licenseArtifactPaths,
   verifyPublishedThirdPartyLicenseBundle,
 } from "./third-party-license-contract.mjs";
+import { validateWindowsStoreSourceReceipt } from "./verify-windows-store-source-artifacts.mjs";
 
 const defaultRoot = resolve(import.meta.dirname, "..");
 const PE_EXTENSIONS = new Set([".cpl", ".dll", ".exe", ".ocx", ".scr", ".sys"]);
@@ -100,6 +101,7 @@ export async function prepareWindowsStoreCandidate(
   try {
     const source = await resolveCandidateSource({
       ...options,
+      artifactSourceSha: artifactSourceCommit,
       expectedSha256,
       identity,
       temporaryRoot,
@@ -464,6 +466,7 @@ export function parseArgs(args, environment = process.env) {
   let architecture = "";
   let partnerIdentity = "";
   let hostedRetentionAttestation = "";
+  let githubActionsProvenance = "";
   let outputDir = "";
   let allowSilentInstall = false;
 
@@ -482,6 +485,7 @@ export function parseArgs(args, environment = process.env) {
         "--download-url",
         "--expected-sha256",
         "--format",
+        "--github-actions-provenance",
         "--output-dir",
         "--partner-identity",
         "--hosted-retention-attestation",
@@ -501,6 +505,9 @@ export function parseArgs(args, environment = process.env) {
     if (flag === "--download-url") downloadUrl = value;
     if (flag === "--expected-sha256") expectedSha256 = value;
     if (flag === "--format") format = value.toLowerCase();
+    if (flag === "--github-actions-provenance") {
+      githubActionsProvenance = value;
+    }
     if (flag === "--output-dir") outputDir = value;
     if (flag === "--partner-identity") partnerIdentity = value;
     if (flag === "--hosted-retention-attestation") {
@@ -532,6 +539,16 @@ export function parseArgs(args, environment = process.env) {
   if (artifact && hostedRetentionAttestation) {
     throw new Error(
       "--hosted-retention-attestation is valid only with --download-url.",
+    );
+  }
+  if (githubActionsProvenance && !artifact) {
+    throw new Error(
+      "--github-actions-provenance is valid only with a downloaded --artifact.",
+    );
+  }
+  if (githubActionsProvenance && format !== WINDOWS_STORE_FORMATS.MSIX) {
+    throw new Error(
+      "GitHub Actions source provenance is approved only for the reviewed MSIX route.",
     );
   }
   const legalPublisher = assertWindowsLegalPublisher(
@@ -577,6 +594,9 @@ export function parseArgs(args, environment = process.env) {
     expectedSigner,
     expectedSha256,
     format,
+    githubActionsProvenance: githubActionsProvenance
+      ? resolve(root, githubActionsProvenance)
+      : "",
     hostedRetentionAttestation: hostedRetentionAttestation
       ? resolve(root, hostedRetentionAttestation)
       : "",
@@ -653,9 +673,11 @@ export function inspectPortableExecutable(data) {
 
 async function resolveCandidateSource({
   artifact,
+  artifactSourceSha,
   downloadUrl,
   expectedSha256,
   format,
+  githubActionsProvenance,
   hostedRetentionAttestation,
   identity,
   temporaryRoot,
@@ -676,11 +698,31 @@ async function resolveCandidateSource({
         "The EXE artifact file name must contain the release version.",
       );
     }
+    let provenance = null;
+    let provenanceSnapshot = null;
+    if (githubActionsProvenance) {
+      provenanceSnapshot = capturePrivateSnapshot(
+        githubActionsProvenance,
+        "GitHub Actions provenance receipt",
+        temporaryRoot,
+        "github-actions-source-provenance.json",
+      );
+      provenance = validateWindowsStoreSourceReceipt(
+        readJson(provenanceSnapshot.path, "GitHub Actions provenance receipt"),
+        {
+          artifactSourceSha,
+          candidatePath: artifact,
+          expectedSha256,
+        },
+      );
+    }
     return {
       architecture: null,
       expectedSha256,
-      kind: "local-artifact",
+      kind: provenance ? "github-actions-artifact" : "local-artifact",
       path: artifact,
+      provenance,
+      provenanceSnapshot,
       retentionAttestation: null,
       url: null,
     };
@@ -720,6 +762,8 @@ async function resolveCandidateSource({
     expectedSha256,
     kind: "hosted-download",
     path: destination,
+    provenance: null,
+    provenanceSnapshot: null,
     retentionAttestation,
     url: validatedUrl,
   };
@@ -1120,6 +1164,29 @@ function writeCandidateEvidence({
       "Staged third-party notices changed during candidate evidence copy.",
     );
   }
+  let provenanceEvidence = null;
+  if (source.kind === "github-actions-artifact") {
+    assertSnapshotUnchanged(source.provenanceSnapshot);
+    const provenanceFileName = "github-actions-source-provenance.json";
+    const provenancePath = resolve(outputDir, provenanceFileName);
+    copyFileSync(
+      source.provenanceSnapshot.path,
+      provenancePath,
+      constants.COPYFILE_EXCL,
+    );
+    const receiptSha256 = sha256File(provenancePath);
+    if (receiptSha256 !== source.provenanceSnapshot.sha256) {
+      throw new Error(
+        "Staged GitHub Actions provenance receipt changed during copy.",
+      );
+    }
+    provenanceEvidence = {
+      fileName: provenanceFileName,
+      path: provenancePath,
+      receipt: source.provenance,
+      sha256: receiptSha256,
+    };
+  }
   const finalizedSourceIntegrity = {
     ...sourceIntegrity,
     observations: [
@@ -1133,6 +1200,7 @@ function writeCandidateEvidence({
 
   const generatedAt = new Date().toISOString();
   const hosted = source.kind === "hosted-download";
+  const authenticatedSource = source.kind === "github-actions-artifact";
   const isExe = verification.format === WINDOWS_STORE_FORMATS.EXE;
   const immutableHostedUrl =
     sourceIntegrity.urlImmutability.status ===
@@ -1151,12 +1219,20 @@ function writeCandidateEvidence({
         "Automatic-update behavior has not been verified by this candidate preflight.",
         "Windows App Certification Kit has not been run.",
         "Partner Center certification has not been run.",
-        "Authenticated build provenance has not been supplied or verified.",
+        ...(authenticatedSource
+          ? []
+          : [
+              "Authenticated build provenance has not been supplied or verified.",
+            ]),
       ]
     : [
         "Windows App Certification Kit has not been run.",
         "Partner Center submission, certification, and Microsoft Store signing have not occurred.",
-        "Authenticated build provenance has not been supplied or verified.",
+        ...(authenticatedSource
+          ? []
+          : [
+              "Authenticated build provenance has not been supplied or verified.",
+            ]),
       ];
   const candidate = {
     schemaVersion: 3,
@@ -1172,8 +1248,9 @@ function writeCandidateEvidence({
         artifactSourceCommit === reviewedSha
           ? "same-commit"
           : "distinct-commits",
-      sourceCommitBinding:
-        "operator-supplied input; authenticated provenance not provided",
+      sourceCommitBinding: authenticatedSource
+        ? "offline-verified Sigstore subject, signer workflow, producer run, source commit, evidence predicate, and GitHub Actions artifact metadata"
+        : "operator-supplied input; authenticated provenance not provided",
     },
     executionIdentity,
     projectIdentity: identity,
@@ -1183,6 +1260,15 @@ function writeCandidateEvidence({
       sizeBytes: artifactSnapshot.size,
       source: source.kind,
       versionedHttpsUrl: source.url,
+      githubActionsArtifact: authenticatedSource
+        ? {
+            artifactId: source.provenance.candidate.artifactId,
+            evidenceArtifactId: source.provenance.evidence.artifactId,
+            attestationsArtifactId: source.provenance.attestations.artifactId,
+            producerRunId: source.provenance.producer.runId,
+            producerRunAttempt: source.provenance.producer.runAttempt,
+          }
+        : null,
       stagedCopySha256: artifactSnapshot.sha256,
       integrity: finalizedSourceIntegrity,
     },
@@ -1206,8 +1292,28 @@ function writeCandidateEvidence({
     },
     attestations: {
       authenticatedProvenance: {
-        status: "not-provided",
+        status: authenticatedSource ? "verified-offline" : "not-provided",
         requiredBeforePublication: true,
+        receiptFileName: authenticatedSource
+          ? provenanceEvidence.fileName
+          : null,
+        receiptSha256: authenticatedSource ? provenanceEvidence.sha256 : null,
+        sourceRepository: authenticatedSource
+          ? source.provenance.source.repository
+          : null,
+        sourceCommit: authenticatedSource ? source.provenance.source.sha : null,
+        producerRunId: authenticatedSource
+          ? source.provenance.producer.runId
+          : null,
+        producerRunAttempt: authenticatedSource
+          ? source.provenance.producer.runAttempt
+          : null,
+        signer: authenticatedSource
+          ? source.provenance.attestations.signer
+          : null,
+        offlineVerification: authenticatedSource
+          ? source.provenance.attestations.offlineVerification
+          : null,
         acceptedEvidence:
           "independently verified signed CI/build provenance bound to repository, source commit, workflow run, tool identity, and artifact SHA-256",
       },
@@ -1229,7 +1335,9 @@ function writeCandidateEvidence({
         preflightCommit: reviewedSha,
         repository: executionIdentity.repository,
         run: executionIdentity.run,
-        status: "inputs-enforced-not-cryptographically-authenticated",
+        status: authenticatedSource
+          ? "source-build-cryptographically-authenticated"
+          : "inputs-enforced-not-cryptographically-authenticated",
       },
       selfGeneratedChecksums: {
         authenticatedProvenance: false,
@@ -1240,7 +1348,7 @@ function writeCandidateEvidence({
     verification,
     gates: {
       artifactHashBound: true,
-      authenticatedProvenance: false,
+      authenticatedProvenance: authenticatedSource,
       candidatePreflightPassed: true,
       hostedUrlImmutability: hosted
         ? immutableHostedUrl
@@ -1276,6 +1384,9 @@ function writeCandidateEvidence({
     [
       `${sha256File(artifactPath)}  ${basename(artifactPath)}`,
       `${sha256File(legalNoticesPath)}  ${basename(legalNoticesPath)}`,
+      ...(provenanceEvidence
+        ? [`${provenanceEvidence.sha256}  ${provenanceEvidence.fileName}`]
+        : []),
       `${sha256File(candidatePath)}  candidate.json`,
     ].join("\n") + "\n",
     "ascii",
@@ -2113,6 +2224,17 @@ async function revalidateCandidateSource({
       point: "fresh-download-after-verification",
       sha256: revalidationSnapshot.sha256,
     });
+  } else if (source.kind === "github-actions-artifact") {
+    assertSnapshotUnchanged(source.provenanceSnapshot);
+    validateWindowsStoreSourceReceipt(source.provenance, {
+      artifactSourceSha: source.provenance.source.sha,
+      candidatePath: artifactSnapshot.path,
+      expectedSha256,
+    });
+    observations.push({
+      point: "offline-verified-github-actions-provenance",
+      sha256: source.provenanceSnapshot.sha256,
+    });
   }
   return {
     expectedSha256,
@@ -2120,18 +2242,24 @@ async function revalidateCandidateSource({
     observations,
     status: "passed",
     urlImmutability:
-      source.kind !== "hosted-download"
+      source.kind === "github-actions-artifact"
         ? {
-            status: "not-applicable-local-artifact",
+            artifactId: source.provenance.candidate.artifactId,
+            expiresAt: source.provenance.artifacts.candidate.expiresAt,
+            status: "github-actions-artifact-retention-verified-live",
           }
-        : source.retentionAttestation
+        : source.kind !== "hosted-download"
           ? {
-              attestation: source.retentionAttestation,
-              status: "human-attested-object-retention",
+              status: "not-applicable-local-artifact",
             }
-          : {
-              status: "unverified-no-object-retention-proof",
-            },
+          : source.retentionAttestation
+            ? {
+                attestation: source.retentionAttestation,
+                status: "human-attested-object-retention",
+              }
+            : {
+                status: "unverified-no-object-retention-proof",
+              },
   };
 }
 
